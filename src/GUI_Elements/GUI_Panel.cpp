@@ -1,0 +1,401 @@
+/*
+  Tibia CLient
+  Copyright (C) 2019 Saiyans King
+
+  This software is provided 'as-is', without any express or implied
+  warranty.  In no event will the authors be held liable for any damages
+  arising from the use of this software.
+
+  Permission is granted to anyone to use this software for any purpose,
+  including commercial applications, and to alter it and redistribute it
+  freely, subject to the following restrictions:
+
+  1. The origin of this software must not be misrepresented; you must not
+     claim that you wrote the original software. If you use this software
+     in a product, an acknowledgment in the product documentation would be
+     appreciated but is not required.
+  2. Altered source versions must be plainly marked as such, and must not be
+     misrepresented as being the original software.
+  3. This notice may not be removed or altered from any source distribution.
+*/
+
+#include "GUI_Panel.h"
+#include "GUI_PanelWindow.h"
+#include "../engine.h"
+
+extern Engine g_engine;
+
+GUI_Panel::GUI_Panel(iRect boxRect, Sint32 internalId)
+{
+	setRect(boxRect);
+	m_actPanel = NULL;
+	m_lastPosY = m_tRect.y1+2;
+	m_freeHeight = m_tRect.y2-4;
+	m_internalID = internalId;
+}
+
+GUI_Panel::~GUI_Panel()
+{
+	clearPanels();
+}
+
+void GUI_Panel::setRect(iRect& NewRect)
+{
+	Sint32 posX = NewRect.x1+2;
+	m_lastPosY = NewRect.y1+2;
+	m_freeHeight = NewRect.y2-4;
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		GUI_PanelWindow* panel = (*it);
+		iRect& panelRect = panel->getOriginalRect();
+		iRect newPanelRect;
+		newPanelRect.x1 = posX;
+		newPanelRect.y1 = m_lastPosY;
+		newPanelRect.x2 = panelRect.x2;
+		newPanelRect.y2 = panelRect.y2;
+		panel->setRect(newPanelRect, true);
+		m_lastPosY += panelRect.y2;
+		m_freeHeight -= panelRect.y2;
+	}
+	m_tRect = NewRect;
+}
+
+Sint32 GUI_Panel::getFreeHeight()
+{
+	return m_freeHeight;
+}
+
+void GUI_Panel::clearPanels()
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+		delete (*it);
+	m_panels.clear();
+}
+
+void GUI_Panel::resizePanel(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
+{
+	iRect& panelRect = pPanel->getOriginalRect();
+	Sint32 height = panelRect.y2;
+	if(y == height)
+		return;
+
+	std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin();
+	for(std::vector<GUI_PanelWindow*>::iterator end = m_panels.end(); it != end; ++it)
+	{
+		if((*it) == pPanel)
+		{
+			++it;
+			break;
+		}
+	}
+
+	Sint32 minHeight = pPanel->getMinHeight();
+	Sint32 maxHeight = pPanel->getMaxHeight();
+	if(maxHeight)
+		maxHeight = UTIL_min<Sint32>(height+m_freeHeight, maxHeight);
+	else
+		maxHeight = height+m_freeHeight;
+	if(y < height)
+	{
+		if(height > minHeight)
+		{
+			Sint32 newHeight = UTIL_max<Sint32>(y, minHeight);
+			pPanel->setSize(x, newHeight);
+			if(it == m_panels.end())
+			{
+				Sint32 diff = height-newHeight;
+				m_lastPosY -= diff;
+				m_freeHeight += diff;
+			}
+			else
+			{
+				Sint32 diff = height-newHeight;
+				it = --m_panels.end();
+
+				iRect& pRect = (*it)->getOriginalRect();
+				Sint32 pHeight = pRect.y2;
+				(*it)->setSize(pRect.x2, pHeight+diff);
+				checkPanels();
+			}
+		}
+	}
+	else
+	{
+		if(it == m_panels.end())
+		{
+			if(height < maxHeight)
+			{
+				Sint32 newHeight = UTIL_min<Sint32>(y, maxHeight);
+				pPanel->setSize(x, newHeight);
+
+				Sint32 diff = newHeight-height;
+				m_lastPosY += diff;
+				m_freeHeight -= diff;
+			}
+		}
+		else
+		{
+			Sint32 expectDiff = y-height;
+			if(m_freeHeight > 0)
+			{
+				Sint32 diff = UTIL_min<Sint32>(expectDiff, m_freeHeight);
+				expectDiff -= diff;
+				height += diff;
+			}
+			if(expectDiff > 0)
+			{
+				for(std::vector<GUI_PanelWindow*>::reverse_iterator rit = m_panels.rbegin(), end = m_panels.rend(); rit != end; ++rit)
+				{
+					if(expectDiff <= 0 || (*rit) == pPanel)
+						break;
+					else
+					{
+						iRect& pRect = (*rit)->getOriginalRect();
+						Sint32 pHeight = pRect.y2;
+						if(pHeight > minHeight)
+						{
+							Sint32 diff = UTIL_min<Sint32>(expectDiff, pHeight-minHeight);
+							(*rit)->setSize(pRect.x2, pHeight-diff);
+							expectDiff -= diff;
+							height += diff;
+						}
+					}
+				}
+			}
+			pPanel->setSize(x, height);
+			checkPanels();
+		}
+	}
+}
+
+void GUI_Panel::checkPanels()
+{
+	Sint32 posX = m_tRect.x1+2;
+	m_lastPosY = m_tRect.y1+2;
+	m_freeHeight = m_tRect.y2-4;
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		GUI_PanelWindow* panel = (*it);
+		iRect& panelRect = panel->getOriginalRect();
+		iRect newPanelRect;
+		newPanelRect.x1 = posX;
+		newPanelRect.y1 = m_lastPosY;
+		newPanelRect.x2 = panelRect.x2;
+		newPanelRect.y2 = panelRect.y2;
+		panel->setRect(newPanelRect, true);
+		m_lastPosY += panelRect.y2;
+		m_freeHeight -= panelRect.y2;
+	}
+}
+
+void GUI_Panel::checkPanel(GUI_PanelWindow* pPanel, Sint32, Sint32 y)
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		if((*it) == pPanel)
+		{
+			m_panels.erase(it);
+			break;
+		}
+	}
+	std::vector<GUI_PanelWindow*>::iterator nit = m_panels.end();
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		GUI_PanelWindow* panel = (*it);
+		if(panel != pPanel)
+		{
+			iRect& panelRect = panel->getOriginalRect();
+			Sint32 py = panelRect.y1+(panelRect.y2>>1);
+			if(y < py)
+			{
+				nit = it;
+				break;
+			}
+		}
+	}
+	m_panels.insert(nit, pPanel);
+	checkPanels();
+}
+
+bool GUI_Panel::tryFreeHeight(GUI_PanelWindow* pPanel)
+{
+	if(m_internalID == GUI_PANEL_MAIN)
+		return false;
+
+	iRect& panelRect = pPanel->getOriginalRect();
+	Sint32 height = panelRect.y2;
+	Sint32 needFreeHeight = pPanel->getMinHeight();
+	if(height > needFreeHeight)
+	{
+		pPanel->setSize(panelRect.x2, needFreeHeight);
+		if(m_freeHeight >= needFreeHeight)
+			return true;
+	}
+	else
+		needFreeHeight = height;//Probably minimized
+
+	if(m_tRect.y2-4 < needFreeHeight)//In this case let's ignore this window at all
+		return false;
+
+	Sint32 resizableHeight = m_freeHeight;
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		iRect& pRect = (*it)->getOriginalRect();
+		Sint32 minHeight = (*it)->getMinHeight();
+		height = pRect.y2;
+		if(height > minHeight)
+			resizableHeight += (height-minHeight);
+	}
+	if(resizableHeight >= needFreeHeight)
+	{
+		needFreeHeight -= m_freeHeight;
+		for(std::vector<GUI_PanelWindow*>::reverse_iterator it = m_panels.rbegin(), end = m_panels.rend(); it != end; ++it)
+		{
+			iRect& pRect = (*it)->getOriginalRect();
+			Sint32 minHeight = (*it)->getMinHeight();
+			height = pRect.y2;
+			if(height > minHeight)
+			{
+				Sint32 gainHeight = UTIL_min<Sint32>(needFreeHeight, height-minHeight);
+				resizePanel((*it), pRect.x2, height-gainHeight);
+				needFreeHeight -= gainHeight;
+				if(needFreeHeight <= 0)
+					return true;
+			}
+		}
+	}
+	else
+	{
+		needFreeHeight -= m_freeHeight;
+		for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.end(); --it >= m_panels.begin();)
+		{
+			iRect& pRect = (*it)->getOriginalRect();
+			height = pRect.y2;
+			needFreeHeight -= height;
+
+			delete (*it);
+			it = m_panels.erase(it);
+			if(needFreeHeight <= 0)
+				break;
+		}
+		checkPanels();
+	}
+	return true;
+}
+
+void GUI_Panel::addPanel(GUI_PanelWindow* pPanel)
+{
+	m_panels.push_back(pPanel);
+	checkPanels();
+}
+
+void GUI_Panel::removePanel(GUI_PanelWindow* pPanel, bool deletePanel)
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		if((*it) == pPanel)
+		{
+			m_panels.erase(it);
+			break;
+		}
+	}
+	if(deletePanel)
+		delete pPanel;
+	checkPanels();
+}
+
+GUI_PanelWindow* GUI_Panel::getPanel(Uint32 internalID)
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		if((*it)->getInternalID() == internalID)
+			return (*it);
+	}
+	return NULL;
+}
+
+void GUI_Panel::onLMouseDown(Sint32 x, Sint32 y)
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		if((*it)->isInsideRect(x, y))
+		{
+			m_actPanel = (*it);
+			(*it)->onLMouseDown(x, y);
+			return;
+		}
+	}
+}
+
+void GUI_Panel::onLMouseUp(Sint32 x, Sint32 y)
+{
+	m_actPanel = NULL;
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+		(*it)->onLMouseUp(x, y);
+}
+
+void GUI_Panel::onRMouseDown(Sint32 x, Sint32 y)
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		if((*it)->isInsideRect(x, y))
+		{
+			m_actPanel = (*it);
+			(*it)->onRMouseDown(x, y);
+			return;
+		}
+	}
+}
+
+void GUI_Panel::onRMouseUp(Sint32 x, Sint32 y)
+{
+	m_actPanel = NULL;
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+		(*it)->onRMouseUp(x, y);
+}
+
+void GUI_Panel::onWheel(Sint32 x, Sint32 y, bool wheelUP)
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		if((*it)->isInsideRect(x, y))
+		{
+			(*it)->onWheel(x, y, wheelUP);
+			return;
+		}
+	}
+}
+
+void GUI_Panel::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+		(*it)->onMouseMove(x, y, isInsideParent);
+}
+
+void GUI_Panel::render()
+{
+	Surface* renderer = g_engine.getRender();
+	renderer->drawPicture(3, 99, 198, m_tRect.x1+m_tRect.x2-2, m_tRect.y1, 2, 2);
+	renderer->drawPicture(3, 99, 198, m_tRect.x1, m_tRect.y1+m_tRect.y2-2, 2, 2);
+	renderer->drawPictureRepeat(3, 2, 198, 96, 2, m_tRect.x1, m_tRect.y1, m_tRect.x2-2, 2);
+	renderer->drawPictureRepeat(3, 256, 0, 2, 96, m_tRect.x1, m_tRect.y1+2, 2, m_tRect.y2-4);
+	renderer->drawPictureRepeat(3, 0, 96, 96, 2, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-2, m_tRect.x2-2, 2);
+	renderer->drawPictureRepeat(3, 0, 98, 2, 96, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+2, 2, m_tRect.y2-4);
+	if(m_freeHeight > 0)
+		renderer->drawPictureRepeat(3, 0, 0, 96, 96, m_tRect.x1+2, m_lastPosY, m_tRect.x2-4, m_freeHeight);
+
+	if(m_actPanel)
+	{
+		for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+		{
+			if(m_actPanel != (*it))
+				(*it)->render();
+		}
+		m_actPanel->render();
+	}
+	else
+	{
+		for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+			(*it)->render();
+	}
+}
