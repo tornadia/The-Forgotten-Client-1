@@ -36,6 +36,7 @@ struct Hotkey_Item
 	Uint8 type;
 	Uint8 usageType;
 	Uint16 itemId;
+	Uint8 itemSubtype;
 };
 
 typedef union HotkeyAction
@@ -56,8 +57,9 @@ struct HotkeyUsage
 
 struct ClientActionData
 {
-	ClientActionData() : itemId(0), posX(0xFFFF), posY(0), posZ(0), posStack(0) {}
+	ClientActionData() : creatureId(0), itemId(0), posX(0xFFFF), posY(0), posZ(0), posStack(0) {}
 
+	Uint32 creatureId;
 	Uint16 itemId;
 	Uint16 posX;
 	Uint16 posY;

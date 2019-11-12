@@ -691,7 +691,6 @@ bool SurfaceDirect3D9::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 s
 		m_integer_scaling_height = height;
 	}
 
-	IDirect3DDevice9_SetRenderState(m_device, D3DRS_SCISSORTESTENABLE, FALSE);
 	if(m_currentRenderTarget)
 	{
 		IDirect3DSurface9_Release(m_currentRenderTarget);
@@ -795,7 +794,6 @@ bool SurfaceDirect3D9::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 s
 	vertices[3].v = maxv;
 
 	updateTextureScaling(m_scaled_gameWindow);
-	IDirect3DDevice9_SetRenderState(m_device, D3DRS_SCISSORTESTENABLE, TRUE);
 	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, m_scaled_gameWindow->m_texture));
 	if(g_engine.isSharpening() && m_haveSharpening)
 	{

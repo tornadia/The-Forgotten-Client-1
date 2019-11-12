@@ -112,6 +112,7 @@ enum GameOpcodes : Uint8
 	GameTournamentTicketActionOpcode = 0xC8,
 	GameGetTransactionDetailsOpcode = 0xC9,
 	GameUpdateTileOpcode = 0xC9,
+	GameUpdateExivaOptionsOpcode = 0xCA,
 	GameUpdateContainerOpcode = 0xCA,
 	GameBrowseFieldOpcode = 0xCB,
 	GameSeekInContainerOpcode = 0xCC,
@@ -686,7 +687,7 @@ class ProtocolGame : public Protocol
 
 		//Item Move Events
 		void sendEquipItem(Uint16 itemid, Uint16 count);
-		void sendMove(const Position& fromPos, Uint16 thingId, Uint8 stackpos, const Position& toPos, Uint16 count);
+		void sendMove(const Position& fromPos, Uint16 itemid, Uint8 stackpos, const Position& toPos, Uint16 count);
 
 		//NPC Trade System
 		void sendLookInShop(Uint16 itemid, Uint16 count);
@@ -702,7 +703,7 @@ class ProtocolGame : public Protocol
 
 		//Use Item Events
 		void sendUseItem(const Position& position, Uint16 itemId, Uint8 stackpos, Uint8 index);
-		void sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 fromStackPos, const Position& toPos, Uint16 toThingId, Uint8 toStackPos);
+		void sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 fromStackPos, const Position& toPos, Uint16 toItemId, Uint8 toStackPos);
 		void sendUseOnCreature(const Position& position, Uint16 itemId, Uint8 stackpos, Uint32 creatureId);
 		void sendRotateItem(const Position& position, Uint16 itemId, Uint8 stackpos);
 		void sendRequestItemInfo(std::vector<RequestItems>& requestItems);
@@ -731,6 +732,7 @@ class ProtocolGame : public Protocol
 
 		//Talk Event
 		void sendSay(MessageMode mode, Uint16 channelId, const std::string& receiver, const std::string& message);
+		void sendUpdateExivaOptions();
 
 		//Chat System
 		void sendRequestChannels();

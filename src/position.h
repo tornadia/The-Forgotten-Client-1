@@ -154,6 +154,26 @@ struct Position
         return pos;
     }
 
+	Position translatedToDirections(std::vector<Direction>& directions)
+	{
+		Position pos = *this;
+		for(std::vector<Direction>::reverse_iterator it = directions.rbegin(), end = directions.rend(); it != end; ++it)
+		{
+			switch(*it)
+			{
+				case DIRECTION_NORTH: --pos.y; break;
+				case DIRECTION_EAST: ++pos.x; break;
+				case DIRECTION_SOUTH: ++pos.y; break;
+				case DIRECTION_WEST: --pos.x; break;
+				case DIRECTION_NORTHEAST: {++pos.x; --pos.y;} break;
+				case DIRECTION_SOUTHEAST: {++pos.x; ++pos.y;} break;
+				case DIRECTION_SOUTHWEST: {--pos.x; ++pos.y;} break;
+				case DIRECTION_NORTHWEST: {--pos.x; --pos.y;} break;
+			}
+		}
+		return pos;
+	}
+
 	bool up(Sint32 n = 1)
 	{
 		Sint32 nz = SDL_static_cast(Sint32, z)-n;

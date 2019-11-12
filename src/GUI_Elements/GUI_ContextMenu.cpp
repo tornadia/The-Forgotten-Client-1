@@ -41,6 +41,15 @@ void GUI_ContextMenu::addContextMenu(Uint8 style, Uint32 eventId, const std::str
 	m_childs.push_back(newChild);
 }
 
+void GUI_ContextMenu::addSeparator()
+{
+	if(!m_childs.empty())
+	{
+		ContextMenuChild& child = m_childs.back();
+		child.childStyle |= CONTEXTMENU_STYLE_SEPARATED;
+	}
+}
+
 void GUI_ContextMenu::setEventCallback(void(*eventHandlerFunction)(Uint32, Sint32))
 {
 	m_eventHandlerFunction = eventHandlerFunction;

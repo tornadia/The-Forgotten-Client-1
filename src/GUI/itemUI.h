@@ -22,7 +22,7 @@
 #ifndef __FILE_ITEM_UI_h_
 #define __FILE_ITEM_UI_h_
 
-#include "../defines.h"
+#include "../position.h"
 #include "../animator.h"
 
 class ThingType;
@@ -33,19 +33,31 @@ class ItemUI
 
 		static ItemUI* createItemUI(ThingType* type, Uint16 count, Sint32 phase = AnimationPhase_Automatic);
 
+		SDL_FORCE_INLINE Uint16 getItemCount() {return m_count;}
+		SDL_FORCE_INLINE Uint8 getItemSubtype() {return m_subtype;}
+
+		Uint16 getID();
 		void render(Sint32 posX, Sint32 posY, Sint32 scaled);
+
+		void setCurrentPosition(Position& newPosition) {m_position = newPosition;}
+		Position& getCurrentPosition() {return m_position;}
+
+		SDL_FORCE_INLINE ThingType* getThingType() {return m_thingType;}
 
 	protected:
 		ThingType* m_thingType;
 		Animator* m_animator;
 		Animation m_animation;
 
+		Position m_position;
 		std::string m_stringCount;
 
+		Uint16 m_count;
+		Uint8 m_subtype;
+		Uint8 m_animCount;
 		Uint8 m_xPattern;
 		Uint8 m_yPattern;
 		Uint8 m_zPattern;
-
 		bool m_displayCount;
 };
 

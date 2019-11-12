@@ -35,7 +35,7 @@ class RSA
 
 	private:
 		Uint1024 m_mod;
-		uint32_t m_e;
+		Uint32 m_e;
 };
 
 #endif /* __FILE_RSA_h_ */

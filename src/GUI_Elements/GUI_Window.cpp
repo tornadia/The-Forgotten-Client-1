@@ -243,8 +243,8 @@ void GUI_Window::onLMouseUp(Sint32 x, Sint32 y)
 	if(m_bMouseDragging)
 		m_bMouseDragging = false;
 
-	if(m_actElement)
-		m_actElement->onLMouseUp(x, y);
+	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+		(*it)->onLMouseUp(x, y);
 }
 
 void GUI_Window::onRMouseDown(Sint32 x, Sint32 y)
@@ -263,8 +263,8 @@ void GUI_Window::onRMouseDown(Sint32 x, Sint32 y)
 
 void GUI_Window::onRMouseUp(Sint32 x, Sint32 y)
 {
-	if(m_actElement)
-		m_actElement->onRMouseUp(x, y);
+	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+		(*it)->onRMouseUp(x, y);
 }
 
 void GUI_Window::onWheel(Sint32 x, Sint32 y, bool wheelUP)

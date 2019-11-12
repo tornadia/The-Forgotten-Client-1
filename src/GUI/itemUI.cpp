@@ -27,11 +27,16 @@
 extern Engine g_engine;
 extern Game g_game;
 extern ThingManager g_thingManager;
+extern Uint32 g_frameTime;
 
 ItemUI::ItemUI(ThingType* type)
 {
 	m_thingType = type;
 	m_animator = NULL;
+	m_position = Position(0xFFFF, 0, 0);
+	m_count = 1;
+	m_subtype = 0;
+	m_animCount = 0;
 	m_xPattern = m_yPattern = m_zPattern = 0;
 	m_displayCount = false;
 }
@@ -45,6 +50,7 @@ ItemUI* ItemUI::createItemUI(ThingType* type, Uint16 count, Sint32 phase)
 	Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, count));
 	if(type->hasFlag(ThingAttribute_Stackable))
 	{
+		newItem->m_count = count;
 		if(type->m_frameGroup[ThingFrameGroup_Default].m_patternX == 4 && type->m_frameGroup[ThingFrameGroup_Default].m_patternY == 2)
 		{
 			if(count <= 1)
@@ -64,15 +70,18 @@ ItemUI* ItemUI::createItemUI(ThingType* type, Uint16 count, Sint32 phase)
 			}
 		}
 		newItem->m_stringCount = std::string(g_buffer, SDL_static_cast(size_t, len));
-		newItem->m_displayCount = true;
+		if(count > 1)
+			newItem->m_displayCount = true;
 	}
 	else if(type->hasFlag(ThingAttribute_Chargeable))
 	{
 		newItem->m_stringCount = std::string(g_buffer, SDL_static_cast(size_t, len));
-		newItem->m_displayCount = true;
+		if(count > 1)
+			newItem->m_displayCount = true;
 	}
 	else if(type->hasFlag(ThingAttribute_Splash) || type->hasFlag(ThingAttribute_FluidContainer))
 	{
+		newItem->m_subtype = SDL_static_cast(Uint8, count);
 		Sint32 fluid = SDL_static_cast(Sint32, count);
 		if(g_game.hasGameFeature(GAME_FEATURE_NEWFLUIDS))
 		{
@@ -137,18 +146,38 @@ ItemUI* ItemUI::createItemUI(ThingType* type, Uint16 count, Sint32 phase)
 					break;
 			}
 		}
-		newItem->m_animator = type->m_frameGroup[ThingFrameGroup_Default].m_animator;
 		newItem->m_xPattern = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (fluid % 4)), type->m_frameGroup[ThingFrameGroup_Default].m_patternX);
 		newItem->m_yPattern = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (fluid / 4)), type->m_frameGroup[ThingFrameGroup_Default].m_patternY);
-		if(newItem->m_animator)
-			newItem->m_animator->resetAnimation(newItem->m_animation, phase);
 	}
+	newItem->m_animCount = type->m_frameGroup[ThingFrameGroup_Default].m_animCount;
+	newItem->m_animator = type->m_frameGroup[ThingFrameGroup_Default].m_animator;
+	if(newItem->m_animator)
+		newItem->m_animator->resetAnimation(newItem->m_animation, phase);
 	return newItem;
+}
+
+Uint16 ItemUI::getID()
+{
+	if(m_thingType)
+		return m_thingType->m_id;
+
+	return 0;
 }
 
 void ItemUI::render(Sint32 posX, Sint32 posY, Sint32 scaled)
 {
-	g_engine.drawItem(m_thingType, posX, posY, scaled, m_xPattern, m_yPattern, m_zPattern);
+	Uint8 animation;
+	if(m_animCount > 1)
+	{
+		if(m_animator)
+			animation = SDL_static_cast(Uint8, m_animator->getPhase(m_animation));
+		else
+			animation = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), m_animCount);
+	}
+	else
+		animation = 0;
+
+	g_engine.drawItem(m_thingType, posX, posY, scaled, m_xPattern, m_yPattern, m_zPattern, animation);
 	if(m_displayCount)
 		g_engine.drawFont(CLIENT_FONT_OUTLINED, posX+scaled-1, posY+scaled-11, m_stringCount, 192, 192, 192, CLIENT_FONT_ALIGN_RIGHT);
 }

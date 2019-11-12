@@ -43,11 +43,11 @@ class Tile
 
 		Uint32 getThingStackPos(Thing* thing);
 		Thing* getThingByStackPos(Uint32 index);
+		Creature* getTopCreature(Sint32 x, Sint32 y, iRect& rect, float scale);
 		Creature* getTopCreature();
 		Thing* getTopLookThing();
 		Thing* getTopUseThing();
 		Thing* getTopMoveThing();
-		Thing* getTopMultiUseThing();
 
 		bool addThing(Thing* thing, bool insertThing = false, bool moveCreature = false);
 		bool insertThing(Thing* thing, Uint32 stackpos);

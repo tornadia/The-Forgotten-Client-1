@@ -52,6 +52,7 @@ void UTIL_createSkillsPopupMenu(Sint32 x, Sint32 y);
 void UTIL_createBattleWindow();
 void UTIL_createBattlePopupMenu(void* data, Sint32 x, Sint32 y);
 void UTIL_createVipWindow();
+void UTIL_createContainerWindow(Uint8 index);
 
 void UTIL_updateHealthPanel();
 void UTIL_updateSkillsWindowStats();

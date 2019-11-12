@@ -127,5 +127,40 @@ static const char *resizewe_pixels[] = {
 	"                                ",
 };
 
+static const char *lenshelp_pixels[] = {
+	"   xxxxxx                       ",
+	"  x......x                      ",
+	" x..xxxx..x                     ",
+	"x..x    x..x                    ",
+	"x.x      x.x                    ",
+	"x.x      x.x                    ",
+	"x.x      x.x                    ",
+	"x.x      x.x                    ",
+	"x..x    x..x                    ",
+	" x..xxxx...x                    ",
+	"  x.........x                   ",
+	"   xxxxxxx...x                  ",
+	"          x...x                 ",
+	"           x...x                ",
+	"            x...x               ",
+	"             x.x                ",
+	"              x                 ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+	"                                ",
+};
+
 #endif /* __FILE_CURSORS_h_ */
 

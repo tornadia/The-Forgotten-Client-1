@@ -798,7 +798,6 @@ bool SurfaceOpengl::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	float minv = sy*m_gameWindow->m_scaleH;
 	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
 
-	OglDisable(GL_SCISSOR_TEST);
 	OglBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
 	OglBindTexture(GL_TEXTURE_2D, m_gameWindow->m_texture);
 	OglBegin(GL_TRIANGLE_STRIP);
@@ -835,7 +834,6 @@ bool SurfaceOpengl::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 		OglUseProgramObjectARB(m_program_sharpen.program);
 		OglUniform2fARB(m_sharpen_textureSize, 1.0f / w, 1.0f / h);
 	}
-	OglEnable(GL_SCISSOR_TEST);
 	OglBindTexture(GL_TEXTURE_2D, m_scaled_gameWindow->m_texture);
 	OglBegin(GL_TRIANGLE_STRIP);
 	OglTexCoord2f(minu, minv);

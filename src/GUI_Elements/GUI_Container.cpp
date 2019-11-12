@@ -135,6 +135,19 @@ void GUI_Container::setAsMaxHeight()
 		m_parent->setMaxHeight(m_contentSize+40);
 }
 
+void* GUI_Container::onAction(Sint32 x, Sint32 y)
+{
+	if(!m_visible)
+		return NULL;
+
+	for(std::vector<GUI_Element*>::reverse_iterator it = m_childs.rbegin(), end = m_childs.rend(); it != end; ++it)
+	{
+		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
+			return (*it)->onAction(x, y);
+	}
+	return NULL;
+}
+
 void GUI_Container::onLMouseDown(Sint32 x, Sint32 y)
 {
 	if(!m_visible)
@@ -164,8 +177,8 @@ void GUI_Container::onLMouseUp(Sint32 x, Sint32 y)
 		return;
 
 	m_scrollBar->onLMouseUp(x, y);
-	if(m_actElement)
-		m_actElement->onLMouseUp(x, y);
+	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+		(*it)->onLMouseUp(x, y);
 }
 
 void GUI_Container::onRMouseDown(Sint32 x, Sint32 y)
@@ -197,8 +210,8 @@ void GUI_Container::onRMouseUp(Sint32 x, Sint32 y)
 		return;
 
 	m_scrollBar->onRMouseUp(x, y);
-	if(m_actElement)
-		m_actElement->onRMouseUp(x, y);
+	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+		(*it)->onRMouseUp(x, y);
 }
 
 void GUI_Container::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)

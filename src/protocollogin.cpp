@@ -257,7 +257,7 @@ void ProtocolLogin::parseCharacterListNew(InputMessage& msg)
 
 void ProtocolLogin::onConnect()
 {
-	bool checksumFeature = g_game.hasGameFeature(GAME_FEATURE_CHECKSUM);
+	bool checksumFeature = (g_game.hasGameFeature(GAME_FEATURE_CHECKSUM) || g_game.hasGameFeature(GAME_FEATURE_PROTOCOLSEQUENCE));
 	bool xteaFeature = g_game.hasGameFeature(GAME_FEATURE_XTEA);
 	bool rsa1024Feature = g_game.hasGameFeature(GAME_FEATURE_RSA1024);
 
@@ -325,7 +325,7 @@ void ProtocolLogin::onConnect()
 	}
 
 	if(checksumFeature)
-		setChecksum(true);
+		setChecksumMethod(g_game.hasGameFeature(GAME_FEATURE_PROTOCOLSEQUENCE) ? CHECKSUM_METHOD_SEQUENCE : CHECKSUM_METHOD_ADLER32);
 
 	onSend(msg);
 	if(xteaFeature)

@@ -1022,6 +1022,24 @@ void Creature::setIcon(Uint8 icon)
 	}
 }
 
+std::pair<Sint32, Sint32> Creature::getDisplacement()
+{
+	if(m_thingType->m_category != ThingCategory_Creature)
+	{
+		if(m_thingType->m_category == ThingCategory_Effect)
+			return std::make_pair(8, 8);
+		else
+			return std::make_pair(0, 0);
+	}
+	else
+	{
+		if(m_mountType)
+			return std::make_pair(SDL_static_cast(Sint32, m_mountType->m_displacement[0]), SDL_static_cast(Sint32, m_mountType->m_displacement[1]));
+		else
+			return std::make_pair(SDL_static_cast(Sint32, m_thingType->m_displacement[0]), SDL_static_cast(Sint32, m_thingType->m_displacement[1]));
+	}
+}
+
 Sint32 Creature::getOffsetX(bool checkPreWalk)
 {
 	if(!m_walking) return 0;

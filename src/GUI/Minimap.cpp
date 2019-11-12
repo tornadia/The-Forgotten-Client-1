@@ -24,6 +24,7 @@
 #include "../GUI_Elements/GUI_Panel.h"
 #include "../GUI_Elements/GUI_PanelWindow.h"
 #include "../GUI_Elements/GUI_Button.h"
+#include "../GUI_Elements/GUI_Icon.h"
 #include "../GUI_Elements/GUI_StaticImage.h"
 #include "../GUI_Elements/GUI_Grouper.h"
 #include "../automap.h"
@@ -44,8 +45,11 @@ void UTIL_createMinimapPanel()
 	GUI_Minimap* newMinimap = new GUI_Minimap(iRect(9, 5, 106, 106));
 	newWindow->addChild(newMinimap);
 	GUI_Button* newButton = new GUI_Button(iRect(124, 92, 43, 20), "Centre");
+	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(124, 4, 43, 43), 3, 131, 138);
+	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(130, 10, 31, 31), 3, 380, 65);
+	newWindow->addChild(newImage);
+	newImage = new GUI_StaticImage(iRect(124, 4, 43, 43), 3, 131, 138);
 	newWindow->addChild(newImage);
 	newImage = new GUI_StaticImage(iRect(124, 71, 20, 20), 3, 2, 98);
 	newWindow->addChild(newImage);
@@ -55,6 +59,30 @@ void UTIL_createMinimapPanel()
 	newWindow->addChild(newImage);
 	newImage = new GUI_StaticImage(iRect(147, 71, 20, 20), 3, 62, 98);
 	newWindow->addChild(newImage);
+	GUI_Icon* newIcon = new GUI_Icon(iRect(139, 4, 13, 7), 3, 146, 138, 486, 96);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(139, 40, 13, 7), 3, 146, 174, 499, 96);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(124, 19, 7, 13), 3, 131, 153, 504, 78);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(160, 19, 7, 13), 3, 167, 153, 504, 65);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(126, 6, 12, 12), 3, 133, 140, 450, 96);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(153, 6, 12, 12), 3, 160, 140, 438, 96);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(126, 33, 12, 12), 3, 133, 167, 474, 96);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(153, 33, 12, 12), 3, 160, 167, 462, 96);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
 	g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
 }
 

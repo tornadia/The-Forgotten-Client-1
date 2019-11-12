@@ -50,6 +50,7 @@ Chat::Chat()
 	m_textbox->setMaxLength(255);
 	m_selectedChannel = 0;
 	m_currentPage = 0;
+	m_historyNavigator = SDL_MIN_SINT32;
 	m_ownPrivatechannel = SDL_static_cast(Uint32, -1);
 	m_ignoreListStatus = 0;
 	m_channelListStatus = 0;
@@ -84,6 +85,30 @@ void Chat::gameStart()
 		openChannel(CHANNEL_ID_DEFAULT, CHANNEL_NAME_DEFAULT_LEGACY, false, false);
 
 	openChannel(CHANNEL_ID_SERVERLOG, CHANNEL_NAME_SERVERLOG, false, false);
+
+	m_savedMessages.clear();
+	m_textbox->setText("");
+}
+
+void Chat::navigateHistory(Sint32 direction)
+{
+	Sint32 messagesSize = SDL_static_cast(Sint32, m_savedMessages.size())-1;
+	if(m_historyNavigator == SDL_MIN_SINT32)
+	{
+		if(m_savedMessages.empty() || direction > 0)
+			return;
+
+		m_historyNavigator = messagesSize+1;
+	}
+	m_historyNavigator = UTIL_max<Sint32>(0, UTIL_min<Sint32>(m_historyNavigator+direction, messagesSize));
+
+	std::list<std::string>::iterator it = m_savedMessages.begin();
+	std::advance(it, m_historyNavigator);
+
+	std::string& historyMessage = (*it);
+	m_textbox->setText(historyMessage);
+	m_textbox->clearSelection();
+	m_textbox->moveCursor(SDL_static_cast(Sint32, historyMessage.length()));
 }
 
 void Chat::openPrivateChannel(const std::string& receiver)
@@ -362,6 +387,10 @@ void Chat::sendMessage()
 	if(!selectedchannel)
 		return;
 
+	std::string message = m_textbox->getActualText();
+	if(message.empty())
+		return;
+
 	Uint32 channelId = selectedchannel->channelId;
 	std::string receiver;
 	MessageMode mode = (m_volumeAdjustement == VOLUME_SAY ? MessageSay : m_volumeAdjustement == VOLUME_YELL ? MessageYell : m_volumeAdjustement == VOLUME_WHISPER ? MessageWhisper : MessageNone);
@@ -377,8 +406,14 @@ void Chat::sendMessage()
 	else if(channelId != CHANNEL_ID_DEFAULT && channelId != CHANNEL_ID_SERVERLOG)
 		mode = MessageChannel;
 
-	std::string message = m_textbox->getActualText();
+	if(m_savedMessages.size() >= CHAT_MAXIMUM_MESSAGE_HISTORY)
+		m_savedMessages.pop_front();
+
+	m_savedMessages.push_back(message);
+	m_historyNavigator = SDL_MIN_SINT32;
+
 	m_textbox->setText("");
+	m_textbox->clearSelection();
 	if(message.size() > 3)
 	{
 		//#a, #d and $name$text are deprecated and not supported by any ots(?) so I don't see any point to implement them

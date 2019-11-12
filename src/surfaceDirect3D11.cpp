@@ -1537,7 +1537,6 @@ bool SurfaceDirect3D11::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 		m_integer_scaling_height = height;
 	}
 
-	ID3D11DeviceContext_RSSetState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11RasterizerState*, m_mainRasterizer));
 	ID3D11DeviceContext_OMSetRenderTargets(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 1, SDL_reinterpret_cast(ID3D11RenderTargetView**, &m_scaled_gameWindow->m_frameBuffer), NULL);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
@@ -1631,7 +1630,6 @@ bool SurfaceDirect3D11::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 		return false;
 
 	updateTextureScaling(m_scaled_gameWindow);
-	ID3D11DeviceContext_RSSetState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11RasterizerState*, m_clippedRasterizer));
 	if(g_engine.isSharpening() && m_haveSharpening)
 	{
 		float textureDimensions[2] = {1.0f / w, 1.0f / h};

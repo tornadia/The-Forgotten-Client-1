@@ -105,7 +105,7 @@ class SurfaceVulkan : public Surface
 		VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 		VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 		VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-		Uint32 findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+		Uint32 findMemoryType(Uint32 typeFilter, VkMemoryPropertyFlags properties);
 		VkShaderModule createShaderModule(const char* code, size_t codesize);
 
 		void setupTextureRendering(VulkanTexture* texture);

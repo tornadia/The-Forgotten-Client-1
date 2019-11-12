@@ -314,6 +314,16 @@ GUI_PanelWindow* GUI_Panel::getPanel(Uint32 internalID)
 	return NULL;
 }
 
+void* GUI_Panel::onAction(Sint32 x, Sint32 y)
+{
+	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		if((*it)->isInsideRect(x, y))
+			return (*it)->onAction(x, y);
+	}
+	return NULL;
+}
+
 void GUI_Panel::onLMouseDown(Sint32 x, Sint32 y)
 {
 	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)

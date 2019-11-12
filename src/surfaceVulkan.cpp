@@ -213,7 +213,7 @@ SwapChainSupportDetails SurfaceVulkan::querySwapChainSupport()
 	SwapChainSupportDetails details;
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_gpu, m_surface, &details.capabilities);
 
-	uint32_t formatCount;
+	Uint32 formatCount;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_gpu, m_surface, &formatCount, NULL);
 	if(formatCount != 0)
 	{
@@ -221,7 +221,7 @@ SwapChainSupportDetails SurfaceVulkan::querySwapChainSupport()
 		vkGetPhysicalDeviceSurfaceFormatsKHR(m_gpu, m_surface, &formatCount, &details.formats[0]);
 	}
 
-	uint32_t presentModeCount;
+	Uint32 presentModeCount;
 	vkGetPhysicalDeviceSurfacePresentModesKHR(m_gpu, m_surface, &presentModeCount, NULL);
 	if(presentModeCount != 0)
 	{
@@ -275,11 +275,11 @@ VkExtent2D SurfaceVulkan::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capab
 	}
 }
 
-Uint32 SurfaceVulkan::findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
+Uint32 SurfaceVulkan::findMemoryType(Uint32 typeFilter, VkMemoryPropertyFlags properties)
 {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(m_gpu, &memProperties);
-	for(uint32_t i = 0; i < memProperties.memoryTypeCount; ++i)
+	for(Uint32 i = 0; i < memProperties.memoryTypeCount; ++i)
 	{
 		if((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties)
 			return i;
@@ -959,7 +959,7 @@ void SurfaceVulkan::reinitSwapChainResources()
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	uint32_t queueFamilyIndices[] = {m_graphicsQueueNodeIndex, m_graphicsQueuePresentIndex};
+	Uint32 queueFamilyIndices[] = {m_graphicsQueueNodeIndex, m_graphicsQueuePresentIndex};
 	if(m_graphicsQueueNodeIndex != m_graphicsQueuePresentIndex)
 	{
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -2155,10 +2155,9 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	viewport.maxDepth = 1;
 	vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
-	iRect& gameWindowRect = g_engine.getGameWindowRect();
-	scissor.offset = {gameWindowRect.x1, gameWindowRect.y1};
-	scissor.extent.width = gameWindowRect.x2;
-	scissor.extent.height = gameWindowRect.y2;
+	scissor.offset = {0, 0};
+	scissor.extent.width = width;
+	scissor.extent.height = width;
 	vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
 	vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);

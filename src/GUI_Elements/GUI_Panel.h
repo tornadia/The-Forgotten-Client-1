@@ -63,9 +63,9 @@ class GUI_Panel
 		void setInternalID(Sint32 internalId) {m_internalID = internalId;}
 		Sint32 getInternalID() {return m_internalID;}
 
+		void* onAction(Sint32 x, Sint32 y);
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
-
 		void onRMouseDown(Sint32 x, Sint32 y);
 		void onRMouseUp(Sint32 x, Sint32 y);
 		void onWheel(Sint32 x, Sint32 y, bool wheelUP);

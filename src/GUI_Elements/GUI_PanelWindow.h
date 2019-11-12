@@ -83,6 +83,7 @@ class GUI_PanelWindow
 		void setMaxHeight(Sint32 height) {m_maxHeight = height;}
 		Sint32 getMaxHeight() {return m_maxHeight;}
 
+		void* onAction(Sint32 x, Sint32 y);
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
 		void onRMouseDown(Sint32 x, Sint32 y);

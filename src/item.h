@@ -38,6 +38,9 @@ class Item : public Thing
 
 		virtual bool isItem() {return true;}
 
+		SDL_FORCE_INLINE Uint16 getItemCount() {return m_count;}
+		SDL_FORCE_INLINE Uint8 getItemSubtype() {return m_subtype;}
+
 		Uint16 getID();
 		Uint8 calculateAnimationPhase();
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
@@ -55,6 +58,8 @@ class Item : public Thing
 
 		Sint32 m_topOrder;
 		Uint16 m_elevation;
+		Uint16 m_count;
+		Uint8 m_subtype;
 		Uint8 m_animCount;
 		Uint8 m_xPattern;
 		Uint8 m_yPattern;

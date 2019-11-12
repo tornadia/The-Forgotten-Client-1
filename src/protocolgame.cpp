@@ -429,7 +429,7 @@ void ProtocolGame::parseDeath(InputMessage& msg)
 		penalty = msg.getU8();
 
 	bool deathRedemption = false;
-	if(g_clientVersion >= 1120)
+	if(g_clientVersion >= 1121)
 		deathRedemption = msg.getBool();
 
 	(void)deathRedemption;
@@ -846,10 +846,11 @@ void ProtocolGame::parseContainerOpen(InputMessage& msg)
 	Uint8 containerId = msg.getU8();
 	Uint16 thingId = msg.getU16();
 	ItemUI* containerItem = getItemUI(msg, thingId);
-	const std::string name = msg.getString();
+	const std::string name = UTIL_formatCreatureName(msg.getString());
 	Uint8 capacity = msg.getU8();
 	bool hasParent = msg.getBool();
 
+	bool canUseDepotSearch = false;
 	bool isUnlocked = true;
 	bool hasPages = false;
 	Uint16 containerSize = 0;
@@ -857,10 +858,7 @@ void ProtocolGame::parseContainerOpen(InputMessage& msg)
 	if(g_game.hasGameFeature(GAME_FEATURE_CONTAINER_PAGINATION))
 	{
 		if(g_clientVersion >= 1220)
-		{
-			bool canUseDepotSearch = msg.getBool();
-			(void)canUseDepotSearch;
-		}
+			canUseDepotSearch = msg.getBool();
 
 		isUnlocked = msg.getBool();
 		hasPages = msg.getBool();
@@ -887,7 +885,7 @@ void ProtocolGame::parseContainerOpen(InputMessage& msg)
 		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s(ThingID: %u).", "[ProtocolGame::parseContainerOpen] Item not found", SDL_static_cast(Uint32, thingId));
 		g_logger.addLog(LOG_CATEGORY_ERROR, std::string(g_buffer, SDL_static_cast(size_t, len)));
 	}
-	g_game.processContainerOpen(containerId, containerItem, name, capacity, hasParent, isUnlocked, hasPages, containerSize, firstIndex, itemVector);
+	g_game.processContainerOpen(containerId, containerItem, name, capacity, hasParent, canUseDepotSearch, isUnlocked, hasPages, containerSize, firstIndex, itemVector);
 }
 
 void ProtocolGame::parseContainerClose(InputMessage& msg)
@@ -1418,7 +1416,8 @@ void ProtocolGame::parseCreatureUpdate(InputMessage& msg)
 		break;
 		case 13:
 		{
-			msg.getU8();//??
+			Uint8 something = msg.getU8() % 10;
+			(void)something;
 		}
 		break;
 	}
@@ -1612,7 +1611,7 @@ void ProtocolGame::parseCreatureType(InputMessage& msg)
 {
 	Uint32 creatureId = msg.getU32();
 	Uint8 creatureType = msg.getU8();
-	if(g_clientVersion >= 1120 && creatureType == CREATURETYPE_SUMMON_OWN)
+	if(g_clientVersion >= 1121 && creatureType == CREATURETYPE_SUMMON_OWN)
 		msg.getU32();
 
 	Creature* creature = g_map.getCreatureById(creatureId);
@@ -1685,7 +1684,7 @@ void ProtocolGame::parseBlessings(InputMessage& msg)
 {
 	Uint16 blessings = msg.getU16();
 	(void)blessings;
-	if(g_clientVersion >= 1120)
+	if(g_clientVersion >= 1121)
 	{
 		Uint8 status = msg.getU8();
 		(void)status;
@@ -2823,7 +2822,7 @@ void ProtocolGame::parseQuestLine(InputMessage& msg)
 	for(Uint8 i = 0; i < missionCount; ++i)
 	{
 		QuestLineDetail& newQuestLineElement = questLineElements[i];
-		if(g_clientVersion >= 1120)
+		if(g_clientVersion >= 1121)
 			msg.getU16();//MissionId
 		newQuestLineElement.missionName = msg.getString();
 		newQuestLineElement.missionDescription = msg.getString();
@@ -3203,11 +3202,11 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 				Uint32 offerId = msg.getU32();
 				Uint16 offerCount = msg.getU16();
 				Uint32 offerPrice = msg.getU32();
-				bool useTransferableCoins = msg.getBool();
+				Uint8 offerCoinType = msg.getU8();
 				(void)offerId;
 				(void)offerCount;
 				(void)offerPrice;
-				(void)useTransferableCoins;
+				(void)offerCoinType;
 
 				std::vector<std::string> disabledReasons;
 				bool disabled = msg.getBool();
@@ -3239,13 +3238,13 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 					(void)icon;
 				}
 				break;
-				case 2:
+				case 1:
 				{
 					Uint16 lookMount = msg.getU16();
 					(void)lookMount;
 				}
 				break;
-				case 3:
+				case 2:
 				{
 					Uint16 lookType;
 					if(g_game.hasGameFeature(GAME_FEATURE_LOOKTYPE_U16))
@@ -3264,10 +3263,21 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 					(void)lookFeet;
 				}
 				break;
-				case 4:
+				case 3:
 				{
 					Uint16 itemId = msg.getU16();
 					(void)itemId;
+				}
+				break;
+				case 4:
+				{
+					msg.getU8();//??
+					msg.getU16();//??
+					msg.getU16();//??
+					msg.getU8();//??
+					msg.getU8();//??
+					msg.getU8();//??
+					msg.getU8();//??
 				}
 				break;
 			}
@@ -3277,8 +3287,8 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 			}
 
 			const std::string filter = msg.getString();
-			Uint32 timeAddedToStore = msg.getU32();
 			Uint16 timesBought = msg.getU16();
+			Uint32 timeAddedToStore = msg.getU32();
 			bool requiresConfiguration = msg.getBool();
 			(void)filter;
 			(void)timeAddedToStore;
@@ -3298,13 +3308,13 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 						(void)icon;
 					}
 					break;
-					case 2:
+					case 1:
 					{
 						Uint16 lookMount = msg.getU16();
 						(void)lookMount;
 					}
 					break;
-					case 3:
+					case 2:
 					{
 						Uint16 lookType;
 						if(g_game.hasGameFeature(GAME_FEATURE_LOOKTYPE_U16))
@@ -3323,10 +3333,21 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 						(void)lookFeet;
 					}
 					break;
-					case 4:
+					case 3:
 					{
 						Uint16 itemId = msg.getU16();
 						(void)itemId;
+					}
+					break;
+					case 4:
+					{
+						msg.getU8();//??
+						msg.getU16();//??
+						msg.getU16();//??
+						msg.getU8();//??
+						msg.getU8();//??
+						msg.getU8();//??
+						msg.getU8();//??
 					}
 					break;
 				}
@@ -3342,7 +3363,6 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 				Uint8 openAction = msg.getU8();
 				switch(openAction)
 				{
-					case 0: break;
 					case 1:
 					{
 						Uint8 featuredCategoryType = msg.getU8();
@@ -3382,6 +3402,10 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 			}
 
 			msg.getU8();//??
+		}
+		else if(categoryName == "Search")
+		{
+			msg.getBool();//??
 		}
 		return;
 	}
@@ -3467,14 +3491,27 @@ void ProtocolGame::parseStoreTransactionHistory(InputMessage& msg)
 	Uint8 entries = msg.getU8();
 	for(Uint8 i = 0; i < entries; ++i)
 	{
-		Uint32 time = msg.getU32();
-		Uint8 productType = msg.getU8();
-		Uint32 coinChange = msg.getU32();
-		const std::string productName = msg.getString();
-		(void)time;
-		(void)productType;
-		(void)coinChange;
-		(void)productName;
+		if(g_clientVersion >= 1220)//Detect client version
+		{
+			msg.getU32();//Offer id?
+			msg.getU32();//Timestamp?
+			msg.getU8();//Product type?
+			msg.getU32();//Coin change?
+			msg.getU8();//Coin type?
+			msg.getRawString();//Product name?
+			msg.getBool();//Details button?
+		}
+		else
+		{
+			Uint32 time = msg.getU32();
+			Uint8 productType = msg.getU8();
+			Uint32 coinChange = msg.getU32();
+			const std::string productName = msg.getString();
+			(void)time;
+			(void)productType;
+			(void)coinChange;
+			(void)productName;
+		}
 	}
 }
 
@@ -5049,10 +5086,15 @@ void ProtocolGame::parseTournamentLeaderboard(InputMessage& msg)
 
 void ProtocolGame::onConnect()
 {
-	if(!g_game.hasGameFeature(GAME_FEATURE_SERVER_SENDFIRST))
+	if (!g_game.hasGameFeature(GAME_FEATURE_SERVER_SENDFIRST))
 		sendLogin(0, 0);
-	if(g_game.hasGameFeature(GAME_FEATURE_CHECKSUM))
-		setChecksum(true);
+	else if (g_game.hasGameFeature(GAME_FEATURE_CLIENT_SENDSERVERNAME))
+		sendServerName(g_engine.getCharacterWorldName());
+
+	if(g_game.hasGameFeature(GAME_FEATURE_PROTOCOLSEQUENCE))
+		setChecksumMethod(CHECKSUM_METHOD_CHALLENGE);
+	else if(g_game.hasGameFeature(GAME_FEATURE_CHECKSUM))
+		setChecksumMethod(CHECKSUM_METHOD_ADLER32);
 }
 
 void ProtocolGame::onConnectionError(ConnectionError error)
@@ -5064,10 +5106,7 @@ void ProtocolGame::onConnectionError(ConnectionError error)
 void ProtocolGame::onDisconnect()
 {
 	if(m_gameInitialized)
-	{
-		g_map.changeMap(DIRECTION_INVALID);
 		g_engine.processGameEnd();
-	}
 
 	if(m_lastError != CONNECTION_ERROR_INVALID)
 	{
@@ -5124,7 +5163,7 @@ void ProtocolGame::sendServerName(const std::string& serverName)
 
 void ProtocolGame::sendLogin(Uint32 challengeTimestamp, Uint8 challengeRandom)
 {
-	bool checksumFeature = g_game.hasGameFeature(GAME_FEATURE_CHECKSUM);
+	bool checksumFeature = (g_game.hasGameFeature(GAME_FEATURE_CHECKSUM) || g_game.hasGameFeature(GAME_FEATURE_PROTOCOLSEQUENCE));
 	bool xteaFeature = g_game.hasGameFeature(GAME_FEATURE_XTEA);
 	bool rsa1024Feature = g_game.hasGameFeature(GAME_FEATURE_RSA1024);
 
@@ -5193,7 +5232,7 @@ void ProtocolGame::sendLogin(Uint32 challengeTimestamp, Uint8 challengeRandom)
 	}
 
 	if(checksumFeature)
-		setChecksum(true);
+		setChecksumMethod(g_game.hasGameFeature(GAME_FEATURE_PROTOCOLSEQUENCE) ? CHECKSUM_METHOD_SEQUENCE : CHECKSUM_METHOD_ADLER32);
 
 	onSend(msg);
 	if(xteaFeature)
@@ -5360,12 +5399,12 @@ void ProtocolGame::sendEquipItem(Uint16 itemid, Uint16 count)
 	onSend(msg);
 }
 
-void ProtocolGame::sendMove(const Position& fromPos, Uint16 thingId, Uint8 stackpos, const Position& toPos, Uint16 count)
+void ProtocolGame::sendMove(const Position& fromPos, Uint16 itemid, Uint8 stackpos, const Position& toPos, Uint16 count)
 {
 	OutputMessage msg(getHeaderPos());
 	msg.addU8(GameThrowOpcode);
 	msg.addPosition(fromPos);
-	msg.addU16(thingId);
+	msg.addU16(itemid);
 	msg.addU8(stackpos);
 	msg.addPosition(toPos);
 	if(g_game.hasGameFeature(GAME_FEATURE_ITEMS_U16))
@@ -5468,7 +5507,7 @@ void ProtocolGame::sendUseItem(const Position& position, Uint16 itemId, Uint8 st
 	onSend(msg);
 }
 
-void ProtocolGame::sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 fromStackPos, const Position& toPos, Uint16 toThingId, Uint8 toStackPos)
+void ProtocolGame::sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 fromStackPos, const Position& toPos, Uint16 toItemId, Uint8 toStackPos)
 {
 	OutputMessage msg(getHeaderPos());
 	msg.addU8(GameUseItemExOpcode);
@@ -5476,7 +5515,7 @@ void ProtocolGame::sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 f
 	msg.addU16(itemId);
 	msg.addU8(fromStackPos);
 	msg.addPosition(toPos);
-	msg.addU16(toThingId);
+	msg.addU16(toItemId);
 	msg.addU8(toStackPos);
 	onSend(msg);
 }
@@ -5705,6 +5744,23 @@ void ProtocolGame::sendSay(MessageMode mode, Uint16 channelId, const std::string
 	onSend(msg);
 }
 
+void ProtocolGame::sendUpdateExivaOptions()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GameUpdateExivaOptionsOpcode);
+	msg.addBool(false);//??
+	msg.addBool(false);//??
+	msg.addBool(false);//??
+	msg.addBool(false);//??
+	msg.addBool(false);//??
+	msg.addBool(false);//??
+	msg.addU16(0);//?? for(Uint16 i = 0, end = size; i < end; ++i) msg.addString("");//??
+	msg.addU16(0);//?? for(Uint16 i = 0, end = size; i < end; ++i) msg.addString("");//??
+	msg.addU16(0);//?? for(Uint16 i = 0, end = size; i < end; ++i) msg.addString("");//??
+	msg.addU16(0);//?? for(Uint16 i = 0, end = size; i < end; ++i) msg.addString("");//??
+	onSend(msg);
+}
+
 void ProtocolGame::sendRequestChannels()
 {
 	OutputMessage msg(getHeaderPos());
@@ -5920,6 +5976,10 @@ void ProtocolGame::sendSetOutfit(Uint16 lookType, Uint8 lookHead, Uint8 lookBody
 {
 	OutputMessage msg(getHeaderPos());
 	msg.addU8(GameSetOutfitOpcode);
+	Uint8 outfitType = 0;
+	if(g_clientVersion >= 1220)//Detect client version
+		msg.addU8(outfitType);
+
 	if(g_game.hasGameFeature(GAME_FEATURE_LOOKTYPE_U16))
 		msg.addU16(lookType);
 	else
@@ -5931,8 +5991,15 @@ void ProtocolGame::sendSetOutfit(Uint16 lookType, Uint8 lookHead, Uint8 lookBody
 	msg.addU8(lookFeet);
 	if(g_game.hasGameFeature(GAME_FEATURE_ADDONS))
 		msg.addU8(lookAddons);
-	if(g_game.hasGameFeature(GAME_FEATURE_MOUNTS))
-		msg.addU16(lookMount);
+	if(outfitType == 0)
+	{
+		if(g_game.hasGameFeature(GAME_FEATURE_MOUNTS))
+			msg.addU16(lookMount);
+	}
+	else if(outfitType == 1)
+	{
+		msg.addU32(0);//??
+	}
 	onSend(msg);
 }
 
@@ -7200,7 +7267,7 @@ Creature* ProtocolGame::getCreature(InputMessage& msg, Uint16 thingId, const Pos
 					creatureType = CREATURETYPE_NPC;
 			}
 
-			if(g_clientVersion >= 1120 && creatureType == CREATURETYPE_SUMMON_OWN)
+			if(g_clientVersion >= 1121 && creatureType == CREATURETYPE_SUMMON_OWN)
 				msg.getU32();
 
 			const std::string& creatureName = UTIL_formatCreatureName(msg.getString());
@@ -7296,11 +7363,14 @@ Creature* ProtocolGame::getCreature(InputMessage& msg, Uint16 thingId, const Pos
 		if(creature)
 			creature->setType(creatureType);
 
-		if(g_clientVersion >= 1120 && creatureType == CREATURETYPE_SUMMON_OWN)
+		if(g_clientVersion >= 1121 && creatureType == CREATURETYPE_SUMMON_OWN)
 			msg.getU32();
 
 		if(g_clientVersion >= 1220 && creatureType == CREATURETYPE_PLAYER)
-			msg.getU8();
+		{
+			Uint8 something = msg.getU8() % 10;
+			(void)something;
+		}
 	}
 
 	if(g_game.hasGameFeature(GAME_FEATURE_CREATURE_ICONS))
@@ -7525,12 +7595,15 @@ Sint32 ProtocolGame::setTileDescription(InputMessage& msg, const Position& posit
 
 void ProtocolGame::updateMinimapTile(const Position& position, Tile* tile)
 {
-	Uint8 minimapColor = 0, groundSpeed = 0;
-	if(tile)
-	{
-		minimapColor = SDL_static_cast(Uint8, tile->getMinimapColor());
-		groundSpeed = SDL_static_cast(Uint8, tile->getMinimapSpeed());
-	}
 	if(position.z == g_map.getCentralPosition().z)
+	{
+		Uint8 minimapColor = 0, groundSpeed = 0;
+		if(tile)
+		{
+			minimapColor = SDL_static_cast(Uint8, tile->getMinimapColor());
+			groundSpeed = SDL_static_cast(Uint8, tile->getMinimapSpeed());
+		}
+
 		g_automap.setTileDetail(position.x, position.y, position.z, minimapColor, groundSpeed);
+	}
 }

@@ -33,7 +33,7 @@ void UTIL_createButtonsPanel()
 	if(pPanel)
 		g_engine.removePanelWindow(pPanel);
 
-	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 26), false, GUI_PANEL_WINDOW_BUTTONS, true);
+	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 26), false, GUI_PANEL_WINDOW_BUTTONS);
 	GUI_Button* newButton = new GUI_Button(iRect(8, 3, 34, 20), "Skills");
 	newButton->startEvents();
 	newWindow->addChild(newButton);

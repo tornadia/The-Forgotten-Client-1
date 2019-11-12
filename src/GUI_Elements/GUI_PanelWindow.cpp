@@ -162,6 +162,16 @@ void GUI_PanelWindow::setActiveElement(GUI_Element* actElement)
 	}
 }
 
+void* GUI_PanelWindow::onAction(Sint32 x, Sint32 y)
+{
+	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+	{
+		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
+			return (*it)->onAction(x, y);
+	}
+	return NULL;
+}
+
 void GUI_PanelWindow::onLMouseDown(Sint32 x, Sint32 y)
 {
 	std::vector<GUI_Element*> childsBackup = m_childs;
@@ -205,8 +215,8 @@ void GUI_PanelWindow::onLMouseUp(Sint32 x, Sint32 y)
 	}
 	if(m_bMouseResizing)
 		m_bMouseResizing = false;
-	if(m_actElement)
-		m_actElement->onLMouseUp(x, y);
+	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+		(*it)->onLMouseUp(x, y);
 }
 
 void GUI_PanelWindow::onRMouseDown(Sint32 x, Sint32 y)
@@ -225,8 +235,8 @@ void GUI_PanelWindow::onRMouseDown(Sint32 x, Sint32 y)
 
 void GUI_PanelWindow::onRMouseUp(Sint32 x, Sint32 y)
 {
-	if(m_actElement)
-		m_actElement->onRMouseUp(x, y);
+	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+		(*it)->onRMouseUp(x, y);
 }
 
 void GUI_PanelWindow::onWheel(Sint32 x, Sint32 y, bool wheelUP)

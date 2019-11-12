@@ -46,6 +46,7 @@ class GUI_Container : public GUI_Element
 		GUI_Element* getChild(Uint32 internalID);
 		void setAsMaxHeight();
 
+		void* onAction(Sint32 x, Sint32 y);
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
 		void onRMouseDown(Sint32 x, Sint32 y);

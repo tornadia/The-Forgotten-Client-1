@@ -24,6 +24,7 @@
     <ClCompile Include="..\..\automap.cpp" />
     <ClCompile Include="..\..\config.cpp" />
     <ClCompile Include="..\..\connection.cpp" />
+    <ClCompile Include="..\..\container.cpp" />
     <ClCompile Include="..\..\creature.cpp" />
     <ClCompile Include="..\..\distanceEffect.cpp" />
     <ClCompile Include="..\..\effect.cpp" />
@@ -132,6 +133,7 @@
     <ClInclude Include="..\..\config.h" />
     <ClInclude Include="..\..\connection.h" />
     <ClInclude Include="..\..\const.h" />
+    <ClInclude Include="..\..\container.h" />
     <ClInclude Include="..\..\creature.h" />
     <ClInclude Include="..\..\cursors.h" />
     <ClInclude Include="..\..\defines.h" />
@@ -141,6 +143,7 @@
     <ClInclude Include="..\..\game.h" />
     <ClInclude Include="..\..\GUI\BattleWindow.h" />
     <ClInclude Include="..\..\GUI\Chat.h" />
+    <ClInclude Include="..\..\GUI\ContainerWindow.h" />
     <ClInclude Include="..\..\GUI\GUI_UTIL.h" />
     <ClInclude Include="..\..\GUI\Health.h" />
     <ClInclude Include="..\..\GUI\Inventory.h" />
@@ -340,13 +343,13 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
-      <Optimization>Full</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>__WIN32__;WIN32;NDEBUG;_WINDOWS;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -368,7 +371,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level4</WarningLevel>
-      <Optimization>Full</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
@@ -378,7 +381,7 @@
       <FloatingPointModel>Fast</FloatingPointModel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

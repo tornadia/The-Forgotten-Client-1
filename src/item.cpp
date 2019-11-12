@@ -38,6 +38,8 @@ Item::Item(const Position& pos, ThingType* type)
 	m_animator = NULL;
 	m_topOrder = 0;
 	m_elevation = 0;
+	m_count = 1;
+	m_subtype = 0;
 	m_animCount = 0;
 	m_xPattern = m_yPattern = m_zPattern = 0;
 	m_hasElevation = false;
@@ -49,12 +51,15 @@ Item* Item::createItem(const Position& pos, Uint16 type, Uint16 count, Sint32 ph
 	ThingType* ttype = g_thingManager.getThingType(ThingCategory_Item, type);
 	if(ttype)
 	{
+		Uint16 itemCount = 1;
+		Uint8 itemSubtype = 0;
 		Uint8 animCount = ttype->m_frameGroup[ThingFrameGroup_Default].m_animCount;
 		Uint8 xPattern = 0;
 		Uint8 yPattern = 0;
 		Uint8 zPattern = 0;
 		if(ttype->hasFlag(ThingAttribute_Stackable))
 		{
+			itemCount = count;
 			if(ttype->m_frameGroup[ThingFrameGroup_Default].m_patternX == 4 && ttype->m_frameGroup[ThingFrameGroup_Default].m_patternY == 2)
 			{
 				if(count <= 1)
@@ -83,6 +88,7 @@ Item* Item::createItem(const Position& pos, Uint16 type, Uint16 count, Sint32 ph
 		}
 		else if(ttype->hasFlag(ThingAttribute_Splash) || ttype->hasFlag(ThingAttribute_FluidContainer))
 		{
+			itemSubtype = SDL_static_cast(Uint8, count);
 			Sint32 fluid = SDL_static_cast(Sint32, count);
 			if(g_game.hasGameFeature(GAME_FEATURE_NEWFLUIDS))
 			{
@@ -260,6 +266,8 @@ Item* Item::createItem(const Position& pos, Uint16 type, Uint16 count, Sint32 ph
 		if(!newItem)
 			newItem = new Item(pos, ttype);
 
+		newItem->m_count = itemCount;
+		newItem->m_subtype = itemSubtype;
 		newItem->m_animator = ttype->m_frameGroup[ThingFrameGroup_Default].m_animator;
 		newItem->m_animCount = animCount;
 		newItem->m_xPattern = xPattern;

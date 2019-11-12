@@ -31,12 +31,24 @@ enum ProtocolOS
 	PROTOCOL_OS_FLASH = 3
 };
 
+#ifdef HAVE_CXX11_SUPPORT
+enum ChecksumMethods : Uint8
+#else
+enum ChecksumMethods
+#endif
+{
+	CHECKSUM_METHOD_NONE,
+	CHECKSUM_METHOD_ADLER32,
+	CHECKSUM_METHOD_SEQUENCE,
+	CHECKSUM_METHOD_CHALLENGE
+};
+
 class ProtocolGame;
 class Protocol
 {
 	public:
 		Protocol();
-		virtual ~Protocol();
+		virtual ~Protocol() {;}
 
 		virtual ProtocolGame* getProtocolGame() {return NULL;}
 		virtual const ProtocolGame* getProtocolGame() const {return NULL;}
@@ -50,7 +62,7 @@ class Protocol
 		bool onSend(OutputMessage& msg);
 
 		SDL_INLINE void setEncryption(bool encrypt) {m_encryption = encrypt;}
-		SDL_INLINE void setChecksum(bool checksum) {m_checksum = checksum;}
+		SDL_INLINE void setChecksumMethod(Uint8 checksumMethod) {m_checksumMethod = checksumMethod;}
 		SDL_INLINE void setEncryptionKeys(Uint32 keys[4]) {m_encryptionKeys[0] = keys[0]; m_encryptionKeys[1] = keys[1]; m_encryptionKeys[2] = keys[2]; m_encryptionKeys[3] = keys[3];}
 
 		Uint16 getHeaderPos();
@@ -61,7 +73,10 @@ class Protocol
 
 	private:
 		Uint32 m_encryptionKeys[4];
-		bool m_encryption, m_checksum;
+		Uint32 m_clientSequence;
+		Uint32 m_serverSequence;
+		Uint8 m_checksumMethod;
+		bool m_encryption;
 };
 
 #endif /* __FILE_PROTOCOL_h_ */

@@ -64,6 +64,7 @@ enum Skills_Cached_State
 
 class Creature;
 class ItemUI;
+class Container;
 class Game
 {
 	public:
@@ -80,7 +81,7 @@ class Game
 		void processGMActions(std::vector<Uint8> privileges);
 		void processLoginWait(const std::string& message, Uint8 time);
 		void processDeath(Uint8 deathType, Uint8 penalty);
-		void processContainerOpen(Uint8 containerId, ItemUI* item, const std::string& name, Uint8 capacity, bool hasParent, bool isUnlocked, bool hasPages, Uint16 containerSize, Uint16 firstIndex, std::vector<ItemUI*>& itemVector);
+		void processContainerOpen(Uint8 containerId, ItemUI* item, const std::string& name, Uint8 capacity, bool hasParent, bool canUseDepotSearch, bool isUnlocked, bool hasPages, Uint16 containerSize, Uint16 firstIndex, std::vector<ItemUI*>& itemVector);
 		void processContainerClose(Uint8 containerId);
 		void processContainerAddItem(Uint8 containerId, Uint16 slot, ItemUI* item);
 		void processContainerTransformItem(Uint8 containerId, Uint16 slot, ItemUI* item);
@@ -125,12 +126,31 @@ class Game
 		void sendAttackModes();
 		void sendAttack(Creature* creature);
 		void sendFollow(Creature* creature);
+		void sendJoinAggression(Uint32 creatureId);
+		void sendInviteToParty(Uint32 creatureId);
+		void sendJoinToParty(Uint32 creatureId);
+		void sendRevokePartyInvitation(Uint32 creatureId);
+		void sendPassPartyLeadership(Uint32 creatureId);
+		void sendLeaveParty();
+		void sendEnableSharedPartyExperience(bool active);
+		void sendRequestOutfit();
 		void sendSetOutfit(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Uint8 lookLegs, Uint8 lookFeet, Uint8 lookAddons, Uint16 lookMount);
+		void sendMount(bool active);
+		void sendEquipItem(Uint16 itemid, Uint16 count);
+		void sendMove(const Position& fromPos, Uint16 itemid, Uint8 stackpos, const Position& toPos, Uint16 count);
 		void sendLookAt(const Position& position, Uint16 itemId, Uint8 stackpos);
 		void sendLookInBattle(Uint32 creatureId);
 		void sendUseItem(const Position& position, Uint16 itemId, Uint8 stackpos, Uint8 index);
-		void sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 fromStackPos, const Position& toPos, Uint16 toThingId, Uint8 toStackPos);
-		void sendUseOnCreature(const Position& position, Uint16 thingId, Uint8 stackpos, Uint32 creatureId);
+		void sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 fromStackPos, const Position& toPos, Uint16 toItemId, Uint8 toStackPos);
+		void sendUseOnCreature(const Position& position, Uint16 itemId, Uint8 stackpos, Uint32 creatureId);
+		void sendRotateItem(const Position& position, Uint16 itemId, Uint8 stackpos);
+		void sendWrapState(const Position& position, Uint16 itemId, Uint8 stackpos);
+		void sendCloseContainer(Uint8 containerId);
+		void sendUpContainer(Uint8 containerId);
+		void sendUpdateContainer(Uint8 containerId);
+		void sendSeekInContainer(Uint8 containerId, Uint16 index);
+		void sendBrowseField(const Position& position);
+		void sendOpenParentContainer(const Position& position);
 
 		void checkLocalCreatureMovement();
 		void checkMovement(Direction dir);
@@ -152,6 +172,10 @@ class Game
 		void minimapScrollWest();
 		void minimapZoomIn();
 		void minimapZoomOut();
+
+		Container* findContainer(Uint8 cid) {return m_containers[cid];}
+		Uint8 findEmptyContainerId();
+		bool containerHasParent(Uint8 cid);
 
 		SDL_FORCE_INLINE ItemUI* getInventoryItem(Uint8 slot) {return m_inventoryItem[slot];}
 
@@ -247,6 +271,7 @@ class Game
 		std::vector<Direction> m_autoWalkDirections;
 		std::vector<std::pair<Uint32, Uint64>> m_expTable;
 		ItemUI* m_inventoryItem[SLOT_LAST];
+		Container* m_containers[GAME_MAX_CONTAINERS];
 
 		Uint64 m_playerExperience;
 		double m_playerExpBonus;

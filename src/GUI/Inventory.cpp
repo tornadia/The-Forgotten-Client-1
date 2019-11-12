@@ -77,24 +77,34 @@ void UTIL_createInventoryPanel()
 	newWindow->addChild(newImage);
 
 	GUI_InventoryItem* newInventoryItem = new GUI_InventoryItem(iRect(46, 5, 32, 32), 128, 0, SLOT_HEAD);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(9, 19, 32, 32), 96, 0, SLOT_NECKLACE);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(83, 19, 32, 32), 160, 0, SLOT_BACKPACK);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(46, 42, 32, 32), 96, 32, SLOT_ARMOR);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(9, 56, 32, 32), 192, 0, SLOT_LEFT);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(83, 56, 32, 32), 224, 0, SLOT_RIGHT);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(46, 79, 32, 32), 128, 32, SLOT_LEGS);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(46, 116, 32, 32), 224, 32, SLOT_FEET);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(9, 93, 32, 32), 160, 32, SLOT_RING);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	newInventoryItem = new GUI_InventoryItem(iRect(83, 93, 32, 32), 192, 32, SLOT_AMMO);
+	newInventoryItem->startEvents();
 	newWindow->addChild(newInventoryItem);
 	GUI_Icons* newIcons = new GUI_Icons(iRect(8, 151, 108, 13));
 	newWindow->addChild(newIcons);
@@ -519,6 +529,54 @@ GUI_InventoryItem::GUI_InventoryItem(iRect boxRect, Sint32 skinX, Sint32 skinY, 
 	m_internalID = internalID;
 }
 
+void* GUI_InventoryItem::onAction(Sint32, Sint32)
+{
+	ItemUI* item = g_game.getInventoryItem(m_slot);
+	if(item)
+		return SDL_reinterpret_cast(void*, item);
+
+	return NULL;
+}
+
+void GUI_InventoryItem::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
+{
+	if(g_engine.getAction() == CLIENT_ACTION_MOVEITEM)
+	{
+		if(isInsideParent && m_tRect.isPointInside(x, y))
+			m_selected = true;
+		else
+			m_selected = false;
+	}
+}
+
+void GUI_InventoryItem::onLMouseDown(Sint32 x, Sint32 y)
+{
+	ItemUI* item = g_game.getInventoryItem(m_slot);
+	if(item)
+	{
+		Position& position = item->getCurrentPosition();
+		g_engine.setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, 0);
+		g_engine.setActionData(CLIENT_ACTION_SECOND, 0, item->getItemCount(), 0, 0, 0, 0);
+		g_engine.enableMoveItem(x, y);
+	}
+
+	g_engine.setAction(CLIENT_ACTION_LEFTMOUSE);
+}
+
+void GUI_InventoryItem::onLMouseUp(Sint32, Sint32)
+{
+	if(g_engine.getAction() == CLIENT_ACTION_MOVEITEM && m_selected)
+	{
+		g_engine.initMove(0xFFFF, SDL_static_cast(Uint16, m_slot)+1, 0);
+		g_engine.setAction(CLIENT_ACTION_NONE);
+	}
+}
+
+void GUI_InventoryItem::onRMouseDown(Sint32, Sint32)
+{
+	g_engine.setAction(CLIENT_ACTION_RIGHTMOUSE);
+}
+
 void GUI_InventoryItem::render()
 {
 	Surface* renderer = g_engine.getRender();
@@ -529,4 +587,15 @@ void GUI_InventoryItem::render()
 		item->render(m_tRect.x1, m_tRect.y1, m_tRect.y2);
 	else
 		renderer->drawPicture(3, m_skinX, m_skinY, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+
+	if(m_selected)
+	{
+		if(g_engine.getAction() != CLIENT_ACTION_MOVEITEM)
+		{
+			m_selected = false;
+			return;
+		}
+
+		renderer->drawRectangle(m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2, 255, 255, 255, 255);
+	}
 }

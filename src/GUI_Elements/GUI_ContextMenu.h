@@ -31,6 +31,7 @@ class GUI_ContextMenu
 		
 		bool isInsideRect(Sint32 x, Sint32 y) {return m_tRect.isPointInside(x, y);}
 		void addContextMenu(Uint8 style, Uint32 eventId, const std::string text, const std::string shortcut);
+		void addSeparator();
 		void setEventCallback(void(*eventHandlerFunction)(Uint32, Sint32));
 		void setDisplay(Sint32 mouseX, Sint32 mouseY);
 

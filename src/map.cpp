@@ -217,9 +217,9 @@ AStarNode* AStarNodes::getNodeByPosition(Uint32 xy)
 		for(Sint32 i = 0; i < curRound; i += 8)
 		{
 			#ifdef UseUnalignedVectors
-			const uint32_t mask = _mm_movemask_epi8(_mm_packs_epi32(_mm_cmpeq_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(&nodesTable[i])), keys), _mm_cmpeq_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(&nodesTable[i+4])), keys)));
+			const Uint32 mask = _mm_movemask_epi8(_mm_packs_epi32(_mm_cmpeq_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(&nodesTable[i])), keys), _mm_cmpeq_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(&nodesTable[i+4])), keys)));
 			#else
-			const uint32_t mask = _mm_movemask_epi8(_mm_packs_epi32(_mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&nodesTable[i])), keys), _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&nodesTable[i+4])), keys)));
+			const Uint32 mask = _mm_movemask_epi8(_mm_packs_epi32(_mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&nodesTable[i])), keys), _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&nodesTable[i+4])), keys)));
 			#endif
 			if(mask != 0)
 				return &nodes[i + (UTIL_ctz(mask) >> 1)];
@@ -1120,8 +1120,14 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 	return PathFind_ReturnSuccessfull;
 }
 
-Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, bool multifloor)
+Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature* &topCreature, bool multifloor)
 {
+	if(!m_localCreature) //If somehow we don't have localcreature avoid crashing
+		return NULL;
+
+	Sint32 xOffset = SDL_static_cast(Sint32, m_localCreature->getOffsetX(true)*scale);
+	Sint32 yOffset = SDL_static_cast(Sint32, m_localCreature->getOffsetY(true)*scale);
+
 	Sint32 firstVisibleFloor;
 	Sint32 lastVisibleFloor;
 	if(multifloor)
@@ -1134,14 +1140,40 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 		firstVisibleFloor = SDL_static_cast(Sint32, m_centerPosition.z);
 		lastVisibleFloor = SDL_static_cast(Sint32, m_centerPosition.z);
 	}
+	topCreature = NULL;
 
 	Sint32 posX = ((x-gameWindow.x1)/scaledSize)+1;
 	Sint32 posY = ((y-gameWindow.y1)/scaledSize)+1;
 	for(Sint32 z = lastVisibleFloor; z <= firstVisibleFloor; ++z)
 	{
-		for(Sint32 y2 = 1; y2 >= 0; --y2)
+		if(!topCreature)
 		{
-			for(Sint32 x2 = 1; x2 >= 0; --x2)
+			for(Sint32 y2 = 1; y2 >= -1; --y2)
+			{
+				for(Sint32 x2 = 1; x2 >= -1; --x2)
+				{
+					Sint32 indexX = posX+x2;
+					Sint32 indexY = posY+y2;
+					if(indexX >= 0 && indexY >= 0 && indexX < GAME_MAP_WIDTH && indexY < GAME_MAP_HEIGHT)
+					{
+						Tile* tile = m_tiles[z][indexY][indexX];
+						if(tile)
+						{
+							Sint32 elevationSize = SDL_static_cast(Sint32, tile->getTileElevation()*scale);
+							iRect irect = iRect(gameWindow.x1+((indexX-1)*scaledSize)-elevationSize-xOffset, gameWindow.y1+((indexY-1)*scaledSize)-elevationSize-yOffset, scaledSize+elevationSize, scaledSize+elevationSize);
+							topCreature = tile->getTopCreature(x, y, irect, scale);
+							if(topCreature)
+								goto Search_for_Tile;
+						}
+					}
+				}
+			}
+		}
+
+		Search_for_Tile:
+		for(Sint32 y2 = 1; y2 >= -1; --y2)
+		{
+			for(Sint32 x2 = 1; x2 >= -1; --x2)
 			{
 				Sint32 indexX = posX+x2;
 				Sint32 indexY = posY+y2;
@@ -1151,7 +1183,7 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 					if(tile)
 					{
 						Sint32 elevationSize = SDL_static_cast(Sint32, tile->getTileElevation()*scale);
-						iRect irect = iRect(gameWindow.x1+((indexX-1)*scaledSize)-elevationSize, gameWindow.y1+((indexY-1)*scaledSize)-elevationSize, scaledSize+elevationSize, scaledSize+elevationSize);
+						iRect irect = iRect(gameWindow.x1+((indexX-1)*scaledSize)-elevationSize-xOffset, gameWindow.y1+((indexY-1)*scaledSize)-elevationSize-yOffset, scaledSize+elevationSize, scaledSize+elevationSize);
 						if(irect.isPointInside(x, y))
 						{
 							if(tile->isLookingPossible())
@@ -1163,6 +1195,14 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 		}
 	}
 	return NULL;
+}
+
+void Map::resetCreatures()
+{
+	for(knownCreatures::iterator it = m_knownCreatures.begin(), end = m_knownCreatures.end(); it != end; ++it)
+		delete it->second;
+
+	m_knownCreatures.clear();
 }
 
 void Map::addCreatureById(Uint32 creatureId, Creature* creature)

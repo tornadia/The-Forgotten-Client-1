@@ -830,7 +830,6 @@ bool SurfaceOpenglES2::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 s
 	texCoords[4] = maxu; texCoords[5] = minv;
 	texCoords[6] = maxu; texCoords[7] = maxv;
 
-	OglDisable(GL_SCISSOR_TEST);
 	OglBlendFuncSeparate(GL_ONE, GL_ZERO, GL_ONE, GL_ZERO);
 	OglBindTexture(GL_TEXTURE_2D, m_gameWindow->m_texture);
 	updateVertexBuffer(GLES_ATTRIBUTE_POSITION, 2, vertices, 8*sizeof(float));
@@ -870,7 +869,6 @@ bool SurfaceOpenglES2::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 s
 		selectShader(m_programSharpen);
 		OglUniform4f(m_programSharpen.modulationLocation, 1.0f / w, 1.0f / h, 1.0f, 1.0f);
 	}
-	OglEnable(GL_SCISSOR_TEST);
 	OglBindTexture(GL_TEXTURE_2D, m_scaled_gameWindow->m_texture);
 	updateVertexBuffer(GLES_ATTRIBUTE_POSITION, 2, vertices, 8*sizeof(float));
 	updateVertexBuffer(GLES_ATTRIBUTE_TEXCOORD, 2, texCoords, 8*sizeof(float));

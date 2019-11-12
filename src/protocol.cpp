@@ -28,12 +28,10 @@ extern Connection* g_connection;
 
 Protocol::Protocol()
 {
+	m_clientSequence = 0;
+	m_serverSequence = 0;
+	m_checksumMethod = CHECKSUM_METHOD_NONE;
 	m_encryption = false;
-	m_checksum = false;
-}
-
-Protocol::~Protocol()
-{
 }
 
 bool Protocol::onRecv(InputMessage& msg)
@@ -41,8 +39,36 @@ bool Protocol::onRecv(InputMessage& msg)
 	if(!g_connection) //WTF?
 		return false;
 
-	if(m_checksum && !msg.readChecksum())
-		return false;
+	bool compression = false;
+	if(m_checksumMethod != CHECKSUM_METHOD_NONE)
+	{
+		if(m_checksumMethod == CHECKSUM_METHOD_ADLER32)
+		{
+			if(!msg.readChecksum())
+				return false;
+		}
+		else if(m_checksumMethod == CHECKSUM_METHOD_SEQUENCE)
+		{
+			Uint32 receivedChecksum = msg.getU32();
+			compression = (receivedChecksum & 1 << 31);
+			receivedChecksum &= ~(1 << 31);
+			if(m_serverSequence == 0)
+			{
+				//Tibia 11+ save first sequence that server send and use it as reference
+				m_serverSequence = receivedChecksum;
+			}
+
+			Uint32 expectedSequence = m_serverSequence++;
+			m_serverSequence &= 0x7FFFFFFF;
+			if(receivedChecksum != expectedSequence)
+				return false;
+		}
+		else if(m_checksumMethod == CHECKSUM_METHOD_CHALLENGE)
+		{
+			//Skip checksum for challenge packet and don't do anything
+			msg.getU32();
+		}
+	}
 
 	if(m_encryption)
 	{
@@ -52,6 +78,11 @@ bool Protocol::onRecv(InputMessage& msg)
 			return false;
 
 		msg.setMessageSize(messageSize + msg.getReadPos());
+	}
+
+	if(compression)
+	{
+		//TODO
 	}
 
 	while(!msg.eof())
@@ -72,17 +103,26 @@ bool Protocol::onSend(OutputMessage& msg)
 		if(paddingBytes != 0)
 			msg.addPaddingBytes(8-paddingBytes);
 
-		msg.setWritePos(m_checksum ? 6 : 2);
+		msg.setWritePos(m_checksumMethod != CHECKSUM_METHOD_NONE ? 6 : 2);
 		msg.addU16(msgSize);
 		if(!XTEA_encrypt(msg.getWriteBuffer()-2, msgSize+10-paddingBytes, m_encryptionKeys))
 			return false;
 	}
 
-	if(m_checksum)
+	if(m_checksumMethod != CHECKSUM_METHOD_NONE)
 	{
-		Uint32 checksum = adler32Checksum(msg.getBuffer()+6, msg.getMessageSize());
-		msg.setWritePos(2);
-		msg.addU32(checksum);
+		if(m_checksumMethod == CHECKSUM_METHOD_ADLER32)
+		{
+			Uint32 checksum = adler32Checksum(msg.getBuffer()+6, msg.getMessageSize());
+			msg.setWritePos(2);
+			msg.addU32(checksum);
+		}
+		else if(m_checksumMethod == CHECKSUM_METHOD_SEQUENCE)
+		{
+			msg.setWritePos(2);
+			msg.addU32(m_clientSequence++);
+			m_clientSequence &= 0x7FFFFFFF;
+		}
 	}
 
 	msg.setWritePos(0);
@@ -93,7 +133,7 @@ bool Protocol::onSend(OutputMessage& msg)
 
 Uint16 Protocol::getHeaderPos()
 {
-	return 2 + (m_encryption ? 2 : 0) + (m_checksum ? 4 : 0);
+	return 2 + (m_encryption ? 2 : 0) + (m_checksumMethod != CHECKSUM_METHOD_NONE ? 4 : 0);
 }
 
 Uint16 Protocol::getOS()

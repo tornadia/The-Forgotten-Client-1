@@ -34,43 +34,17 @@ extern Uint32 g_datRevision;
 
 container: If the appearance is a Container
 
-cumulative: If the appearance is stackable.
-
-usable: If the appearance has any use function.
-
-forceuse:
-
-multiuse: If the appearance has any use with function.
-
 write: If the object is writable and editable.
 max_text_length: Maximum number of characters it can hold.
 
 write_once: If the object is writable, but only once.
 max_text_length_once: Maximum number of characters it can hold.
 
-unmove: If it's impossible to move the appearance.
-
-unsight: If the appearance blocks the vision when trying to i.e. shoot projectiles or spells.
-
-take: If the object is pickupable, i.e. can be taken by players and stored into containers.
-
-rotate: If the appearance can be rotated (such as many Furnitures).
-
 lenshelp: If the appearance should trigger the help icon when the help feature is used on the client.
 id: The ID of the help tooltip.
 
-ignore_look: If the appearance must be ignored when the player looks it, meaning the appearance under it will be the one seen.
-
 clothes: If the object can be worn as an equipment:
 slot: The ID of the inventory slot it can be worn on.
-
-default_action: The default action when using Left-Smart click mouse controls.
-action: The default action type:
-None
-Look
-Use
-Open
-Autowalk_Highlight
 
 market: If an object is displayed in The Market.
 category: The Market Category of the object: Armors, Amulets, Boots, Cotainers, Decoration, Food, Helmets_Hats, Legs, Others, Potions, Rings, Runes, Shields, Tools, Valuables, Ammunition, Axes, Clubs, Distance_Weapons, Swords, Wands_Rods, Premium_Scrolls, Tibia_Coins, Creature_Products.
@@ -78,10 +52,6 @@ trade_as_object_id:
 show_as_object_id:
 restrict_to_profession: The Vocation restriction of the object: Any, Knight, Paladin, Sorcerer, Druid, Promoted.
 minimum_level: The required level to use the object.
-
-wrap: If the object can be into a furniture kit or similar.
-
-unwrap: If the object can be unwrapped.
 
 topeffect:
 

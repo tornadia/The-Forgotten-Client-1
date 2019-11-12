@@ -428,7 +428,7 @@ class Uint1024 : public base_uint<1024>
 };
 
 template <unsigned int BITS>
-const base_uint<BITS> base_uint_powm(base_uint<BITS> a, uint32_t e, base_uint<BITS> m)
+const base_uint<BITS> base_uint_powm(base_uint<BITS> a, Uint32 e, base_uint<BITS> m)
 {
 	base_uint<BITS*2> x(1), y, tmp_m;
 	y.setData(a.getData(), BITS/8);

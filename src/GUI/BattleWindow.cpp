@@ -217,58 +217,9 @@ void UTIL_createBattleWindow()
 
 void UTIL_createBattlePopupMenu(void* data, Sint32 x, Sint32 y)
 {
-	GUI_ContextMenu* newMenu = new GUI_ContextMenu();
 	Creature* creature = SDL_reinterpret_cast(Creature*, data);
-	if(creature)
-	{
-		newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, 0, ((g_game.getAttackID() == creature->getId()) ? "Attack" : "Stop Attack"), "");
-		newMenu->addContextMenu((CONTEXTMENU_STYLE_STANDARD|CONTEXTMENU_STYLE_SEPARATED), 0, ((g_game.getFollowID() == creature->getId()) ? "Follow" : "Stop Follow"), "");
-		if(creature->isPlayer())
-		{
-			Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Message to %s", creature->getName().c_str());
-			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, 0, std::string(g_buffer, SDL_static_cast(size_t, len)), "");
-			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, 0, "Add to VIP list", "");
-			len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Ignore %s", creature->getName().c_str());
-			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, 0, std::string(g_buffer, SDL_static_cast(size_t, len)), "");
-
-			Uint8 targetShield = creature->getShield();
-			Uint8 playerShield = (g_map.getLocalCreature() ? g_map.getLocalCreature()->getShield() : SHIELD_NONE);
-			switch(playerShield)
-			{
-				case SHIELD_NONE:
-				{
-					if(targetShield == SHIELD_NONE)
-						newMenu->addContextMenu((CONTEXTMENU_STYLE_STANDARD|CONTEXTMENU_STYLE_SEPARATED), 0, "Invite to Party", "");
-					else if(targetShield == SHIELD_WHITEYELLOW)
-					{
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Accept %s's Invitation", creature->getName().c_str());
-						newMenu->addContextMenu((CONTEXTMENU_STYLE_STANDARD|CONTEXTMENU_STYLE_SEPARATED), 0, std::string(g_buffer, SDL_static_cast(size_t, len)), "");
-					}
-				}
-				break;
-				case SHIELD_YELLOW:
-				case SHIELD_YELLOW_SHAREDEXP:
-				case SHIELD_YELLOW_NOSHAREDEXP_BLINK:
-				case SHIELD_YELLOW_NOSHAREDEXP:
-				{
-					if(targetShield == SHIELD_WHITEBLUE)
-					{
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Revoke %s's Invitation", creature->getName().c_str());
-						newMenu->addContextMenu((CONTEXTMENU_STYLE_STANDARD|CONTEXTMENU_STYLE_SEPARATED), 0, std::string(g_buffer, SDL_static_cast(size_t, len)), "");
-					}
-					else if(targetShield == SHIELD_NONE)
-						newMenu->addContextMenu((CONTEXTMENU_STYLE_STANDARD|CONTEXTMENU_STYLE_SEPARATED), 0, "Invite to Party", "");
-					else if(targetShield != SHIELD_WHITEYELLOW)
-					{
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Pass Leadership to %s", creature->getName().c_str());
-						newMenu->addContextMenu((CONTEXTMENU_STYLE_STANDARD|CONTEXTMENU_STYLE_SEPARATED), 0, std::string(g_buffer, SDL_static_cast(size_t, len)), "");
-					}
-				}
-				break;
-			}
-		}
-		newMenu->addContextMenu((CONTEXTMENU_STYLE_STANDARD|CONTEXTMENU_STYLE_SEPARATED), 0, "Copy Name", "");
-	}
+	GUI_ContextMenu* newMenu = g_engine.createThingContextMenu(creature, NULL, NULL);
+	newMenu->addSeparator();
 	newMenu->addContextMenu(CONTEXTMENU_STYLE_CHECKED, 0, "Sort Ascending by Display Time", "");
 	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Descending by Display Time", "");
 	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Ascending by Distance", "");

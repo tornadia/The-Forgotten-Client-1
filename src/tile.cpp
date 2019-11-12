@@ -243,6 +243,36 @@ Thing* Tile::getThingByStackPos(Uint32 index)
 	return NULL;
 }
 
+Creature* Tile::getTopCreature(Sint32 x, Sint32 y, iRect& rect, float scale)
+{
+	for(std::vector<Creature*>::reverse_iterator it = m_walkCreatures.rbegin(), end = m_walkCreatures.rend(); it != end; ++it)
+	{
+		if((*it)->isWalking())
+		{
+			std::pair<Sint32, Sint32> displacement = (*it)->getDisplacement();
+			Sint32 xOffset = SDL_static_cast(Sint32, scale*((*it)->getOffsetX()-(*it)->getWalkOffsetX()-displacement.first));
+			Sint32 yOffset = SDL_static_cast(Sint32, scale*((*it)->getOffsetY()-(*it)->getWalkOffsetY()-displacement.second));
+			iRect irect = iRect(rect.x1+xOffset, rect.y1+yOffset, rect.x2, rect.y2);
+			if(irect.isPointInside(x, y))
+				return (*it);
+		}
+	}
+
+	for(std::vector<Creature*>::iterator it = m_creatures.begin(), end = m_creatures.end(); it != end; ++it)
+	{
+		if(!(*it)->isWalking())
+		{
+			std::pair<Sint32, Sint32> displacement = (*it)->getDisplacement();
+			Sint32 xOffset = SDL_static_cast(Sint32, scale*displacement.first);
+			Sint32 yOffset = SDL_static_cast(Sint32, scale*displacement.second);
+			iRect irect = iRect(rect.x1-xOffset, rect.y1-yOffset, rect.x2, rect.y2);
+			if(irect.isPointInside(x, y))
+				return (*it);
+		}
+	}
+	return NULL;
+}
+
 Creature* Tile::getTopCreature()
 {
 	if(!m_creatures.empty())
@@ -253,10 +283,6 @@ Creature* Tile::getTopCreature()
 
 Thing* Tile::getTopLookThing()
 {
-	Creature* topCreature = getTopCreature();
-	if(topCreature)
-		return topCreature;
-
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
 		if(!(*it)->getThingType() || !(*it)->getThingType()->hasFlag(ThingAttribute_LookThrough))
@@ -268,17 +294,22 @@ Thing* Tile::getTopLookThing()
 		if(!(*it)->getThingType() || !(*it)->getThingType()->hasFlag(ThingAttribute_LookThrough))
 			return (*it);
 	}
-
 	return m_ground;
 }
 
 Thing* Tile::getTopUseThing()
 {
-	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
+	if(m_ground && m_ground->getThingType() && m_ground->getThingType()->hasFlag(ThingAttribute_ForceUse))
+		return m_ground;
+
+	for(std::vector<Item*>::reverse_iterator it = m_topItems.rbegin(), end = m_topItems.rend(); it != end; ++it)
 	{
 		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_ForceUse))
 			return (*it);
 	}
+
+	if(!m_downItems.empty())
+		return *(m_downItems.begin());
 
 	if(!m_topItems.empty())
 		return *(m_topItems.rbegin());
@@ -303,36 +334,6 @@ Thing* Tile::getTopMoveThing()
 		if((*it)->getThingType() && !(*it)->getThingType()->hasFlag(ThingAttribute_NotMoveable))
 			return (*it);
 	}
-
-	return m_ground;
-}
-
-Thing* Tile::getTopMultiUseThing()
-{
-	Creature* topCreature = getTopCreature();
-	if(topCreature)
-		return topCreature;
-
-	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
-	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_ForceUse))
-			return (*it);
-	}
-
-	for(std::vector<Item*>::reverse_iterator it = m_topItems.rbegin(), end = m_topItems.rend(); it != end; ++it)
-	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_ForceUse))
-			return (*it);
-	}
-
-	if(m_ground && m_ground->getThingType() && m_ground->getThingType()->hasFlag(ThingAttribute_ForceUse))
-		return m_ground;
-
-	if(!m_downItems.empty())
-		return *(m_downItems.begin());
-
-	if(!m_topItems.empty())
-		return *(m_topItems.rbegin());
 
 	return m_ground;
 }

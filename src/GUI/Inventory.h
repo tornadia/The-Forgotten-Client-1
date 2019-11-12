@@ -28,7 +28,6 @@ class GUI_Icons : public GUI_Element
 {
 	public:
 		GUI_Icons(iRect boxRect, Uint32 internalID = 0);
-		~GUI_Icons() {;}
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 
@@ -39,15 +38,20 @@ class GUI_InventoryItem : public GUI_Element
 {
 	public:
 		GUI_InventoryItem(iRect boxRect, Sint32 skinX, Sint32 skinY, Uint8 slot, Uint32 internalID = 0);
-		~GUI_InventoryItem() {;}
+
+		void* onAction(Sint32 x, Sint32 y);
+		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
+		void onLMouseDown(Sint32 x, Sint32 y);
+		void onLMouseUp(Sint32 x, Sint32 y);
+		void onRMouseDown(Sint32 x, Sint32 y);
 
 		void render();
 
 	protected:
 		Sint32 m_skinX;
 		Sint32 m_skinY;
-
 		Uint8 m_slot;
+		bool m_selected;
 };
 
 #endif /* __FILE_GUI_INVENTORY_h_ */

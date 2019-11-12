@@ -94,6 +94,7 @@ class Creature : public Thing
 		SDL_FORCE_INLINE Direction getDirection() {return m_direction;}
 		SDL_FORCE_INLINE Direction getWalkDirection() {return m_walkDirection;}
 
+		std::pair<Sint32, Sint32> getDisplacement();
 		Sint32 getOffsetX(bool checkPreWalk = false);
 		Sint32 getOffsetY(bool checkPreWalk = false);
 		Sint32 getStepDuration(bool ignoreDiagonal);

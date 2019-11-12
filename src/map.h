@@ -104,11 +104,12 @@ class Map
 		void addDistanceEffect(DistanceEffect* distanceEffect, Uint8 posZ);
 
 		PathFind findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos, Uint32 flags = 0);
-		Tile* findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, bool multifloor);
+		Tile* findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature* &topCreature, bool multifloor);
 
 		Creature* getLocalCreature() {return m_localCreature;}
 		void setLocalCreature(Creature* creature) {m_localCreature = creature;}
 
+		void resetCreatures();
 		void addCreatureById(Uint32 creatureId, Creature* creature);
 		void removeCreatureById(Uint32 creatureId);
 		Creature* getCreatureById(Uint32 creatureId);

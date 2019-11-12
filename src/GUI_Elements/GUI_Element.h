@@ -43,6 +43,7 @@ class GUI_Element
 		void startEvents() {m_bEvents = true;}
 		void stopEvents() {m_bEvents = false;}
 
+		virtual void* onAction(Sint32, Sint32) {return NULL;}
 		virtual void onTextInput(const char*) {};
 		virtual void onKeyDown(SDL_Event) {};
 		virtual void onKeyUp(SDL_Event) {};

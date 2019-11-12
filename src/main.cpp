@@ -44,6 +44,7 @@ Uint32 g_frameDiff = 0;
 
 Uint16 g_ping = 0;
 Uint16 g_frames = 0;
+Uint16 g_lastFrames = 0;
 
 //Do not change these variables on the fly
 Uint32 g_clientVersion = 1220;
@@ -298,10 +299,14 @@ int main(int argc, char* argv[])
 			
 			g_frameDiff = SDL_GetTicks()-g_frameTime;
 			g_frameTime = SDL_GetTicks();
-
+			
 			SDL_CheckKeyRepeat();
 			while(SDL_PollEvent(&event))
 			{
+				//SDL2 seems to have problem with polling joystick events on some systems(e.g. windows)
+				//so I recommend to use custom compilation of SDL2 with disabled joystick events
+				//we don't even use them so we simply don't need them and they can cause micro stutters
+				//joystick events need to check USB devices which take up to even hundreds of milliseconds
 				switch(event.type)
 				{
 					case SDL_WINDOWEVENT:
@@ -525,6 +530,7 @@ int main(int argc, char* argv[])
 				SDL_snprintf(g_buffer, sizeof(g_buffer), "%s [%s: %u FPS, Ping: %u ms]", PRODUCT_NAME, g_engine.getRender()->getName(), g_frames, g_ping);
 				SDL_SetWindowTitle(g_engine.m_window, g_buffer);
 				g_frameUpdate = g_frameTime;
+				g_lastFrames = g_frames;
 				g_frames = 0;
 			}
 

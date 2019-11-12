@@ -65,6 +65,7 @@ class Chat
 
 		void clear();
 		void gameStart();
+		void navigateHistory(Sint32 direction);
 
 		void setOwnPrivateChannel(Uint32 channelId) {m_ownPrivatechannel = channelId;}
 		void openPrivateChannel(const std::string& receiver);
@@ -77,6 +78,7 @@ class Chat
 		Channel* getChannel(Uint32 channelId);
 		Channel* getCurrentChannel();
 
+		Uint32 getOwnPrivateChannel() {return m_ownPrivatechannel;}
 		Uint32 getHelpChannelId();
 
 		std::pair<size_t, size_t> calculateChannelPages(iRect& rect);
@@ -92,10 +94,12 @@ class Chat
 		void render(iRect& rect);
 
 	protected:
+		std::list<std::string> m_savedMessages;
 		std::vector<Channel> m_channels;
 		GUI_TextBox* m_textbox;
 		size_t m_selectedChannel;
 		size_t m_currentPage;
+		Sint32 m_historyNavigator;
 		Uint32 m_ownPrivatechannel;
 		Uint8 m_ignoreListStatus;
 		Uint8 m_channelListStatus;

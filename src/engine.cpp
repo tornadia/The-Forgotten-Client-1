@@ -47,8 +47,10 @@
 #include "GUI_Elements/GUI_ContextMenu.h"
 #include "GUI_Elements/GUI_Log.h"
 #include "GUI/GUI_UTIL.h"
+#include "GUI/itemUI.h"
 #include "GUI/Chat.h"
 
+extern Engine g_engine;
 extern Map g_map;
 extern ThingManager g_thingManager;
 extern SpriteManager g_spriteManager;
@@ -164,6 +166,9 @@ Engine::Engine()
 	m_accountPremDays = 0;
 	m_accountStatus = AccountStatus_Ok;
 	m_accountSubStatus = SubscriptionStatus_Free;
+
+	m_moveItemX = SDL_MIN_SINT32;
+	m_moveItemY = SDL_MIN_SINT32;
 }
 
 void Engine::loadCFG()
@@ -1126,6 +1131,28 @@ void Engine::onKeyDown(SDL_Event event)
 
 	if(m_ingame)
 	{
+		if(event.key.keysym.mod == KMOD_NONE)
+		{
+			if(event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_KP_ENTER)
+				g_chat.sendMessage();
+			else if(event.key.keysym.sym == SDLK_BACKSPACE || event.key.keysym.sym == SDLK_DELETE || event.key.keysym.sym == SDLK_HOME || event.key.keysym.sym == SDLK_END)
+				g_chat.onKeyDown(event);
+		}
+		else if(event.key.keysym.mod == KMOD_SHIFT)
+		{
+			if(event.key.keysym.sym == SDLK_UP)
+				g_chat.navigateHistory(-1);
+			else if(event.key.keysym.sym == SDLK_DOWN)
+				g_chat.navigateHistory(1);
+			else if(event.key.keysym.sym == SDLK_LEFT || event.key.keysym.sym == SDLK_RIGHT || event.key.keysym.sym == SDLK_HOME || event.key.keysym.sym == SDLK_END)
+				g_chat.onKeyDown(event);
+		}
+		else if(event.key.keysym.mod == KMOD_CTRL)
+		{
+			if(event.key.keysym.sym == SDLK_a || event.key.keysym.sym == SDLK_x || event.key.keysym.sym == SDLK_c || event.key.keysym.sym == SDLK_v)
+				g_chat.onKeyDown(event);
+		}
+
 		if(hotkey)
 		{
 			switch(hotkey->hotkey)
@@ -1171,8 +1198,6 @@ void Engine::onKeyDown(SDL_Event event)
 			}
 			return;
 		}
-
-		g_chat.onKeyDown(event);
 	}
 }
 
@@ -1223,6 +1248,22 @@ void Engine::onKeyUp(SDL_Event event)
 
 	if(m_ingame)
 	{
+		if(event.key.keysym.mod == KMOD_NONE)
+		{
+			if(event.key.keysym.sym == SDLK_BACKSPACE || event.key.keysym.sym == SDLK_DELETE || event.key.keysym.sym == SDLK_HOME || event.key.keysym.sym == SDLK_END)
+				g_chat.onKeyUp(event);
+		}
+		else if(event.key.keysym.mod == KMOD_SHIFT)
+		{
+			if(event.key.keysym.sym == SDLK_LEFT || event.key.keysym.sym == SDLK_RIGHT || event.key.keysym.sym == SDLK_HOME || event.key.keysym.sym == SDLK_END)
+				g_chat.onKeyUp(event);
+		}
+		else if(event.key.keysym.mod == KMOD_CTRL)
+		{
+			if(event.key.keysym.sym == SDLK_a || event.key.keysym.sym == SDLK_x || event.key.keysym.sym == SDLK_c || event.key.keysym.sym == SDLK_v)
+				g_chat.onKeyUp(event);
+		}
+
 		if(hotkey)
 		{
 			switch(hotkey->hotkey)
@@ -1292,60 +1333,61 @@ void Engine::onKeyUp(SDL_Event event)
 				break;
 				case CLIENT_HOTKEY_COMBAT_SETOFFENSIVE:
 				{
-					//Set to offensive
+					setAttackMode(ATTACKMODE_ATTACK);
+					g_game.sendAttackModes();
 				}
 				break;
 				case CLIENT_HOTKEY_COMBAT_SETBALANCED:
 				{
-					//Set to balanced
+					setAttackMode(ATTACKMODE_BALANCED);
+					g_game.sendAttackModes();
 				}
 				break;
 				case CLIENT_HOTKEY_COMBAT_SETDEFENSIVE:
 				{
-					//Set to defensive
+					setAttackMode(ATTACKMODE_DEFENSE);
+					g_game.sendAttackModes();
 				}
 				break;
 				case CLIENT_HOTKEY_COMBAT_TOGGLECHASEMODE:
 				{
-					//Toggle chase mode
+					setChaseMode((getChaseMode() == CHASEMODE_STAND ? CHASEMODE_FOLLOW : CHASEMODE_STAND));
+					g_game.sendAttackModes();
 				}
 				break;
 				case CLIENT_HOTKEY_COMBAT_TOGGLESECUREMODE:
 				{
-					//Toggle secure mode
+					setSecureMode((getSecureMode() == SECUREMODE_SECURE ? SECUREMODE_UNSECURE : SECUREMODE_SECURE));
+					g_game.sendAttackModes();
 				}
 				break;
 				case CLIENT_HOTKEY_PVPMODE_SETDOVE:
 				{
-					//Set to dove
+					setPvpMode(PVPMODE_DOVE);
+					g_game.sendAttackModes();
 				}
 				break;
 				case CLIENT_HOTKEY_PVPMODE_SETREDFIST:
 				{
-					//Set to red fist
+					setPvpMode(PVPMODE_RED_FIST);
+					g_game.sendAttackModes();
 				}
 				break;
 				case CLIENT_HOTKEY_PVPMODE_SETWHITEHAND:
 				{
-					//Set to white hand
+					setPvpMode(PVPMODE_WHITE_HAND);
+					g_game.sendAttackModes();
 				}
 				break;
 				case CLIENT_HOTKEY_PVPMODE_SETYELLOWHAND:
 				{
-					//Set to yellow hand
+					setPvpMode(PVPMODE_YELLOW_HAND);
+					g_game.sendAttackModes();
 				}
 				break;
-				case CLIENT_HOTKEY_MISC_LENSHELP:
-				{
-					//Activate lens help
-				}
-				break;
+				case CLIENT_HOTKEY_MISC_LENSHELP: /*setAction(CLIENT_ACTION_LENSHELP);*/ break;
 				case CLIENT_HOTKEY_MISC_CHANGECHARACTER: UTIL_createCharacterList(); break;
-				case CLIENT_HOTKEY_MISC_CHANGEOUTFIT:
-				{
-					//Open outfit list
-				}
-				break;
+				case CLIENT_HOTKEY_MISC_CHANGEOUTFIT: g_game.sendRequestOutfit(); break;
 				case CLIENT_HOTKEY_MISC_LOGOUT: g_game.sendLogout(); break;
 				case CLIENT_HOTKEY_MISC_TAKESCREENSHOT:
 				{
@@ -1392,15 +1434,37 @@ void Engine::onMouseMove(Sint32 x, Sint32 y)
 			(*it)->onMouseMove(x, y, (*it)->isInsideRect(x, y));
 
 		g_chat.onMouseMove(m_chatWindowRect, x, y);
-		if(m_actionData == CLIENT_ACTION_MOVEITEM || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
+		if(m_actionData == CLIENT_ACTION_MOVEITEM || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_TRADE || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
 			g_actualCursor = CLIENT_CURSOR_CROSSHAIR;
 		//else if(m_actionData == CLIENT_ACTION_LENSHELP)
 			//g_actualCursor = CLIENT_CURSOR_LENSHELP;
+		else if(m_actionData == CLIENT_ACTION_LEFTMOUSE && m_moveItemX != SDL_MIN_SINT32 && m_moveItemY != SDL_MIN_SINT32)
+		{
+			Sint32 distanceX = std::abs(m_moveItemX - x);
+			Sint32 distanceY = std::abs(m_moveItemY - y);
+			if(distanceX >= 5 || distanceY >= 5)
+			{
+				m_actionData = CLIENT_ACTION_MOVEITEM;
+				g_actualCursor = CLIENT_CURSOR_CROSSHAIR;
+
+				//Disable move item actions
+				m_moveItemX = SDL_MIN_SINT32;
+				m_moveItemY = SDL_MIN_SINT32;
+			}
+		}
 	}
 }
 
 void Engine::onLMouseDown(Sint32 x, Sint32 y)
 {
+	if(m_actionData != CLIENT_ACTION_NONE)
+	{
+		if(m_classicControl && m_actionData == CLIENT_ACTION_RIGHTMOUSE)
+			setAction(CLIENT_ACTION_EXTRAMOUSE);
+
+		return;
+	}
+
 	if(m_contextMenu)
 		return;
 
@@ -1444,25 +1508,21 @@ void Engine::onLMouseDown(Sint32 x, Sint32 y)
 		}
 		if(m_gameWindowRect.isPointInside(x, y))
 		{
-			if(m_actionData != CLIENT_ACTION_NONE)
-			{
-				if(m_classicControl && m_actionData == CLIENT_ACTION_RIGHTMOUSE)
-					setAction(CLIENT_ACTION_EXTRAMOUSE);
-
-				return;
-			}
-
-			Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, true);
+			Creature* topCreature;
+			Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, true);
 			if(tile)
 			{
 				Thing* thing = tile->getTopLookThing();
 				if(thing)
 				{
 					Position& position = tile->getPosition();
-					setActionData(CLIENT_ACTION_FROMPOSITION, (thing->getItem() ? thing->getItem()->getID() : 0x62), position.x, position.y, position.z, SDL_static_cast(Uint8, tile->getThingStackPos(thing)));
+					setActionData(CLIENT_ACTION_FIRST, (topCreature ? topCreature->getId() : 0), (thing->getItem() ? thing->getItem()->getID() : 0x62), position.x, position.y, position.z, SDL_static_cast(Uint8, tile->getThingStackPos(thing)));
+					setActionData(CLIENT_ACTION_SECOND, 0, (thing->getItem() ? thing->getItem()->getItemCount() : 1), 0, 0, 0, 0);
+					enableMoveItem(x, y);
 				}
-				setAction(CLIENT_ACTION_LEFTMOUSE);
 			}
+
+			setAction(CLIENT_ACTION_LEFTMOUSE);
 		}
 		else
 			g_chat.onLMouseDown(m_chatWindowRect, x, y);
@@ -1479,6 +1539,292 @@ void Engine::onLMouseDown(Sint32 x, Sint32 y)
 
 void Engine::onLMouseUp(Sint32 x, Sint32 y)
 {
+	if(m_actionData != CLIENT_ACTION_NONE)
+	{
+		if(!m_ingame || m_contextMenu || m_description || m_showLogger || m_actWindow)
+		{
+			setAction(CLIENT_ACTION_NONE);
+			return;
+		}
+
+		Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
+		if(m_actionData == CLIENT_ACTION_MOVEITEM)
+		{
+			GUI_Panel* gPanel = NULL;
+			std::vector<GUI_Panel*>::iterator it = m_panels.begin();
+			for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+			{
+				if((*it)->isInsideRect(x, y))
+				{
+					gPanel = (*it);
+					break;
+				}
+			}
+			if(gPanel)
+			{
+				m_panels.erase(it);
+				m_panels.push_back(gPanel);
+				gPanel->onLMouseUp(x, y);
+			}
+			else if(m_gameWindowRect.isPointInside(x, y))
+			{
+				Creature* topCreature;
+				Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, true);
+				if(tile)
+				{
+					Position& position = tile->getPosition();
+					initMove(position.x, position.y, position.z);
+				}
+			}
+
+			setAction(CLIENT_ACTION_NONE);
+		}
+		else if(m_actionData == CLIENT_ACTION_USEWITH)
+		{
+			Creature* topCreature = NULL;
+			ItemUI* itemui = NULL;
+			Thing* useThing = NULL;
+
+			GUI_Panel* gPanel = NULL;
+			std::vector<GUI_Panel*>::iterator it = m_panels.begin();
+			for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+			{
+				if((*it)->isInsideRect(x, y))
+				{
+					gPanel = (*it);
+					break;
+				}
+			}
+			if(gPanel)
+			{
+				m_panels.erase(it);
+				m_panels.push_back(gPanel);
+				itemui = SDL_reinterpret_cast(ItemUI*, gPanel->onAction(x, y));
+			}
+			else if(m_gameWindowRect.isPointInside(x, y))
+			{
+				Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, true);
+				if(tile)
+					useThing = tile->getTopUseThing();
+			}
+
+			ClientActionData& actionData = g_engine.m_actionDataStructure[CLIENT_ACTION_FIRST];
+			if(topCreature)
+				g_game.sendUseOnCreature(Position(actionData.posX, actionData.posY, actionData.posZ), actionData.itemId, actionData.posStack, topCreature->getId());
+			else if(useThing)
+			{
+				Item* item = useThing->getItem();
+				if(item)
+				{
+					Position& position = item->getCurrentPosition();
+					Tile* itemTile = g_map.getTile(position);
+					if(itemTile)
+						g_game.sendUseItemEx(Position(actionData.posX, actionData.posY, actionData.posZ), actionData.itemId, actionData.posStack, position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+				}
+			}
+			else if(itemui)
+			{
+				Position& position = itemui->getCurrentPosition();
+				g_game.sendUseItemEx(Position(actionData.posX, actionData.posY, actionData.posZ), actionData.itemId, actionData.posStack, position, itemui->getID(), 0);
+			}
+
+			setAction(CLIENT_ACTION_NONE);
+		}
+		else if(m_actionData == CLIENT_ACTION_TRADE)
+		{
+			//Initiate trade
+			setAction(CLIENT_ACTION_NONE);
+		}
+		else if(m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
+		{
+			//Make hotkey
+			setAction(CLIENT_ACTION_NONE);
+		}
+		else if((!(mouseState & SDL_BUTTON_RMASK) && m_actionData == CLIENT_ACTION_EXTRAMOUSE) || m_actionData == CLIENT_ACTION_LEFTMOUSE)
+		{
+			Creature* topCreature = NULL;
+			ItemUI* itemui = NULL;
+			Thing* lookThing = NULL;
+			Thing* useThing = NULL;
+
+			GUI_Panel* gPanel = NULL;
+			std::vector<GUI_Panel*>::iterator it = m_panels.begin();
+			for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+			{
+				if((*it)->isInsideRect(x, y))
+				{
+					gPanel = (*it);
+					break;
+				}
+			}
+			if(gPanel)
+			{
+				m_panels.erase(it);
+				m_panels.push_back(gPanel);
+				itemui = SDL_reinterpret_cast(ItemUI*, gPanel->onAction(x, y));
+			}
+			else if(m_gameWindowRect.isPointInside(x, y))
+			{
+				Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, true);
+				if(tile)
+				{
+					lookThing = tile->getTopLookThing();
+					useThing = tile->getTopUseThing();
+				}
+			}
+
+			if(topCreature || itemui || lookThing || useThing)
+			{
+				Uint16 keyMods = UTIL_parseModifiers(SDL_static_cast(Uint16, SDL_GetModState()));
+				if(m_actionData == CLIENT_ACTION_EXTRAMOUSE || keyMods == KMOD_SHIFT)
+				{
+					if(topCreature)
+					{
+						if(g_game.hasGameFeature(GAME_FEATURE_LOOKATCREATURE))
+							g_game.sendLookInBattle(topCreature->getId());
+						else
+						{
+							Position& position = topCreature->getCurrentPosition();
+							Tile* creatureTile = g_map.getTile(position);
+							if(creatureTile)
+								g_game.sendLookAt(position, 0x62, SDL_static_cast(Uint8, creatureTile->getThingStackPos(topCreature)));
+						}
+					}
+					else if(lookThing)
+					{
+						Item* item = lookThing->getItem();
+						if(item)
+						{
+							Position& position = item->getCurrentPosition();
+							Tile* itemTile = g_map.getTile(position);
+							if(itemTile)
+								g_game.sendLookAt(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+						}
+					}
+					else if(itemui)
+					{
+						Position& position = itemui->getCurrentPosition();
+						g_game.sendLookAt(position, itemui->getID(), 0);
+					}
+				}
+				else if(m_actionData == CLIENT_ACTION_LEFTMOUSE)
+				{
+					if(!m_classicControl && keyMods == KMOD_ALT)
+					{
+						if(topCreature && g_game.getPlayerID() != topCreature->getId())
+							g_game.sendAttack((g_game.getAttackID() == topCreature->getId()) ? NULL : topCreature);
+						else if(itemui)
+						{
+							GUI_ContextMenu* newMenu = createThingContextMenu(NULL, itemui, NULL);
+							newMenu->setEventCallback(&Engine::standardThingEvent);
+							showContextMenu(newMenu, x, y);
+						}
+					}
+					else if(!m_classicControl && keyMods == KMOD_CTRL)
+					{
+						if(useThing)
+						{
+							Item* item = useThing->getItem();
+							if(item)
+							{
+								Position& position = item->getCurrentPosition();
+								Tile* itemTile = g_map.getTile(position);
+								if(itemTile)
+								{
+									if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
+									{
+										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+										setAction(CLIENT_ACTION_USEWITH);
+										return;
+									}
+									else
+										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)), g_game.findEmptyContainerId());
+								}
+							}
+						}
+						else if(itemui)
+						{
+							Position& position = itemui->getCurrentPosition();
+							if(itemui->getThingType() && itemui->getThingType()->hasFlag(ThingAttribute_MultiUse))
+							{
+								setActionData(CLIENT_ACTION_FIRST, 0, itemui->getID(), position.x, position.y, position.z, 0);
+								setAction(CLIENT_ACTION_USEWITH);
+								return;
+							}
+							else
+							{
+								if(position.y & 0x40)
+									g_game.sendUseItem(position, itemui->getID(), 0, (position.y & 0x0F));
+								else
+									g_game.sendUseItem(position, itemui->getID(), 0, g_game.findEmptyContainerId());
+							}
+						}
+					}
+					else if(m_classicControl && keyMods == KMOD_ALT)
+					{
+						if(topCreature && g_game.getPlayerID() != topCreature->getId())
+							g_game.sendAttack((g_game.getAttackID() == topCreature->getId()) ? NULL : topCreature);
+						else if(useThing)
+						{
+							Item* item = useThing->getItem();
+							if(item)
+							{
+								Position& position = item->getCurrentPosition();
+								Tile* itemTile = g_map.getTile(position);
+								if(itemTile)
+								{
+									if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
+									{
+										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+										setAction(CLIENT_ACTION_USEWITH);
+										return;
+									}
+									else
+										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)), g_game.findEmptyContainerId());
+								}
+							}
+						}
+						else if(itemui)
+						{
+							Position& position = itemui->getCurrentPosition();
+							if(itemui->getThingType() && itemui->getThingType()->hasFlag(ThingAttribute_MultiUse))
+							{
+								setActionData(CLIENT_ACTION_FIRST, 0, itemui->getID(), position.x, position.y, position.z, 0);
+								setAction(CLIENT_ACTION_USEWITH);
+								return;
+							}
+							else
+							{
+								if(position.y & 0x40)
+									g_game.sendUseItem(position, itemui->getID(), 0, (position.y & 0x0F));
+								else
+									g_game.sendUseItem(position, itemui->getID(), 0, g_game.findEmptyContainerId());
+							}
+						}
+					}
+					else if(m_classicControl && keyMods == KMOD_CTRL)
+					{
+						GUI_ContextMenu* newMenu = createThingContextMenu(topCreature, itemui, (useThing && useThing->getItem() ? useThing->getItem() : NULL));
+						newMenu->setEventCallback(&Engine::standardThingEvent);
+						showContextMenu(newMenu, x, y);
+					}
+					else if(keyMods == KMOD_NONE && m_gameWindowRect.isPointInside(x, y))
+					{
+						Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, false);
+						if(tile)
+						{
+							Position& autoWalkPosition = tile->getPosition();
+							//Autowalk
+						}
+					}
+				}
+			}
+
+			setAction(CLIENT_ACTION_NONE);
+		}
+		return;
+	}
+
 	if(m_contextMenu)
 	{
 		m_contextMenu->onLMouseUp(x, y);
@@ -1511,21 +1857,6 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 			(*it)->onLMouseUp(x, y);
 
 		g_chat.onLMouseUp(m_chatWindowRect, x, y);
-		if(m_actionData != CLIENT_ACTION_NONE)
-		{
-			Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
-			if(!(mouseState & SDL_BUTTON_RMASK))
-			{
-				Uint16 keyMods = UTIL_parseModifiers(SDL_static_cast(Uint16, SDL_GetModState()));
-				if(m_actionData == CLIENT_ACTION_EXTRAMOUSE || keyMods == KMOD_SHIFT)
-				{
-					ClientActionData& clientData = m_actionDataStructure[CLIENT_ACTION_FROMPOSITION];
-					g_game.sendLookAt(Position(clientData.posX, clientData.posY, clientData.posZ), clientData.itemId, clientData.posStack);
-				}
-
-				setAction(CLIENT_ACTION_NONE);
-			}
-		}
 	}
 	else
 	{
@@ -1536,6 +1867,14 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 
 void Engine::onRMouseDown(Sint32 x, Sint32 y)
 {
+	if(m_actionData != CLIENT_ACTION_NONE)
+	{
+		if(m_classicControl && m_actionData == CLIENT_ACTION_LEFTMOUSE)
+			setAction(CLIENT_ACTION_EXTRAMOUSE);
+
+		return;
+	}
+
 	if(m_contextMenu)
 		return;
 
@@ -1578,27 +1917,7 @@ void Engine::onRMouseDown(Sint32 x, Sint32 y)
 			return;
 		}
 		if(m_gameWindowRect.isPointInside(x, y))
-		{
-			if(m_actionData != CLIENT_ACTION_NONE)
-			{
-				if(m_classicControl && m_actionData == CLIENT_ACTION_LEFTMOUSE)
-					setAction(CLIENT_ACTION_EXTRAMOUSE);
-
-				return;
-			}
-
-			Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, true);
-			if(tile)
-			{
-				Thing* thing = tile->getTopLookThing();
-				if(thing)
-				{
-					Position& position = tile->getPosition();
-					setActionData(CLIENT_ACTION_FROMPOSITION, (thing->getItem() ? thing->getItem()->getID() : 0x62), position.x, position.y, position.z, SDL_static_cast(Uint8, tile->getThingStackPos(thing)));
-				}
-				setAction(CLIENT_ACTION_RIGHTMOUSE);
-			}
-		}
+			setAction(CLIENT_ACTION_RIGHTMOUSE);
 		else
 			g_chat.onRMouseDown(m_chatWindowRect, x, y);
 	}
@@ -1614,6 +1933,191 @@ void Engine::onRMouseDown(Sint32 x, Sint32 y)
 
 void Engine::onRMouseUp(Sint32 x, Sint32 y)
 {
+	if(m_actionData != CLIENT_ACTION_NONE)
+	{
+		if(!m_ingame || m_contextMenu || m_description || m_showLogger || m_actWindow || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_TRADE || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
+		{
+			setAction(CLIENT_ACTION_NONE);
+			return;
+		}
+
+		Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
+		if((!(mouseState & SDL_BUTTON_LMASK) && m_actionData == CLIENT_ACTION_EXTRAMOUSE) || m_actionData == CLIENT_ACTION_RIGHTMOUSE)
+		{
+			Creature* topCreature = NULL;
+			ItemUI* itemui = NULL;
+			Thing* lookThing = NULL;
+			Thing* useThing = NULL;
+
+			GUI_Panel* gPanel = NULL;
+			std::vector<GUI_Panel*>::iterator it = m_panels.begin();
+			for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+			{
+				if((*it)->isInsideRect(x, y))
+				{
+					gPanel = (*it);
+					break;
+				}
+			}
+			if(gPanel)
+			{
+				m_panels.erase(it);
+				m_panels.push_back(gPanel);
+				itemui = SDL_reinterpret_cast(ItemUI*, gPanel->onAction(x, y));
+			}
+			else if(m_gameWindowRect.isPointInside(x, y))
+			{
+				Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, true);
+				if(tile)
+				{
+					lookThing = tile->getTopLookThing();
+					useThing = tile->getTopUseThing();
+				}
+			}
+
+			if(topCreature || itemui || lookThing || useThing)
+			{
+				Uint16 keyMods = UTIL_parseModifiers(SDL_static_cast(Uint16, SDL_GetModState()));
+				if(m_actionData == CLIENT_ACTION_EXTRAMOUSE || keyMods == KMOD_SHIFT)
+				{
+					if(topCreature)
+					{
+						if(g_game.hasGameFeature(GAME_FEATURE_LOOKATCREATURE))
+							g_game.sendLookInBattle(topCreature->getId());
+						else
+						{
+							Position& position = topCreature->getCurrentPosition();
+							Tile* creatureTile = g_map.getTile(position);
+							if(creatureTile)
+								g_game.sendLookAt(position, 0x62, SDL_static_cast(Uint8, creatureTile->getThingStackPos(topCreature)));
+						}
+					}
+					else if(lookThing)
+					{
+						Item* item = lookThing->getItem();
+						if(item)
+						{
+							Position& position = item->getCurrentPosition();
+							Tile* itemTile = g_map.getTile(position);
+							if(itemTile)
+								g_game.sendLookAt(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+						}
+					}
+					else if(itemui)
+					{
+						Position& position = itemui->getCurrentPosition();
+						g_game.sendLookAt(position, itemui->getID(), 0);
+					}
+				}
+				else if(m_actionData == CLIENT_ACTION_RIGHTMOUSE)
+				{
+					if(!m_classicControl && keyMods == KMOD_ALT)
+					{
+						if(topCreature && g_game.getPlayerID() != topCreature->getId())
+							g_game.sendAttack((g_game.getAttackID() == topCreature->getId()) ? NULL : topCreature);
+						else if(itemui)
+						{
+							GUI_ContextMenu* newMenu = createThingContextMenu(NULL, itemui, NULL);
+							newMenu->setEventCallback(&Engine::standardThingEvent);
+							showContextMenu(newMenu, x, y);
+						}
+					}
+					else if(!m_classicControl && keyMods == KMOD_CTRL)
+					{
+						if(useThing)
+						{
+							Item* item = useThing->getItem();
+							if(item)
+							{
+								Position& position = item->getCurrentPosition();
+								Tile* itemTile = g_map.getTile(position);
+								if(itemTile)
+								{
+									if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
+									{
+										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+										setAction(CLIENT_ACTION_USEWITH);
+										return;
+									}
+									else
+										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)), g_game.findEmptyContainerId());
+								}
+							}
+						}
+						else if(itemui)
+						{
+							Position& position = itemui->getCurrentPosition();
+							if(itemui->getThingType() && itemui->getThingType()->hasFlag(ThingAttribute_MultiUse))
+							{
+								setActionData(CLIENT_ACTION_FIRST, 0, itemui->getID(), position.x, position.y, position.z, 0);
+								setAction(CLIENT_ACTION_USEWITH);
+								return;
+							}
+							else
+							{
+								if(position.y & 0x40)
+									g_game.sendUseItem(position, itemui->getID(), 0, (position.y & 0x0F));
+								else
+									g_game.sendUseItem(position, itemui->getID(), 0, g_game.findEmptyContainerId());
+							}
+						}
+					}
+					else if(m_classicControl && (keyMods == KMOD_NONE || keyMods == KMOD_ALT))
+					{
+						if(topCreature && g_game.getPlayerID() != topCreature->getId())
+							g_game.sendAttack((g_game.getAttackID() == topCreature->getId()) ? NULL : topCreature);
+						else if(useThing)
+						{
+							Item* item = useThing->getItem();
+							if(item)
+							{
+								Position& position = item->getCurrentPosition();
+								Tile* itemTile = g_map.getTile(position);
+								if(itemTile)
+								{
+									if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
+									{
+										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+										setAction(CLIENT_ACTION_USEWITH);
+										return;
+									}
+									else
+										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)), g_game.findEmptyContainerId());
+								}
+							}
+						}
+						else if(itemui)
+						{
+							Position& position = itemui->getCurrentPosition();
+							if(itemui->getThingType() && itemui->getThingType()->hasFlag(ThingAttribute_MultiUse))
+							{
+								setActionData(CLIENT_ACTION_FIRST, 0, itemui->getID(), position.x, position.y, position.z, 0);
+								setAction(CLIENT_ACTION_USEWITH);
+								return;
+							}
+							else
+							{
+								if(position.y & 0x40)
+									g_game.sendUseItem(position, itemui->getID(), 0, (position.y & 0x0F));
+								else
+									g_game.sendUseItem(position, itemui->getID(), 0, g_game.findEmptyContainerId());
+							}
+						}
+					}
+					else if((m_classicControl && keyMods == KMOD_CTRL) || (!m_classicControl && keyMods == KMOD_NONE))
+					{
+						GUI_ContextMenu* newMenu = createThingContextMenu(topCreature, itemui, (useThing && useThing->getItem() ? useThing->getItem() : NULL));
+						newMenu->setEventCallback(&Engine::standardThingEvent);
+						showContextMenu(newMenu, x, y);
+					}
+				}
+			}
+
+			setAction(CLIENT_ACTION_NONE);
+		}
+		return;
+	}
+
 	if(m_contextMenu)
 	{
 		delete m_contextMenu;
@@ -1645,21 +2149,6 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 			(*it)->onRMouseUp(x, y);
 
 		g_chat.onRMouseUp(m_chatWindowRect, x, y);
-		if(m_actionData != CLIENT_ACTION_NONE)
-		{
-			Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
-			if(!(mouseState & SDL_BUTTON_LMASK))
-			{
-				Uint16 keyMods = UTIL_parseModifiers(SDL_static_cast(Uint16, SDL_GetModState()));
-				if(m_actionData == CLIENT_ACTION_EXTRAMOUSE || keyMods == KMOD_SHIFT)
-				{
-					ClientActionData& clientData = m_actionDataStructure[CLIENT_ACTION_FROMPOSITION];
-					g_game.sendLookAt(Position(clientData.posX, clientData.posY, clientData.posZ), clientData.itemId, clientData.posStack);
-				}
-
-				setAction(CLIENT_ACTION_NONE);
-			}
-		}
 	}
 	else
 	{
@@ -1953,8 +2442,8 @@ void Engine::redraw()
 	{
 		g_map.render();
 		m_surface->drawPictureRepeat(3, 0, 0, 96, 96, 0, 0, m_windowW-176, m_windowH-140);
-		m_surface->setClipRect(m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2);
 		m_surface->drawGameScene(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2);
+		m_surface->setClipRect(m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2);
 		g_map.renderInformations(m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2, m_scale, m_scaledSize);
 		m_surface->disableClipRect();
 		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
@@ -1974,13 +2463,13 @@ void Engine::redraw()
 		Uint64 previousFrameTime = lastFrameTime;
 		lastFrameTime = SDL_GetPerformanceCounter();
 		double frameTime = SDL_static_cast(double, (lastFrameTime-previousFrameTime)*1000)/SDL_GetPerformanceFrequency();
-		double framePerSecond = 1000.0/frameTime;
+		extern Uint16 g_lastFrames;
 
 		Sint32 posX = m_windowW-5;
 		if(m_ingame)
 			posX -= 176;
 
-		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%.0f FPS", framePerSecond);
+		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u FPS", g_lastFrames);
 		drawFont(CLIENT_FONT_OUTLINED, posX, 5, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%.2fms", frameTime);
 		drawFont(CLIENT_FONT_OUTLINED, posX, 19, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
@@ -2068,20 +2557,8 @@ void Engine::drawFont(Uint8 fontId, Sint32 x, Sint32 y, const std::string& text,
 	m_surface->drawFont(m_charPicture[fontId], x, y, text, 0, text.length(), r, g, b, m_charx[fontId], m_chary[fontId], m_charw[fontId], m_charh[fontId]);
 }
 
-void Engine::drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern)
+void Engine::drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation)
 {
-	Uint8 animationFrame;
-	if(thing->m_frameGroup[ThingFrameGroup_Default].m_animCount > 1)
-	{
-		/*static Animation m_animation;
-		if(thing->m_frameGroup[ThingFrameGroup_Default].m_animator)
-			animationFrame = SDL_static_cast(Uint8, thing->m_frameGroup[ThingFrameGroup_Default].m_animator->getPhase(m_animation));
-		else*/
-			animationFrame = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), thing->m_frameGroup[ThingFrameGroup_Default].m_animCount);
-	}
-	else
-		animationFrame = 0;
-
 	Uint8 fx = thing->m_frameGroup[ThingFrameGroup_Default].m_width;
 	Uint8 fy = thing->m_frameGroup[ThingFrameGroup_Default].m_height;
 	Uint8 fl = thing->m_frameGroup[ThingFrameGroup_Default].m_layers;
@@ -2089,7 +2566,7 @@ void Engine::drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8
 	{
 		for(Uint8 l = 0; l < fl; ++l)
 		{
-			Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, 0, 0, l, xPattern, yPattern, zPattern, animationFrame);
+			Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, 0, 0, l, xPattern, yPattern, zPattern, animation);
 			if(sprite != 0)
 				m_surface->drawSprite(sprite, x, y, scaled, scaled, 0, 0, 32, 32);
 		}
@@ -2109,7 +2586,7 @@ void Engine::drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8
 				Sint32 posXc = x+scaled-scale;
 				for(Uint8 cx = 0; cx < fx; ++cx)
 				{
-					Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, l, xPattern, yPattern, zPattern, animationFrame);
+					Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, l, xPattern, yPattern, zPattern, animation);
 					if(sprite != 0)
 					{
 						Sint32 dx = posXc, dy = posYc, dw = scale, dh = scale;
@@ -2526,15 +3003,16 @@ unsigned char* Engine::LoadPicture(Uint16 pictureId, bool bgra, Sint32& width, S
 										pixels[offset+2] = SDL_ReadU8(pictures);
 										pixels[offset+1] = SDL_ReadU8(pictures);
 										pixels[offset] = SDL_ReadU8(pictures);
+										pixels[offset+3] = SDL_ReadU8(pictures);
 									}
 									else
 									{
 										pixels[offset] = SDL_ReadU8(pictures);
 										pixels[offset+1] = SDL_ReadU8(pictures);
 										pixels[offset+2] = SDL_ReadU8(pictures);
+										pixels[offset+3] = SDL_ReadU8(pictures);
 									}
-									pixels[offset+3] = SDL_ALPHA_OPAQUE;
-									readData += 3;
+									readData += 4;
 								}
 								else
 									pixels[offset+3] = SDL_ALPHA_TRANSPARENT;
@@ -2592,14 +3070,522 @@ void Engine::releaseConnection()
 	}
 }
 
-void Engine::setActionData(ClientActions data, Uint16 itemId, Uint16 posX, Uint16 posY, Uint8 posZ, Uint8 posStack)
+void Engine::initMove(Uint16 posX, Uint16 posY, Uint8 posZ)
+{
+	ClientActionData& actionData = g_engine.m_actionDataStructure[CLIENT_ACTION_FIRST];
+	Position fromPos = Position(actionData.posX, actionData.posY, actionData.posZ);
+	Position toPos = Position(posX, posY, posZ);
+	Uint16 itemCount = m_actionDataStructure[CLIENT_ACTION_SECOND].itemId;
+	if(itemCount <= 1)
+		g_game.sendMove(fromPos, actionData.itemId, actionData.posStack, toPos, 1);
+	else
+	{
+		Uint16 keyMods = UTIL_parseModifiers(SDL_static_cast(Uint16, SDL_GetModState()));
+		if(keyMods == KMOD_CTRL)
+			g_game.sendMove(fromPos, actionData.itemId, actionData.posStack, toPos, itemCount);
+		else if(keyMods == KMOD_SHIFT)
+			g_game.sendMove(fromPos, actionData.itemId, actionData.posStack, toPos, 1);
+		else
+		{
+			setActionData(CLIENT_ACTION_SECOND, 0, itemCount, posX, posY, posZ, 0);
+			//Init item move window
+		}
+	}
+}
+
+void Engine::standardThingEvent(Uint32 event, Sint32)
+{
+	ClientActionData& actionData = g_engine.m_actionDataStructure[CLIENT_ACTION_FIRST];
+	switch(event)
+	{
+		case THING_EVENT_LOOK:
+		{
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x == 0xFFFF)
+				g_game.sendLookAt(pos, actionData.itemId, actionData.posStack);
+			else
+			{
+				Uint32 creatureId = actionData.creatureId;
+				Creature* creature = g_map.getCreatureById(creatureId);
+				if(creature)
+				{
+					if(g_game.hasGameFeature(GAME_FEATURE_LOOKATCREATURE))
+					{
+						g_game.sendLookInBattle(creatureId);
+						return;
+					}
+					else
+					{
+						Position& position = creature->getCurrentPosition();
+						Tile* creatureTile = g_map.getTile(position);
+						if(creatureTile)
+						{
+							g_game.sendLookAt(position, 0x62, SDL_static_cast(Uint8, creatureTile->getThingStackPos(creature)));
+							return;
+						}
+					}
+				}
+
+				Tile* tile = g_map.getTile(pos);
+				if(tile)
+				{
+					Thing* lookThing = tile->getTopLookThing();
+					if(lookThing)
+						g_game.sendLookAt(pos, (lookThing->getItem() ? lookThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(lookThing)));
+				}
+			}
+		}
+		break;
+		case THING_EVENT_OPEN:
+		{
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x == 0xFFFF)
+			{
+				if(pos.y & 0x40)
+					g_game.sendUseItem(pos, actionData.itemId, actionData.posStack, (pos.y & 0x0F));
+				else
+					g_game.sendUseItem(pos, actionData.itemId, actionData.posStack, g_game.findEmptyContainerId());
+			}
+			else
+			{
+				Tile* tile = g_map.getTile(pos);
+				if(tile)
+				{
+					Thing* useThing = tile->getTopUseThing();
+					if(useThing)
+						g_game.sendUseItem(pos, (useThing->getItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)), g_game.findEmptyContainerId());
+				}
+			}
+		}
+		break;
+		case THING_EVENT_USE:
+		{
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x == 0xFFFF)
+				g_game.sendUseItem(pos, actionData.itemId, actionData.posStack, g_game.findEmptyContainerId());
+			else
+			{
+				Tile* tile = g_map.getTile(pos);
+				if(tile)
+				{
+					Thing* useThing = tile->getTopUseThing();
+					if(useThing)
+						g_game.sendUseItem(pos, (useThing->getItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)), g_game.findEmptyContainerId());
+				}
+			}
+		}
+		break;
+		case THING_EVENT_USEWITH:
+		{
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x == 0xFFFF)
+				g_engine.setAction(CLIENT_ACTION_USEWITH);
+			else
+			{
+				Tile* tile = g_map.getTile(pos);
+				if(tile)
+				{
+					Thing* useThing = tile->getTopUseThing();
+					if(useThing)
+					{
+						Item* item = useThing->getItem();
+						if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
+						{
+							g_engine.setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), pos.x, pos.y, pos.z, SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+							g_engine.setAction(CLIENT_ACTION_USEWITH);
+						}
+					}
+				}
+			}
+		}
+		break;
+		case THING_EVENT_ROTATE:
+		{
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x != 0xFFFF)
+			{
+				Tile* tile = g_map.getTile(pos);
+				if(tile)
+				{
+					Thing* useThing = tile->getTopUseThing();
+					if(useThing)
+						g_game.sendRotateItem(pos, (useThing->getItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+				}
+			}
+		}
+		break;
+		case THING_EVENT_TRADE:
+		{
+			//Trade
+		}
+		break;
+		case THING_EVENT_WRAP:
+		{
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x != 0xFFFF)
+			{
+				Tile* tile = g_map.getTile(pos);
+				if(tile)
+				{
+					Thing* useThing = tile->getTopUseThing();
+					if(useThing)
+						g_game.sendWrapState(pos, (useThing->getItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+				}
+			}
+		}
+		break;
+		case THING_EVENT_MOVEUP:
+		{
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x == 0xFFFF)
+				g_game.sendMove(pos, actionData.itemId, 0, Position(pos.x, pos.y, 0xFE), g_engine.m_actionDataStructure[CLIENT_ACTION_SECOND].itemId);
+		}
+		break;
+		case THING_EVENT_BROWSEFIELD:
+		{
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x != 0xFFFF)
+				g_game.sendBrowseField(pos);
+		}
+		break;
+		case THING_EVENT_REPORTCOORDS:
+		{
+			//Report Coordinate
+		}
+		break;
+		case THING_EVENT_SETOUTFIT: g_game.sendRequestOutfit(); break;
+		case THING_EVENT_MOUNT: g_game.sendMount(true); break;
+		case THING_EVENT_DISMOUNT: g_game.sendMount(false); break;
+		case THING_EVENT_ATTACK: g_game.sendAttack((g_game.getAttackID() == actionData.creatureId) ? NULL : g_map.getCreatureById(actionData.creatureId)); break;
+		case THING_EVENT_FOLLOW: g_game.sendFollow((g_game.getFollowID() == actionData.creatureId) ? NULL : g_map.getCreatureById(actionData.creatureId)); break;
+		case THING_EVENT_COPYNAME:
+		{
+			Creature* creature = g_map.getCreatureById(actionData.creatureId);
+			if(creature)
+				UTIL_SetClipboardTextLatin1(creature->getName().c_str());
+		}
+		break;
+		case THING_EVENT_INVITETOPARTY: g_game.sendInviteToParty(actionData.creatureId); break;
+		case THING_EVENT_JOINTOPARTY: g_game.sendJoinToParty(actionData.creatureId); break;
+		case THING_EVENT_REVOKEINVITATION: g_game.sendRevokePartyInvitation(actionData.creatureId); break;
+		case THING_EVENT_PASSLEADERSHIP: g_game.sendPassPartyLeadership(actionData.creatureId); break;
+		case THING_EVENT_LEAVEPARTY: g_game.sendLeaveParty(); break;
+		case THING_EVENT_ENABLESHAREDEXPERIENCE: g_game.sendEnableSharedPartyExperience(true); break;
+		case THING_EVENT_DISABLESHAREDEXPERIENCE: g_game.sendEnableSharedPartyExperience(false); break;
+		case THING_EVENT_JOINAGGRESSION: g_game.sendJoinAggression(actionData.creatureId); break;
+		case THING_EVENT_MESSAGETO:
+		{
+			Creature* creature = g_map.getCreatureById(actionData.creatureId);
+			if(creature)
+				g_game.sendOpenPrivateChannel(creature->getName());
+		}
+		break;
+		case THING_EVENT_INVITETOPRIVATECHAT:
+		{
+			Creature* creature = g_map.getCreatureById(actionData.creatureId);
+			if(creature)
+				g_game.sendChannelInvite(creature->getName(), SDL_static_cast(Uint16, g_chat.getOwnPrivateChannel()));
+		}
+		break;
+		case THING_EVENT_EXCLUDEFROMPRIVATECHAT:
+		{
+			Creature* creature = g_map.getCreatureById(actionData.creatureId);
+			if(creature)
+				g_game.sendChannelExclude(creature->getName(), SDL_static_cast(Uint16, g_chat.getOwnPrivateChannel()));
+		}
+		break;
+		case THING_EVENT_ADDTOVIPLIST:
+		{
+			//Add to vip list
+		}
+		break;
+		case THING_EVENT_IGNORE:
+		{
+			//Ignore/Unignore
+		}
+		break;
+		case THING_EVENT_RULEVIOLATION:
+		{
+			//Rule Violation
+		}
+		break;
+		case THING_EVENT_REPORTNAME:
+		{
+			//Report Name
+		}
+		break;
+		case THING_EVENT_REPORTBOTMACRO:
+		{
+			//Report Bot/Macro
+		}
+		break;
+	}
+}
+
+GUI_ContextMenu* Engine::createThingContextMenu(Creature* creature, ItemUI* itemui, Item* item)
+{
+	GUI_ContextMenu* newMenu = new GUI_ContextMenu();
+	if(item)
+	{
+		Position& position = item->getCurrentPosition();
+		newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_LOOK, "Look", (m_classicControl ? "" : "(Shift)"));
+
+		ThingType* itemType = item->getThingType();
+		if(itemType)
+		{
+			if(itemType->hasFlag(ThingAttribute_Container))
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_OPEN, "Open", (m_classicControl ? "" : "(Ctrl)"));
+			else if(itemType->hasFlag(ThingAttribute_MultiUse))
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_USEWITH, "Use with ...", (m_classicControl ? "" : "(Ctrl)"));
+			else
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_USE, "Use", (m_classicControl ? "" : "(Ctrl)"));
+
+			if(itemType->hasFlag(ThingAttribute_Wrapable))
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_WRAP, "Wrap", "");
+			else if(itemType->hasFlag(ThingAttribute_Unwrapable))
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_WRAP, "Unwrap", "");
+
+			if(itemType->hasFlag(ThingAttribute_Rotateable))
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_ROTATE, "Rotate", "");
+
+			if(g_game.hasGameFeature(GAME_FEATURE_BROWSEFIELD))
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_BROWSEFIELD, "Browse Field", "");
+
+			/*
+			if(g_game.canReportBugs())
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_REPORTCOORDS, "Report Coordinate", "");
+			*/
+
+			if(itemType->hasFlag(ThingAttribute_Pickupable))
+			{
+				newMenu->addSeparator();
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_TRADE, "Trade with ...", "");
+			}
+		}
+		else
+			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_USE, "Use", (m_classicControl ? "" : "(Ctrl)"));
+
+		ClientActionData& actionData = m_actionDataStructure[CLIENT_ACTION_FIRST];
+		actionData.itemId = item->getID();
+		actionData.posX = position.x;
+		actionData.posY = position.y;
+		actionData.posZ = position.z;
+		actionData.posStack = 0;
+	}
+	else if(itemui)
+	{
+		Position& position = itemui->getCurrentPosition();
+		newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_LOOK, "Look", (m_classicControl ? "" : "(Shift)"));
+
+		ThingType* itemType = itemui->getThingType();
+		if(itemType)
+		{
+			if(itemType->hasFlag(ThingAttribute_Container))
+			{
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_OPEN, "Open", (m_classicControl ? "" : "(Ctrl)"));
+				if(position.y & 0x40)
+					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_USE, "Open in new window", "");
+			}
+			else if(itemType->hasFlag(ThingAttribute_MultiUse))
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_USEWITH, "Use with ...", (m_classicControl ? "" : "(Ctrl)"));
+			else
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_USE, "Use", (m_classicControl ? "" : "(Ctrl)"));
+
+			if(itemType->hasFlag(ThingAttribute_Pickupable))
+			{
+				newMenu->addSeparator();
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_TRADE, "Trade with ...", "");
+			}
+			
+			if((position.y & 0x40) && g_game.containerHasParent(position.y & 0x0F))
+			{
+				m_actionDataStructure[CLIENT_ACTION_SECOND].itemId = itemui->getItemCount();
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_MOVEUP, "Move up", "");
+			}
+		}
+		else
+			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_USE, "Use", (m_classicControl ? "" : "(Ctrl)"));
+
+		ClientActionData& actionData = m_actionDataStructure[CLIENT_ACTION_FIRST];
+		actionData.itemId = itemui->getID();
+		actionData.posX = position.x;
+		actionData.posY = position.y;
+		actionData.posZ = position.z;
+		actionData.posStack = 0;
+	}
+	else
+	{
+		ClientActionData& actionData = m_actionDataStructure[CLIENT_ACTION_FIRST];
+		actionData.itemId = 0;
+		actionData.posX = 0xFFFF;
+		actionData.posY = 0;
+		actionData.posZ = 0;
+		actionData.posStack = 0;
+	}
+
+	if(creature)
+	{
+		newMenu->addSeparator();
+		if(g_game.getPlayerID() == creature->getId())
+		{
+			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_SETOUTFIT, "Set Outfit", "");
+			if(g_game.hasGameFeature(GAME_FEATURE_MOUNTS))
+			{
+				if(true/*!wearMount*/)
+					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_MOUNT, "Mount", "");
+				else
+					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_DISMOUNT, "Dismount", "");
+			}
+
+			if(!(g_game.getIcons() & ICON_SWORDS))
+			{
+				Uint8 playerShield = creature->getShield();
+				if(playerShield == SHIELD_WHITEYELLOW || playerShield == SHIELD_BLUE || playerShield == SHIELD_YELLOW || playerShield == SHIELD_BLUE_SHAREDEXP || playerShield == SHIELD_YELLOW_SHAREDEXP || playerShield == SHIELD_BLUE_NOSHAREDEXP_BLINK || playerShield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || playerShield == SHIELD_BLUE_NOSHAREDEXP || playerShield == SHIELD_YELLOW_NOSHAREDEXP)
+				{
+					if(playerShield == SHIELD_WHITEYELLOW || playerShield == SHIELD_YELLOW || playerShield == SHIELD_YELLOW_SHAREDEXP || playerShield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || playerShield == SHIELD_YELLOW_NOSHAREDEXP)
+					{
+						if(playerShield == SHIELD_YELLOW_SHAREDEXP || playerShield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || playerShield == SHIELD_YELLOW_NOSHAREDEXP)
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_DISABLESHAREDEXPERIENCE, "Disable Shared Experience", "");
+						else
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_ENABLESHAREDEXPERIENCE, "Enable Shared Experience", "");
+					}
+
+					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_LEAVEPARTY, "Leave Party", "");
+				}
+			}
+		}
+		else
+		{
+			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_ATTACK, (g_game.getAttackID() == creature->getId() ? "Stop Attack" : "Attack"), (m_classicControl ? "" : "(Alt)"));
+			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_FOLLOW, (g_game.getFollowID() == creature->getId() ? "Stop Follow" : "Follow"), "");
+			if(creature->isPlayer())
+			{
+				std::string& creatureName = creature->getName();
+				newMenu->addSeparator();
+
+				SDL_snprintf(g_buffer, sizeof(g_buffer), "Message to %s", creatureName.c_str());
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_MESSAGETO, g_buffer, "");
+				if(g_chat.getOwnPrivateChannel() != SDL_static_cast(Uint32, -1))
+				{
+					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_INVITETOPRIVATECHAT, "Invite to private chat", "");
+					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_EXCLUDEFROMPRIVATECHAT, "Exclude from private chat", "");
+				}
+
+				/*
+				if(notHaveVip(topCreature->getName()))
+					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_ADDTOVIPLIST, "Add to VIP list", "");
+				*/
+
+				/*
+				SDL_snprintf(g_buffer, sizeof(g_buffer), (isIgnored(topCreature->getName()) ? "Unignore %s" : "Ignore %s"), topCreature->getName().c_str());
+				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_IGNORE, g_buffer, "");
+				*/
+
+				Uint8 targetShield = creature->getShield();
+				Uint8 playerShield = (g_map.getLocalCreature() ? g_map.getLocalCreature()->getShield() : SHIELD_NONE);
+				switch(playerShield)
+				{
+					case SHIELD_NONE:
+					case SHIELD_WHITEBLUE:
+					{
+						if(targetShield == SHIELD_WHITEYELLOW)
+						{
+							SDL_snprintf(g_buffer, sizeof(g_buffer), "Join %s's Party", creatureName.c_str());
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_JOINTOPARTY, g_buffer, "");
+						}
+						else if(targetShield != SHIELD_GRAY)
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_INVITETOPARTY, "Invite to Party", "");
+					}
+					break;
+					case SHIELD_WHITEYELLOW:
+					{
+						if(targetShield == SHIELD_WHITEBLUE)
+						{
+							SDL_snprintf(g_buffer, sizeof(g_buffer), "Revoke %s's Invitation", creatureName.c_str());
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_REVOKEINVITATION, g_buffer, "");
+						}
+					}
+					break;
+					case SHIELD_BLUE:
+					case SHIELD_BLUE_SHAREDEXP:
+					case SHIELD_BLUE_NOSHAREDEXP_BLINK:
+					case SHIELD_BLUE_NOSHAREDEXP:
+					{
+						if(targetShield > SHIELD_WHITEBLUE)
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_JOINAGGRESSION, "Join Aggression", "");
+					}
+					break;
+					case SHIELD_YELLOW:
+					case SHIELD_YELLOW_SHAREDEXP:
+					case SHIELD_YELLOW_NOSHAREDEXP_BLINK:
+					case SHIELD_YELLOW_NOSHAREDEXP:
+					{
+						if(targetShield == SHIELD_WHITEBLUE)
+						{
+							SDL_snprintf(g_buffer, sizeof(g_buffer), "Revoke %s's Invitation", creatureName.c_str());
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_REVOKEINVITATION, g_buffer, "");
+						}
+						else if(targetShield == SHIELD_BLUE || targetShield == SHIELD_BLUE_SHAREDEXP || targetShield == SHIELD_BLUE_NOSHAREDEXP_BLINK || targetShield == SHIELD_BLUE_NOSHAREDEXP)
+						{
+							SDL_snprintf(g_buffer, sizeof(g_buffer), "Pass Leadership to %s", creatureName.c_str());
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_PASSLEADERSHIP, g_buffer, "");
+						}
+						else if(targetShield == SHIELD_GRAY)
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_JOINAGGRESSION, "Join Aggression", "");
+						else
+							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_INVITETOPARTY, "Invite to Party", "");
+					}
+					break;
+				}
+			}
+		}
+
+		/*
+		if(hasRuleViolation())
+		{
+			newMenu->addSeparator();
+			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_RULEVIOLATION, "Rule Violation", "");
+		}
+		//Report Name
+		//Report Bot/Macro
+		*/
+
+		newMenu->addSeparator();
+		newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_COPYNAME, "Copy Name", "");
+		m_actionDataStructure[CLIENT_ACTION_FIRST].creatureId = creature->getId();
+	}
+	else
+		m_actionDataStructure[CLIENT_ACTION_FIRST].creatureId = 0;
+
+	return newMenu;
+}
+
+void Engine::enableMoveItem(Sint32 x, Sint32 y)
+{
+	m_moveItemX = x;
+	m_moveItemY = y;
+}
+
+void Engine::setActionData(ClientActions data, Uint32 creatureId, Uint16 itemId, Uint16 posX, Uint16 posY, Uint8 posZ, Uint8 posStack)
 {
 	ClientActionData& actionData = m_actionDataStructure[data];
+	actionData.creatureId = creatureId;
 	actionData.itemId = itemId;
 	actionData.posX = posX;
 	actionData.posY = posY;
 	actionData.posZ = posZ;
 	actionData.posStack = posStack;
+}
+
+void Engine::setAction(ClientActions action)
+{
+	m_actionData = action;
+	if(m_actionData == CLIENT_ACTION_MOVEITEM || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_TRADE || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
+		setCursor(CLIENT_CURSOR_CROSSHAIR);
+	//else if(m_actionData == CLIENT_ACTION_LENSHELP)
+		//setCursor(CLIENT_CURSOR_LENSHELP);
+	else
+		setCursor(CLIENT_CURSOR_ARROW);
 }
 
 void Engine::showContextMenu(GUI_ContextMenu* menu, Sint32 mouseX, Sint32 mouseY)
@@ -2778,6 +3764,10 @@ void Engine::processGameEnd()
 {
 	m_ingame = false;
 	g_ping = 0;
+
+	//Reset map and creatures
+	g_map.changeMap(DIRECTION_INVALID);
+	g_map.resetCreatures();
 
 	clearPanels();
 	checkReleaseQueue();

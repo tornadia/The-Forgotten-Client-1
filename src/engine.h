@@ -75,6 +75,9 @@ class GUI_PanelWindow;
 class GUI_Description;
 class GUI_ContextMenu;
 class ThingType;
+class Creature;
+class ItemUI;
+class Item;
 class Engine
 {
 	public:
@@ -132,7 +135,7 @@ class Engine
 		void drawFont(Uint8 fontId, Sint32 x, Sint32 y, const std::string& text, Uint8 r, Uint8 g, Uint8 b, Sint32 align, size_t pos, size_t len);
 		void drawFont(Uint8 fontId, Sint32 x, Sint32 y, const std::string& text, Uint8 r, Uint8 g, Uint8 b, Sint32 align);
 
-		void drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern);
+		void drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation);
 		void drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint32 outfitColor);
 		void drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern);
 		void drawDistanceEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern);
@@ -144,8 +147,12 @@ class Engine
 		void issueNewConnection(bool protocolGame);
 		void releaseConnection();
 
-		void setActionData(ClientActions data, Uint16 itemId, Uint16 posX, Uint16 posY, Uint8 posZ, Uint8 posStack);
-		void setAction(ClientActions action) {m_actionData = action;}
+		void initMove(Uint16 posX, Uint16 posY, Uint8 posZ);
+		static void standardThingEvent(Uint32 event, Sint32 status);
+		GUI_ContextMenu* createThingContextMenu(Creature* creature, ItemUI* itemui, Item* item);
+		void enableMoveItem(Sint32 x, Sint32 y);
+		void setActionData(ClientActions data, Uint32 creatureId, Uint16 itemId, Uint16 posX, Uint16 posY, Uint8 posZ, Uint8 posStack);
+		void setAction(ClientActions action);
 		SDL_FORCE_INLINE ClientActions getAction() {return m_actionData;}
 
 		void showContextMenu(GUI_ContextMenu* menu, Sint32 mouseX, Sint32 mouseY);
@@ -229,6 +236,7 @@ class Engine
 		SDL_FORCE_INLINE std::string& getAccountPassword() {return m_accountPassword;}
 		SDL_FORCE_INLINE std::string& getAccountToken() {return m_accountToken;}
 		SDL_FORCE_INLINE std::string& getCharacterName() {return m_characters[SDL_static_cast(size_t, m_characterSelectId)].name;}
+		SDL_FORCE_INLINE std::string& getCharacterWorldName() {return m_characters[SDL_static_cast(size_t, m_characterSelectId)].worldName;}
 		SDL_FORCE_INLINE std::vector<CharacterDetail>& getAccountCharList() {return m_characters;}
 		SDL_FORCE_INLINE Uint8 getAccountStatus() {return m_accountStatus;}
 		SDL_FORCE_INLINE Uint8 getAccountSubstatus() {return m_accountSubStatus;}
@@ -326,6 +334,9 @@ class Engine
 		Uint32 m_motdNumber;
 		Uint32 m_accountPremDays;
 
+		Sint32 m_moveItemX;
+		Sint32 m_moveItemY;
+
 		Sint32 m_fullScreenWidth;
 		Sint32 m_fullScreenHeight;
 		Sint32 m_fullScreenBits;
@@ -339,7 +350,6 @@ class Engine
 		Sint32 m_windowH;
 		Sint32 m_windowCachedW;
 		Sint32 m_windowCachedH;
-
 		Uint16 m_charPicture[CLIENT_FONT_LAST];
 
 		ClientActionData m_actionDataStructure[2];

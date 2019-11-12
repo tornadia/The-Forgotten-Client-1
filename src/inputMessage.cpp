@@ -104,9 +104,9 @@ Position InputMessage::getPosition()
 
 bool InputMessage::readChecksum()
 {
-	Uint32 receivedCheck = getU32();
+	Uint32 receivedChecksum = getU32();
 	Uint32 checksum = adler32Checksum(m_networkBuffer + m_readPos, getUnreadSize());
-	return (receivedCheck == checksum);
+	return (receivedChecksum == checksum);
 }
 
 bool InputMessage::canRead(Uint32 bytes)

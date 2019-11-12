@@ -26,6 +26,7 @@
 #include "creature.h"
 #include "protocolgame.h"
 #include "automap.h"
+#include "container.h"
 
 #include "GUI/GUI_UTIL.h"
 #include "GUI/itemUI.h"
@@ -86,6 +87,11 @@ Game::Game()
 	m_playerMovement = DIRECTION_INVALID;
 	m_playerCurrentDir = DIRECTION_INVALID;
 	m_playerLastDir = DIRECTION_INVALID;
+	for(size_t i = SLOT_HEAD; i < SLOT_LAST; ++i)
+		m_inventoryItem[i] = NULL;
+
+	for(size_t i = 0; i < GAME_MAX_CONTAINERS; ++i)
+		m_containers[i] = NULL;
 
 	m_canReportBugs = false;
 }
@@ -100,12 +106,20 @@ void Game::reset()
 	m_playerMovement = DIRECTION_INVALID;
 	m_playerCurrentDir = DIRECTION_INVALID;
 	m_playerLastDir = DIRECTION_INVALID;
-	for(Uint8 i = SLOT_HEAD; i < SLOT_LAST; ++i)
+	for(size_t i = SLOT_HEAD; i < SLOT_LAST; ++i)
 	{
 		if(m_inventoryItem[i])
 		{
 			delete m_inventoryItem[i];
 			m_inventoryItem[i] = NULL;
+		}
+	}
+	for(size_t i = 0; i < GAME_MAX_CONTAINERS; ++i)
+	{
+		if(m_containers[i])
+		{
+			delete m_containers[i];
+			m_containers[i] = NULL;
 		}
 	}
 }
@@ -177,6 +191,8 @@ void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 		enableGameFeature(GAME_FEATURE_OFFLINE_TRAINING);
 	if(fileVersion >= 960)
 		enableGameFeature(GAME_FEATURE_EXTENDED_SPRITES);
+	if(clientVersion >= 961)
+		enableGameFeature(GAME_FEATURE_LOOKATCREATURE);
 	if(clientVersion >= 963)
 		enableGameFeature(GAME_FEATURE_ADDITIONAL_VIPINFO);
 	if(clientVersion >= 980)
@@ -322,44 +338,40 @@ void Game::processDeath(Uint8 deathType, Uint8 penalty)
 	UTIL_deathWindow(deathType, penalty);
 }
 
-void Game::processContainerOpen(Uint8 containerId, ItemUI* item, const std::string& name, Uint8 capacity, bool hasParent, bool isUnlocked, bool hasPages, Uint16 containerSize, Uint16 firstIndex, std::vector<ItemUI*>& itemVector)
+void Game::processContainerOpen(Uint8 containerId, ItemUI* item, const std::string& name, Uint8 capacity, bool hasParent, bool canUseDepotSearch, bool isUnlocked, bool hasPages, Uint16 containerSize, Uint16 firstIndex, std::vector<ItemUI*>& itemVector)
 {
-	(void)containerId;
-	(void)item;
-	(void)name;
-	(void)capacity;
-	(void)hasParent;
-	(void)isUnlocked;
-	(void)hasPages;
-	(void)containerSize;
-	(void)firstIndex;
-	(void)itemVector;
+	processContainerClose(containerId);
+	m_containers[containerId] = new Container(containerId, item, name, capacity, hasParent, canUseDepotSearch, isUnlocked, hasPages, containerSize, firstIndex);
+	m_containers[containerId]->setItems(itemVector);
+	UTIL_createContainerWindow(containerId);
 }
 
 void Game::processContainerClose(Uint8 containerId)
 {
-	(void)containerId;
+	//Don't bother with ui - window will be automatically deleted or keeped(we need to maintain position if possible)
+	if(m_containers[containerId])
+	{
+		delete m_containers[containerId];
+		m_containers[containerId] = NULL;
+	}
 }
 
 void Game::processContainerAddItem(Uint8 containerId, Uint16 slot, ItemUI* item)
 {
-	(void)containerId;
-	(void)slot;
-	(void)item;
+	if(m_containers[containerId])
+		m_containers[containerId]->addItem(slot, item);
 }
 
 void Game::processContainerTransformItem(Uint8 containerId, Uint16 slot, ItemUI* item)
 {
-	(void)containerId;
-	(void)slot;
-	(void)item;
+	if(m_containers[containerId])
+		m_containers[containerId]->transformItem(slot, item);
 }
 
 void Game::processContainerRemoveItem(Uint8 containerId, Uint16 slot, ItemUI* lastItem)
 {
-	(void)containerId;
-	(void)slot;
-	(void)lastItem;
+	if(m_containers[containerId])
+		m_containers[containerId]->removeItem(slot, lastItem);
 }
 
 void Game::processTransformInventoryItem(Uint8 slot, ItemUI* item)
@@ -367,6 +379,11 @@ void Game::processTransformInventoryItem(Uint8 slot, ItemUI* item)
 	if(m_inventoryItem[slot])
 		delete m_inventoryItem[slot];
 	m_inventoryItem[slot] = item;
+	if(item)
+	{
+		Position position = Position(0xFFFF, SDL_static_cast(Uint16, slot)+1, 0);
+		item->setCurrentPosition(position);
+	}
 }
 
 void Game::processTradeOwn(const std::string& name, std::vector<ItemUI*>& itemVector)
@@ -878,6 +895,86 @@ void Game::sendFollow(Creature* creature)
 	m_attackId = 0;
 }
 
+void Game::sendJoinAggression(Uint32 creatureId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendJoinAggression(creatureId);
+	}
+}
+
+void Game::sendInviteToParty(Uint32 creatureId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendInviteToParty(creatureId);
+	}
+}
+
+void Game::sendJoinToParty(Uint32 creatureId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendJoinToParty(creatureId);
+	}
+}
+
+void Game::sendRevokePartyInvitation(Uint32 creatureId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendRevokePartyInvitation(creatureId);
+	}
+}
+
+void Game::sendPassPartyLeadership(Uint32 creatureId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendPassPartyLeadership(creatureId);
+	}
+}
+
+void Game::sendLeaveParty()
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendLeaveParty();
+	}
+}
+
+void Game::sendEnableSharedPartyExperience(bool active)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendEnableSharedPartyExperience(active);
+	}
+}
+
+void Game::sendRequestOutfit()
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendRequestOutfit();
+	}
+}
+
 void Game::sendSetOutfit(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Uint8 lookLegs, Uint8 lookFeet, Uint8 lookAddons, Uint16 lookMount)
 {
 	if(g_engine.isIngame())
@@ -885,6 +982,36 @@ void Game::sendSetOutfit(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Uint8 
 		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
 		if(game && game->canPerformAction())
 			game->sendSetOutfit(lookType, lookHead, lookBody, lookLegs, lookFeet, lookAddons, lookMount);
+	}
+}
+
+void Game::sendMount(bool active)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendMount(active);
+	}
+}
+
+void Game::sendEquipItem(Uint16 itemid, Uint16 count)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendEquipItem(itemid, count);
+	}
+}
+
+void Game::sendMove(const Position& fromPos, Uint16 itemid, Uint8 stackpos, const Position& toPos, Uint16 count)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendMove(fromPos, itemid, stackpos, toPos, count);
 	}
 }
 
@@ -918,13 +1045,13 @@ void Game::sendUseItem(const Position& position, Uint16 itemId, Uint8 stackpos, 
 	}
 }
 
-void Game::sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 fromStackPos, const Position& toPos, Uint16 toThingId, Uint8 toStackPos)
+void Game::sendUseItemEx(const Position& fromPos, Uint16 itemId, Uint8 fromStackPos, const Position& toPos, Uint16 toItemId, Uint8 toStackPos)
 {
 	if(g_engine.isIngame())
 	{
 		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
 		if(game && game->canPerformAction())
-			game->sendUseItemEx(fromPos, itemId, fromStackPos, toPos, toThingId, toStackPos);
+			game->sendUseItemEx(fromPos, itemId, fromStackPos, toPos, toItemId, toStackPos);
 	}
 }
 
@@ -935,6 +1062,86 @@ void Game::sendUseOnCreature(const Position& position, Uint16 itemId, Uint8 stac
 		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
 		if(game && game->canPerformAction())
 			game->sendUseOnCreature(position, itemId, stackpos, creatureId);
+	}
+}
+
+void Game::sendRotateItem(const Position& position, Uint16 itemId, Uint8 stackpos)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendRotateItem(position, itemId, stackpos);
+	}
+}
+
+void Game::sendWrapState(const Position& position, Uint16 itemId, Uint8 stackpos)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendWrapState(position, itemId, stackpos);
+	}
+}
+
+void Game::sendCloseContainer(Uint8 containerId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendCloseContainer(containerId);
+	}
+}
+
+void Game::sendUpContainer(Uint8 containerId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendUpContainer(containerId);
+	}
+}
+
+void Game::sendUpdateContainer(Uint8 containerId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendUpdateContainer(containerId);
+	}
+}
+
+void Game::sendSeekInContainer(Uint8 containerId, Uint16 index)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendSeekInContainer(containerId, index);
+	}
+}
+
+void Game::sendBrowseField(const Position& position)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendBrowseField(position);
+	}
+}
+
+void Game::sendOpenParentContainer(const Position& position)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendOpenParentContainer(position);
 	}
 }
 
@@ -1184,6 +1391,24 @@ void Game::minimapZoomIn()
 void Game::minimapZoomOut()
 {
 	g_automap.zoomOut();
+}
+
+Uint8 Game::findEmptyContainerId()
+{
+	for(Uint8 i = 0; i < GAME_MAX_CONTAINERS; ++i)
+	{
+		if(!m_containers[i])
+			return i;
+	}
+	return 0x0F;
+}
+
+bool Game::containerHasParent(Uint8 cid)
+{
+	if(m_containers[cid] && m_containers[cid]->hasParent())
+		return true;
+
+	return false;
 }
 
 void Game::resetPlayerExperienceTable()
