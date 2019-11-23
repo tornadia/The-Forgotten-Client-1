@@ -231,6 +231,10 @@ void GUI_Container::onWheel(Sint32 x, Sint32 y, bool wheelUP)
 	if(!m_visible)
 		return;
 
+	(void)x;
+	(void)y;
+	/*
+	It breaks scrolling by mouse so it is disabled untill there's reason to enable it
 	std::vector<GUI_Element*> childsBackup = m_childs;
 	for(std::vector<GUI_Element*>::reverse_iterator it = childsBackup.rbegin(), end = childsBackup.rend(); it != end; ++it)
 	{
@@ -239,7 +243,7 @@ void GUI_Container::onWheel(Sint32 x, Sint32 y, bool wheelUP)
 			(*it)->onWheel(x, y, wheelUP);
 			return;
 		}
-	}
+	}*/
 
 	if(wheelUP)
 		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos()-1);

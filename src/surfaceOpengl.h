@@ -105,13 +105,8 @@ struct OpenglTexture
 	float m_scaleH;
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, OpenglTexture*> U32BGLTextures;
 typedef std::unordered_map<Uint64, OpenglTexture*> U64BGLTextures;
-#else
-typedef std::map<Uint32, OpenglTexture*> U32BGLTextures;
-typedef std::map<Uint64, OpenglTexture*> U64BGLTextures;
-#endif
 
 class SurfaceOpengl : public Surface
 {

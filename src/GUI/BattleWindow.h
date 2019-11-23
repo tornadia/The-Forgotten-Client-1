@@ -24,10 +24,18 @@
 
 #include "../GUI_Elements/GUI_Element.h"
 
-class GUI_BattleOptimizer : public GUI_Element
+class GUI_BattleChecker : public GUI_Element
 {
 	public:
-		GUI_BattleOptimizer(iRect boxRect, Uint32 internalID = 0);
+		GUI_BattleChecker(iRect boxRect, Uint32 internalID = 0);
+
+		void render();
+};
+
+class GUI_PartyChecker : public GUI_Element
+{
+	public:
+		GUI_PartyChecker(iRect boxRect, Uint32 internalID = 0);
 
 		void render();
 };
@@ -35,12 +43,19 @@ class GUI_BattleOptimizer : public GUI_Element
 class GUI_BattleCreature : public GUI_Element
 {
 	public:
-		GUI_BattleCreature(iRect boxRect, size_t index, Uint32 internalID = 0);
+		GUI_BattleCreature(iRect boxRect, size_t index, bool partyWindow = false, Uint32 internalID = 0);
+
+		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
+		void onLMouseDown(Sint32 x, Sint32 y);
+		void onLMouseUp(Sint32 x, Sint32 y);
+		void onRMouseDown(Sint32 x, Sint32 y);
+		void onRMouseUp(Sint32 x, Sint32 y);
 
 		void render();
 
 	protected:
 		size_t m_index;
+		bool m_partyWindow;
 };
 
 #endif /* __FILE_GUI_BATTLEWINDOW_h_ */

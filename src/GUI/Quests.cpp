@@ -155,11 +155,11 @@ void UTIL_createQuestLog(Uint32 questId, std::vector<QuestLogDetail>& questLogEl
 	newListBox->setEventCallback(&quests_Events, QUEST_LOG_LISTBOX_EVENTID);
 	newListBox->startEvents();
 	newWindow->addChild(newListBox);
-	GUI_Button* newButton = new GUI_Button(iRect(QUEST_LOG_WIDTH-56, QUEST_LOG_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(QUEST_LOG_WIDTH-56, QUEST_LOG_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&quests_Events, QUEST_LOG_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(QUEST_LOG_WIDTH-109, QUEST_LOG_HEIGHT-30, 43, 20), "Show", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(QUEST_LOG_WIDTH-109, QUEST_LOG_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Show", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&quests_Events, QUEST_LOG_OPEN_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
@@ -200,7 +200,7 @@ void UTIL_createQuestine(Uint16 questId, std::vector<QuestLineDetail>& questLine
 	GUI_MultiTextBox* newTextBox = new GUI_MultiTextBox(iRect(QUEST_LINE_TEXTBOX_X, QUEST_LINE_TEXTBOX_Y, QUEST_LINE_TEXTBOX_W, QUEST_LINE_TEXTBOX_H), false, (!questLineElements.empty() ? questLineElements[0].missionDescription : ""), QUEST_LINE_TEXTBOX_EVENTID, 175, 175, 175);
 	newTextBox->startEvents();
 	newWindow->addChild(newTextBox);
-	GUI_Button* newButton = new GUI_Button(iRect(QUEST_LINE_WIDTH-56, QUEST_LINE_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(QUEST_LINE_WIDTH-56, QUEST_LINE_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&quests_Events, QUEST_LINE_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

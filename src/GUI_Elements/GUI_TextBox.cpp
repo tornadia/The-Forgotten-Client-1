@@ -29,7 +29,7 @@ GUI_TextBox::GUI_TextBox(iRect boxRect, const std::string text, Uint32 internalI
 {
 	setRect(boxRect);
 	m_eventHandlerFunction = NULL;
-	PERFORM_MOVE(m_sText, text);
+	m_sText = std::move(text);
 	m_sVisibleText.assign(m_sText);
 	m_internalID = internalID;
 	m_evtParam = 0;
@@ -315,10 +315,10 @@ void GUI_TextBox::render()
 	Surface* renderer = g_engine.getRender();
 	Uint32 numberOfLetters = getNumberOfLettersToShow();
 	renderer->fillRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 54, 54, 54, 255);
-	renderer->drawPictureRepeat(3, 0, 96, 96, 1, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
-	renderer->drawPictureRepeat(3, 0, 98, 1, 96, m_tRect.x1, m_tRect.y1+1, 1, m_tRect.y2-1);
-	renderer->drawPictureRepeat(3, 2, 197, 96, 1, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-1, m_tRect.x2-1, 1);
-	renderer->drawPictureRepeat(3, 276, 0, 1, 96, m_tRect.x1+m_tRect.x2-1, m_tRect.y1+1, 1, m_tRect.y2-2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1+1, 1, m_tRect.y2-1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-1, m_tRect.x2-1, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1+m_tRect.x2-1, m_tRect.y1+1, 1, m_tRect.y2-2);
 	if(hasSelection())
 	{
 		Uint32 selectionStart = UTIL_max<Uint32>(m_positionOfFirstShownLetter, m_selectionStart);

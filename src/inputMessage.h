@@ -62,7 +62,7 @@ class InputMessage
 		Uint8* getBuffer() {return m_networkBuffer;}
 		Uint8* getReadBuffer() {return m_networkBuffer + m_readPos;}
 
-		bool readChecksum();
+		bool readAdler32();
 
 		friend class Protocol;
 		friend class ProtocolLogin;

@@ -27,7 +27,7 @@
 class GUI_Button : public GUI_Element
 {
 	public:
-		GUI_Button(iRect boxRect, const std::string labelName, Uint32 internalID = 0);
+		GUI_Button(iRect boxRect, const std::string labelName, Uint32 internalID = 0, const std::string description = "");
 
 		void setRect(iRect& NewRect);
 		void setButtonEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent);
@@ -40,12 +40,29 @@ class GUI_Button : public GUI_Element
 
 	protected:
 		void (*m_eventHandlerFunction)(Uint32,Sint32);
-		std::string m_Label;
+		std::string m_description;
+		std::string m_label;
 		Uint32 m_evtParam;
 		Uint32 m_startX;
 		Sint32 m_sx[2];
 		Sint32 m_sy[2];
-		Uint8 m_Pressed;
+		Uint8 m_pressed;
+};
+
+class GUI_RadioButton : public GUI_Button
+{
+	public:
+		GUI_RadioButton(iRect boxRect, const std::string labelName, Uint32 internalID = 0, const std::string description = "");
+
+		void setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description);
+
+		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
+
+		void render();
+
+	protected:
+		bool (*m_eventRadioChecked)(void);
+		std::string m_radioDescription;
 };
 
 #endif /* __FILE_GUI_BUTTON_h_ */

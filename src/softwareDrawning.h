@@ -35,10 +35,6 @@ extern LPSDL_DrawTriangle_MOD SDL_DrawTriangle_MOD;
 typedef Sint32 (*LPSDL_SmoothStretch)(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect);
 extern LPSDL_SmoothStretch SDL_SmoothStretch;
 
-//Linear Interpolation - faster than Bilinear but it only interpolate on x-axis
-typedef Sint32 (*LPSDL_SmoothStretch_fast)(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect);
-extern LPSDL_SmoothStretch_fast SDL_SmoothStretch_fast;
-
 void SDL_DrawLightMap_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 Sint32 SDL_SmoothStretch_MT(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect);
 

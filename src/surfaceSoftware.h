@@ -36,15 +36,9 @@ struct PictureOptimization
 	Sint32 m_height;
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, PictureOptimization> U32BOptimizer;
 typedef std::unordered_map<Uint32, SDL_Surface*> U32BSurfaces;
 typedef std::unordered_map<Uint64, SDL_Surface*> U64BSurfaces;
-#else
-typedef std::map<Uint32, PictureOptimization> U32BOptimizer;
-typedef std::map<Uint32, SDL_Surface*> U32BSurfaces;
-typedef std::map<Uint64, SDL_Surface*> U64BSurfaces;
-#endif
 
 class SurfaceSoftware : public Surface
 {

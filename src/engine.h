@@ -136,9 +136,9 @@ class Engine
 		void drawFont(Uint8 fontId, Sint32 x, Sint32 y, const std::string& text, Uint8 r, Uint8 g, Uint8 b, Sint32 align);
 
 		void drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation);
-		void drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint32 outfitColor);
-		void drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern);
-		void drawDistanceEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern);
+		void drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation, Uint32 outfitColor);
+		void drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation);
+		void drawDistanceEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation);
 
 		unsigned char* LoadSprite(Uint32 spriteId, bool bgra);
 		unsigned char* LoadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, bool bgra);
@@ -174,10 +174,10 @@ class Engine
 		SDL_FORCE_INLINE Uint8 getEngineId() {return m_engine;}
 		SDL_FORCE_INLINE Surface* getRender() {return m_surface;}
 
-		SDL_INLINE void setClientHost(std::string clientHost) {PERFORM_MOVE(m_clientHost, clientHost);}
-		SDL_INLINE void setClientPort(std::string clientPort) {PERFORM_MOVE(m_clientPort, clientPort);}
-		SDL_INLINE void setClientProxy(std::string clientProxy) {PERFORM_MOVE(m_clientProxy, clientProxy);}
-		SDL_INLINE void setClientProxyAuth(std::string clientProxyAuth) {PERFORM_MOVE(m_clientProxyAuth, clientProxyAuth);}
+		SDL_INLINE void setClientHost(std::string clientHost) {m_clientHost = std::move(clientHost);}
+		SDL_INLINE void setClientPort(std::string clientPort) {m_clientPort = std::move(clientPort);}
+		SDL_INLINE void setClientProxy(std::string clientProxy) {m_clientProxy = std::move(clientProxy);}
+		SDL_INLINE void setClientProxyAuth(std::string clientProxyAuth) {m_clientProxyAuth = std::move(clientProxyAuth);}
 		SDL_FORCE_INLINE std::string& getClientHost() {return m_clientHost;}
 		SDL_FORCE_INLINE std::string& getClientPort() {return m_clientPort;}
 		SDL_FORCE_INLINE std::string& getClientProxy() {return m_clientProxy;}
@@ -205,11 +205,13 @@ class Engine
 		SDL_FORCE_INLINE Sint32 getFullScreenBits() {return m_fullScreenBits;}
 		SDL_FORCE_INLINE Sint32 getFullScreenHZ() {return m_fullScreenHZ;}
 		
+		SDL_INLINE void setBattleSortMethod(SortMethods sortMethod) {m_battleSortMethod = sortMethod;}
 		SDL_INLINE void setAttackMode(Uint8 attackMode) {m_attackMode = attackMode;}
 		SDL_INLINE void setChaseMode(Uint8 chaseMode) {m_chaseMode = chaseMode;}
 		SDL_INLINE void setSecureMode(Uint8 secureMode) {m_secureMode = secureMode;}
 		SDL_INLINE void setPvpMode(Uint8 pvpMode) {m_pvpMode = pvpMode;}
 		SDL_INLINE void setAmbientLight(Uint8 ambientLight) {m_lightAmbient = ambientLight;}
+		SDL_FORCE_INLINE SortMethods getBattleSortMethod() {return m_battleSortMethod;}
 		SDL_FORCE_INLINE Uint8 getAttackMode() {return m_attackMode;}
 		SDL_FORCE_INLINE Uint8 getChaseMode() {return m_chaseMode;}
 		SDL_FORCE_INLINE Uint8 getSecureMode() {return m_secureMode;}
@@ -217,15 +219,15 @@ class Engine
 		SDL_FORCE_INLINE Uint8 getAmbientLight() {return m_lightAmbient;}
 
 		SDL_INLINE void setMotdNumber(Uint32 motdNumber) {m_motdNumber = motdNumber;}
-		SDL_INLINE void setMotdText(std::string motdText) {PERFORM_MOVE(m_motdText, motdText);}
+		SDL_INLINE void setMotdText(std::string motdText) {m_motdText = std::move(motdText);}
 		SDL_FORCE_INLINE Uint32 getMotdNumber() {return m_motdNumber;}
 		SDL_FORCE_INLINE std::string& getMotdText() {return m_motdText;}
 
-		SDL_INLINE void setAccountSessionKey(std::string sessionKey) {PERFORM_MOVE(m_accountSessionKey, sessionKey);}
-		SDL_INLINE void setAccountName(std::string accountName) {PERFORM_MOVE(m_accountName, accountName);}
-		SDL_INLINE void setAccountPassword(std::string accountPassword) {PERFORM_MOVE(m_accountPassword, accountPassword);}
-		SDL_INLINE void setAccountToken(std::string accountToken) {PERFORM_MOVE(m_accountToken, accountToken);}
-		SDL_INLINE void setAccountCharList(std::vector<CharacterDetail>& characters) {PERFORM_MOVE(m_characters, characters);}
+		SDL_INLINE void setAccountSessionKey(std::string sessionKey) {m_accountSessionKey = std::move(sessionKey);}
+		SDL_INLINE void setAccountName(std::string accountName) {m_accountName = std::move(accountName);}
+		SDL_INLINE void setAccountPassword(std::string accountPassword) {m_accountPassword = std::move(accountPassword);}
+		SDL_INLINE void setAccountToken(std::string accountToken) {m_accountToken = std::move(accountToken);}
+		SDL_INLINE void setAccountCharList(std::vector<CharacterDetail>& characters) {m_characters = std::move(characters);}
 		SDL_INLINE void setAccountStatus(Uint8 accountStatus) {m_accountStatus = accountStatus;}
 		SDL_INLINE void setAccountSubstatus(Uint8 accountSubstatus) {m_accountSubStatus = accountSubstatus;}
 		SDL_INLINE void setAccountPremDays(Uint32 accountPremDays) {m_accountPremDays = accountPremDays;}
@@ -358,6 +360,7 @@ class Engine
 		Uint8 m_accountStatus;
 		Uint8 m_accountSubStatus;
 
+		SortMethods m_battleSortMethod;
 		Uint8 m_attackMode;
 		Uint8 m_chaseMode;
 		Uint8 m_secureMode;

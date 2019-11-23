@@ -44,7 +44,7 @@ bool Protocol::onRecv(InputMessage& msg)
 	{
 		if(m_checksumMethod == CHECKSUM_METHOD_ADLER32)
 		{
-			if(!msg.readChecksum())
+			if(!msg.readAdler32())
 				return false;
 		}
 		else if(m_checksumMethod == CHECKSUM_METHOD_SEQUENCE)
@@ -65,11 +65,18 @@ bool Protocol::onRecv(InputMessage& msg)
 		}
 		else if(m_checksumMethod == CHECKSUM_METHOD_CHALLENGE)
 		{
-			//Skip checksum for challenge packet and don't do anything
+			//Skip checksum for challenge packet and check if we got correct size
 			msg.getU32();
+
+			//1 byte header
+			//4 bytes timestamp
+			//1 byte random value
+			Uint16 challengeSize = msg.getU16();
+			if(challengeSize != 6)
+				return false;
 		}
 	}
-
+	
 	if(m_encryption)
 	{
 		XTEA_decrypt(msg.getReadBuffer(), msg.getUnreadSize(), m_encryptionKeys);

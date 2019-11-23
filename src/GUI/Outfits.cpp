@@ -122,33 +122,33 @@
 #define OUTFITS_GROUPER_MOUNT_NAME_H 20
 #define OUTFITS_ICON_PREV_OUTFIT_X 174
 #define OUTFITS_ICON_PREV_OUTFIT_Y 179
-#define OUTFITS_ICON_PREV_OUTFIT_W 20
-#define OUTFITS_ICON_PREV_OUTFIT_H 20
+#define OUTFITS_ICON_PREV_OUTFIT_W GUI_UI_ICON_ARROW_LEFT_UP_W
+#define OUTFITS_ICON_PREV_OUTFIT_H GUI_UI_ICON_ARROW_LEFT_UP_H
 #define OUTFITS_ICON_PREV_OUTFIT_EVENTID 1012
 #define OUTFITS_ICON_PREV_MOUNT_X 174
 #define OUTFITS_ICON_PREV_MOUNT_Y 204
-#define OUTFITS_ICON_PREV_MOUNT_W 20
-#define OUTFITS_ICON_PREV_MOUNT_H 20
+#define OUTFITS_ICON_PREV_MOUNT_W GUI_UI_ICON_ARROW_LEFT_UP_W
+#define OUTFITS_ICON_PREV_MOUNT_H GUI_UI_ICON_ARROW_LEFT_UP_H
 #define OUTFITS_ICON_PREV_MOUNT_EVENTID 1013
 #define OUTFITS_ICON_PREV_DIRECTION_X 176
 #define OUTFITS_ICON_PREV_DIRECTION_Y 152
-#define OUTFITS_ICON_PREV_DIRECTION_W 20
-#define OUTFITS_ICON_PREV_DIRECTION_H 20
+#define OUTFITS_ICON_PREV_DIRECTION_W GUI_UI_ICON_ROTATE_LEFT_UP_W
+#define OUTFITS_ICON_PREV_DIRECTION_H GUI_UI_ICON_ROTATE_LEFT_UP_H
 #define OUTFITS_ICON_PREV_DIRECTION_EVENTID 1014
 #define OUTFITS_ICON_NEXT_OUTFIT_X 414
 #define OUTFITS_ICON_NEXT_OUTFIT_Y 179
-#define OUTFITS_ICON_NEXT_OUTFIT_W 20
-#define OUTFITS_ICON_NEXT_OUTFIT_H 20
+#define OUTFITS_ICON_NEXT_OUTFIT_W GUI_UI_ICON_ARROW_RIGHT_UP_W
+#define OUTFITS_ICON_NEXT_OUTFIT_H GUI_UI_ICON_ARROW_RIGHT_UP_H
 #define OUTFITS_ICON_NEXT_OUTFIT_EVENTID 1015
 #define OUTFITS_ICON_NEXT_MOUNT_X 414
 #define OUTFITS_ICON_NEXT_MOUNT_Y 204
-#define OUTFITS_ICON_NEXT_MOUNT_W 20
-#define OUTFITS_ICON_NEXT_MOUNT_H 20
+#define OUTFITS_ICON_NEXT_MOUNT_W GUI_UI_ICON_ARROW_RIGHT_UP_W
+#define OUTFITS_ICON_NEXT_MOUNT_H GUI_UI_ICON_ARROW_RIGHT_UP_H
 #define OUTFITS_ICON_NEXT_MOUNT_EVENTID 1016
 #define OUTFITS_ICON_NEXT_DIRECTION_X 412
 #define OUTFITS_ICON_NEXT_DIRECTION_Y 152
-#define OUTFITS_ICON_NEXT_DIRECTION_W 20
-#define OUTFITS_ICON_NEXT_DIRECTION_H 20
+#define OUTFITS_ICON_NEXT_DIRECTION_W GUI_UI_ICON_ROTATE_RIGHT_UP_W
+#define OUTFITS_ICON_NEXT_DIRECTION_H GUI_UI_ICON_ROTATE_RIGHT_UP_H
 #define OUTFITS_ICON_NEXT_DIRECTION_EVENTID 1017
 #define OUTFITS_OUTFIT_VIEW_X 175
 #define OUTFITS_OUTFIT_VIEW_Y 30
@@ -184,13 +184,8 @@ void outfits_Events(Uint32 event, Sint32 status)
 				g_engine.removeWindow(pWindow);
 				g_outfits.clear();
 				g_mounts.clear();
-				#ifdef HAVE_CXX11_SUPPORT
 				g_outfits.shrink_to_fit();
 				g_mounts.shrink_to_fit();
-				#else
-				std::vector<OutfitDetail>(g_outfits).swap(g_outfits);
-				std::vector<MountDetail>(g_mounts).swap(g_mounts);
-				#endif
 			}
 		}
 		break;
@@ -203,13 +198,8 @@ void outfits_Events(Uint32 event, Sint32 status)
 				g_engine.removeWindow(pWindow);
 				g_outfits.clear();
 				g_mounts.clear();
-				#ifdef HAVE_CXX11_SUPPORT
 				g_outfits.shrink_to_fit();
 				g_mounts.shrink_to_fit();
-				#else
-				std::vector<OutfitDetail>(g_outfits).swap(g_outfits);
-				std::vector<MountDetail>(g_mounts).swap(g_mounts);
-				#endif
 			}
 		}
 		break;
@@ -370,9 +360,9 @@ void outfits_Events(Uint32 event, Sint32 status)
 					if(outfitAddons & 1)//First addon
 					{
 						if(pCheckBox1->isChecked())
-							g_outfitAddons |= 2;
+							g_outfitAddons |= 1;
 						else
-							g_outfitAddons &= ~2;
+							g_outfitAddons &= ~1;
 						pCheckBox1->setColor(180, 180, 180);
 						pCheckBox1->startEvents();
 					}
@@ -527,7 +517,7 @@ void UTIL_createOutfitWindow(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Ui
 			newMount.mountID = lookMount;
 			newMount.mountName = "Your Mount";
 			mounts.push_back(newMount);
-			mountName = "Tempest";
+			mountName = "Your Mount";
 			foundMount = true;
 		}
 	}
@@ -557,27 +547,27 @@ void UTIL_createOutfitWindow(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Ui
 	GUI_Outfit_Colors* newColors = new GUI_Outfit_Colors(iRect(OUTFITS_OUTFIT_COLORS_X, OUTFITS_OUTFIT_COLORS_Y, OUTFITS_OUTFIT_COLORS_W, OUTFITS_OUTFIT_COLORS_H));
 	newColors->startEvents();
 	newWindow->addChild(newColors);
-	GUI_Icon* newIcon = new GUI_Icon(iRect(OUTFITS_ICON_PREV_OUTFIT_X, OUTFITS_ICON_PREV_OUTFIT_Y, OUTFITS_ICON_PREV_OUTFIT_W, OUTFITS_ICON_PREV_OUTFIT_H), 3, 240, 232, 280, 232);
+	GUI_Icon* newIcon = new GUI_Icon(iRect(OUTFITS_ICON_PREV_OUTFIT_X, OUTFITS_ICON_PREV_OUTFIT_Y, OUTFITS_ICON_PREV_OUTFIT_W, OUTFITS_ICON_PREV_OUTFIT_H), GUI_UI_IMAGE, GUI_UI_ICON_ARROW_LEFT_UP_X, GUI_UI_ICON_ARROW_LEFT_UP_Y, GUI_UI_ICON_ARROW_LEFT_DOWN_X, GUI_UI_ICON_ARROW_LEFT_DOWN_Y);
 	newIcon->setButtonEventCallback(&outfits_Events, OUTFITS_ICON_PREV_OUTFIT_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_PREV_MOUNT_X, OUTFITS_ICON_PREV_MOUNT_Y, OUTFITS_ICON_PREV_MOUNT_W, OUTFITS_ICON_PREV_MOUNT_H), 3, 240, 232, 280, 232);
+	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_PREV_MOUNT_X, OUTFITS_ICON_PREV_MOUNT_Y, OUTFITS_ICON_PREV_MOUNT_W, OUTFITS_ICON_PREV_MOUNT_H), GUI_UI_IMAGE, GUI_UI_ICON_ARROW_LEFT_UP_X, GUI_UI_ICON_ARROW_LEFT_UP_Y, GUI_UI_ICON_ARROW_LEFT_DOWN_X, GUI_UI_ICON_ARROW_LEFT_DOWN_Y);
 	newIcon->setButtonEventCallback(&outfits_Events, OUTFITS_ICON_PREV_MOUNT_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_PREV_DIRECTION_X, OUTFITS_ICON_PREV_DIRECTION_Y, OUTFITS_ICON_PREV_DIRECTION_W, OUTFITS_ICON_PREV_DIRECTION_H), 3, 352, 438, 392, 438);
+	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_PREV_DIRECTION_X, OUTFITS_ICON_PREV_DIRECTION_Y, OUTFITS_ICON_PREV_DIRECTION_W, OUTFITS_ICON_PREV_DIRECTION_H), GUI_UI_IMAGE, GUI_UI_ICON_ROTATE_LEFT_UP_X, GUI_UI_ICON_ROTATE_LEFT_UP_Y, GUI_UI_ICON_ROTATE_LEFT_DOWN_X, GUI_UI_ICON_ROTATE_LEFT_DOWN_Y);
 	newIcon->setButtonEventCallback(&outfits_Events, OUTFITS_ICON_PREV_DIRECTION_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_NEXT_OUTFIT_X, OUTFITS_ICON_NEXT_OUTFIT_Y, OUTFITS_ICON_NEXT_OUTFIT_W, OUTFITS_ICON_NEXT_OUTFIT_H), 3, 260, 232, 300, 232);
+	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_NEXT_OUTFIT_X, OUTFITS_ICON_NEXT_OUTFIT_Y, OUTFITS_ICON_NEXT_OUTFIT_W, OUTFITS_ICON_NEXT_OUTFIT_H), GUI_UI_IMAGE, GUI_UI_ICON_ARROW_RIGHT_UP_X, GUI_UI_ICON_ARROW_RIGHT_UP_Y, GUI_UI_ICON_ARROW_RIGHT_DOWN_X, GUI_UI_ICON_ARROW_RIGHT_DOWN_Y);
 	newIcon->setButtonEventCallback(&outfits_Events, OUTFITS_ICON_NEXT_OUTFIT_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_NEXT_MOUNT_X, OUTFITS_ICON_NEXT_MOUNT_Y, OUTFITS_ICON_NEXT_MOUNT_W, OUTFITS_ICON_NEXT_MOUNT_H), 3, 260, 232, 300, 232);
+	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_NEXT_MOUNT_X, OUTFITS_ICON_NEXT_MOUNT_Y, OUTFITS_ICON_NEXT_MOUNT_W, OUTFITS_ICON_NEXT_MOUNT_H), GUI_UI_IMAGE, GUI_UI_ICON_ARROW_RIGHT_UP_X, GUI_UI_ICON_ARROW_RIGHT_UP_Y, GUI_UI_ICON_ARROW_RIGHT_DOWN_X, GUI_UI_ICON_ARROW_RIGHT_DOWN_Y);
 	newIcon->setButtonEventCallback(&outfits_Events, OUTFITS_ICON_NEXT_MOUNT_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_NEXT_DIRECTION_X, OUTFITS_ICON_NEXT_DIRECTION_Y, OUTFITS_ICON_NEXT_DIRECTION_W, OUTFITS_ICON_NEXT_DIRECTION_H), 3, 372, 438, 329, 12);
+	newIcon = new GUI_Icon(iRect(OUTFITS_ICON_NEXT_DIRECTION_X, OUTFITS_ICON_NEXT_DIRECTION_Y, OUTFITS_ICON_NEXT_DIRECTION_W, OUTFITS_ICON_NEXT_DIRECTION_H), GUI_UI_IMAGE, GUI_UI_ICON_ROTATE_RIGHT_UP_X, GUI_UI_ICON_ROTATE_RIGHT_UP_Y, GUI_UI_ICON_ROTATE_RIGHT_DOWN_X, GUI_UI_ICON_ROTATE_RIGHT_DOWN_Y);
 	newIcon->setButtonEventCallback(&outfits_Events, OUTFITS_ICON_NEXT_DIRECTION_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
@@ -651,11 +641,11 @@ void UTIL_createOutfitWindow(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Ui
 	newLabel = new GUI_Label(iRect(OUTFITS_LABEL_MOUNT_X, OUTFITS_LABEL_MOUNT_Y, 0, 0), mountName, OUTFITS_LABEL_MOUNT_EVENTID);
 	newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
 	newWindow->addChild(newLabel);
-	GUI_Button* newButton = new GUI_Button(iRect(OUTFITS_WIDTH-56, OUTFITS_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(OUTFITS_WIDTH-56, OUTFITS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&outfits_Events, OUTFITS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(OUTFITS_WIDTH-109, OUTFITS_HEIGHT-30, 43, 20), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(OUTFITS_WIDTH-109, OUTFITS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&outfits_Events, OUTFITS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
@@ -1043,45 +1033,45 @@ void GUI_Outfit_Colors::onLMouseUp(Sint32 x, Sint32 y)
 void GUI_Outfit_Colors::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(3, 99, 198, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+16, 2, 2);
-	renderer->drawPicture(3, 99, 198, m_tRect.x1, m_tRect.y1+m_tRect.y2-2, 2, 2);
-	renderer->drawPictureRepeat(3, 2, 198, 96, 2, m_tRect.x1, m_tRect.y1+16, m_tRect.x2-2, 2);
-	renderer->drawPictureRepeat(3, 256, 0, 2, 96, m_tRect.x1, m_tRect.y1+18, 2, m_tRect.y2-20);
-	renderer->drawPictureRepeat(3, 0, 96, 96, 2, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-2, m_tRect.x2-2, 2);
-	renderer->drawPictureRepeat(3, 0, 98, 2, 96, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+18, 2, m_tRect.y2-20);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+16, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1+16, m_tRect.x2-2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1+18, 2, m_tRect.y2-20);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-2, m_tRect.x2-2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+18, 2, m_tRect.y2-20);
 
-	renderer->drawPicture(3, 210, 200, m_tRect.x1, m_tRect.y1, 62, 18);
-	renderer->drawPicture(3, 304, 200, m_tRect.x1+62, m_tRect.y1, 2, 18);
-	renderer->drawPicture(3, 211, 200, m_tRect.x1+64, m_tRect.y1, 61, 18);
-	renderer->drawPicture(3, 304, 200, m_tRect.x1+125, m_tRect.y1, 2, 18);
-	renderer->drawPicture(3, 211, 200, m_tRect.x1+127, m_tRect.y1, 61, 18);
-	renderer->drawPicture(3, 304, 200, m_tRect.x1+188, m_tRect.y1, 2, 18);
-	renderer->drawPicture(3, 211, 200, m_tRect.x1+190, m_tRect.y1, 61, 18);
-	renderer->drawPicture(3, 304, 200, m_tRect.x1+251, m_tRect.y1, 2, 18);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1, m_tRect.y1, 62, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+GUI_UI_ICON_UNACTIVE_CHANNEL_W-2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+62, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+64, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+GUI_UI_ICON_UNACTIVE_CHANNEL_W-2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+125, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+127, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+GUI_UI_ICON_UNACTIVE_CHANNEL_W-2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+188, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+190, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+GUI_UI_ICON_UNACTIVE_CHANNEL_W-2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+251, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
 	switch(m_selected)
 	{
 		case 1:
 		{
-			renderer->drawPicture(3, 114, 200, m_tRect.x1+63, m_tRect.y1, 62, 18);
-			renderer->drawPicture(3, 208, 200, m_tRect.x1+125, m_tRect.y1, 2, 18);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+63, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X+GUI_UI_ICON_ACTIVE_CHANNEL_W-2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+125, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 		}
 		break;
 		case 2:
 		{
-			renderer->drawPicture(3, 114, 200, m_tRect.x1+126, m_tRect.y1, 62, 18);
-			renderer->drawPicture(3, 208, 200, m_tRect.x1+188, m_tRect.y1, 2, 18);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+126, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X+GUI_UI_ICON_ACTIVE_CHANNEL_W-2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+188, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 		}
 		break;
 		case 3:
 		{
-			renderer->drawPicture(3, 114, 200, m_tRect.x1+189, m_tRect.y1, 62, 18);
-			renderer->drawPicture(3, 208, 200, m_tRect.x1+251, m_tRect.y1, 2, 18);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+189, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X+GUI_UI_ICON_ACTIVE_CHANNEL_W-2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+251, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 		}
 		break;
 		default:
 		{
-			renderer->drawPicture(3, 114, 200, m_tRect.x1, m_tRect.y1, 62, 18);
-			renderer->drawPicture(3, 208, 200, m_tRect.x1+62, m_tRect.y1, 2, 18);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X+GUI_UI_ICON_ACTIVE_CHANNEL_W-2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+62, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 		}
 		break;
 	}
@@ -1103,11 +1093,11 @@ void GUI_Outfit_Colors::render()
 			renderer->fillRectangle(posX+2, posY+2, 8, 8, red, green, blue, 255);
 			if(g_outfitColors[m_selected] == c)
 			{
-				renderer->drawPicture(3, 222, 134, posX, posY, 12, 12);
+				renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_COLOR_BOX_DOWN_X, GUI_UI_ICON_COLOR_BOX_DOWN_Y, posX, posY, GUI_UI_ICON_COLOR_BOX_DOWN_W, GUI_UI_ICON_COLOR_BOX_DOWN_H);
 				renderer->drawRectangle(posX-1, posY-1, 14, 14, 255, 255, 255, 255);
 			}
 			else
-				renderer->drawPicture(3, 222, (hoverC == c ? 134 : 122), posX, posY, 12, 12);
+				renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_COLOR_BOX_UP_X, (hoverC == c ? GUI_UI_ICON_COLOR_BOX_DOWN_Y : GUI_UI_ICON_COLOR_BOX_UP_Y), posX, posY, GUI_UI_ICON_COLOR_BOX_UP_W, GUI_UI_ICON_COLOR_BOX_UP_H);
 			++c;
 			posX += 13;
 		}

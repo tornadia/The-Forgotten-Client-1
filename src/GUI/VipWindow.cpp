@@ -41,6 +41,8 @@
 extern Engine g_engine;
 extern Game g_game;
 
+bool g_haveVIPOpen = false;
+
 void vip_Events(Uint32 event, Sint32 status)
 {
 	switch(event)
@@ -111,29 +113,32 @@ void vip_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
-		case VIP_EXIT_WINDOW_EVENTID: g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_VIP, status); break;
+		case VIP_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_VIP, status); g_haveVIPOpen = false;} break;
 	}
 }
 
-void UTIL_createVipWindow()
+void UTIL_toggleVipWindow()
 {
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_VIP);
 	if(pPanel)
+	{
 		g_engine.removePanelWindow(pPanel);
+		return;
+	}
 
 	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 117), true, GUI_PANEL_WINDOW_VIP, true);
 	newWindow->setEventCallback(&vip_Events, VIP_RESIZE_WIDTH_EVENTID, VIP_RESIZE_HEIGHT_EVENTID, VIP_EXIT_WINDOW_EVENTID);
-	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(2, 0, 12, 12), 3, 313, 60);
+	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(2, 0, GUI_UI_ICON_VIPLIST_W, GUI_UI_ICON_VIPLIST_H), GUI_UI_IMAGE, GUI_UI_ICON_VIPLIST_X, GUI_UI_ICON_VIPLIST_Y);
 	newWindow->addChild(newImage);
-	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, 12, 12), 3, 234, 98, 234, 110, 0, "Maximise or minimise window");
+	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, GUI_UI_ICON_MINIMIZE_WINDOW_UP_W, GUI_UI_ICON_MINIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y, 0, "Maximise or minimise window");
 	newIcon->setButtonEventCallback(&vip_Events, VIP_MAXIMINI_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(159, 0, 12, 12), 3, 222, 98, 222, 110, 0, "Close this window");
+	newIcon = new GUI_Icon(iRect(159, 0, GUI_UI_ICON_CLOSE_WINDOW_UP_W, GUI_UI_ICON_CLOSE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CLOSE_WINDOW_UP_X, GUI_UI_ICON_CLOSE_WINDOW_UP_Y, GUI_UI_ICON_CLOSE_WINDOW_DOWN_X, GUI_UI_ICON_CLOSE_WINDOW_DOWN_Y, 0, "Close this window");
 	newIcon->setButtonEventCallback(&vip_Events, VIP_CLOSE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(131, 0, 12, 12), 3, 208, 260, 220, 260, 0, "Click here to configure the skills window");
+	newIcon = new GUI_Icon(iRect(131, 0, GUI_UI_ICON_CONFIGURE_WINDOW_UP_W, GUI_UI_ICON_CONFIGURE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CONFIGURE_WINDOW_UP_X, GUI_UI_ICON_CONFIGURE_WINDOW_UP_Y, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_X, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_Y, 0, "Click here to configure the skills window");
 	newIcon->setButtonEventCallback(&vip_Events, VIP_CONFIGURE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
@@ -143,4 +148,5 @@ void UTIL_createVipWindow()
 	newContainer->startEvents();
 	newWindow->addChild(newContainer);
 	g_engine.addToPanel(newWindow);
+	g_haveVIPOpen = true;
 }

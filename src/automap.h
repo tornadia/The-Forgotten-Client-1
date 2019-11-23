@@ -29,7 +29,7 @@
 
 struct MapMark
 {
-	MapMark(Uint16 x, Uint16 y, Uint8 type, std::string text) : x(x), y(y), type(type) {PERFORM_MOVE(this->text, text);}
+	MapMark(Uint16 x, Uint16 y, Uint8 type, std::string text) : x(x), y(y), type(type) {this->text = std::move(text);}
 
 	std::string text;
 	Uint16 x, y;
@@ -41,9 +41,10 @@ class AutomapArea
 	public:
 		AutomapArea(Uint16 x, Uint16 y, Uint8 z, Uint32 area);
 		~AutomapArea();
-
+		
+		MapMark* getMark(Sint32 zoom, Sint32 diff, Sint32 x, Sint32 y, Sint32 x1, Sint32 y1, Sint32 x2, Sint32 y2);
 		void render(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-		void renderMarks(Sint32 m_zoom, Sint32 m_diff, Sint32 x, Sint32 y, Sint32 x1, Sint32 y1, Sint32 x2, Sint32 y2);
+		void renderMarks(Sint32 zoom, Sint32 diff, Sint32 x, Sint32 y, Sint32 x1, Sint32 y1, Sint32 x2, Sint32 y2);
 		void setTileDetail(Uint16 x, Uint16 y, Uint8 color, Uint8 speed);
 
 		Uint8 getColor(Uint16 x, Uint16 y);
@@ -64,11 +65,7 @@ class AutomapArea
 		Uint8 m_speed[256][256];
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, AutomapArea*> AutomapAreas;
-#else
-typedef std::map<Uint32, AutomapArea*> AutomapAreas;
-#endif
 
 class Automap
 {
@@ -84,11 +81,11 @@ class Automap
 		Position& getCentralPosition() {return m_centerPosition;}
 		Position& getPosition() {return m_position;}
 
+		Position getMapDetail(Sint32 x, Sint32 y, Sint32 w, Sint32 h, MapMark*& mark);
 		void setTileDetail(Uint16 x, Uint16 y, Uint8 z, Uint8 color, Uint8 speed);
 		void render(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
 		bool wasSeen(const Position& pos);
-		bool isWalkable(const Position& pos);
 		Uint8 getSpeed(const Position& pos);
 
 		Sint32 getZoom() {return m_zoom;}

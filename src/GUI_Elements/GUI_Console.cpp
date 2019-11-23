@@ -502,9 +502,9 @@ void GUI_Console::addMessage(Uint32 statementId, time_t timestamp, const std::st
 	newMessage.flags = flags;
 	newMessage.statementId = statementId;
 	newMessage.timestamp = timestamp;
-	PERFORM_MOVE(newMessage.name, name);
+	newMessage.name = std::move(name);
 	newMessage.level = level;
-	PERFORM_MOVE(newMessage.message, message);
+	newMessage.message = std::move(message);
 	newMessage.red = red;
 	newMessage.green = green;
 	newMessage.blue = blue;

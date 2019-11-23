@@ -34,7 +34,7 @@
 #define INFO_FIRST_LABEL_TEXT PRODUCT_NAME
 #define INFO_FIRST_LABEL_X 132
 #define INFO_FIRST_LABEL_Y 41
-#define INFO_SECOND_LABEL_TEXT "Version 0.2.0 Pre-Alpha"
+#define INFO_SECOND_LABEL_TEXT "Version 0.3.0 Pre-Alpha"
 #define INFO_SECOND_LABEL_X 132
 #define INFO_SECOND_LABEL_Y 55
 #define INFO_THIRD_LABEL_TEXT "Written by: Saiyans King"
@@ -59,8 +59,8 @@
 #define INFO_WEBSITE_LINK "https://tibia.com/"
 #define INFO_WEBSITE_X 151
 #define INFO_WEBSITE_Y 160
-#define INFO_WEBSITE_W 86
-#define INFO_WEBSITE_H 20
+#define INFO_WEBSITE_W GUI_UI_BUTTON_86PX_GRAY_UP_W
+#define INFO_WEBSITE_H GUI_UI_BUTTON_86PX_GRAY_UP_H
 #define INFO_WEBSITE_EVENTID 1001
 
 extern Engine g_engine;
@@ -69,9 +69,7 @@ void info_Events(Uint32 event, Sint32)
 {
 	switch(event)
 	{
-		case INFO_WEBSITE_EVENTID:
-			UTIL_OpenURL(INFO_WEBSITE_LINK);
-			break;
+		case INFO_WEBSITE_EVENTID: UTIL_OpenURL(INFO_WEBSITE_LINK); break;
 		case INFO_OK_EVENTID:
 		{
 			GUI_Window* pWindow = g_engine.getCurrentWindow();
@@ -116,11 +114,11 @@ void UTIL_info()
 	newButton->setButtonEventCallback(&info_Events, INFO_WEBSITE_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(INFO_WIDTH-56, INFO_HEIGHT-30, 43, 20), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(INFO_WIDTH-56, INFO_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&info_Events, INFO_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(INFO_WIDTH-56, INFO_HEIGHT-30, 43, 20), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
+	newButton = new GUI_Button(iRect(INFO_WIDTH-56, INFO_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&info_Events, INFO_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

@@ -148,11 +148,11 @@ void UTIL_createCharacterList()
 		GUI_CharacterView* newCharacterView = new GUI_CharacterView(iRect(18, 200, 200, 82));
 		newWindow->addChild(newCharacterView);
 	}
-	GUI_Button* newButton = new GUI_Button(iRect(180, (newCharacterList ? 355 : 265), 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(180, (newCharacterList ? 355 : 265), GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&characterlist_Events, CHARACTERLIST_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(127, (newCharacterList ? 355 : 265), 43, 20), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(127, (newCharacterList ? 355 : 265), GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&characterlist_Events, CHARACTERLIST_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

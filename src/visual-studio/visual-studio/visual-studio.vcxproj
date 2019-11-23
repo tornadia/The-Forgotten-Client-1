@@ -60,6 +60,7 @@
     <ClCompile Include="..\..\GUI\ReadWrite.cpp" />
     <ClCompile Include="..\..\GUI\ShopWindow.cpp" />
     <ClCompile Include="..\..\GUI\SkillsWindow.cpp" />
+    <ClCompile Include="..\..\GUI\SpellsWindow.cpp" />
     <ClCompile Include="..\..\GUI\TradeWindow.cpp" />
     <ClCompile Include="..\..\GUI\TutorialHint.cpp" />
     <ClCompile Include="..\..\GUI\VipWindow.cpp" />
@@ -151,6 +152,7 @@
     <ClInclude Include="..\..\GUI\Minimap.h" />
     <ClInclude Include="..\..\GUI\Outfits.h" />
     <ClInclude Include="..\..\GUI\SkillsWindow.h" />
+    <ClInclude Include="..\..\gui_const.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_Button.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_CharacterView.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_CheckBox.h" />

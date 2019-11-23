@@ -35,10 +35,6 @@ extern Uint32 g_frameTime;
 #define CHANNEL_ID_PRIVATE_START 0x10000
 #define CHANNEL_ID_PRIVATE_END 0x12710
 
-#define CHANNEL_NAME_DEFAULT_LEGACY "Default"
-#define CHANNEL_NAME_DEFAULT "Local Chat"
-#define CHANNEL_NAME_SERVERLOG "Server Log"
-#define CHANNEL_NAME_NPC "NPCs"
 #define CHANNEL_MESSAGE_HELP_LEGACY "Welcome to the help channel! Feel free to ask questions concerning client controls, general game play, use of accounts and the official homepage. In-depth questions about the content of the game will not be answered. Experienced players will be glad to help you to the best of their knowledge. Keep in mind that this is not a chat channel for general conversations. Therefore please limit your statements to relevant questions and answers."
 #define CHANNEL_MESSAGE_HELP "Welcome to the help channel.\nIn this channel you can ask questions about Tibia.Experienced players will gladly help you to the best of their knowledge.\nFor detailed information about quests and other game content please take a look at our supported fansites at http://www.tibia.com/community/?subtopic=fansites\nPlease remember to write in English here so everybody can understand you."
 #define CHANNEL_MESSAGE_ADVERTISING "Here you can advertise all kinds of things. Among others, you can trade Tibia items, advertise ingame events, seek characters for a quest or a hunting group, find members for your guild or look for somebody to help you with something.\nIt goes without saying that all advertisements must be conform to the Tibia Rules.Keep in mind that it is illegal to advertise trades including premium time, real money or Tibia characters."
@@ -114,12 +110,20 @@ void Chat::navigateHistory(Sint32 direction)
 void Chat::openPrivateChannel(const std::string& receiver)
 {
 	//Search for available channelId
+	Channel* channel = getPrivateChannel(receiver);
+	if(channel)
+	{
+		setCurrentChannel(channel->channelId);
+		return;
+	}
+
 	for(Uint32 i = CHANNEL_ID_PRIVATE_START; i < CHANNEL_ID_PRIVATE_END; ++i)
 	{
-		Channel* channel = getChannel(i);
+		channel = getChannel(i);
 		if(!channel)
 		{
 			openChannel(i, receiver, true);
+			setCurrentChannel(i);
 			return;
 		}
 	}
@@ -139,7 +143,7 @@ void Chat::openChannel(Uint32 channelId, const std::string channelName, bool pri
 	}
 
 	Channel newChannel;
-	PERFORM_MOVE(newChannel.channelName, channelName);
+	newChannel.channelName = std::move(channelName);
 	newChannel.channelConsole = new GUI_Console(iRect(0, 0, 0, 0));
 	newChannel.channelId = channelId;
 	newChannel.highlightTime = 0;
@@ -365,7 +369,10 @@ void Chat::addChannelMessage(Uint32 channelId, MessageMode mode, Uint32 statemen
 	{
 		Channel* NPCchannel = getChannel(CHANNEL_ID_NPC);
 		if(!NPCchannel)
+		{
 			openChannel(CHANNEL_ID_NPC, CHANNEL_NAME_NPC);
+			setCurrentChannel(CHANNEL_ID_NPC);
+		}
 	}
 
 	for(std::vector<Channel>::iterator it = m_channels.begin(), end = m_channels.end(); it != end; ++it)
@@ -542,6 +549,39 @@ Channel* Chat::getChannel(Uint32 channelId)
 			return &currentChannel;
 	}
 	return NULL;
+}
+
+void Chat::switchToNextChannel()
+{
+	if(m_channels.empty())
+		return;
+
+	++m_selectedChannel;
+	if(m_selectedChannel == m_channels.size())
+		m_selectedChannel = 0;
+}
+
+void Chat::switchToPreviousChannel()
+{
+	if(m_channels.empty())
+		return;
+
+	if(m_selectedChannel == 0)
+		m_selectedChannel = m_channels.size();
+	--m_selectedChannel;
+}
+
+void Chat::setCurrentChannel(Uint32 channelId)
+{
+	for(size_t it = 0, end = m_channels.size(); it != end; ++it)
+	{
+		Channel& currentChannel = m_channels[it];
+		if(currentChannel.channelId == channelId)
+		{
+			m_selectedChannel = it;
+			return;
+		}
+	}
 }
 
 Channel* Chat::getCurrentChannel()
@@ -865,27 +905,27 @@ void Chat::onMouseMove(iRect& rect, Sint32 x, Sint32 y)
 void Chat::render(iRect& rect)
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPictureRepeat(3, 2, 197, 96, 1, rect.x1, rect.y1, rect.x2, 1);
-	renderer->drawPictureRepeat(3, 0, 0, 96, 96, rect.x1, rect.y1+1, rect.x2, 3);
-	renderer->drawPictureRepeat(3, 0, 96, 96, 2, rect.x1, rect.y1+4, rect.x2, 1);
-	renderer->drawPictureRepeat(3, 210, 182, 96, 16, rect.x1, rect.y1+5, rect.x2, 16);
-	renderer->drawPictureRepeat(3, 0, 0, 96, 96, rect.x1+2, rect.y1+23, rect.x2-4, rect.y2-25);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, rect.x1, rect.y1, rect.x2, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, rect.x1, rect.y1+1, rect.x2, 3);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, rect.x1, rect.y1+4, rect.x2, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_CONSOLE_BACKGROUND_X, GUI_UI_ICON_CONSOLE_BACKGROUND_Y, GUI_UI_ICON_CONSOLE_BACKGROUND_W, GUI_UI_ICON_CONSOLE_BACKGROUND_H, rect.x1, rect.y1+5, rect.x2, 16);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, rect.x1+2, rect.y1+23, rect.x2-4, rect.y2-25);
+	
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_TOPLEFT_BORDER_X, GUI_UI_ICON_TOPLEFT_BORDER_Y, rect.x1+4, rect.y1+26, GUI_UI_ICON_TOPLEFT_BORDER_W, GUI_UI_ICON_TOPLEFT_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BOTLEFT_BORDER_X, GUI_UI_ICON_BOTLEFT_BORDER_Y, rect.x1+4, rect.y1+rect.y2-25, GUI_UI_ICON_BOTLEFT_BORDER_W, GUI_UI_ICON_BOTLEFT_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_TOPRIGHT_BORDER_X, GUI_UI_ICON_TOPRIGHT_BORDER_Y, rect.x1+rect.x2-7, rect.y1+26, GUI_UI_ICON_TOPRIGHT_BORDER_W, GUI_UI_ICON_TOPRIGHT_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BOTRIGHT_BORDER_X, GUI_UI_ICON_BOTRIGHT_BORDER_Y, rect.x1+rect.x2-7, rect.y1+rect.y2-25, GUI_UI_ICON_BOTRIGHT_BORDER_W, GUI_UI_ICON_BOTRIGHT_BORDER_H);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_DIVIDER_X, GUI_UI_ICON_HORIZONTAL_DIVIDER_Y, GUI_UI_ICON_HORIZONTAL_DIVIDER_W, GUI_UI_ICON_HORIZONTAL_DIVIDER_H, rect.x1+7, rect.y1+26, rect.x2-14, 3);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_DIVIDER_X, GUI_UI_ICON_HORIZONTAL_DIVIDER_Y, GUI_UI_ICON_HORIZONTAL_DIVIDER_W, GUI_UI_ICON_HORIZONTAL_DIVIDER_H, rect.x1+7, rect.y1+rect.y2-25, rect.x2-14, 3);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_DIVIDER_X, GUI_UI_ICON_VERTICAL_DIVIDER_Y, GUI_UI_ICON_VERTICAL_DIVIDER_W, GUI_UI_ICON_VERTICAL_DIVIDER_H, rect.x1+4, rect.y1+29, 3, rect.y2-54);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_DIVIDER_X, GUI_UI_ICON_VERTICAL_DIVIDER_Y, GUI_UI_ICON_VERTICAL_DIVIDER_W, GUI_UI_ICON_VERTICAL_DIVIDER_H, rect.x1+rect.x2-7, rect.y1+29, 3, rect.y2-54);
 
-	renderer->drawPicture(3, 98, 201, rect.x1+4, rect.y1+26, 3, 3);
-	renderer->drawPicture(3, 98, 204, rect.x1+4, rect.y1+rect.y2-25, 3, 3);
-	renderer->drawPicture(3, 101, 201, rect.x1+rect.x2-7, rect.y1+26, 3, 3);
-	renderer->drawPicture(3, 101, 204, rect.x1+rect.x2-7, rect.y1+rect.y2-25, 3, 3);
-	renderer->drawPictureRepeat(3, 2, 211, 96, 3, rect.x1+7, rect.y1+26, rect.x2-14, 3);
-	renderer->drawPictureRepeat(3, 2, 211, 96, 3, rect.x1+7, rect.y1+rect.y2-25, rect.x2-14, 3);
-	renderer->drawPictureRepeat(3, 260, 0, 3, 96, rect.x1+4, rect.y1+29, 3, rect.y2-54);
-	renderer->drawPictureRepeat(3, 260, 0, 3, 96, rect.x1+rect.x2-7, rect.y1+29, 3, rect.y2-54);
-
-	renderer->drawPicture(3, 99, 198, rect.x1+rect.x2-2, rect.y1+21, 2, 2);
-	renderer->drawPicture(3, 99, 198, rect.x1, rect.y1+rect.y2-2, 2, 2);
-	renderer->drawPictureRepeat(3, 2, 198, 96, 2, rect.x1, rect.y1+21, rect.x2-2, 2);
-	renderer->drawPictureRepeat(3, 256, 0, 2, 96, rect.x1, rect.y1+23, 2, rect.y2-25);
-	renderer->drawPictureRepeat(3, 0, 96, 96, 2, rect.x1+2, rect.y1+rect.y2-2, rect.x2-2, 2);
-	renderer->drawPictureRepeat(3, 0, 98, 2, 96, rect.x1+rect.x2-2, rect.y1+23, 2, rect.y2-25);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, rect.x1+rect.x2-2, rect.y1+21, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, rect.x1, rect.y1+rect.y2-2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, rect.x1, rect.y1+21, rect.x2-2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, rect.x1, rect.y1+23, 2, rect.y2-25);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, rect.x1+2, rect.y1+rect.y2-2, rect.x2-2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, rect.x1+rect.x2-2, rect.y1+23, 2, rect.y2-25);
 
 	Channel* selectedchannel = getCurrentChannel();
 	if(!selectedchannel)
@@ -917,23 +957,23 @@ void Chat::render(iRect& rect)
 			if(buttonType == 2)
 			{
 				if(m_buttonNext == 1)
-					renderer->drawPicture(3, 440, 398, rect.x1+rect.x2-82, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_UPDATE_DOWN_X, GUI_UI_ICON_BROWSE_RIGHT_UPDATE_DOWN_Y, rect.x1+rect.x2-82, rect.y1+5, GUI_UI_ICON_BROWSE_RIGHT_UPDATE_DOWN_W, GUI_UI_ICON_BROWSE_RIGHT_UPDATE_DOWN_H);
 				else
-					renderer->drawPicture(3, 114, 254, rect.x1+rect.x2-82, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_UPDATE_UP_X, GUI_UI_ICON_BROWSE_RIGHT_UPDATE_UP_Y, rect.x1+rect.x2-82, rect.y1+5, GUI_UI_ICON_BROWSE_RIGHT_UPDATE_UP_W, GUI_UI_ICON_BROWSE_RIGHT_UPDATE_UP_H);
 			}
 			else if(buttonType == 1)
 			{
 				if(m_buttonNext == 1)
-					renderer->drawPicture(3, 422, 398, rect.x1+rect.x2-82, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_FLASH_DOWN_X, GUI_UI_ICON_BROWSE_RIGHT_FLASH_DOWN_Y, rect.x1+rect.x2-82, rect.y1+5, GUI_UI_ICON_BROWSE_RIGHT_FLASH_DOWN_W, GUI_UI_ICON_BROWSE_RIGHT_FLASH_DOWN_H);
 				else
-					renderer->drawPicture(3, 150, 254, rect.x1+rect.x2-82, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_FLASH_UP_X, GUI_UI_ICON_BROWSE_RIGHT_FLASH_UP_Y, rect.x1+rect.x2-82, rect.y1+5, GUI_UI_ICON_BROWSE_RIGHT_FLASH_UP_W, GUI_UI_ICON_BROWSE_RIGHT_FLASH_UP_H);
 			}
 			else
 			{
 				if(m_buttonNext == 1)
-					renderer->drawPicture(3, 404, 398, rect.x1+rect.x2-82, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_DOWN_X, GUI_UI_ICON_BROWSE_RIGHT_DOWN_Y, rect.x1+rect.x2-82, rect.y1+5, GUI_UI_ICON_BROWSE_RIGHT_DOWN_W, GUI_UI_ICON_BROWSE_RIGHT_DOWN_H);
 				else
-					renderer->drawPicture(3, 324, 200, rect.x1+rect.x2-82, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_UP_X, GUI_UI_ICON_BROWSE_RIGHT_UP_Y, rect.x1+rect.x2-82, rect.y1+5, GUI_UI_ICON_BROWSE_RIGHT_UP_W, GUI_UI_ICON_BROWSE_RIGHT_UP_H);
 			}
 		}
 		if(m_currentPage != 0)
@@ -953,23 +993,23 @@ void Chat::render(iRect& rect)
 			if(buttonType == 2)
 			{
 				if(m_buttonPrevious == 1)
-					renderer->drawPicture(3, 494, 398, rect.x1, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_UPDATE_DOWN_X, GUI_UI_ICON_BROWSE_LEFT_UPDATE_DOWN_Y, rect.x1, rect.y1+5, GUI_UI_ICON_BROWSE_LEFT_UPDATE_DOWN_W, GUI_UI_ICON_BROWSE_LEFT_UPDATE_DOWN_H);
 				else
-					renderer->drawPicture(3, 96, 254, rect.x1, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_UPDATE_UP_X, GUI_UI_ICON_BROWSE_LEFT_UPDATE_UP_Y, rect.x1, rect.y1+5, GUI_UI_ICON_BROWSE_LEFT_UPDATE_UP_W, GUI_UI_ICON_BROWSE_LEFT_UPDATE_UP_H);
 			}
 			else if(buttonType == 1)
 			{
 				if(m_buttonPrevious == 1)
-					renderer->drawPicture(3, 476, 398, rect.x1, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_FLASH_DOWN_X, GUI_UI_ICON_BROWSE_LEFT_FLASH_DOWN_Y, rect.x1, rect.y1+5, GUI_UI_ICON_BROWSE_LEFT_FLASH_DOWN_W, GUI_UI_ICON_BROWSE_LEFT_FLASH_DOWN_H);
 				else
-					renderer->drawPicture(3, 132, 254, rect.x1, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_FLASH_UP_X, GUI_UI_ICON_BROWSE_LEFT_FLASH_UP_Y, rect.x1, rect.y1+5, GUI_UI_ICON_BROWSE_LEFT_FLASH_UP_W, GUI_UI_ICON_BROWSE_LEFT_FLASH_UP_H);
 			}
 			else
 			{
 				if(m_buttonPrevious == 1)
-					renderer->drawPicture(3, 458, 398, rect.x1, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_DOWN_X, GUI_UI_ICON_BROWSE_LEFT_DOWN_Y, rect.x1, rect.y1+5, GUI_UI_ICON_BROWSE_LEFT_DOWN_W, GUI_UI_ICON_BROWSE_LEFT_DOWN_H);
 				else
-					renderer->drawPicture(3, 306, 200, rect.x1, rect.y1+5, 18, 18);
+					renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_UP_X, GUI_UI_ICON_BROWSE_LEFT_UP_Y, rect.x1, rect.y1+5, GUI_UI_ICON_BROWSE_LEFT_UP_W, GUI_UI_ICON_BROWSE_LEFT_UP_H);
 			}
 		}
 	}
@@ -983,12 +1023,12 @@ void Chat::render(iRect& rect)
 		Channel& currentChannel = m_channels[it];
 		if(m_selectedChannel == it)
 		{
-			renderer->drawPicture(3, 114, 200, posX, rect.y1+5, 96, 18);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, posX, rect.y1+5, GUI_UI_ICON_ACTIVE_CHANNEL_W, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 			g_engine.drawFont(CLIENT_FONT_OUTLINED, posX+48, rect.y1+9, currentChannel.channelName, 223, 223, 223, CLIENT_FONT_ALIGN_CENTER);
 		}
 		else
 		{
-			renderer->drawPicture(3, 210, 200, posX, rect.y1+5, 96, 16);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, posX, rect.y1+5, GUI_UI_ICON_UNACTIVE_CHANNEL_W, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
 			if(currentChannel.highlightTime >= g_frameTime)
 				g_engine.drawFont(CLIENT_FONT_OUTLINED, posX+48, rect.y1+9, currentChannel.channelName, 250, 250, 250, CLIENT_FONT_ALIGN_CENTER);
 			else if(currentChannel.unreadMessage)
@@ -1000,21 +1040,21 @@ void Chat::render(iRect& rect)
 	}
 	renderer->disableClipRect();
 
-	renderer->drawPicture(3, 288, (m_ignoreListStatus == 1 ? 162 : 146), rect.x1+rect.x2-16, rect.y1+5, 16, 16);
-	renderer->drawPicture(3, 224, (m_channelListStatus == 1 ? 162 : 146), rect.x1+rect.x2-32, rect.y1+5, 16, 16);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_IGNORE_WINDOW_UP_X, (m_ignoreListStatus == 1 ? GUI_UI_ICON_IGNORE_WINDOW_DOWN_Y : GUI_UI_ICON_IGNORE_WINDOW_UP_Y), rect.x1+rect.x2-16, rect.y1+5, GUI_UI_ICON_IGNORE_WINDOW_UP_W, GUI_UI_ICON_IGNORE_WINDOW_UP_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_REQUEST_CHANNELS_UP_X, (m_channelListStatus == 1 ? GUI_UI_ICON_REQUEST_CHANNELS_DOWN_Y : GUI_UI_ICON_REQUEST_CHANNELS_UP_Y), rect.x1+rect.x2-32, rect.y1+5, GUI_UI_ICON_REQUEST_CHANNELS_UP_W, GUI_UI_ICON_REQUEST_CHANNELS_UP_H);
 	if(selectedchannel->channelClosable)
 	{
-		renderer->drawPicture(3, 256, ((selectedchannel->workAsServerLog || m_serverLogStatus == 1) ? 162 : 146), rect.x1+rect.x2-48, rect.y1+5, 16, 16);
-		renderer->drawPicture(3, 208, (m_closeChannelStatus == 1 ? 162 : 146), rect.x1+rect.x2-64, rect.y1+5, 16, 16);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_CONSOLE_MESSAGES_UP_X, ((selectedchannel->workAsServerLog || m_serverLogStatus == 1) ? GUI_UI_ICON_CONSOLE_MESSAGES_DOWN_Y : GUI_UI_ICON_CONSOLE_MESSAGES_UP_Y), rect.x1+rect.x2-48, rect.y1+5, GUI_UI_ICON_CONSOLE_MESSAGES_UP_W, GUI_UI_ICON_CONSOLE_MESSAGES_UP_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_CLOSE_CHANNEL_UP_X, (m_closeChannelStatus == 1 ? GUI_UI_ICON_CLOSE_CHANNEL_DOWN_Y : GUI_UI_ICON_CLOSE_CHANNEL_UP_Y), rect.x1+rect.x2-64, rect.y1+5, GUI_UI_ICON_CLOSE_CHANNEL_UP_W, GUI_UI_ICON_CLOSE_CHANNEL_UP_H);
 	}
 	else
 	{
 		if(m_volumeAdjustement == VOLUME_SAY)
-			renderer->drawPicture(3, 274, (m_volumeStatus == 1 ? 130 : 114), rect.x1+5, rect.y1+rect.y2-20, 16, 16);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_VOLUME1_WINDOW_UP_X, (m_volumeStatus == 1 ? GUI_UI_ICON_VOLUME1_WINDOW_DOWN_Y : GUI_UI_ICON_VOLUME1_WINDOW_UP_Y), rect.x1+5, rect.y1+rect.y2-20, GUI_UI_ICON_VOLUME1_WINDOW_UP_W, GUI_UI_ICON_VOLUME1_WINDOW_UP_H);
 		else if(m_volumeAdjustement == VOLUME_YELL)
-			renderer->drawPicture(3, 258, (m_volumeStatus == 1 ? 130 : 114), rect.x1+5, rect.y1+rect.y2-20, 16, 16);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_VOLUME2_WINDOW_UP_X, (m_volumeStatus == 1 ? GUI_UI_ICON_VOLUME2_WINDOW_DOWN_Y : GUI_UI_ICON_VOLUME2_WINDOW_UP_Y), rect.x1+5, rect.y1+rect.y2-20, GUI_UI_ICON_VOLUME2_WINDOW_UP_W, GUI_UI_ICON_VOLUME2_WINDOW_UP_H);
 		else if(m_volumeAdjustement == VOLUME_WHISPER)
-			renderer->drawPicture(3, 290, (m_volumeStatus == 1 ? 130 : 114), rect.x1+5, rect.y1+rect.y2-20, 16, 16);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_VOLUME0_WINDOW_UP_X, (m_volumeStatus == 1 ? GUI_UI_ICON_VOLUME0_WINDOW_DOWN_Y : GUI_UI_ICON_VOLUME0_WINDOW_UP_Y), rect.x1+5, rect.y1+rect.y2-20, GUI_UI_ICON_VOLUME0_WINDOW_UP_W, GUI_UI_ICON_VOLUME0_WINDOW_UP_H);
 	}
 
 	if(!m_textbox->isActive())

@@ -385,14 +385,14 @@ void GUI_Panel::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 void GUI_Panel::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(3, 99, 198, m_tRect.x1+m_tRect.x2-2, m_tRect.y1, 2, 2);
-	renderer->drawPicture(3, 99, 198, m_tRect.x1, m_tRect.y1+m_tRect.y2-2, 2, 2);
-	renderer->drawPictureRepeat(3, 2, 198, 96, 2, m_tRect.x1, m_tRect.y1, m_tRect.x2-2, 2);
-	renderer->drawPictureRepeat(3, 256, 0, 2, 96, m_tRect.x1, m_tRect.y1+2, 2, m_tRect.y2-4);
-	renderer->drawPictureRepeat(3, 0, 96, 96, 2, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-2, m_tRect.x2-2, 2);
-	renderer->drawPictureRepeat(3, 0, 98, 2, 96, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+2, 2, m_tRect.y2-4);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1+m_tRect.x2-2, m_tRect.y1, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1, m_tRect.x2-2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1+2, 2, m_tRect.y2-4);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-2, m_tRect.x2-2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+2, 2, m_tRect.y2-4);
 	if(m_freeHeight > 0)
-		renderer->drawPictureRepeat(3, 0, 0, 96, 96, m_tRect.x1+2, m_lastPosY, m_tRect.x2-4, m_freeHeight);
+		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1+2, m_lastPosY, m_tRect.x2-4, m_freeHeight);
 
 	if(m_actPanel)
 	{

@@ -27,11 +27,14 @@
 class GUI_StaticImage : public GUI_Element
 {
 	public:
-		GUI_StaticImage(iRect boxRect, Uint16 pictureId, Sint32 pictureX, Sint32 pictureY, Uint32 internalID = 0);
+		GUI_StaticImage(iRect boxRect, Uint16 pictureId, Sint32 pictureX, Sint32 pictureY, Uint32 internalID = 0, const std::string description = "");
+
+		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 
 		void render();
 
 	protected:
+		std::string m_description;
 		Sint32 m_pictureX;
 		Sint32 m_pictureY;
 		Uint16 m_pictureId;

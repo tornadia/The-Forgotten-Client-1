@@ -120,13 +120,8 @@ typedef enum
 #define GLES2_FORCE_VBOS 1
 #endif
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, OpenglES2Texture*> U32BGLES2Textures;
 typedef std::unordered_map<Uint64, OpenglES2Texture*> U64BGLES2Textures;
-#else
-typedef std::map<Uint32, OpenglES2Texture*> U32BGLES2Textures;
-typedef std::map<Uint64, OpenglES2Texture*> U64BGLES2Textures;
-#endif
 
 class SurfaceOpenglES2 : public Surface
 {

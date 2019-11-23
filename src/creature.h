@@ -56,6 +56,7 @@ class Creature : public Thing
 		void update();
 		void render(Sint32 posX, Sint32 posY, bool visible_tile);
 		void renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 drawY, float scale, bool visible);
+		void renderOnBattle(Sint32 posX, Sint32 posY, bool renderManaBar);
 
 		void addTimedSquare(Uint8 color);
 		void removeTimedSquare();
@@ -76,16 +77,30 @@ class Creature : public Thing
 		void setEmblem(Uint8 emblem);
 		void setType(Uint8 type);
 		void setIcon(Uint8 icon);
+		void setVisible(bool visible);
+		SDL_INLINE void setShowStatus(bool showStatus) {m_showStatus = showStatus;}
+		SDL_INLINE void setManaPercent(Uint8 percent) {m_manaPercent = percent;}
+		SDL_INLINE void setVocation(Uint8 vocation) {m_vocation = vocation;}
+		SDL_INLINE void setNeedUpdate(bool needUpdate) {m_needUpdate = needUpdate;}
 		SDL_INLINE void setLocalCreature(bool localCreature) {m_isLocalCreature = localCreature;}
 		SDL_FORCE_INLINE Uint32 getId() {return m_id;}
 		SDL_FORCE_INLINE std::string& getName() {return m_name;}
 		SDL_FORCE_INLINE Uint8 getHealth() {return m_health;}
 		SDL_FORCE_INLINE Uint16 getSpeed() {return m_speed;}
+		SDL_FORCE_INLINE Uint16 getHelpers() {return m_helpers;}
 		SDL_FORCE_INLINE Uint8 getSkull() {return m_skull;}
 		SDL_FORCE_INLINE Uint8 getShield() {return m_shield;}
 		SDL_FORCE_INLINE bool isUnpassable() {return m_unpassable;}
 		SDL_FORCE_INLINE Uint8 getEmblem() {return m_emblem;}
 		SDL_FORCE_INLINE Uint8 getType() {return m_type;}
+		SDL_FORCE_INLINE Uint8 getIcon() {return m_icon;}
+		SDL_FORCE_INLINE bool getShowStatus() {return m_showStatus;}
+		SDL_FORCE_INLINE Uint8 getManaPercent() {return m_manaPercent;}
+		SDL_FORCE_INLINE Uint8 getVocation() {return m_vocation;}
+		SDL_FORCE_INLINE Uint32 getVisibleTime() {return m_visibleTime;}
+		SDL_FORCE_INLINE bool isVisible() {return m_isVisible;}
+		SDL_FORCE_INLINE bool hasNeedUpdate() {return m_needUpdate;}
+		SDL_FORCE_INLINE bool isLocalCreature() {return m_isLocalCreature;}
 		
 		SDL_FORCE_INLINE bool isWalking() {return m_walking;}
 		SDL_FORCE_INLINE bool isPreWalking() {return m_preWalking;}
@@ -108,7 +123,6 @@ class Creature : public Thing
 		Animation m_outfitAnimation[ThingFrameGroup_Last];
 		Animation m_mountAnimation[ThingFrameGroup_Last];
 
-		Tile* m_tile;
 		Tile* m_walkTile;
 		Tile* m_drawnTile;
 
@@ -119,6 +133,7 @@ class Creature : public Thing
 		Uint32 m_walkTime;
 		Uint32 m_timedSquareStartTime;
 		Uint32 m_shieldTime;
+		Uint32 m_visibleTime;
 
 		Sint32 m_walkedPixels;
 		Sint32 m_walkOffsetX;
@@ -159,6 +174,8 @@ class Creature : public Thing
 		Uint8 m_red;
 		Uint8 m_green;
 		Uint8 m_blue;
+		Uint8 m_manaPercent;
+		Uint8 m_vocation;
 
 		Direction m_direction;
 		Direction m_turnDirection;
@@ -176,6 +193,9 @@ class Creature : public Thing
 		bool m_showTimedSquare;
 		bool m_showStaticSquare;
 		bool m_showShield;
+		bool m_showStatus;
+		bool m_isVisible;
+		bool m_needUpdate;
 };
 
 #endif /* __FILE_CREATURE_h_ */

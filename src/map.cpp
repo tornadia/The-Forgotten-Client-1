@@ -41,6 +41,23 @@ extern Uint32 g_frameTime;
 
 AStarNodes::AStarNodes(const Position& startPos)
 {
+	nodesTable.reserve(MAX_NODES_COMPLEXITY);
+	#ifdef __USE_SSE__
+	if(SDL_HasSSE())
+	{
+		calculatedNodes = SDL_reinterpret_cast(Sint32*, _mm_malloc(sizeof(Sint32)*MAX_NODES_COMPLEXITY, 32));
+		nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode)*MAX_NODES_COMPLEXITY));
+		openNodes = SDL_reinterpret_cast(bool*, SDL_malloc(sizeof(bool)*MAX_NODES_COMPLEXITY));
+		SDL_memset4(calculatedNodes, SDL_MAX_SINT32, MAX_NODES_COMPLEXITY);
+	}
+	else
+	#endif
+	{
+		calculatedNodes = SDL_reinterpret_cast(Sint32*, SDL_malloc(sizeof(Sint32)*MAX_NODES_COMPLEXITY));
+		nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode)*MAX_NODES_COMPLEXITY));
+		openNodes = SDL_reinterpret_cast(bool*, SDL_malloc(sizeof(bool)*MAX_NODES_COMPLEXITY));
+	}
+
 	curNode = 1;
 	closedNodes = 0;
 	openNodes[0] = true;
@@ -51,8 +68,26 @@ AStarNodes::AStarNodes(const Position& startPos)
 	startNode.y = startPos.y;
 	startNode.f = 0;
 	startNode.g = 0;
-	nodesTable[0] = (startPos.x << 16) | startPos.y;
+	nodesTable[(startPos.x << 16) | startPos.y] = 0;
 	calculatedNodes[0] = 0;
+}
+
+AStarNodes::~AStarNodes()
+{
+	#ifdef __USE_SSE__
+	if(SDL_HasSSE())
+	{
+		_mm_free(calculatedNodes);
+		SDL_free(nodes);
+		SDL_free(openNodes);
+	}
+	else
+	#endif
+	{
+		SDL_free(calculatedNodes);
+		SDL_free(nodes);
+		SDL_free(openNodes);
+	}
 }
 
 bool AStarNodes::createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 Sx, Sint32 Sy, const Position& targetPos, const Position& pos)
@@ -72,100 +107,78 @@ bool AStarNodes::createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 S
 	node.y = pos.y;
 	node.f = f;
 	node.g = ((Dx - Sx) << 3) + ((Dy - Sy) << 3) + (((Dx > Dy) ? Dx : Dy) << 3);
-	nodesTable[retNode] = xy;
+	nodesTable[xy] = retNode;
 	calculatedNodes[retNode] = f + node.g;
 	return true;
 }
 
-#ifdef __USE_SSE2__
-__m128i _mm_sse2_min_epi32(const __m128i a, const __m128i b)
-{
-	__m128i mask = _mm_cmpgt_epi32(a, b);
-	return _mm_or_si128(_mm_and_si128(mask, b), _mm_andnot_si128(mask, a));
-};
-#endif
-
 AStarNode* AStarNodes::getBestNode()
 {
-	#ifdef __USE_SSE4_1__
-	if(SDL_HasSSE41())
+	#ifdef __USE_AVX2__
+	if(SDL_HasAVX2())
 	{
-		Sint32 best_node_f = SDL_MAX_SINT32;
-		Sint32 best_node = -1;
-
-		Sint32 curRound = ((curNode >> 3) << 3);
-		for(Sint32 i = 0; i < curRound; i += 8)
+		const __m256i increment = _mm256_set1_epi32(8);
+		__m256i indices = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
+		__m256i minindices = indices;
+		__m256i minvalues = _mm256_load_si256(reinterpret_cast<const __m256i*>(calculatedNodes));
+		for(Sint32 pos = 8; pos < curNode; pos += 8)
 		{
-			#ifdef UseUnalignedVectors
-			__m128i v1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[i]));
-			__m128i v2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[i+4]));
-			#else
-			__m128i v1 = _mm_load_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[i]));
-			__m128i v2 = _mm_load_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[i+4]));
-			#endif
-			__m128i res = _mm_min_epi32(v1, v2); //Get the minimum of vectors
-			res = _mm_min_epi32(res, _mm_shuffle_epi32(res, _MM_SHUFFLE(2, 3, 0, 1))); //Calculate horizontal minimum
-			res = _mm_min_epi32(res, _mm_shuffle_epi32(res, _MM_SHUFFLE(0, 1, 2, 3))); //Calculate horizontal minimum
-			Sint32 index = i + (UTIL_ctz(_mm_movemask_epi8(_mm_packs_epi32(_mm_cmpeq_epi32(v1, res), _mm_cmpeq_epi32(v2, res)))) >> 1);
-			if(calculatedNodes[index] < best_node_f)
+			const __m256i values = _mm256_load_si256(reinterpret_cast<const __m256i*>(&calculatedNodes[pos]));
+			indices = _mm256_add_epi32(indices, increment);
+			minindices = _mm256_blendv_epi8(minindices, indices, _mm256_cmpgt_epi32(minvalues, values));
+			minvalues = _mm256_min_epi32(values, minvalues);
+		}
+
+		alignas(32) Sint32 values_array[8];
+		alignas(32) Sint32 indices_array[8];
+		_mm256_store_si256(reinterpret_cast<__m256i*>(values_array), minvalues);
+		_mm256_store_si256(reinterpret_cast<__m256i*>(indices_array), minindices);
+
+		Sint32 best_node = indices_array[0];
+		Sint32 best_node_f = values_array[0];
+		for(Sint32 i = 1; i < 8; ++i)
+		{
+			if(values_array[i] < best_node_f)
 			{
-				best_node_f = calculatedNodes[index];
-				best_node = index;
+				best_node_f = values_array[i];
+				best_node = indices_array[i];
 			}
 		}
-		for(Sint32 i = curRound; i < curNode; ++i)
-		{
-			if(!openNodes[i])
-				continue;
-
-			if(calculatedNodes[i] < best_node_f)
-			{
-				best_node_f = calculatedNodes[i];
-				best_node = i;
-			}
-		}
-		return (best_node != -1 ? &nodes[best_node] : NULL);
+		return ((best_node != -1 && openNodes[best_node]) ? &nodes[best_node] : NULL);
 	}
 	else
 	#endif
 	#ifdef __USE_SSE2__
 	if(SDL_HasSSE2())
 	{
-		Sint32 best_node_f = SDL_MAX_SINT32;
-		Sint32 best_node = -1;
-
-		Sint32 curRound = ((curNode >> 3) << 3);
-		for(Sint32 i = 0; i < curRound; i += 8)
+		const __m128i increment = _mm_set1_epi32(4);
+		__m128i indices = _mm_setr_epi32(0, 1, 2, 3);
+		__m128i minindices = indices;
+		__m128i minvalues = _mm_load_si128(reinterpret_cast<const __m128i*>(calculatedNodes));
+		for(Sint32 pos = 4; pos < curNode; pos += 4)
 		{
-			#ifdef UseUnalignedVectors
-			__m128i v1 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[i]));
-			__m128i v2 = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[i+4]));
-			#else
-			__m128i v1 = _mm_load_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[i]));
-			__m128i v2 = _mm_load_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[i+4]));
-			#endif
-			__m128i res = _mm_sse2_min_epi32(v1, v2); //Get the minimum of vectors
-			res = _mm_sse2_min_epi32(res, _mm_shuffle_epi32(res, _MM_SHUFFLE(2, 3, 0, 1))); //Calculate horizontal minimum
-			res = _mm_sse2_min_epi32(res, _mm_shuffle_epi32(res, _MM_SHUFFLE(0, 1, 2, 3))); //Calculate horizontal minimum
-			Sint32 index = i + (UTIL_ctz(_mm_movemask_epi8(_mm_packs_epi32(_mm_cmpeq_epi32(v1, res), _mm_cmpeq_epi32(v2, res)))) >> 1);
-			if(calculatedNodes[index] < best_node_f)
+			const __m128i values = _mm_load_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[pos]));
+			indices = _mm_add_epi32(indices, increment);
+			minindices = _mm_blendv_epi8(minindices, indices, _mm_cmplt_epi32(values, minvalues));
+			minvalues = _mm_min_epi32(values, minvalues);
+		}
+
+		alignas(16) Sint32 values_array[4];
+		alignas(16) Sint32 indices_array[4];
+		_mm_store_si128(reinterpret_cast<__m128i*>(values_array), minvalues);
+		_mm_store_si128(reinterpret_cast<__m128i*>(indices_array), minindices);
+
+		Sint32 best_node = indices_array[0];
+		Sint32 best_node_f = values_array[0];
+		for(Sint32 i = 1; i < 4; ++i)
+		{
+			if(values_array[i] < best_node_f)
 			{
-				best_node_f = calculatedNodes[index];
-				best_node = index;
+				best_node_f = values_array[i];
+				best_node = indices_array[i];
 			}
 		}
-		for(Sint32 i = curRound; i < curNode; ++i)
-		{
-			if(!openNodes[i])
-				continue;
-
-			if(calculatedNodes[i] < best_node_f)
-			{
-				best_node_f = calculatedNodes[i];
-				best_node = i;
-			}
-		}
-		return (best_node != -1 ? &nodes[best_node] : NULL);
+		return ((best_node != -1 && openNodes[best_node]) ? &nodes[best_node] : NULL);
 	}
 	else
 	#endif
@@ -208,45 +221,14 @@ void AStarNodes::openNode(AStarNode* node)
 
 AStarNode* AStarNodes::getNodeByPosition(Uint32 xy)
 {
-	#ifdef __USE_SSE2__
-	if(SDL_HasSSE2())
-	{
-		const __m128i keys = _mm_set1_epi32(xy);
-
-		Sint32 curRound = ((curNode >> 3) << 3);
-		for(Sint32 i = 0; i < curRound; i += 8)
-		{
-			#ifdef UseUnalignedVectors
-			const Uint32 mask = _mm_movemask_epi8(_mm_packs_epi32(_mm_cmpeq_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(&nodesTable[i])), keys), _mm_cmpeq_epi32(_mm_loadu_si128(reinterpret_cast<const __m128i*>(&nodesTable[i+4])), keys)));
-			#else
-			const Uint32 mask = _mm_movemask_epi8(_mm_packs_epi32(_mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&nodesTable[i])), keys), _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&nodesTable[i+4])), keys)));
-			#endif
-			if(mask != 0)
-				return &nodes[i + (UTIL_ctz(mask) >> 1)];
-		}
-
-		for(Sint32 i = curRound; i < curNode; ++i)
-		{
-			if(nodesTable[i] == xy)
-				return &nodes[i];
-		}
-		return NULL;
-	}
-	else
-	#endif
-	{
-		for(Sint32 i = 1; i < curNode; ++i)
-		{
-			if(nodesTable[i] == xy)
-				return &nodes[i];
-		}
-		return (nodesTable[0] == xy ? &nodes[0] : NULL);
-	}
+	//We could make this a little faster using better hash map like for example google dense hash map
+	std::unordered_map<Uint32, Uint32>::iterator it = nodesTable.find(xy);
+	return (it == nodesTable.end() ? NULL : &nodes[it->second]);
 }
 
 Sint32 AStarNodes::getMapWalkFactor(AStarNode* node, const Position& neighborPos)
 {
-	return (((std::abs(node->x - neighborPos.x) + std::abs(node->y - neighborPos.y)) - 1) * MAP_DIAGONALWALKFACTOR) + MAP_NORMALWALKFACTOR;
+	return (((std::abs(node->x-neighborPos.x)+std::abs(node->y-neighborPos.y))-1)*MAP_DIAGONALWALKFACTOR)+MAP_NORMALWALKFACTOR;
 }
 
 Map::Map()
@@ -659,6 +641,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 	}
 	for(Sint32 i = ONSCREEN_MESSAGE_BOTTOM; i < ONSCREEN_MESSAGE_LAST; ++i)
 		m_onscreenMessages[i]->render(px, py, pw, ph);
+
+	UTIL_refreshBattleWindow();
 }
 
 void Map::addOnscreenText(OnscreenMessages position, MessageMode mode, const std::string& text)
@@ -900,15 +884,17 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 	directions.clear();
 	if(startPos == endPos)
 		return PathFind_ReturnSamePosition;
-
-	if(startPos.z != endPos.z)
-		return PathFind_ReturnImpossible;
+	
+	if(startPos.z < endPos.z)
+		return PathFind_ReturnFirstGoDownStairs;
+	else if(startPos.z > endPos.z)
+		return PathFind_ReturnFirstGoUpStairs;
 
 	Tile* endTile = getTile(endPos);
 	if(endTile)
 	{
 		if(!endTile->isWalkable())
-			return PathFind_ReturnImpossible;
+			return PathFind_ReturnNoWay;
 	}
 
 	static Sint32 dirNeighbors[8][5][2] = {
@@ -929,8 +915,6 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 
 	const Sint32 Sx = Position::getDistanceX(endPos, startPos);
 	const Sint32 Sy = Position::getDistanceY(endPos, startPos);
-	if(Sx > 128 || Sy > 128)
-		return PathFind_ReturnTooFar;
 
 	AStarNodes nodes(startPos);
 	AStarNode* found = nullptr;
@@ -941,7 +925,7 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 		{
 			if(found)
 				break;
-			return PathFind_ReturnTooFar;
+			return PathFind_ReturnNoWay;
 		}
 
 		const Sint32 x = n->x;
@@ -1020,13 +1004,13 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 				if(wasSeenTile)
 				{
 					wasSeen = true;
-					isNotWalkable = !g_automap.isWalkable(pos);
 					speed = g_automap.getSpeed(pos);
+					isNotWalkable = (speed == 0);
 				}
 			}
 
 			const Sint32 walkFactor = AStarNodes::getMapWalkFactor(n, pos);
-			if(pos != endPos)
+			if(pos.x != endPos.x || pos.y != endPos.y)
 			{
 				if(!(flags & PathFindFlags_AllowUnseenTiles) && !wasSeen)
 					continue;
@@ -1051,7 +1035,7 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 				}
 			}
 
-			const Sint32 cost = f + (speed * walkFactor);
+			const Sint32 cost = f + (SDL_static_cast(Sint32, speed) * walkFactor);
 
 			const Uint32 posXY = (pos.x << 16) | pos.y;
 			AStarNode* neighborNode = nodes.getNodeByPosition(posXY);
@@ -1070,14 +1054,14 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 				{
 					if(found)
 						break;
-					return PathFind_ReturnTooFar;
+					return PathFind_ReturnNoWay;
 				}
 			}
 		}
 		nodes.closeNode(n);
 	}
 	if(!found)
-		return PathFind_ReturnTooFar;
+		return PathFind_ReturnNoWay;
 
 	Sint32 prevx = endPos.x;
 	Sint32 prevy = endPos.y;
@@ -1091,32 +1075,33 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 
 		prevx = pos.x;
 		prevy = pos.y;
-		if(dx == 1)
+		if((flags & PathFindFlags_AllowNonPathable) || getTile(pos))//In case of not allowing non pathable tiles we can only send the tiles we know
 		{
-			if(dy == 1)
-				directions.push_back(DIRECTION_NORTHWEST);
+			if(dx == 1)
+			{
+				if(dy == 1)
+					directions.emplace_back(DIRECTION_NORTHWEST);
+				else if(dy == -1)
+					directions.emplace_back(DIRECTION_SOUTHWEST);
+				else
+					directions.emplace_back(DIRECTION_WEST);
+			}
+			else if(dx == -1)
+			{
+				if(dy == 1)
+					directions.emplace_back(DIRECTION_NORTHEAST);
+				else if(dy == -1)
+					directions.emplace_back(DIRECTION_SOUTHEAST);
+				else
+					directions.emplace_back(DIRECTION_EAST);
+			}
+			else if(dy == 1)
+				directions.emplace_back(DIRECTION_NORTH);
 			else if(dy == -1)
-				directions.push_back(DIRECTION_SOUTHWEST);
-			else
-				directions.push_back(DIRECTION_WEST);
+				directions.emplace_back(DIRECTION_SOUTH);
 		}
-		else if(dx == -1)
-		{
-			if(dy == 1)
-				directions.push_back(DIRECTION_NORTHEAST);
-			else if(dy == -1)
-				directions.push_back(DIRECTION_SOUTHEAST);
-			else
-				directions.push_back(DIRECTION_EAST);
-		}
-		else if(dy == 1)
-			directions.push_back(DIRECTION_NORTH);
-		else if(dy == -1)
-			directions.push_back(DIRECTION_SOUTH);
-
 		found = found->parent;
 	}
-
 	return PathFind_ReturnSuccessfull;
 }
 
@@ -1203,12 +1188,14 @@ void Map::resetCreatures()
 		delete it->second;
 
 	m_knownCreatures.clear();
+	UTIL_resetBattleCreatures();
 }
 
 void Map::addCreatureById(Uint32 creatureId, Creature* creature)
 {
 	removeCreatureById(creatureId);//Make sure we don't get any memory leak
 	m_knownCreatures[creatureId] = creature;
+	UTIL_addBattleCreature(SDL_reinterpret_cast(void*, creature));
 }
 
 void Map::removeCreatureById(Uint32 creatureId)
@@ -1216,6 +1203,7 @@ void Map::removeCreatureById(Uint32 creatureId)
 	knownCreatures::iterator it = m_knownCreatures.find(creatureId);
 	if(it != m_knownCreatures.end())
 	{
+		UTIL_removeBattleCreature(SDL_reinterpret_cast(void*, it->second));
 		delete it->second;
 		m_knownCreatures.erase(it);
 	}

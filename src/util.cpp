@@ -23,9 +23,6 @@
 #ifdef __WIN32__
 #include <Shellapi.h>
 #endif
-#ifdef HAVE_CXX11_SUPPORT
-#include <random>
-#endif
 
 LPUTIL_FastCopy UTIL_FastCopy;
 LPXTEA_DECRYPT XTEA_decrypt;
@@ -213,8 +210,6 @@ char* SDL_GetCPUName()
 }
 
 #ifdef __USE_SSE2__
-//The native calculations works only for 16bits so it's should be avoided to using with avx in that case
-//Since avx have bigger vector it return full 32bit mask
 Uint32 UTIL_ctz(Uint32 mask)
 {
 	#if ((__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 4)))
@@ -232,18 +227,12 @@ Uint32 UTIL_ctz(Uint32 mask)
 	__asm bsf pos, mask
 	return pos;
 	#else
-	Uint32 pos;
-	#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-	if(mask <= 0x000000FFU) {pos += 8; mask <<= 8;}
-	if(mask <= 0x00000FFFU) {pos += 4; mask <<= 4;}
-	if(mask <= 0x00003FFFU) {pos += 2; mask <<= 2;}
-	if(mask <= 0x00007FFFU) {pos += 1;}
-	#else
-	if((mask & 0x000000FFU) == 0) {pos += 8; mask >>= 8;}
-	if((mask & 0x0000000FU) == 0) {pos += 4; mask >>= 4;}
-	if((mask & 0x00000003U) == 0) {pos += 2; mask >>= 2;}
-	pos -= (mask & 1);
-	#endif
+	Uint32 pos = 1;
+	if(!(mask & 0x0000FFFFU)) {pos += 16; mask >>= 16;}
+	if(!(mask & 0x000000FFU)) {pos += 8; mask >>= 8;}
+	if(!(mask & 0x0000000FU)) {pos += 4; mask >>= 4;}
+	if(!(mask & 0x00000003U)) {pos += 2; mask >>= 2;}
+	pos -= mask & 1;
 	return pos;
 	#endif
 }

@@ -28,7 +28,6 @@
 #include "automap.h"
 #include "container.h"
 
-#include "GUI/GUI_UTIL.h"
 #include "GUI/itemUI.h"
 #include "GUI/Chat.h"
 
@@ -57,6 +56,11 @@ Game::Game()
 	m_playerMaxHealth = 100;
 	m_playerMana = 0;
 	m_playerMaxMana = 0;
+
+	m_autoWalkDestination = Position(0xFFFF, 0xFFFF, 0xFF);
+	m_limitWalkDestination = Position(0xFFFF, 0xFFFF, 0xFF);
+	m_lastCancelWalkPos = Position(0xFFFF, 0xFFFF, 0xFF);
+	m_cancelWalkCounter = 0;
 
 	m_playerLevel = 1;
 	m_playerMagicLevel = 0;
@@ -103,6 +107,12 @@ Game::~Game()
 
 void Game::reset()
 {
+	m_autoWalkDestination = Position(0xFFFF, 0xFFFF, 0xFF);
+	m_limitWalkDestination = Position(0xFFFF, 0xFFFF, 0xFF);
+	m_lastCancelWalkPos = Position(0xFFFF, 0xFFFF, 0xFF);
+	m_cancelWalkCounter = 0;
+	m_autoWalkDirections.clear();
+
 	m_playerMovement = DIRECTION_INVALID;
 	m_playerCurrentDir = DIRECTION_INVALID;
 	m_playerLastDir = DIRECTION_INVALID;
@@ -145,7 +155,7 @@ void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 	}
 	if(clientVersion >= 790)
 		enableGameFeature(GAME_FEATURE_WRITABLE_DATE);
-	if(clientVersion >= 800)
+	if(clientVersion >= 820)
 		enableGameFeature(GAME_FEATURE_NPC_INTERFACE);
 	if(clientVersion >= 830)
 	{
@@ -541,6 +551,27 @@ void Game::processWalkCancel(Direction direction)
 		player->stopMove();
 		player->turnDirection(direction);
 	}
+
+	if(m_autoWalkDestination.x != 0xFFFF)
+	{
+		Position& pos = g_map.getCentralPosition();
+		if(pos != m_lastCancelWalkPos)
+		{
+			++m_cancelWalkCounter;
+			if(m_cancelWalkCounter >= MAX_CANCEL_WALK_BEFORE_STOP_AUTOWALK)
+			{
+				stopAutoWalk();
+				m_cancelWalkCounter = 0;
+			}
+			else
+				startAutoWalk(m_autoWalkDestination);
+		}
+		else
+		{
+			m_lastCancelWalkPos = pos;
+			m_cancelWalkCounter = 0;
+		}
+	}
 }
 
 void Game::processOutfits(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Uint8 lookLegs, Uint8 lookFeet, Uint8 lookAddons, Uint16 lookMount, std::vector<OutfitDetail>& outfits, std::vector<MountDetail>& mounts)
@@ -667,6 +698,7 @@ void Game::processChannelList(std::vector<ChannelDetail>& channels)
 void Game::processOpenChannel(Uint16 channelId, const std::string& channelName)
 {
 	g_chat.openChannel(SDL_static_cast(Uint32, channelId), channelName);
+	g_chat.setCurrentChannel(SDL_static_cast(Uint32, channelId));
 }
 
 void Game::processOpenPrivateChannel(const std::string& receiver)
@@ -678,6 +710,7 @@ void Game::processOpenOwnPrivateChannel(Uint16 channelId, const std::string& cha
 {
 	g_chat.setOwnPrivateChannel(SDL_static_cast(Uint32, channelId));
 	g_chat.openChannel(SDL_static_cast(Uint32, channelId), channelName);
+	g_chat.setCurrentChannel(SDL_static_cast(Uint32, channelId));
 }
 
 void Game::processCloseChannel(Uint16 channelId)
@@ -692,6 +725,16 @@ void Game::sendLogout()
 		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
 		if(game && game->canPerformAction())
 			game->sendLogout();
+	}
+}
+
+void Game::sendAutoWalk(const std::vector<Direction>& path)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendAutoWalk(path);
 	}
 }
 
@@ -740,6 +783,16 @@ void Game::sendRequestChannels()
 		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
 		if(game && game->canPerformAction())
 			game->sendRequestChannels();
+	}
+}
+
+void Game::sendCreatePrivateChannel()
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendCreatePrivateChannel();
 	}
 }
 
@@ -1145,14 +1198,110 @@ void Game::sendOpenParentContainer(const Position& position)
 	}
 }
 
+void Game::startAutoWalk(const Position& toPosition)
+{
+	Position& pos = g_map.getCentralPosition();
+	m_autoWalkDestination = toPosition;
+	m_limitWalkDestination.x = 0xFFFF;
+
+	Creature* player = g_map.getLocalCreature();
+	if(!player || player->isPreWalking() || player->isWalking())
+		return;
+
+	if(player->getSpeed() == 0)
+	{
+		g_game.processTextMessage(MessageFailure, "Sorry, not possible.");
+		m_autoWalkDestination.x = 0xFFFF;
+		return;
+	}
+
+	PathFind result = g_map.findPath(m_autoWalkDirections, pos, toPosition, 0);
+	if(result != PathFind_ReturnSuccessfull)
+	{
+		result = g_map.findPath(m_autoWalkDirections, pos, toPosition, PathFindFlags_AllowUnseenTiles);
+		if(result != PathFind_ReturnSuccessfull)
+		{
+			switch(result)
+			{
+				case PathFind_ReturnImpossible: g_game.processTextMessage(MessageFailure, "Sorry, not possible."); break;
+				case PathFind_ReturnTooFar: g_game.processTextMessage(MessageFailure, "Destination is out of range."); break;
+				case PathFind_ReturnFirstGoDownStairs: g_game.processTextMessage(MessageFailure, "First go downstairs."); break;
+				case PathFind_ReturnFirstGoUpStairs: g_game.processTextMessage(MessageFailure, "First go upstairs."); break;
+				case PathFind_ReturnNoWay: g_game.processTextMessage(MessageFailure, "There is no way."); break;
+			}
+			m_autoWalkDestination.x = 0xFFFF;
+			return;
+		}
+	}
+
+	if(m_autoWalkDirections.size() == 1)
+	{
+		m_autoWalkDestination.x = 0xFFFF;
+		m_playerCurrentDir = m_autoWalkDirections.back();
+		m_playerMovement = m_playerCurrentDir;
+		m_autoWalkDirections.clear();
+		checkLocalCreatureMovement();
+		return;
+	}
+
+	m_limitWalkDestination = pos.translatedToDirections(m_autoWalkDirections);
+	sendAutoWalk(m_autoWalkDirections);
+	checkLocalCreatureMovement();
+}
+
+void Game::stopAutoWalk()
+{
+	if(m_autoWalkDestination.x == 0xFFFF)
+		return;
+
+	Position& pos = g_map.getCentralPosition();
+	if(pos != m_autoWalkDestination)
+	{
+		m_autoWalkDestination.x = 0xFFFF;
+		m_limitWalkDestination.x = 0xFFFF;
+		m_autoWalkDirections.clear();
+		sendWalk(DIRECTION_INVALID);
+	}
+}
+
+void Game::checkServerMovement(Direction dir)
+{
+	if(!m_autoWalkDirections.empty())
+	{
+		Direction walkDir = m_autoWalkDirections.back();
+		if(walkDir != dir)
+		{
+			//Stop autowalk because we got server interrupt our walking
+			m_autoWalkDestination.x = 0xFFFF;
+			m_limitWalkDestination.x = 0xFFFF;
+			m_autoWalkDirections.clear();
+		}
+		else
+			m_autoWalkDirections.pop_back();
+	}
+}
+
 void Game::checkLocalCreatureMovement()
 {
 	Creature* player = g_map.getLocalCreature();
 	if(!player || player->isPreWalking() || player->isWalking() || player->getSpeed() == 0)
 		return;
 
-	Position topos;
 	Position& pos = player->getCurrentPosition();
+	if((m_limitWalkDestination.x == 0xFFFF && m_autoWalkDestination.x != 0xFFFF) || (m_limitWalkDestination.x != 0xFFFF && pos == m_limitWalkDestination))
+	{
+		if(pos == m_autoWalkDestination)
+		{
+			m_autoWalkDestination.x = 0xFFFF;
+			m_limitWalkDestination.x = 0xFFFF;
+			m_autoWalkDirections.clear();
+		}
+		else
+			startAutoWalk(m_autoWalkDestination);
+		return;
+	}
+
+	Position topos;
 	bool prewalk = false;
 	bool sendwalk = false;
 	Direction walkDir = DIRECTION_INVALID;
@@ -1277,17 +1426,23 @@ void Game::checkLocalCreatureMovement()
 					}
 				}
 
-				//Check if we can go down
-				Position downpos = topos;
-				if(downpos.down())
+				if(!sendwalk)
 				{
-					toTile = g_map.getTile(downpos);
-					if(toTile && toTile->isWalkable() && toTile->getTileElevation() >= ITEM_MAX_ELEVATION)
+					//Check if we can go down
+					Position downpos = topos;
+					if(downpos.down())
 					{
-						//Check what server thinks about our movement :)
-						sendwalk = true;
+						toTile = g_map.getTile(downpos);
+						if(toTile && toTile->isWalkable() && toTile->getTileElevation() >= ITEM_MAX_ELEVATION)
+						{
+							//Check what server thinks about our movement :)
+							sendwalk = true;
+						}
 					}
 				}
+
+				if(!sendwalk)
+					g_game.processTextMessage(MessageFailure, "Sorry, not possible.");
 			}
 		}
 	}
@@ -1304,6 +1459,9 @@ void Game::checkLocalCreatureMovement()
 
 void Game::checkMovement(Direction dir)
 {
+	if(m_autoWalkDestination.x != 0xFFFF)
+		stopAutoWalk();
+
 	m_playerCurrentDir = dir;
 	m_playerMovement = dir;
 	checkLocalCreatureMovement();
@@ -1316,10 +1474,12 @@ void Game::releaseMovement()
 
 void Game::switchToNextChannel()
 {
+	g_chat.switchToNextChannel();
 }
 
 void Game::switchToPreviousChannel()
 {
+	g_chat.switchToPreviousChannel();
 }
 
 void Game::closeCurrentChannel()
@@ -1336,10 +1496,13 @@ void Game::openHelpChannel()
 
 void Game::openNPCChannel()
 {
+	g_chat.openChannel(CHANNEL_ID_NPC, CHANNEL_NAME_NPC);
+	g_chat.setCurrentChannel(CHANNEL_ID_NPC);
 }
 
 void Game::switchToDefault()
 {
+	g_chat.setCurrentChannel(CHANNEL_ID_DEFAULT);
 }
 
 void Game::minimapCenter()
@@ -1381,6 +1544,30 @@ void Game::minimapScrollWest()
 {
 	Position& pos = g_automap.getPosition();
 	g_automap.setPosition(Position(pos.x-5, pos.y, pos.z));
+}
+
+void Game::minimapScrollNorthWest()
+{
+	Position& pos = g_automap.getPosition();
+	g_automap.setPosition(Position(pos.x-5, pos.y-5, pos.z));
+}
+
+void Game::minimapScrollNorthEast()
+{
+	Position& pos = g_automap.getPosition();
+	g_automap.setPosition(Position(pos.x+5, pos.y-5, pos.z));
+}
+
+void Game::minimapScrollSouthWest()
+{
+	Position& pos = g_automap.getPosition();
+	g_automap.setPosition(Position(pos.x-5, pos.y+5, pos.z));
+}
+
+void Game::minimapScrollSouthEast()
+{
+	Position& pos = g_automap.getPosition();
+	g_automap.setPosition(Position(pos.x+5, pos.y+5, pos.z));
 }
 
 void Game::minimapZoomIn()

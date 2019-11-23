@@ -40,7 +40,7 @@ ScreenText::ScreenText(OnscreenMessages position)
 void ScreenText::addMessage(MessageMode mode, std::string text)
 {
 	Uint32 extraTime = g_frameTime;
-	if(m_messages.size() >= (m_screenPosition == ONSCREEN_MESSAGE_TOP ? 10 : 1))
+	if(m_messages.size() >= SDL_static_cast(size_t, (m_screenPosition == ONSCREEN_MESSAGE_TOP ? 10 : 1)))
 	{
 		m_dirty = true;
 		m_messages.erase(m_messages.begin());
@@ -51,7 +51,7 @@ void ScreenText::addMessage(MessageMode mode, std::string text)
 		extraTime = m_messages.back().m_endTime;
 
 	ScreenTextMessage newMessage;
-	PERFORM_MOVE(newMessage.m_message, text);
+	newMessage.m_message = std::move(text);
 	newMessage.m_endTime = extraTime+UTIL_max<Uint32>(STATICTEXT_PER_CHAR_STAY_DURATION * SDL_static_cast(Uint32, text.length()), STATICTEXT_MINIMUM_STAY_DURATION);
 	newMessage.m_mode = mode;
 	m_messages.push_back(newMessage);

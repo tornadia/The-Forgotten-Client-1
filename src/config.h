@@ -33,8 +33,8 @@ struct ConfigKey
 
 	ConfigKey(const std::string _name, const std::string _value)
 	{
-		PERFORM_MOVE(name, _name);
-		PERFORM_MOVE(value, _value);
+		name = std::move(_name);
+		value = std::move(_value);
 	}
 };
 

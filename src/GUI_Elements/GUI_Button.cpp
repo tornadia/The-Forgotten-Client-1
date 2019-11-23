@@ -24,15 +24,16 @@
 
 extern Engine g_engine;
 
-GUI_Button::GUI_Button(iRect boxRect, const std::string labelName, Uint32 internalID)
+GUI_Button::GUI_Button(iRect boxRect, const std::string labelName, Uint32 internalID, const std::string description)
 {
 	m_sx[0] = m_sx[1] = 0;
 	m_sy[0] = m_sy[1] = 0;
 
 	setRect(boxRect);
-	PERFORM_MOVE(m_Label, labelName);
-	m_startX = g_engine.calculateFontWidth(CLIENT_FONT_SMALL, m_Label)/2;
-	m_Pressed = 0;
+	m_description = std::move(description);
+	m_label = std::move(labelName);
+	m_startX = g_engine.calculateFontWidth(CLIENT_FONT_SMALL, m_label)/2;
+	m_pressed = 0;
 	m_evtParam = 0;
 	m_eventHandlerFunction = NULL;
 	m_internalID = internalID;
@@ -42,36 +43,106 @@ void GUI_Button::setRect(iRect& NewRect)
 {
 	switch(NewRect.x2)
 	{
-		case 34:
-			m_sx[0] = 174;
-			m_sx[1] = 174;
-			m_sy[0] = 138;
-			m_sy[1] = 158;
-			break;
-		case 43:
-			m_sx[0] = 2;
-			m_sx[1] = 2;
-			m_sy[0] = 138;
-			m_sy[1] = 158;
-			break;
-		case 58:
-			m_sx[0] = 236;
-			m_sx[1] = 294;
-			m_sy[0] = 252;
-			m_sy[1] = 252;
-			break;
-		case 75:
-			m_sx[0] = 0;
-			m_sx[1] = 0;
-			m_sy[0] = 452;
-			m_sy[1] = 472;
-			break;
-		case 86:
-			m_sx[0] = 45;
-			m_sx[1] = 45;
-			m_sy[0] = 138;
-			m_sy[1] = 158;
-			break;
+		case GUI_UI_BUTTON_34PX_GRAY_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_34PX_GRAY_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_34PX_GRAY_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_34PX_GRAY_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_34PX_GRAY_DOWN_Y;
+		}
+		break;
+		case GUI_UI_BUTTON_42PX_GRAY_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_42PX_GRAY_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_42PX_GRAY_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_42PX_GRAY_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_42PX_GRAY_DOWN_Y;
+		}
+		break;
+		case GUI_UI_BUTTON_43PX_GRAY_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_43PX_GRAY_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_43PX_GRAY_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_43PX_GRAY_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_43PX_GRAY_DOWN_Y;
+		}
+		break;
+		case GUI_UI_BUTTON_43PX_GREEN_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_43PX_GREEN_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_43PX_GREEN_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_43PX_GREEN_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_43PX_GREEN_DOWN_Y;
+			NewRect.x2 = 43;//width correction
+		}
+		break;
+		case GUI_UI_BUTTON_43PX_RED_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_43PX_RED_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_43PX_RED_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_43PX_RED_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_43PX_RED_DOWN_Y;
+			NewRect.x2 = 43;//width correction
+		}
+		break;
+		case GUI_UI_BUTTON_48PX_GRAY_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_48PX_GRAY_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_48PX_GRAY_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_48PX_GRAY_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_48PX_GRAY_DOWN_Y;
+		}
+		break;
+		case GUI_UI_BUTTON_58PX_GRAY_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_58PX_GRAY_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_58PX_GRAY_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_58PX_GRAY_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_58PX_GRAY_DOWN_Y;
+		}
+		break;
+		case GUI_UI_BUTTON_75PX_GRAY_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_75PX_GRAY_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_75PX_GRAY_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_75PX_GRAY_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_75PX_GRAY_DOWN_Y;
+		}
+		break;
+		case GUI_UI_BUTTON_86PX_GRAY_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_86PX_GRAY_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_86PX_GRAY_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_86PX_GRAY_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_86PX_GRAY_DOWN_Y;
+		}
+		break;
+		case GUI_UI_BUTTON_86PX_GREEN_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_86PX_GREEN_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_86PX_GREEN_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_86PX_GREEN_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_86PX_GREEN_DOWN_Y;
+			NewRect.x2 = 86;//width correction
+		}
+		break;
+		case GUI_UI_BUTTON_86PX_GOLD_UP_W:
+		{
+			m_sx[0] = GUI_UI_BUTTON_86PX_GOLD_UP_X;
+			m_sy[0] = GUI_UI_BUTTON_86PX_GOLD_UP_Y;
+			m_sx[1] = GUI_UI_BUTTON_86PX_GOLD_DOWN_X;
+			m_sy[1] = GUI_UI_BUTTON_86PX_GOLD_DOWN_Y;
+			NewRect.x2 = 86;//width correction
+		}
+		break;
+		default:
+		{
+			m_sx[0] = GUI_UI_BACKGROUND_GREY_X;
+			m_sy[0] = GUI_UI_BACKGROUND_GREY_Y;
+			m_sx[1] = GUI_UI_BACKGROUND_GREY_X;
+			m_sy[1] = GUI_UI_BACKGROUND_GREY_Y;
+		}
+		break;
 	}
 	m_tRect = NewRect;
 }
@@ -82,29 +153,32 @@ void GUI_Button::setButtonEventCallback(void (*eventHandlerFunction)(Uint32,Sint
 	m_eventHandlerFunction = eventHandlerFunction;
 }
 
-void GUI_Button::onMouseMove(Sint32 x, Sint32 y, bool)
+void GUI_Button::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
-	if(m_Pressed > 0)
+	bool inside = (isInsideParent && m_tRect.isPointInside(x, y));
+	if(m_pressed > 0)
 	{
-		bool inside = m_tRect.isPointInside(x, y);
-		if(m_Pressed == 1 && !inside)
-			m_Pressed = 2;
-		else if(m_Pressed == 2 && inside)
-			m_Pressed = 1;
+		if(m_pressed == 1 && !inside)
+			m_pressed = 2;
+		else if(m_pressed == 2 && inside)
+			m_pressed = 1;
 	}
+	if(!m_description.empty() && inside)
+		g_engine.showDescription(x, y, m_description);
 }
 
 void GUI_Button::onLMouseDown(Sint32, Sint32)
 {
-	m_Pressed = 1;
+	m_pressed = 1;
 }
 
-void GUI_Button::onLMouseUp(Sint32 x, Sint32 y)
+void GUI_Button::onLMouseUp(Sint32, Sint32)
 {
-	if(m_Pressed > 0)
+	Uint8 pressed = m_pressed;
+	if(pressed > 0)
 	{
-		m_Pressed = 0;
-		if(m_tRect.isPointInside(x, y))
+		m_pressed = 0;
+		if(pressed == 1)
 		{
 			if(m_eventHandlerFunction)
 				UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 1);
@@ -114,7 +188,51 @@ void GUI_Button::onLMouseUp(Sint32 x, Sint32 y)
 
 void GUI_Button::render()
 {
+	bool pressed = (m_pressed == 1 ? true : false);
+
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(3, m_sx[(m_Pressed == 1 ? 1 : 0)], m_sy[(m_Pressed == 1 ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
-	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+(m_tRect.x2/2)+(m_Pressed == 1 ? 1 : 0)-m_startX, m_tRect.y1+(m_Pressed == 1 ? 7 : 6), m_Label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
+	renderer->drawPicture(GUI_UI_IMAGE, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+(m_tRect.x2/2)+(pressed ? 1 : 0)-m_startX, m_tRect.y1+(pressed ? 7 : 6), m_label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
+}
+
+GUI_RadioButton::GUI_RadioButton(iRect boxRect, const std::string labelName, Uint32 internalID, const std::string description):
+	GUI_Button(boxRect, labelName, internalID, description)
+{
+	m_eventRadioChecked = NULL;
+}
+
+void GUI_RadioButton::setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description)
+{
+	m_eventRadioChecked = eventRadioChecked;
+	m_radioDescription = std::move(description);
+}
+
+void GUI_RadioButton::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
+{
+	bool inside = (isInsideParent && m_tRect.isPointInside(x, y));
+	if(m_pressed > 0)
+	{
+		if(m_pressed == 1 && !inside)
+			m_pressed = 2;
+		else if(m_pressed == 2 && inside)
+			m_pressed = 1;
+	}
+	if(inside)
+	{
+		if(m_eventRadioChecked && m_eventRadioChecked())
+			g_engine.showDescription(x, y, m_radioDescription);
+		else if(!m_description.empty())
+			g_engine.showDescription(x, y, m_description);
+	}
+}
+
+void GUI_RadioButton::render()
+{
+	bool pressed = (m_pressed == 1 ? true : false);
+	if(m_eventRadioChecked && m_eventRadioChecked())
+		pressed = true;
+	
+	Surface* renderer = g_engine.getRender();
+	renderer->drawPicture(GUI_UI_IMAGE, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+(m_tRect.x2/2)+(pressed ? 1 : 0)-m_startX, m_tRect.y1+(pressed ? 7 : 6), m_label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
 }

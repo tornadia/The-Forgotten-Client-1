@@ -58,21 +58,23 @@ struct KeyRepeat
 #define HAVE_CXX11_SUPPORT 1
 #endif
 
+#ifndef HAVE_CXX11_SUPPORT
+#error "Please use a compiler that support C++11 or enable it in project settings"
+#endif
+
 #if defined(_M_ARM) || defined(__arm__) || defined(_ARM) || defined(__arm)
 #define __USE_NEON__ 1
 #endif
 
-#if (defined(_MSC_VER) && (_MSC_VER >= 1500) && (defined(_M_IX86) || defined(_M_X64))) || defined(__amd64__) || defined(__x86_64__) || defined(__i386__) || defined(__i386) || defined(i386)
+#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || defined(__amd64__) || defined(__x86_64__) || defined(__i386__) || defined(__i386) || defined(i386)
 #define __USE_SSE__ 1
 #define __USE_SSE2__ 1
 #define __USE_SSE3__ 1
 #define __USE_SSSE3__ 1
 #define __USE_SSE4_1__ 1
 #define __USE_SSE4_2__ 1
-#ifdef HAVE_CXX11_SUPPORT
 #define __USE_AVX__ 1
 #define __USE_AVX2__ 1
-#endif
 #endif
 
 #if defined(__USE_SSE__)
@@ -100,12 +102,6 @@ struct KeyRepeat
 #include <arm_neon.h>
 #endif
 
-#ifdef HAVE_CXX11_SUPPORT
-#define PERFORM_MOVE(a, b) ((a) = std::move(b))
-#else
-#define PERFORM_MOVE(a, b) ((a) = (b))
-#endif
-
 #if SDL_VIDEO_DRIVER_WINDOWS && SIZEOF_VOIDP == 4
 //For some reason 64-bit version of ddraw.dll don't have the direct3d interface
 #define SDL_VIDEO_RENDER_DDRAW 1
@@ -117,25 +113,13 @@ struct KeyRepeat
 #define PATH_PLATFORM_SLASH '/'
 #endif
 
-#if defined(HAVE_CXX11_SUPPORT)
-#define AlingTypeAs(x) alignas(x)
-#elif defined(_MSC_VER)
-#define AlingTypeAs(x) __declspec(align(x))
-#elif defined(__GNUC__)
-#define AlingTypeAs(x) __attribute__((aligned(x)))
-#else
-#define UseUnalignedVectors
-#endif
-
 #if defined(__WIN32__)
 #include <windows.h>
 #endif
 
 #include <time.h>
 #include <utility>
-#ifdef HAVE_CXX11_SUPPORT
 #include <unordered_map>
-#endif
 #include <map>
 #include <list>
 #include <vector>
@@ -143,10 +127,12 @@ struct KeyRepeat
 #include <sstream>
 #include <string>
 #include <bitset>
-#include "circular_buffer.h"
-#include "util.h"
 #include "const.h"
+#include "gui_const.h"
 #include "structures.h"
+#include "circular_buffer.h"
+#include "GUI/GUI_UTIL.h"
+#include "util.h"
 #include "Rect.h"
 
 extern char g_buffer[4096];

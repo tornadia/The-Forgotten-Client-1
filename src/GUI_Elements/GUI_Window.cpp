@@ -29,7 +29,7 @@ GUI_Window::GUI_Window(iRect boxRect, const std::string title, Uint32 internalID
 	setRect(boxRect);
 	m_bActive = true;
 	m_bMouseDragging = false;
-	PERFORM_MOVE(m_Title, title);
+	m_Title = std::move(title);
 	m_actElement = NULL;
 	m_internalID = internalID;
 }
@@ -321,26 +321,26 @@ void GUI_Window::render()
 	{
 		case GUI_WINDOW_MAIN:
 		{
-			renderer->drawPictureRepeat(3, 11, 214, 32, 32, m_tRect.x1+6, m_tRect.y1+6, m_tRect.x2-12, m_tRect.y2-12);
-			renderer->drawPicture(3, 43, 225, m_tRect.x1, m_tRect.y1, 5, 5);
-			renderer->drawPicture(3, 49, 225, m_tRect.x1+m_tRect.x2-5, m_tRect.y1, 5, 5);
-			renderer->drawPicture(3, 43, 231, m_tRect.x1, m_tRect.y1+m_tRect.y2-5, 5, 5);
-			renderer->drawPicture(3, 49, 231, m_tRect.x1+m_tRect.x2-5, m_tRect.y1+m_tRect.y2-5, 5, 5);
-			renderer->drawPictureRepeat(3, 43, 214, 32, 6, m_tRect.x1+5, m_tRect.y1, m_tRect.x2-10, 6);
-			renderer->drawPictureRepeat(3, 0, 214, 6, 32, m_tRect.x1, m_tRect.y1+5, 6, m_tRect.y2-10);
-			renderer->drawPictureRepeat(3, 5, 214, 6, 32, m_tRect.x1+m_tRect.x2-6, m_tRect.y1+5, 6, m_tRect.y2-10);
-			renderer->drawPictureRepeat(3, 43, 219, 32, 6, m_tRect.x1+5, m_tRect.y1+m_tRect.y2-6, m_tRect.x2-10, 6);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BACKGROUND_X, GUI_UI_ICON_DITHER_BACKGROUND_Y, GUI_UI_ICON_DITHER_BACKGROUND_W, GUI_UI_ICON_DITHER_BACKGROUND_H, m_tRect.x1+6, m_tRect.y1+6, m_tRect.x2-12, m_tRect.y2-12);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_TOPLEFT_BORDER_X, GUI_UI_ICON_DITHER_TOPLEFT_BORDER_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_DITHER_TOPLEFT_BORDER_W, GUI_UI_ICON_DITHER_TOPLEFT_BORDER_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_X, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_Y, m_tRect.x1+m_tRect.x2-5, m_tRect.y1, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_W, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_X, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-5, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_W, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_X, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_Y, m_tRect.x1+m_tRect.x2-5, m_tRect.y1+m_tRect.y2-5, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_W, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_H);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_TOP_SLIDER_X, GUI_UI_ICON_DITHER_TOP_SLIDER_Y, GUI_UI_ICON_DITHER_TOP_SLIDER_W, GUI_UI_ICON_DITHER_TOP_SLIDER_H, m_tRect.x1+5, m_tRect.y1, m_tRect.x2-10, 6);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_LEFT_SLIDER_X, GUI_UI_ICON_DITHER_LEFT_SLIDER_Y, GUI_UI_ICON_DITHER_LEFT_SLIDER_W, GUI_UI_ICON_DITHER_LEFT_SLIDER_H, m_tRect.x1, m_tRect.y1+5, 6, m_tRect.y2-10);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_RIGHT_SLIDER_X, GUI_UI_ICON_DITHER_RIGHT_SLIDER_Y, GUI_UI_ICON_DITHER_RIGHT_SLIDER_W, GUI_UI_ICON_DITHER_RIGHT_SLIDER_H, m_tRect.x1+m_tRect.x2-6, m_tRect.y1+5, 6, m_tRect.y2-10);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_W, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_Y, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_W, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_H, m_tRect.x1+5, m_tRect.y1+m_tRect.y2-6, m_tRect.x2-10, 6);
 		}
 		break;
 		default:
 		{
-			renderer->drawPictureRepeat(3, 0, 0, 96, 96, m_tRect.x1+4, m_tRect.y1+17, m_tRect.x2-8, m_tRect.y2-21);
-			renderer->drawPictureRepeat(3, 114, 183, 96, 17, m_tRect.x1+4, m_tRect.y1, m_tRect.x2-8, 17);
-			renderer->drawPicture(3, 106, 183, m_tRect.x1, m_tRect.y1, 4, 17);
-			renderer->drawPicture(3, 110, 183, m_tRect.x1+m_tRect.x2-4, m_tRect.y1, 4, 17);
-			renderer->drawPictureRepeat(3, 256, 0, 4, 96, m_tRect.x1, m_tRect.y1+17, 4, m_tRect.y2-17);
-			renderer->drawPictureRepeat(3, 2, 193, 96, 4, m_tRect.x1+4, m_tRect.y1+m_tRect.y2-4, m_tRect.x2-4, 4);
-			renderer->drawPictureRepeat(3, 260, 0, 4, 96, m_tRect.x1+m_tRect.x2-4, m_tRect.y1+17, 4, m_tRect.y2-20);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1+4, m_tRect.y1+17, m_tRect.x2-8, m_tRect.y2-21);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_WINDOW_TOP_CENTER_X, GUI_UI_ICON_WINDOW_TOP_CENTER_Y, GUI_UI_ICON_WINDOW_TOP_CENTER_W, GUI_UI_ICON_WINDOW_TOP_CENTER_H, m_tRect.x1+4, m_tRect.y1, m_tRect.x2-8, 17);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_WINDOW_LEFT_CENTER_X, GUI_UI_ICON_WINDOW_LEFT_CENTER_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_WINDOW_LEFT_CENTER_W, GUI_UI_ICON_WINDOW_LEFT_CENTER_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_WINDOW_RIGHT_CENTER_X, GUI_UI_ICON_WINDOW_RIGHT_CENTER_Y, m_tRect.x1+m_tRect.x2-4, m_tRect.y1, GUI_UI_ICON_WINDOW_RIGHT_CENTER_W, GUI_UI_ICON_WINDOW_RIGHT_CENTER_H);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_LEFT_SLIDER_X, GUI_UI_ICON_LEFT_SLIDER_Y, GUI_UI_ICON_LEFT_SLIDER_W, GUI_UI_ICON_LEFT_SLIDER_H, m_tRect.x1, m_tRect.y1+17, 4, m_tRect.y2-17);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_BOTTOM_SLIDER_X, GUI_UI_ICON_BOTTOM_SLIDER_Y, GUI_UI_ICON_BOTTOM_SLIDER_W, GUI_UI_ICON_BOTTOM_SLIDER_H, m_tRect.x1+4, m_tRect.y1+m_tRect.y2-4, m_tRect.x2-4, 4);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_RIGHT_SLIDER_X, GUI_UI_ICON_RIGHT_SLIDER_Y, GUI_UI_ICON_RIGHT_SLIDER_W, GUI_UI_ICON_RIGHT_SLIDER_H, m_tRect.x1+m_tRect.x2-4, m_tRect.y1+17, 4, m_tRect.y2-20);
 			g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1+(m_tRect.x2/2), m_tRect.y1+4, m_Title, 143, 143, 143, CLIENT_FONT_ALIGN_CENTER);
 		}
 		break;

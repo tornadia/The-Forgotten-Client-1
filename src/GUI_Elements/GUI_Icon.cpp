@@ -33,8 +33,8 @@ GUI_Icon::GUI_Icon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictur
 	m_sy[1] = cPictureY;
 
 	setRect(boxRect);
-	PERFORM_MOVE(m_Description, description);
-	m_Pressed = 0;
+	m_description = std::move(description);
+	m_pressed = 0;
 	m_evtParam = 0;
 	m_eventHandlerFunction = NULL;
 	m_internalID = internalID;
@@ -55,31 +55,32 @@ void GUI_Icon::setData(Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 
 	m_sy[1] = cPictureY;
 }
 
-void GUI_Icon::onMouseMove(Sint32 x, Sint32 y, bool)
+void GUI_Icon::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
-	bool inside = m_tRect.isPointInside(x, y);
-	if(m_Pressed > 0)
+	bool inside = (isInsideParent && m_tRect.isPointInside(x, y));
+	if(m_pressed > 0)
 	{
-		if(m_Pressed == 1 && !inside)
-			m_Pressed = 2;
-		else if(m_Pressed == 2 && inside)
-			m_Pressed = 1;
+		if(m_pressed == 1 && !inside)
+			m_pressed = 2;
+		else if(m_pressed == 2 && inside)
+			m_pressed = 1;
 	}
-	if(!m_Description.empty() && inside)
-		g_engine.showDescription(x, y, m_Description);
+	if(!m_description.empty() && inside)
+		g_engine.showDescription(x, y, m_description);
 }
 
 void GUI_Icon::onLMouseDown(Sint32, Sint32)
 {
-	m_Pressed = 1;
+	m_pressed = 1;
 }
 
-void GUI_Icon::onLMouseUp(Sint32 x, Sint32 y)
+void GUI_Icon::onLMouseUp(Sint32, Sint32)
 {
-	if(m_Pressed > 0)
+	Uint8 pressed = m_pressed;
+	if(pressed > 0)
 	{
-		m_Pressed = 0;
-		if(m_tRect.isPointInside(x, y))
+		m_pressed = 0;
+		if(pressed == 1)
 		{
 			if(m_eventHandlerFunction)
 				UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 1);
@@ -89,6 +90,49 @@ void GUI_Icon::onLMouseUp(Sint32 x, Sint32 y)
 
 void GUI_Icon::render()
 {
+	bool pressed = (m_pressed == 1 ? true : false);
+
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(m_picture, m_sx[(m_Pressed == 1 ? 1 : 0)], m_sy[(m_Pressed == 1 ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+	renderer->drawPicture(m_picture, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+}
+
+GUI_RadioIcon::GUI_RadioIcon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID, const std::string description):
+	GUI_Icon(boxRect, picture, pictureX, pictureY, cPictureX, cPictureY, internalID, description)
+{
+	m_eventRadioChecked = NULL;
+}
+
+void GUI_RadioIcon::setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description)
+{
+	m_eventRadioChecked = eventRadioChecked;
+	m_radioDescription = std::move(description);
+}
+
+void GUI_RadioIcon::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
+{
+	bool inside = (isInsideParent && m_tRect.isPointInside(x, y));
+	if(m_pressed > 0)
+	{
+		if(m_pressed == 1 && !inside)
+			m_pressed = 2;
+		else if(m_pressed == 2 && inside)
+			m_pressed = 1;
+	}
+	if(inside)
+	{
+		if(m_eventRadioChecked && m_eventRadioChecked())
+			g_engine.showDescription(x, y, m_radioDescription);
+		else if(!m_description.empty())
+			g_engine.showDescription(x, y, m_description);
+	}
+}
+
+void GUI_RadioIcon::render()
+{
+	bool pressed = (m_pressed == 1 ? true : false);
+	if(m_eventRadioChecked && m_eventRadioChecked())
+		pressed = true;
+
+	Surface* renderer = g_engine.getRender();
+	renderer->drawPicture(m_picture, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 }

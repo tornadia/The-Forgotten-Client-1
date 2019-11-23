@@ -26,12 +26,15 @@
 
 #if defined(SDL_VIDEO_RENDER_D3D)
 
-typedef struct
+struct VertexD3D9
 {
+	VertexD3D9(float x, float y, float u, float v, DWORD color) : x(x), y(y), z(0.0), color(color), u(u), v(v) {}
+	VertexD3D9(float x, float y, DWORD color) : x(x), y(y), z(0.0), color(color), u(0.0f), v(0.0f) {}
+
 	float x, y, z;
 	DWORD color;
 	float u, v;
-} VertexD3D9;
+};
 
 typedef struct IDirect3DTexture9 IDirect3DTexture9;
 struct Direct3D9Texture
@@ -46,13 +49,8 @@ struct Direct3D9Texture
 	bool m_linearSample;
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, Direct3D9Texture*> U32BD3D9Textures;
 typedef std::unordered_map<Uint64, Direct3D9Texture*> U64BD3D9Textures;
-#else
-typedef std::map<Uint32, Direct3D9Texture*> U32BD3D9Textures;
-typedef std::map<Uint64, Direct3D9Texture*> U64BD3D9Textures;
-#endif
 
 typedef struct IDirect3D9 IDirect3D9;
 typedef struct IDirect3D9Ex IDirect3D9Ex;

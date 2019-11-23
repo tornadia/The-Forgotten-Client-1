@@ -27,7 +27,7 @@ extern Engine g_engine;
 GUI_CheckBox::GUI_CheckBox(iRect boxRect, const std::string labelName, bool checked, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue)
 {
 	setRect(boxRect);
-	PERFORM_MOVE(m_Label, labelName);
+	m_Label = std::move(labelName);
 	m_Checked = checked;
 	m_evtParam = 0;
 	m_eventHandlerFunction = NULL;
@@ -45,7 +45,7 @@ void GUI_CheckBox::setBoxEventCallback(void (*eventHandlerFunction)(Uint32,Sint3
 
 void GUI_CheckBox::setName(const std::string labelName)
 {
-	PERFORM_MOVE(m_Label, labelName);
+	m_Label = std::move(labelName);
 }
 
 void GUI_CheckBox::setChecked(bool check)
@@ -64,10 +64,10 @@ void GUI_CheckBox::onLMouseUp(Sint32 x, Sint32 y)
 void GUI_CheckBox::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPictureRepeat(3, 0, 96, 96, 1, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
-	renderer->drawPictureRepeat(3, 0, 98, 1, 96, m_tRect.x1, m_tRect.y1+1, 1, m_tRect.y2-1);
-	renderer->drawPictureRepeat(3, 2, 197, 96, 1, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-1, m_tRect.x2-1, 1);
-	renderer->drawPictureRepeat(3, 276, 0, 1, 96, m_tRect.x1+m_tRect.x2-1, m_tRect.y1+1, 1, m_tRect.y2-2);
-	renderer->drawPicture(3, 308, (m_Checked ? 108 : 96), m_tRect.x1+6, m_tRect.y1+5, 12, 12);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1+1, 1, m_tRect.y2-1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-1, m_tRect.x2-1, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1+m_tRect.x2-1, m_tRect.y1+1, 1, m_tRect.y2-2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_CHECKBOX_UNCHECKED_X, (m_Checked ? GUI_UI_CHECKBOX_CHECKED_Y : GUI_UI_CHECKBOX_UNCHECKED_Y), m_tRect.x1+6, m_tRect.y1+5, GUI_UI_CHECKBOX_CHECKED_W, GUI_UI_CHECKBOX_CHECKED_H);
 	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1+22, m_tRect.y1+6, m_Label, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT);
 }

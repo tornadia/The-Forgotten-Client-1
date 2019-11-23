@@ -138,10 +138,8 @@ SurfaceOpengl::SurfaceOpengl() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAPTILES), 
 	m_useNonPower2 = false;
 	m_haveSharpening = false;
 
-	#ifdef HAVE_CXX11_SUPPORT
 	m_spriteMasks.reserve(HARDWARE_MAX_SPRITEMASKS);
 	m_automapTiles.reserve(HARDWARE_MAX_AUTOMAPTILES);
-	#endif
 }
 
 SurfaceOpengl::~SurfaceOpengl()
@@ -1865,19 +1863,19 @@ void SurfaceOpenglPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 			m_spriteAtlas = tex;
 		}
 
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(maxy);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(maxy);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(maxy);
+		m_gameWindowVertices.emplace_back(minx); m_gameWindowVertices.emplace_back(miny);
+		m_gameWindowVertices.emplace_back(minx); m_gameWindowVertices.emplace_back(maxy);
+		m_gameWindowVertices.emplace_back(maxx); m_gameWindowVertices.emplace_back(miny);
+		m_gameWindowVertices.emplace_back(maxx); m_gameWindowVertices.emplace_back(maxy);
+		m_gameWindowVertices.emplace_back(maxx); m_gameWindowVertices.emplace_back(miny);
+		m_gameWindowVertices.emplace_back(minx); m_gameWindowVertices.emplace_back(maxy);
 
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(maxv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(maxv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(maxv);
+		m_gameWindowTexCoords.emplace_back(minu); m_gameWindowTexCoords.emplace_back(minv);
+		m_gameWindowTexCoords.emplace_back(minu); m_gameWindowTexCoords.emplace_back(maxv);
+		m_gameWindowTexCoords.emplace_back(maxu); m_gameWindowTexCoords.emplace_back(minv);
+		m_gameWindowTexCoords.emplace_back(maxu); m_gameWindowTexCoords.emplace_back(maxv);
+		m_gameWindowTexCoords.emplace_back(maxu); m_gameWindowTexCoords.emplace_back(minv);
+		m_gameWindowTexCoords.emplace_back(minu); m_gameWindowTexCoords.emplace_back(maxv);
 	}
 	else
 	{

@@ -24,22 +24,14 @@
 
 #include "defines.h"
 
-#ifdef HAVE_CXX11_SUPPORT
 enum AnimationPhase : Sint32
-#else
-enum AnimationPhase
-#endif
 {
 	AnimationPhase_Automatic = -1,
 	AnimationPhase_Random = -2,
 	AnimationPhase_Async = -3
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum AnimationDirection : Uint8
-#else
-enum AnimationDirection
-#endif
 {
 	AnimationDirection_Forward = 0,
 	AnimationDirection_Backward = 1

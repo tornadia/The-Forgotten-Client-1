@@ -34,11 +34,7 @@ class StaticText;
 class ScreenText;
 class Creature;
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, Creature*> knownCreatures;
-#else
-typedef std::map<Uint32, Creature*> knownCreatures;
-#endif
 
 struct AStarNode
 {
@@ -47,7 +43,7 @@ struct AStarNode
 	Uint16 x, y;
 };
 
-static const Sint32 MAX_NODES_COMPLEXITY = 32768;//Should be divisible by 16, most welcomed multiply factor of 2
+static const Sint32 MAX_NODES_COMPLEXITY = 16384;//Should be divisible by 32, most welcomed multiply factor of 2
 static const Sint32 MAP_NORMALWALKFACTOR = 1;
 static const Sint32 MAP_DIAGONALWALKFACTOR = 2;
 
@@ -55,6 +51,7 @@ class AStarNodes
 {
 	public:
 		AStarNodes(const Position& startPos);
+		~AStarNodes();
 
 		bool createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 Sx, Sint32 Sy, const Position& targetPos, const Position& pos);
 		AStarNode* getBestNode();
@@ -67,17 +64,12 @@ class AStarNodes
 		static Sint32 getMapWalkFactor(AStarNode* node, const Position& neighborPos);
 
 	private:
-		#ifdef UseUnalignedVectors
-		Uint32 nodesTable[MAX_NODES_COMPLEXITY];
-		Sint32 calculatedNodes[MAX_NODES_COMPLEXITY];
-		#else
-		AlingTypeAs(16) Uint32 nodesTable[MAX_NODES_COMPLEXITY];
-		AlingTypeAs(16) Sint32 calculatedNodes[MAX_NODES_COMPLEXITY];
-		#endif
-		AStarNode nodes[MAX_NODES_COMPLEXITY];
+		std::unordered_map<Uint32, Uint32> nodesTable;
+		Sint32* calculatedNodes;
+		AStarNode* nodes;
+		bool* openNodes;
 		Sint32 closedNodes;
 		Sint32 curNode;
-		bool openNodes[MAX_NODES_COMPLEXITY];
 };
 
 class Map

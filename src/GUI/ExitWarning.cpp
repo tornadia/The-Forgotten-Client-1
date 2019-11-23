@@ -98,15 +98,15 @@ void UTIL_exitWarning()
 	newWindow->addChild(newLabel);
 	newLabel = new GUI_Label(iRect(EXIT_WARNINGTHIRD_LABEL_X, EXIT_WARNING_THIRD_LABEL_Y, 0, 0), EXIT_WARNING_THIRD_LABEL_TEXT);
 	newWindow->addChild(newLabel);
-	GUI_Button* newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-56, EXIT_WARNING_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-56, EXIT_WARNING_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&exitWarning_Events, EXIT_WARNING_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-109, EXIT_WARNING_HEIGHT-30, 43, 20), "Logout", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-109, EXIT_WARNING_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Logout", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&exitWarning_Events, EXIT_WARNING_LOGOUT_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-162, EXIT_WARNING_HEIGHT-30, 43, 20), "Exit");
+	newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-162, EXIT_WARNING_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Exit");
 	newButton->setButtonEventCallback(&exitWarning_Events, EXIT_WARNING_EXIT_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

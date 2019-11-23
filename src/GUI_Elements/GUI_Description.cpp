@@ -32,7 +32,7 @@ GUI_Description::GUI_Description()
 
 void GUI_Description::setDisplay(Sint32 mouseX, Sint32 mouseY, const std::string description, Uint32 delay)
 {
-	PERFORM_MOVE(m_description, description);
+	m_description = std::move(description);
 	m_startDisplay = g_frameTime+delay;
 
 	Uint32 cacheMSGsizeX = 0, cacheMSGsizeY = 8;

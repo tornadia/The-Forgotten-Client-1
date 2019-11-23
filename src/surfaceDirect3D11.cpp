@@ -231,10 +231,8 @@ SurfaceDirect3D11::SurfaceDirect3D11() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAP
 	m_haveSharpening = false;
 	m_useOldDXGIinterface = false;
 
-	#ifdef HAVE_CXX11_SUPPORT
 	m_spriteMasks.reserve(HARDWARE_MAX_SPRITEMASKS);
 	m_automapTiles.reserve(HARDWARE_MAX_AUTOMAPTILES);
-	#endif
 }
 
 SurfaceDirect3D11::~SurfaceDirect3D11()
@@ -1556,31 +1554,7 @@ bool SurfaceDirect3D11::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return false;
 
@@ -1674,31 +1648,7 @@ void SurfaceDirect3D11::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -1748,7 +1698,8 @@ void SurfaceDirect3D11::endGameScene()
 
 void SurfaceDirect3D11::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
-	VertexD3D11* vertices = SDL_reinterpret_cast(VertexD3D11*, SDL_malloc(sizeof(VertexD3D11)*(width+1)*2));
+	std::vector<VertexD3D11> vertices;
+	vertices.reserve((width+1)*2);
 	ID3D11DeviceContext_OMSetBlendState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11BlendState*, m_blendMod), 0, 0xFFFFFFFF);
 
 	ID3D11ShaderResourceView* resources = NULL;
@@ -1764,33 +1715,23 @@ void SurfaceDirect3D11::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sin
 		for(Sint32 k = -1; k < width; ++k)
 		{
 			Sint32 offset = UTIL_max<Sint32>(k, 0);
-			vertices[verticeCount].x = SDL_static_cast(float, drawX);
-			vertices[verticeCount].y = SDL_static_cast(float, drawY+scale);
-			vertices[verticeCount].u = 0.0f;
-			vertices[verticeCount].v = 0.0f;
-			vertices[verticeCount].color = MAKE_RGBA_COLOR(lightmap[offset1+offset].r, lightmap[offset1+offset].g, lightmap[offset1+offset].b, 255);
-			++verticeCount;
-
-			vertices[verticeCount].x = SDL_static_cast(float, drawX);
-			vertices[verticeCount].y = SDL_static_cast(float, drawY);
-			vertices[verticeCount].u = 0.0f;
-			vertices[verticeCount].v = 0.0f;
-			vertices[verticeCount].color = MAKE_RGBA_COLOR(lightmap[offset2+offset].r, lightmap[offset2+offset].g, lightmap[offset2+offset].b, 255);
-			++verticeCount;
+			vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY+scale), MAKE_RGBA_COLOR(lightmap[offset1 + offset].r, lightmap[offset1 + offset].g, lightmap[offset1 + offset].b, 255));
+			vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(lightmap[offset2 + offset].r, lightmap[offset2 + offset].g, lightmap[offset2 + offset].b, 255));
+			verticeCount += 2;
 			drawX += scale;
 		}
 
 		drawY += scale;
-		if(!updateVertexBuffer(vertices, sizeof(VertexD3D11)*verticeCount))
+		if(!updateVertexBuffer(&vertices[0], sizeof(VertexD3D11)*verticeCount))
 			continue;
 
+		vertices.clear();
 		ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), verticeCount, 0);
 	}
 
 	ID3D11DeviceContext_OMSetBlendState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11BlendState*, m_blendBlend), 0, 0xFFFFFFFF);
 	ID3D11DeviceContext_PSSetShader(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11PixelShader*, m_pixelShaderTexture), NULL, 0);
-	SDL_free(vertices);
 }
 
 void SurfaceDirect3D11::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -1852,37 +1793,7 @@ void SurfaceDirect3D11::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Ui
 	float maxy = SDL_static_cast(float, y+h)-0.5f;
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-
-	VertexD3D11 vertices[5];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = 0.0f;
-	vertices[0].v = 0.0f;
-	vertices[0].color = texColor;
-
-	vertices[1].x = maxx;
-	vertices[1].y = miny;
-	vertices[1].u = 0.0f;
-	vertices[1].v = 0.0f;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = maxy;
-	vertices[2].u = 0.0f;
-	vertices[2].v = 0.0f;
-	vertices[2].color = texColor;
-
-	vertices[3].x = minx;
-	vertices[3].y = maxy;
-	vertices[3].u = 0.0f;
-	vertices[3].v = 0.0f;
-	vertices[3].color = texColor;
-
-	vertices[4].x = minx;
-	vertices[4].y = miny;
-	vertices[4].u = 0.0f;
-	vertices[4].v = 0.0f;
-	vertices[4].color = texColor;
+	VertexD3D11 vertices[5] = {{minx, miny, texColor},{maxx, miny, texColor},{maxx, maxy, texColor},{minx, maxy, texColor},{minx, miny, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -1904,31 +1815,7 @@ void SurfaceDirect3D11::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Ui
 	float maxy = SDL_static_cast(float, y+h);
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = 0.0f;
-	vertices[0].v = 0.0f;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = 0.0f;
-	vertices[1].v = 0.0f;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = 0.0f;
-	vertices[2].v = 0.0f;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = 0.0f;
-	vertices[3].v = 0.0f;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, texColor},{minx, maxy, texColor},{maxx, miny, texColor},{maxx, maxy, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -2020,37 +1907,14 @@ void SurfaceDirect3D11::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std
 				float minv = cY[character]*tex->m_scaleH;
 				float maxv = (cY[character]+cH[character])*tex->m_scaleH;
 
-				VertexD3D11 vertice[4];
-				vertice[0].x = minx;
-				vertice[0].y = miny;
-				vertice[0].u = minu;
-				vertice[0].v = minv;
-				vertice[0].color = texColor;
+				vertices.emplace_back(minx, miny, minu, minv, texColor);
+				vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+				vertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-				vertice[1].x = minx;
-				vertice[1].y = maxy;
-				vertice[1].u = minu;
-				vertice[1].v = maxv;
-				vertice[1].color = texColor;
+				vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+				vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+				vertices.emplace_back(minx, maxy, minu, maxv, texColor);
 
-				vertice[2].x = maxx;
-				vertice[2].y = miny;
-				vertice[2].u = maxu;
-				vertice[2].v = minv;
-				vertice[2].color = texColor;
-
-				vertice[3].x = maxx;
-				vertice[3].y = maxy;
-				vertice[3].u = maxu;
-				vertice[3].v = maxv;
-				vertice[3].color = texColor;
-
-				vertices.push_back(vertice[0]);
-				vertices.push_back(vertice[1]);
-				vertices.push_back(vertice[2]);
-				vertices.push_back(vertice[3]);
-				vertices.push_back(vertice[2]);
-				vertices.push_back(vertice[1]);
 				rx += cW[character]+cX[0];
 			}
 			break;
@@ -2083,31 +1947,7 @@ void SurfaceDirect3D11::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, S
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -2152,37 +1992,14 @@ void SurfaceDirect3D11::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy
 			float minv = sy*tex->m_scaleH;
 			float maxv = (sy+curH)*tex->m_scaleH;
 
-			VertexD3D11 vertice[4];
-			vertice[0].x = minx;
-			vertice[0].y = miny;
-			vertice[0].u = minu;
-			vertice[0].v = minv;
-			vertice[0].color = texColor;
+			vertices.emplace_back(minx, miny, minu, minv, texColor);
+			vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+			vertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-			vertice[1].x = minx;
-			vertice[1].y = maxy;
-			vertice[1].u = minu;
-			vertice[1].v = maxv;
-			vertice[1].color = texColor;
+			vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+			vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+			vertices.emplace_back(minx, maxy, minu, maxv, texColor);
 
-			vertice[2].x = maxx;
-			vertice[2].y = miny;
-			vertice[2].u = maxu;
-			vertice[2].v = minv;
-			vertice[2].color = texColor;
-
-			vertice[3].x = maxx;
-			vertice[3].y = maxy;
-			vertice[3].u = maxu;
-			vertice[3].v = maxv;
-			vertice[3].color = texColor;
-
-			vertices.push_back(vertice[0]);
-			vertices.push_back(vertice[1]);
-			vertices.push_back(vertice[2]);
-			vertices.push_back(vertice[3]);
-			vertices.push_back(vertice[2]);
-			vertices.push_back(vertice[1]);
 			cx += sw;
 		}
 		y += sh;
@@ -2214,31 +2031,7 @@ void SurfaceDirect3D11::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint
 	float maxv = (sy+h)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -2321,31 +2114,7 @@ void SurfaceDirect3D11::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 	float maxv = tex->m_height*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -2397,31 +2166,7 @@ void SurfaceDirect3D11::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -2515,31 +2260,7 @@ void SurfaceDirect3D11::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -2648,31 +2369,7 @@ void SurfaceDirect3D11Comp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 	float maxv = tex->m_height*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -2706,31 +2403,7 @@ void SurfaceDirect3D11Comp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 
@@ -2977,31 +2650,6 @@ void SurfaceDirect3D11Perf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 	float maxv = (yOffset+32)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
 	if(m_scheduleSpriteDraw)
 	{
 		if(tex != m_spriteAtlas)
@@ -3009,16 +2657,17 @@ void SurfaceDirect3D11Perf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 			checkScheduledSprites();
 			m_spriteAtlas = tex;
 		}
+		m_gameWindowVertices.emplace_back(minx, miny, minu, minv, texColor);
+		m_gameWindowVertices.emplace_back(minx, maxy, minu, maxv, texColor);
+		m_gameWindowVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-		m_gameWindowVertices.push_back(vertices[0]);
-		m_gameWindowVertices.push_back(vertices[1]);
-		m_gameWindowVertices.push_back(vertices[2]);
-		m_gameWindowVertices.push_back(vertices[3]);
-		m_gameWindowVertices.push_back(vertices[2]);
-		m_gameWindowVertices.push_back(vertices[1]);
+		m_gameWindowVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+		m_gameWindowVertices.emplace_back(maxx, miny, maxu, minv, texColor);
+		m_gameWindowVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	}
 	else
 	{
+		VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 		if(!updateVertexBuffer(vertices, sizeof(vertices)))
 			return;
 
@@ -3065,31 +2714,7 @@ void SurfaceDirect3D11Perf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexD3D11 vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-	vertices[0].color = texColor;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-	vertices[1].color = texColor;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-	vertices[2].color = texColor;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-	vertices[3].color = texColor;
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 	if(!updateVertexBuffer(vertices, sizeof(vertices)))
 		return;
 

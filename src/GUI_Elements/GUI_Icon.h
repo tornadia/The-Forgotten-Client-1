@@ -40,12 +40,28 @@ class GUI_Icon : public GUI_Element
 
 	protected:
 		void (*m_eventHandlerFunction)(Uint32,Sint32);
-		std::string m_Description;
+		std::string m_description;
 		Uint32 m_evtParam;
 		Sint32 m_sx[2];
 		Sint32 m_sy[2];
 		Uint16 m_picture;
-		Uint8 m_Pressed;
+		Uint8 m_pressed;
+};
+
+class GUI_RadioIcon : public GUI_Icon
+{
+	public:
+		GUI_RadioIcon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID = 0, const std::string description = "");
+
+		void setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description);
+
+		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
+		
+		void render();
+
+	protected:
+		bool (*m_eventRadioChecked)(void);
+		std::string m_radioDescription;
 };
 
 #endif /* __FILE_GUI_ICON_h_ */

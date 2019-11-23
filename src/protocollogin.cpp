@@ -25,7 +25,6 @@
 #include "game.h"
 
 #include "GUI_Elements/GUI_Window.h"
-#include "GUI/GUI_UTIL.h"
 
 extern RSA g_rsa;
 extern Engine g_engine;

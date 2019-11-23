@@ -25,11 +25,7 @@
 #include "defines.h"
 
 class Animator;
-#ifdef HAVE_CXX11_SUPPORT
 enum ThingCategory : Sint32
-#else
-enum ThingCategory
-#endif
 {
 	ThingCategory_Item = 0,
 	ThingCategory_Creature = 1,
@@ -39,11 +35,7 @@ enum ThingCategory
 	ThingCategory_Last = ThingCategory_Invalid
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum ThingAttribute : Uint64
-#else
-enum ThingAttribute
-#endif
 {
 	ThingAttribute_Ground = (1 << 0),
 	ThingAttribute_GroundBorder = (1 << 1),
@@ -89,11 +81,7 @@ enum ThingAttribute
 	ThingAttribute_Usable = (SDL_static_cast(Uint64, 1) << 41),
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum ThingFrameGroup : Uint8
-#else
-enum ThingFrameGroup
-#endif
 {
 	ThingFrameGroup_Default = 0,
 	ThingFrameGroup_Idle = ThingFrameGroup_Default,

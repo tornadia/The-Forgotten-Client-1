@@ -71,11 +71,11 @@ void UTIL_createMotd()
 		newWindow->addChild(newLabel);
 		labelY += 14;
 	}
-	GUI_Button* newButton = new GUI_Button(iRect(cacheMSGsize-20, cacheMSGsize2-30, 43, 20), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(cacheMSGsize-20, cacheMSGsize2-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&motd_Events, MOTD_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(cacheMSGsize-20, cacheMSGsize2-30, 43, 20), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(cacheMSGsize-20, cacheMSGsize2-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&motd_Events, MOTD_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

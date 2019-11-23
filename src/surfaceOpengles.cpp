@@ -118,10 +118,8 @@ SurfaceOpenglES::SurfaceOpenglES() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAPTILE
 	m_useAlphaBlending = false;
 	m_useBlendEquation = false;
 
-	#ifdef HAVE_CXX11_SUPPORT
 	m_spriteMasks.reserve(HARDWARE_MAX_SPRITEMASKS);
 	m_automapTiles.reserve(HARDWARE_MAX_AUTOMAPTILES);
-	#endif
 }
 
 SurfaceOpenglES::~SurfaceOpenglES()

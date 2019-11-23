@@ -52,7 +52,7 @@ void StaticText::addMessage(const std::string& name, MessageMode mode, std::stri
 		time *= 2;
 
 	StaticTextMessage newMessage;
-	PERFORM_MOVE(newMessage.m_message, text);
+	newMessage.m_message = std::move(text);
 	newMessage.m_endTime = g_frameTime+time;
 	m_messages.push_back(newMessage);
 	composeText();

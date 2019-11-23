@@ -25,7 +25,6 @@ static const float inv255f = (1.0f/255.0f);
 
 LPSDL_DrawTriangle_MOD SDL_DrawTriangle_MOD;
 LPSDL_SmoothStretch SDL_SmoothStretch;
-LPSDL_SmoothStretch_fast SDL_SmoothStretch_fast;
 
 struct SOFTWARE_threadData {
 	SDL_Thread* thread;
@@ -619,83 +618,6 @@ SDL_FORCE_INLINE __m128i _sym_mm_mullo_epu32(__m128i a, __m128i b)
 	return _mm_unpacklo_epi32(_mm_shuffle_epi32(dest02, 0xD8), _mm_shuffle_epi32(dest13, 0xD8));
 }
 
-Sint32 SDL_SmoothStretch_fast_SSE2(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect)
-{
-	if(!srcrect)
-	{
-		SDL_Rect srcr = {0,0,src->w,src->h};
-		srcrect = &srcr;
-	}
-	else
-	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
-			return -1;
-	}
-
-	if(!dstrect)
-	{
-		SDL_Rect dstr = {0,0,dst->w,dst->h};
-		dstrect = &dstr;
-	}
-	else
-	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
-			return -1;
-	}
-
-	Sint32 salast;
-	const __m128i andMask = _mm_set1_epi32(0xFF);
-
-	Sint32 spixelw = (srcrect->w - 1);
-	Sint32 spixelh = (srcrect->h - 1);
-	Sint32 sx = SDL_static_cast(Sint32, 65536.0f * spixelw / (dstrect->w - 1));
-	Sint32 sy = SDL_static_cast(Sint32, 65536.0f * spixelh / (dstrect->h - 1));
-
-	Sint32 ssx = (srcrect->w << 16) - 1;
-	Sint32 ssy = (srcrect->h << 16) - 1;
-
-	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y*src->w + srcrect->x) * 4);
-	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
-
-	Sint32 dgap = dst->pitch / 4;
-	Sint32 spixelgap = src->pitch / 4;
-
-	Sint32 csay = 0;
-	Sint32 xEnd = dstrect->w, yEnd = dstrect->h;
-	for(Sint32 y = 0; y < yEnd; ++y)
-	{
-		Sint32* cdp = dp;
-		Uint32* csp = sp;
-		Sint32 csax = 0;
-		for(Sint32 x = 0; x < xEnd; ++x)
-		{
-			Sint32 ex = (csax & 0xFFFF);
-			Sint32 cx = (csax >> 16);
-			Uint32* c00 = sp;
-			Uint32* c01 = (cx < spixelw ? c00 + 1 : c00);
-
-			const __m128i sc00 = _mm_unpacklo_epi16(_mm_unpacklo_epi8(_mm_cvtsi32_si128(*c00), _mm_setzero_si128()), _mm_setzero_si128());
-			const __m128i sc01 = _mm_unpacklo_epi16(_mm_unpacklo_epi8(_mm_cvtsi32_si128(*c01), _mm_setzero_si128()), _mm_setzero_si128());
-			__m128i r = _mm_and_si128(_mm_add_epi32(_mm_srli_epi32(_sym_mm_mullo_epu32(_mm_sub_epi32(sc01, sc00), _mm_set1_epi32(ex)), 16), sc00), andMask);
-			r = _mm_packs_epi32(r, r);
-			_mm_stream_si32(dp, _mm_cvtsi128_si32(_mm_packus_epi16(r, r)));
-
-			salast = csax;
-			csax += sx;
-			csax = (csax > ssx ? ssx : csax);
-			sp += ((csax >> 16) - (salast >> 16));
-			++dp;
-		}
-		salast = csay;
-		csay += sy;
-		csay = (csay > ssy ? ssy : csay);
-		sp = csp + (((csay >> 16) - (salast >> 16)) * spixelgap);
-		dp = cdp + dgap;
-	}
-	_mm_sfence();
-	return 0;
-}
-
 Sint32 SDL_SmoothStretch_SSE2(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect)
 {
 	if(!srcrect)
@@ -785,83 +707,6 @@ Sint32 SDL_SmoothStretch_SSE2(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* 
 #endif
 
 #ifdef __USE_SSSE3__
-Sint32 SDL_SmoothStretch_fast_SSSE3(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect)
-{
-	if(!srcrect)
-	{
-		SDL_Rect srcr = {0,0,src->w,src->h};
-		srcrect = &srcr;
-	}
-	else
-	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
-			return -1;
-	}
-
-	if(!dstrect)
-	{
-		SDL_Rect dstr = {0,0,dst->w,dst->h};
-		dstrect = &dstr;
-	}
-	else
-	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
-			return -1;
-	}
-
-	Sint32 salast;
-	const __m128i loadMask = _mm_set_epi8(15, 14, 13, 3, 12, 11, 10, 2, 9, 8, 7, 1, 6, 5, 4, 0);
-	const __m128i shuffleMask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 8, 4, 0);
-
-	Sint32 spixelw = (srcrect->w - 1);
-	Sint32 spixelh = (srcrect->h - 1);
-	Sint32 sx = SDL_static_cast(Sint32, 65536.0f * spixelw / (dstrect->w - 1));
-	Sint32 sy = SDL_static_cast(Sint32, 65536.0f * spixelh / (dstrect->h - 1));
-
-	Sint32 ssx = (srcrect->w << 16) - 1;
-	Sint32 ssy = (srcrect->h << 16) - 1;
-
-	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y*src->w + srcrect->x) * 4);
-	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
-
-	Sint32 dgap = dst->pitch / 4;
-	Sint32 spixelgap = src->pitch / 4;
-
-	Sint32 csay = 0;
-	Sint32 xEnd = dstrect->w, yEnd = dstrect->h;
-	for(Sint32 y = 0; y < yEnd; ++y)
-	{
-		Sint32* cdp = dp;
-		Uint32* csp = sp;
-		Sint32 csax = 0;
-		for(Sint32 x = 0; x < xEnd; ++x)
-		{
-			Sint32 ex = (csax & 0xFFFF);
-			Sint32 cx = (csax >> 16);
-			Uint32* c00 = sp;
-			Uint32* c01 = (cx < spixelw ? c00 + 1 : c00);
-
-			const __m128i sc00 = _mm_shuffle_epi8(_mm_cvtsi32_si128(*c00), loadMask);
-			const __m128i sc01 = _mm_shuffle_epi8(_mm_cvtsi32_si128(*c01), loadMask);
-			__m128i r = _mm_add_epi32(_mm_srli_epi32(_sym_mm_mullo_epu32(_mm_sub_epi32(sc01, sc00), _mm_set1_epi32(ex)), 16), sc00);
-			_mm_stream_si32(dp, _mm_cvtsi128_si32(_mm_shuffle_epi8(r, shuffleMask)));
-
-			salast = csax;
-			csax += sx;
-			csax = (csax > ssx ? ssx : csax);
-			sp += ((csax >> 16) - (salast >> 16));
-			++dp;
-		}
-		salast = csay;
-		csay += sy;
-		csay = (csay > ssy ? ssy : csay);
-		sp = csp + (((csay >> 16) - (salast >> 16)) * spixelgap);
-		dp = cdp + dgap;
-	}
-	_mm_sfence();
-	return 0;
-}
-
 Sint32 SDL_SmoothStretch_SSSE3(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect)
 {
 	if(!srcrect)
@@ -952,82 +797,6 @@ Sint32 SDL_SmoothStretch_SSSE3(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 #endif
 
 #ifdef __USE_SSE4_1__
-Sint32 SDL_SmoothStretch_fast_SSE41(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect)
-{
-	if(!srcrect)
-	{
-		SDL_Rect srcr = {0,0,src->w,src->h};
-		srcrect = &srcr;
-	}
-	else
-	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
-			return -1;
-	}
-
-	if(!dstrect)
-	{
-		SDL_Rect dstr = {0,0,dst->w,dst->h};
-		dstrect = &dstr;
-	}
-	else
-	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
-			return -1;
-	}
-
-	Sint32 salast;
-	const __m128i shuffleMask = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 8, 4, 0);
-
-	Sint32 spixelw = (srcrect->w - 1);
-	Sint32 spixelh = (srcrect->h - 1);
-	Sint32 sx = SDL_static_cast(Sint32, 65536.0f * spixelw / (dstrect->w - 1));
-	Sint32 sy = SDL_static_cast(Sint32, 65536.0f * spixelh / (dstrect->h - 1));
-
-	Sint32 ssx = (srcrect->w << 16) - 1;
-	Sint32 ssy = (srcrect->h << 16) - 1;
-
-	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y*src->w + srcrect->x) * 4);
-	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
-
-	Sint32 dgap = dst->pitch / 4;
-	Sint32 spixelgap = src->pitch / 4;
-
-	Sint32 csay = 0;
-	Sint32 xEnd = dstrect->w, yEnd = dstrect->h;
-	for(Sint32 y = 0; y < yEnd; ++y)
-	{
-		Sint32* cdp = dp;
-		Uint32* csp = sp;
-		Sint32 csax = 0;
-		for(Sint32 x = 0; x < xEnd; ++x)
-		{
-			Sint32 ex = (csax & 0xFFFF);
-			Sint32 cx = (csax >> 16);
-			Uint32* c00 = sp;
-			Uint32* c01 = (cx < spixelw ? c00 + 1 : c00);
-
-			const __m128i sc00 = _mm_cvtepu8_epi32(_mm_cvtsi32_si128(*c00));
-			const __m128i sc01 = _mm_cvtepu8_epi32(_mm_cvtsi32_si128(*c01));
-			__m128i r = _mm_add_epi32(_mm_srli_epi32(_mm_mullo_epi32(_mm_sub_epi32(sc01, sc00), _mm_set1_epi32(ex)), 16), sc00);
-			_mm_stream_si32(dp, _mm_cvtsi128_si32(_mm_shuffle_epi8(r, shuffleMask)));
-
-			salast = csax;
-			csax += sx;
-			csax = (csax > ssx ? ssx : csax);
-			sp += ((csax >> 16) - (salast >> 16));
-			++dp;
-		}
-		salast = csay;
-		csay += sy;
-		csay = (csay > ssy ? ssy : csay);
-		sp = csp + (((csay >> 16) - (salast >> 16)) * spixelgap);
-		dp = cdp + dgap;
-	}
-	_mm_sfence();
-	return 0;
-}
-
 Sint32 SDL_SmoothStretch_SSE41(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect)
 {
 	if(!srcrect)
@@ -1115,80 +884,6 @@ Sint32 SDL_SmoothStretch_SSE41(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 	return 0;
 }
 #endif
-
-Sint32 SDL_SmoothStretch_fast_scalar(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect)
-{
-	if(!srcrect)
-	{
-		SDL_Rect srcr = {0,0,src->w,src->h};
-		srcrect = &srcr;
-	}
-	else
-	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
-			return -1;
-	}
-
-	if(!dstrect)
-	{
-		SDL_Rect dstr = {0,0,dst->w,dst->h};
-		dstrect = &dstr;
-	}
-	else
-	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
-			return -1;
-	}
-
-	Sint32 salast;
-
-	Sint32 spixelw = (srcrect->w - 1);
-	Sint32 spixelh = (srcrect->h - 1);
-	Sint32 sx = SDL_static_cast(Sint32, 65536.0f * spixelw / (dstrect->w - 1));
-	Sint32 sy = SDL_static_cast(Sint32, 65536.0f * spixelh / (dstrect->h - 1));
-
-	Sint32 ssx = (srcrect->w << 16) - 1;
-	Sint32 ssy = (srcrect->h << 16) - 1;
-
-	tColorRGBA* sp = SDL_reinterpret_cast(tColorRGBA*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y*src->w + srcrect->x) * 4);
-	tColorRGBA* dp = SDL_reinterpret_cast(tColorRGBA*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
-
-	Sint32 dgap = dst->pitch / 4;
-	Sint32 spixelgap = src->pitch / 4;
-
-	Sint32 csay = 0;
-	Sint32 xEnd = dstrect->w, yEnd = dstrect->h;
-	for(Sint32 y = 0; y < yEnd; ++y)
-	{
-		tColorRGBA* cdp = dp;
-		tColorRGBA* csp = sp;
-		Sint32 csax = 0;
-		for(Sint32 x = 0; x < xEnd; ++x)
-		{
-			Sint32 ex = (csax & 0xFFFF);
-			Sint32 cx = (csax >> 16);
-			tColorRGBA* c00 = sp;
-			tColorRGBA* c01 = (cx < spixelw ? c00 + 1 : c00);
-
-			dp->r = SDL_static_cast(Uint8, (((c01->r - c00->r) * ex) >> 16) + c00->r);
-			dp->g = SDL_static_cast(Uint8, (((c01->g - c00->g) * ex) >> 16) + c00->g);
-			dp->b = SDL_static_cast(Uint8, (((c01->b - c00->b) * ex) >> 16) + c00->b);
-			dp->a = SDL_static_cast(Uint8, (((c01->a - c00->a) * ex) >> 16) + c00->a);
-
-			salast = csax;
-			csax += sx;
-			csax = (csax > ssx ? ssx : csax);
-			sp += ((csax >> 16) - (salast >> 16));
-			++dp;
-		}
-		salast = csay;
-		csay += sy;
-		csay = (csay > ssy ? ssy : csay);
-		sp = csp + (((csay >> 16) - (salast >> 16)) * spixelgap);
-		dp = SDL_reinterpret_cast(tColorRGBA*, cdp + dgap);
-	}
-	return 0;
-}
 
 Sint32 SDL_SmoothStretch_scalar(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect)
 {
@@ -1323,7 +1018,7 @@ static int SOFTWARE_drawthread(void* data)
 		if(thread->lightning)
 			SDL_DrawLightMap(thread->src, SDL_reinterpret_cast(LightMap*, thread->dst), thread->sr.x, thread->sr.y, thread->sr.w, thread->dr.x, thread->dr.w, thread->dr.h);
 		else
-			SDL_SmoothStretch_fast(thread->src, &thread->sr, thread->dst, &thread->dr);
+			SDL_SmoothStretch(thread->src, &thread->sr, thread->dst, &thread->dr);
 
 		thread->drawning = false;
 		SDL_UnlockMutex(thread->drawMutex);
@@ -1501,7 +1196,6 @@ void SDL_SmoothStretch_init()
 	{
 		//_mm_mullo_epi32 - to make calculations a bit faster
 		SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_SSE41);
-		SDL_SmoothStretch_fast = SDL_reinterpret_cast(LPSDL_SmoothStretch_fast, SDL_SmoothStretch_fast_SSE41);
 		return;
 	}
 	#endif
@@ -1510,7 +1204,6 @@ void SDL_SmoothStretch_init()
 	{
 		//_mm_shuffle_epi8 - to avoid unnecesary packing/unpacking
 		SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_SSSE3);
-		SDL_SmoothStretch_fast = SDL_reinterpret_cast(LPSDL_SmoothStretch_fast, SDL_SmoothStretch_fast_SSSE3);
 		return;
 	}
 	#endif
@@ -1518,13 +1211,11 @@ void SDL_SmoothStretch_init()
 	if(SDL_HasSSE2())
 	{
 		SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_SSE2);
-		SDL_SmoothStretch_fast = SDL_reinterpret_cast(LPSDL_SmoothStretch_fast, SDL_SmoothStretch_fast_SSE2);
 		return;
 	}
 	#endif
 
 	SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_scalar);
-	SDL_SmoothStretch_fast = SDL_reinterpret_cast(LPSDL_SmoothStretch_fast, SDL_SmoothStretch_fast_scalar);
 }
 
 void SDL_SmoothStretch_shutdown()

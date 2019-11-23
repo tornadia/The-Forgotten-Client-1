@@ -28,6 +28,7 @@
 #include "../GUI_Elements/GUI_TextBox.h"
 #include "../GUI_Elements/GUI_Label.h"
 #include "../game.h"
+#include "Chat.h"
 
 #define CHANNELS_TITLE "New Channel"
 #define CHANNELS_WIDTH 236
@@ -54,7 +55,7 @@
 extern Engine g_engine;
 extern Game g_game;
 
-std::map<Sint32, Uint16> g_channelsCache;
+std::map<Sint32, Uint32> g_channelsCache;
 
 void channels_Events(Uint32 event, Sint32 status)
 {
@@ -87,9 +88,17 @@ void channels_Events(Uint32 event, Sint32 status)
 					g_game.sendOpenPrivateChannel(privateChannel);
 				else
 				{
-					std::map<Sint32, Uint16>::iterator it = g_channelsCache.find(select);
+					std::map<Sint32, Uint32>::iterator it = g_channelsCache.find(select);
 					if(it != g_channelsCache.end())
-						g_game.sendOpenChannel(it->second);
+					{
+						Uint32 channelId = it->second;
+						if(channelId == CHANNEL_ID_NPC)
+							g_game.openNPCChannel();
+						else if(channelId == 0xFFFF)
+							g_game.sendCreatePrivateChannel();
+						else
+							g_game.sendOpenChannel(SDL_static_cast(Uint16, it->second));
+					}
 				}
 				g_engine.removeWindow(pWindow);
 				g_channelsCache.clear();
@@ -103,9 +112,17 @@ void channels_Events(Uint32 event, Sint32 status)
 			if(status < 0 && pWindow && pWindow->getInternalID() == GUI_WINDOW_CHANNELS)
 			{
 				Sint32 select = (status*-1)-1;
-				std::map<Sint32, Uint16>::iterator it = g_channelsCache.find(select);
+				std::map<Sint32, Uint32>::iterator it = g_channelsCache.find(select);
 				if(it != g_channelsCache.end())
-					g_game.sendOpenChannel(it->second);
+				{
+					Uint32 channelId = it->second;
+					if(channelId == CHANNEL_ID_NPC)
+						g_game.openNPCChannel();
+					else if(channelId == 0xFFFF)
+						g_game.sendCreatePrivateChannel();
+					else
+						g_game.sendOpenChannel(SDL_static_cast(Uint16, it->second));
+				}
 
 				g_engine.removeWindow(pWindow);
 				g_channelsCache.clear();
@@ -132,8 +149,13 @@ void UTIL_createChannels(std::vector<ChannelDetail>& channels)
 	for(std::vector<ChannelDetail>::iterator it = channels.begin(), end = channels.end(); it != end; ++it)
 	{
 		ChannelDetail& channel = (*it);
-		g_channelsCache[count++] = channel.channelId;
+		g_channelsCache[count++] = SDL_static_cast(Uint32, channel.channelId);
 		newListBox->add(channel.channelName);
+	}
+	if(g_game.hasGameFeature(GAME_FEATURE_NPC_INTERFACE))
+	{
+		g_channelsCache[count++] = CHANNEL_ID_NPC;
+		newListBox->add(CHANNEL_NAME_NPC);
 	}
 	newListBox->setEventCallback(&channels_Events, CHANNELS_LISTBOX_EVENTID);
 	newListBox->startEvents();
@@ -142,11 +164,11 @@ void UTIL_createChannels(std::vector<ChannelDetail>& channels)
 	newTextBox->setMaxLength(32);
 	newTextBox->startEvents();
 	newWindow->addChild(newTextBox);
-	GUI_Button* newButton = new GUI_Button(iRect(CHANNELS_WIDTH-56, CHANNELS_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(CHANNELS_WIDTH-56, CHANNELS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&channels_Events, CHANNELS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(CHANNELS_WIDTH-109, CHANNELS_HEIGHT-30, 43, 20), "Open", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(CHANNELS_WIDTH-109, CHANNELS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Open", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&channels_Events, CHANNELS_OPEN_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

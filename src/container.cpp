@@ -32,7 +32,7 @@ extern Uint32 g_frameTime;
 Container::Container(Uint8 cid, ItemUI* item, std::string name, Uint8 capacity, bool hasParent, bool canUseDepotSearch, bool isUnlocked, bool hasPages, Uint16 containerSize, Uint16 firstIndex)
 {
 	m_containerItem = item;
-	PERFORM_MOVE(m_name, name);
+	m_name = std::move(name);
 	m_size = containerSize;
 	m_firstIndex = firstIndex;
 	m_id = cid;

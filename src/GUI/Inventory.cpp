@@ -24,6 +24,7 @@
 #include "../GUI_Elements/GUI_Panel.h"
 #include "../GUI_Elements/GUI_PanelWindow.h"
 #include "../GUI_Elements/GUI_Button.h"
+#include "../GUI_Elements/GUI_Icon.h"
 #include "../GUI_Elements/GUI_Label.h"
 #include "../GUI_Elements/GUI_StaticImage.h"
 #include "../map.h"
@@ -32,9 +33,33 @@
 #include "Inventory.h"
 #include "itemUI.h"
 
+#define INVENTORY_OPTIONS_TITLE "Options"
+#define INVENTORY_OPTIONS_DESCRIPTION "Open options"
+#define INVENTORY_OPTIONS_EVENTID 1000
+#define INVENTORY_HELP_TITLE "Help"
+#define INVENTORY_HELP_DESCRIPTION "Open help menu"
+#define INVENTORY_HELP_EVENTID 1001
+#define INVENTORY_STOP_TITLE "Stop"
+#define INVENTORY_STOP_DESCRIPTION "Stop current action"
+#define INVENTORY_STOP_EVENTID 1002
+#define INVENTORY_QUESTS_TITLE "Quests"
+#define INVENTORY_QUESTS_DESCRIPTION "Open quest log"
+#define INVENTORY_QUESTS_EVENTID 1003
+
 extern Engine g_engine;
 extern Map g_map;
 extern Game g_game;
+
+void inventory_Events(Uint32 event, Sint32)
+{
+	switch(event)
+	{
+		case INVENTORY_OPTIONS_EVENTID: UTIL_options(); break;
+		case INVENTORY_HELP_EVENTID: break;
+		case INVENTORY_STOP_EVENTID: break;
+		case INVENTORY_QUESTS_EVENTID: break;
+	}
+}
 
 void UTIL_createInventoryPanel()
 {
@@ -42,89 +67,123 @@ void UTIL_createInventoryPanel()
 	if(pPanel)
 		g_engine.removePanelWindow(pPanel);
 
-	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 170), false, GUI_PANEL_WINDOW_INVENTORY);
-	GUI_Button* newButton = new GUI_Button(iRect(124, 81, 43, 20), "Stop");
-	newButton->startEvents();
-	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(124, 105, 43, 20), "Quests");
-	newButton->startEvents();
-	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(124, 127, 43, 20), "Options");
-	newButton->startEvents();
-	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(124, 149, 43, 20), "Help");
-	newButton->startEvents();
-	newWindow->addChild(newButton);
-	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(124, 19, 20, 20), 3, 82, 118);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(124, 39, 20, 20), 3, 102, 98);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(124, 59, 20, 20), 3, 122, 98);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(147, 19, 20, 20), 3, 142, 118);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(147, 39, 20, 20), 3, 162, 98);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(147, 59, 20, 20), 3, 202, 98);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(8, 4, 12, 12), 3, 234, 98);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(10, 153, 9, 9), 3, 310, 182);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(8, 128, 34, 21), 3, 315, 32);
-	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(82, 128, 34, 21), 3, 315, 32);
-	newWindow->addChild(newImage);
+	bool minimized = false;
+	if(minimized)
+	{
 
-	GUI_InventoryItem* newInventoryItem = new GUI_InventoryItem(iRect(46, 5, 32, 32), 128, 0, SLOT_HEAD);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(9, 19, 32, 32), 96, 0, SLOT_NECKLACE);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(83, 19, 32, 32), 160, 0, SLOT_BACKPACK);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(46, 42, 32, 32), 96, 32, SLOT_ARMOR);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(9, 56, 32, 32), 192, 0, SLOT_LEFT);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(83, 56, 32, 32), 224, 0, SLOT_RIGHT);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(46, 79, 32, 32), 128, 32, SLOT_LEGS);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(46, 116, 32, 32), 224, 32, SLOT_FEET);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(9, 93, 32, 32), 160, 32, SLOT_RING);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	newInventoryItem = new GUI_InventoryItem(iRect(83, 93, 32, 32), 192, 32, SLOT_AMMO);
-	newInventoryItem->startEvents();
-	newWindow->addChild(newInventoryItem);
-	GUI_Icons* newIcons = new GUI_Icons(iRect(8, 151, 108, 13));
-	newWindow->addChild(newIcons);
-	/*GUI_Label* newLabel = new GUI_Label(iRect(25, 130, 0, 0), "Atk:", 0, 255, 255, 255);
-	newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
-	newLabel->setFont(CLIENT_FONT_SMALL);
-	newWindow->addChild(newLabel);
-	newLabel = new GUI_Label(iRect(25, 140, 0, 0), "0", 0, 255, 255, 255);
-	newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
-	newLabel->setFont(CLIENT_FONT_SMALL);
-	newWindow->addChild(newLabel);
-	newLabel = new GUI_Label(iRect(99, 130, 0, 0), "Def:", 0, 255, 255, 255);
-	newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
-	newLabel->setFont(CLIENT_FONT_SMALL);
-	newWindow->addChild(newLabel);
-	newLabel = new GUI_Label(iRect(99, 140, 0, 0), "0", 0, 255, 255, 255);
-	newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
-	newLabel->setFont(CLIENT_FONT_SMALL);
-	newWindow->addChild(newLabel);*/
-	g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+	}
+	else
+	{
+		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 170), false, GUI_PANEL_WINDOW_INVENTORY);
+		if(g_clientVersion >= 1000)
+		{
+			GUI_Button* newButton = new GUI_Button(iRect(124, 149, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_STOP_TITLE, 0, INVENTORY_STOP_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_STOP_EVENTID);
+			newButton->startEvents();
+			newWindow->addChild(newButton);
+		}
+		else if(g_clientVersion >= 790)
+		{
+			GUI_Button* newButton = new GUI_Button(iRect(124, 81, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_STOP_TITLE, 0, INVENTORY_STOP_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_STOP_EVENTID);
+			newButton->startEvents();
+			newWindow->addChild(newButton);
+			newButton = new GUI_Button(iRect(124, 105, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_QUESTS_TITLE, 0, INVENTORY_QUESTS_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_QUESTS_EVENTID);
+			newButton->startEvents();
+			newWindow->addChild(newButton);
+			newButton = new GUI_Button(iRect(124, 127, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_OPTIONS_TITLE, 0, INVENTORY_OPTIONS_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_OPTIONS_EVENTID);
+			newButton->startEvents();
+			newWindow->addChild(newButton);
+			newButton = new GUI_Button(iRect(124, 149, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_HELP_TITLE, 0, INVENTORY_HELP_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_HELP_EVENTID);
+			newButton->startEvents();
+			newWindow->addChild(newButton);
+		}
+		else
+		{
+			GUI_Button* newButton = new GUI_Button(iRect(124, 81, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_STOP_TITLE, 0, INVENTORY_STOP_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_STOP_EVENTID);
+			newButton->startEvents();
+			newWindow->addChild(newButton);
+			newButton = new GUI_Button(iRect(124, 105, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_OPTIONS_TITLE, 0, INVENTORY_OPTIONS_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_OPTIONS_EVENTID);
+			newButton->startEvents();
+			newWindow->addChild(newButton);
+			newButton = new GUI_Button(iRect(124, 127, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_HELP_TITLE, 0, INVENTORY_HELP_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_HELP_EVENTID);
+			newButton->startEvents();
+			newWindow->addChild(newButton);
+		}
+		GUI_StaticImage* newImage = new GUI_StaticImage(iRect(124, 19, GUI_UI_ICON_COMBAT_OFFENSIVE_DOWN_W, GUI_UI_ICON_COMBAT_OFFENSIVE_DOWN_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_OFFENSIVE_DOWN_X, GUI_UI_ICON_COMBAT_OFFENSIVE_DOWN_Y);
+		newWindow->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(124, 39, GUI_UI_ICON_COMBAT_BALANCED_UP_W, GUI_UI_ICON_COMBAT_BALANCED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_BALANCED_UP_X, GUI_UI_ICON_COMBAT_BALANCED_UP_Y);
+		newWindow->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(124, 59, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_W, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_X, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_Y);
+		newWindow->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(147, 19, GUI_UI_ICON_STAND_DOWN_W, GUI_UI_ICON_STAND_DOWN_H), GUI_UI_IMAGE, GUI_UI_ICON_STAND_DOWN_X, GUI_UI_ICON_STAND_DOWN_Y);
+		newWindow->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(147, 39, GUI_UI_ICON_FOLLOW_UP_W, GUI_UI_ICON_FOLLOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_FOLLOW_UP_X, GUI_UI_ICON_FOLLOW_UP_Y);
+		newWindow->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(147, 59, GUI_UI_ICON_COMBAT_PVP_UP_W, GUI_UI_ICON_COMBAT_PVP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_PVP_UP_X, GUI_UI_ICON_COMBAT_PVP_UP_Y);
+		newWindow->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(8, 4, GUI_UI_ICON_MINIMIZE_WINDOW_UP_W, GUI_UI_ICON_MINIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y);
+		newWindow->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(8, 128, GUI_UI_STATUS_BACKGROUND_W, GUI_UI_STATUS_BACKGROUND_H), GUI_UI_IMAGE, GUI_UI_STATUS_BACKGROUND_X, GUI_UI_STATUS_BACKGROUND_Y);
+		newWindow->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(82, 128, GUI_UI_STATUS_BACKGROUND_W, GUI_UI_STATUS_BACKGROUND_H), GUI_UI_IMAGE, GUI_UI_STATUS_BACKGROUND_X, GUI_UI_STATUS_BACKGROUND_Y);
+		newWindow->addChild(newImage);
+		GUI_InventoryItem* newInventoryItem = new GUI_InventoryItem(iRect(46, 5, 32, 32), GUI_UI_INVENTORY_HEAD_X, GUI_UI_INVENTORY_HEAD_Y, SLOT_HEAD);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(9, 19, 32, 32), GUI_UI_INVENTORY_NECKLACE_X, GUI_UI_INVENTORY_NECKLACE_Y, SLOT_NECKLACE);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(83, 19, 32, 32), GUI_UI_INVENTORY_BACKPACK_X, GUI_UI_INVENTORY_BACKPACK_Y, SLOT_BACKPACK);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(46, 42, 32, 32), GUI_UI_INVENTORY_ARMOR_X, GUI_UI_INVENTORY_ARMOR_Y, SLOT_ARMOR);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(9, 56, 32, 32), GUI_UI_INVENTORY_LEFT_X, GUI_UI_INVENTORY_LEFT_Y, SLOT_LEFT);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(83, 56, 32, 32), GUI_UI_INVENTORY_RIGHT_X, GUI_UI_INVENTORY_RIGHT_Y, SLOT_RIGHT);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(46, 79, 32, 32), GUI_UI_INVENTORY_LEGS_X, GUI_UI_INVENTORY_LEGS_Y, SLOT_LEGS);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(46, 116, 32, 32), GUI_UI_INVENTORY_FEET_X, GUI_UI_INVENTORY_FEET_Y, SLOT_FEET);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(9, 93, 32, 32), GUI_UI_INVENTORY_RING_X, GUI_UI_INVENTORY_RING_Y, SLOT_RING);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		newInventoryItem = new GUI_InventoryItem(iRect(83, 93, 32, 32), GUI_UI_INVENTORY_AMMO_X, GUI_UI_INVENTORY_AMMO_Y, SLOT_AMMO);
+		newInventoryItem->startEvents();
+		newWindow->addChild(newInventoryItem);
+		GUI_Icons* newIcons = new GUI_Icons(iRect(8, 151, GUI_UI_ICON_STATUS_BAR_W, GUI_UI_ICON_STATUS_BAR_H));
+		newWindow->addChild(newIcons);
+		/*GUI_Label* newLabel = new GUI_Label(iRect(25, 130, 0, 0), "Atk:", 0, 255, 255, 255);
+		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
+		newLabel->setFont(CLIENT_FONT_SMALL);
+		newWindow->addChild(newLabel);
+		newLabel = new GUI_Label(iRect(25, 140, 0, 0), "0", 0, 255, 255, 255);
+		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
+		newLabel->setFont(CLIENT_FONT_SMALL);
+		newWindow->addChild(newLabel);
+		newLabel = new GUI_Label(iRect(99, 130, 0, 0), "Def:", 0, 255, 255, 255);
+		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
+		newLabel->setFont(CLIENT_FONT_SMALL);
+		newWindow->addChild(newLabel);
+		newLabel = new GUI_Label(iRect(99, 140, 0, 0), "0", 0, 255, 255, 255);
+		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
+		newLabel->setFont(CLIENT_FONT_SMALL);
+		newWindow->addChild(newLabel);*/
+		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+	}
 }
 
 void UTIL_flashQuestsButton()
@@ -293,10 +352,47 @@ void GUI_Icons::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 			}
 			rect.x1 += 10;
 		}
+		if(playerIcons & ICON_LESSERHEX)
+		{
+			if(rect.isPointInside(x, y))
+			{
+				g_engine.showDescription(x, y, "You are suffering from a lesser hex (reduces received healing)");
+				return;
+			}
+			rect.x1 += 10;
+		}
+		if(playerIcons & ICON_INTENSEHEX)
+		{
+			if(rect.isPointInside(x, y))
+			{
+				g_engine.showDescription(x, y, "You are suffering from an intense hex (reduces damage output, reduces received healing)");
+				return;
+			}
+			rect.x1 += 10;
+		}
+		if(playerIcons & ICON_GREATEREHEX)
+		{
+			if(rect.isPointInside(x, y))
+			{
+				g_engine.showDescription(x, y, "You are suffering from a greater hex (reduces maximum hit points, reduces damage output, reduces received healing)");
+				return;
+			}
+			rect.x1 += 10;
+		}
 
 		Creature* localPlayer = g_map.getLocalCreature();
 		if(!localPlayer)
 			return;
+
+		if(g_game.hasGameFeature(GAME_FEATURE_REGENERATION_TIME) && g_game.getPlayerRegeneration() == 0)
+		{
+			if(rect.isPointInside(x, y))
+			{
+				g_engine.showDescription(x, y, "You are hungry");
+				return;
+			}
+			rect.x1 += 10;
+		}
 
 		Uint8 playerSkull = localPlayer->getSkull();
 		switch(playerSkull)
@@ -380,89 +476,104 @@ void GUI_Icons::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 void GUI_Icons::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(3, 98, 240, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_STATUS_BAR_X, GUI_UI_ICON_STATUS_BAR_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 	
 	Sint32 posX = m_tRect.x1+2;
 	Sint32 posY = m_tRect.y1+2;
 	Uint32 playerIcons = g_game.getIcons();
 	if(playerIcons & ICON_POISON)
 	{
-		renderer->drawPicture(3, 279, 32, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_POISON_X, GUI_UI_STATUS_POISON_Y, posX, posY, GUI_UI_STATUS_POISON_W, GUI_UI_STATUS_POISON_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_BURN)
 	{
-		renderer->drawPicture(3, 288, 32, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_BURN_X, GUI_UI_STATUS_BURN_Y, posX, posY, GUI_UI_STATUS_BURN_W, GUI_UI_STATUS_BURN_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_ENERGY)
 	{
-		renderer->drawPicture(3, 297, 32, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_ENERGY_X, GUI_UI_STATUS_ENERGY_Y, posX, posY, GUI_UI_STATUS_ENERGY_W, GUI_UI_STATUS_ENERGY_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_SWORDS)
 	{
-		renderer->drawPicture(3, 306, 32, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_SWORDS_X, GUI_UI_STATUS_SWORDS_Y, posX, posY, GUI_UI_STATUS_SWORDS_W, GUI_UI_STATUS_SWORDS_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_DRUNK)
 	{
-		renderer->drawPicture(3, 279, 41, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_DRUNK_X, GUI_UI_STATUS_DRUNK_Y, posX, posY, GUI_UI_STATUS_DRUNK_W, GUI_UI_STATUS_DRUNK_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_MANASHIELD)
 	{
-		renderer->drawPicture(3, 288, 41, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_MANASHIELD_X, GUI_UI_STATUS_MANASHIELD_Y, posX, posY, GUI_UI_STATUS_MANASHIELD_W, GUI_UI_STATUS_MANASHIELD_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_HASTE)
 	{
-		renderer->drawPicture(3, 297, 41, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_HASTE_X, GUI_UI_STATUS_HASTE_Y, posX, posY, GUI_UI_STATUS_HASTE_W, GUI_UI_STATUS_HASTE_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_PARALYZE)
 	{
-		renderer->drawPicture(3, 306, 41, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_PARALYZE_X, GUI_UI_STATUS_PARALYZE_Y, posX, posY, GUI_UI_STATUS_PARALYZE_W, GUI_UI_STATUS_PARALYZE_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_DROWNING)
 	{
-		renderer->drawPicture(3, 279, 59, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_DROWNING_X, GUI_UI_STATUS_DROWNING_Y, posX, posY, GUI_UI_STATUS_DROWNING_W, GUI_UI_STATUS_DROWNING_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_FREEZING)
 	{
-		renderer->drawPicture(3, 279, 68, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_FREEZING_X, GUI_UI_STATUS_FREEZING_Y, posX, posY, GUI_UI_STATUS_FREEZING_W, GUI_UI_STATUS_FREEZING_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_DAZZLED)
 	{
-		renderer->drawPicture(3, 279, 77, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_DAZZLED_X, GUI_UI_STATUS_DAZZLED_Y, posX, posY, GUI_UI_STATUS_DAZZLED_W, GUI_UI_STATUS_DAZZLED_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_CURSED)
 	{
-		renderer->drawPicture(3, 279, 86, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_CURSED_X, GUI_UI_STATUS_CURSED_Y, posX, posY, GUI_UI_STATUS_CURSED_W, GUI_UI_STATUS_CURSED_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_PARTY_BUFF)
 	{
-		renderer->drawPicture(3, 307, 148, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_BUFF_X, GUI_UI_STATUS_BUFF_Y, posX, posY, GUI_UI_STATUS_BUFF_W, GUI_UI_STATUS_BUFF_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_REDSWORDS)
 	{
-		renderer->drawPicture(3, 310, 191, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_PZLOCK_X, GUI_UI_STATUS_PZLOCK_Y, posX, posY, GUI_UI_STATUS_PZLOCK_W, GUI_UI_STATUS_PZLOCK_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_PIGEON)
 	{
-		renderer->drawPicture(3, 310, 182, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_PIGEON_X, GUI_UI_STATUS_PIGEON_Y, posX, posY, GUI_UI_STATUS_PIGEON_W, GUI_UI_STATUS_PIGEON_H);
 		posX += 10;
 	}
 	if(playerIcons & ICON_BLEEDING)
 	{
-		renderer->drawPicture(3, 322, 0, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_BLEEDING_X, GUI_UI_STATUS_BLEEDING_Y, posX, posY, GUI_UI_STATUS_BLEEDING_W, GUI_UI_STATUS_BLEEDING_H);
+		posX += 10;
+	}
+	if(playerIcons & ICON_LESSERHEX)
+	{
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_LESSERHEX_X, GUI_UI_STATUS_LESSERHEX_Y, posX, posY, GUI_UI_STATUS_LESSERHEX_W, GUI_UI_STATUS_LESSERHEX_H);
+		posX += 10;
+	}
+	if(playerIcons & ICON_INTENSEHEX)
+	{
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_INTENSEHEX_X, GUI_UI_STATUS_INTENSEHEX_Y, posX, posY, GUI_UI_STATUS_INTENSEHEX_W, GUI_UI_STATUS_INTENSEHEX_H);
+		posX += 10;
+	}
+	if(playerIcons & ICON_GREATEREHEX)
+	{
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_GREATEREHEX_X, GUI_UI_STATUS_GREATEREHEX_Y, posX, posY, GUI_UI_STATUS_GREATEREHEX_W, GUI_UI_STATUS_GREATEREHEX_H);
 		posX += 10;
 	}
 
@@ -470,42 +581,48 @@ void GUI_Icons::render()
 	if(!localPlayer)
 		return;
 
+	if(g_game.hasGameFeature(GAME_FEATURE_REGENERATION_TIME) && g_game.getPlayerRegeneration() == 0)
+	{
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_HUNGRY_X, GUI_UI_STATUS_HUNGRY_Y, posX, posY, GUI_UI_STATUS_HUNGRY_W, GUI_UI_STATUS_HUNGRY_H);
+		posX += 10;
+	}
+
 	Uint8 playerSkull = localPlayer->getSkull();
 	switch(playerSkull)
 	{
 		case SKULL_YELLOW:
 		{
-			renderer->drawPicture(3, 288, 50, posX, posY, 9, 9);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_YELLOWSKULL_X, GUI_UI_STATUS_YELLOWSKULL_Y, posX, posY, GUI_UI_STATUS_YELLOWSKULL_W, GUI_UI_STATUS_YELLOWSKULL_H);
 			posX += 10;
 		}
 		break;
 		case SKULL_GREEN:
 		{
-			renderer->drawPicture(3, 279, 50, posX, posY, 9, 9);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_GREENSKULL_X, GUI_UI_STATUS_GREENSKULL_Y, posX, posY, GUI_UI_STATUS_GREENSKULL_W, GUI_UI_STATUS_GREENSKULL_H);
 			posX += 10;
 		}
 		break;
 		case SKULL_WHITE:
 		{
-			renderer->drawPicture(3, 297, 50, posX, posY, 9, 9);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_WHITESKULL_X, GUI_UI_STATUS_WHITESKULL_Y, posX, posY, GUI_UI_STATUS_WHITESKULL_W, GUI_UI_STATUS_WHITESKULL_H);
 			posX += 10;
 		}
 		break;
 		case SKULL_RED:
 		{
-			renderer->drawPicture(3, 306, 50, posX, posY, 9, 9);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_REDSKULL_X, GUI_UI_STATUS_REDSKULL_Y, posX, posY, GUI_UI_STATUS_REDSKULL_W, GUI_UI_STATUS_REDSKULL_H);
 			posX += 10;
 		}
 		break;
 		case SKULL_BLACK:
 		{
-			renderer->drawPicture(3, 342, 200, posX, posY, 9, 9);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_BLACKSKULL_X, GUI_UI_STATUS_BLACKSKULL_Y, posX, posY, GUI_UI_STATUS_BLACKSKULL_W, GUI_UI_STATUS_BLACKSKULL_H);
 			posX += 10;
 		}
 		break;
 		case SKULL_ORANGE:
 		{
-			renderer->drawPicture(3, 242, 218, posX, posY, 9, 9);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_ORANGOSKULL_X, GUI_UI_STATUS_ORANGOSKULL_Y, posX, posY, GUI_UI_STATUS_ORANGOSKULL_W, GUI_UI_STATUS_ORANGOSKULL_H);
 			posX += 10;
 		}
 		break;
@@ -515,7 +632,7 @@ void GUI_Icons::render()
 	Uint8 playerEmblem = localPlayer->getEmblem();
 	if(playerEmblem != GUILDEMBLEM_NONE && playerEmblem <= GUILDEMBLEM_NEUTRAL)
 	{
-		renderer->drawPicture(3, 251, 218, posX, posY, 9, 9);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_STATUS_GUILDWAR_X, GUI_UI_STATUS_GUILDWAR_Y, posX, posY, GUI_UI_STATUS_GUILDWAR_W, GUI_UI_STATUS_GUILDWAR_H);
 		posX += 10;
 	}
 }
@@ -580,13 +697,13 @@ void GUI_InventoryItem::onRMouseDown(Sint32, Sint32)
 void GUI_InventoryItem::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(3, 186, 64, m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2);
 
 	ItemUI* item = g_game.getInventoryItem(m_slot);
 	if(item)
 		item->render(m_tRect.x1, m_tRect.y1, m_tRect.y2);
 	else
-		renderer->drawPicture(3, m_skinX, m_skinY, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+		renderer->drawPicture(GUI_UI_IMAGE, m_skinX, m_skinY, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 
 	if(m_selected)
 	{

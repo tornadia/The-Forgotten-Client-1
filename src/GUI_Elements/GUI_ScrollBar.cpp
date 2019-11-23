@@ -144,11 +144,11 @@ void GUI_HScrollBar::onWheel(Sint32, Sint32, bool wheelUP)
 void GUI_HScrollBar::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPictureRepeat(3, 2, 199, 96, 12, m_tRect.x1+12, m_tRect.y1, m_tRect.x2 - 24, 12);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HORIZONTAL_TEXTURE_X, GUI_UI_ICON_SCROLLBAR_HORIZONTAL_TEXTURE_Y, GUI_UI_ICON_SCROLLBAR_HORIZONTAL_TEXTURE_W, GUI_UI_ICON_SCROLLBAR_HORIZONTAL_TEXTURE_H, m_tRect.x1+12, m_tRect.y1, m_tRect.x2-24, 12);
 	if(m_buttonDown == 1)
 	{
-		renderer->drawPicture(3, 234, 134, m_tRect.x1, m_tRect.y1, 12, 12);
-		renderer->drawPicture(3, 244, 76, m_tRect.x1+m_tRect.x2-12, m_tRect.y1, 12, 12);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_LEFT_DOWN_X, GUI_UI_ICON_SCROLLBAR_LEFT_DOWN_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_LEFT_DOWN_W, GUI_UI_ICON_SCROLLBAR_LEFT_DOWN_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_RIGHT_UP_X, GUI_UI_ICON_SCROLLBAR_RIGHT_UP_Y, m_tRect.x1+m_tRect.x2-12, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_RIGHT_UP_W, GUI_UI_ICON_SCROLLBAR_RIGHT_UP_H);
 		if(g_frameTime-m_lastUpdate >= 100)
 		{
 			m_lastUpdate = g_frameTime;
@@ -157,8 +157,8 @@ void GUI_HScrollBar::render()
 	}
 	else if(m_buttonDown == 2)
 	{
-		renderer->drawPicture(3, 232, 76, m_tRect.x1, m_tRect.y1, 12, 12);
-		renderer->drawPicture(3, 246, 134, m_tRect.x1+m_tRect.x2-12, m_tRect.y1, 12, 12);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_LEFT_UP_X, GUI_UI_ICON_SCROLLBAR_LEFT_UP_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_LEFT_UP_W, GUI_UI_ICON_SCROLLBAR_LEFT_UP_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_RIGHT_DOWN_X, GUI_UI_ICON_SCROLLBAR_RIGHT_DOWN_Y, m_tRect.x1+m_tRect.x2-12, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_RIGHT_DOWN_W, GUI_UI_ICON_SCROLLBAR_RIGHT_DOWN_H);
 		if(g_frameTime-m_lastUpdate >= 100)
 		{
 			m_lastUpdate = g_frameTime;
@@ -167,8 +167,8 @@ void GUI_HScrollBar::render()
 	}
 	else
 	{
-		renderer->drawPicture(3, 232, 76, m_tRect.x1, m_tRect.y1, 12, 12);
-		renderer->drawPicture(3, 244, 76, m_tRect.x1+m_tRect.x2-12, m_tRect.y1, 12, 12);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_LEFT_UP_X, GUI_UI_ICON_SCROLLBAR_LEFT_UP_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_LEFT_UP_W, GUI_UI_ICON_SCROLLBAR_LEFT_UP_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_RIGHT_UP_X, GUI_UI_ICON_SCROLLBAR_RIGHT_UP_Y, m_tRect.x1+m_tRect.x2-12, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_RIGHT_UP_W, GUI_UI_ICON_SCROLLBAR_RIGHT_UP_H);
 		if(m_buttonDown == 4 && g_frameTime-m_lastUpdate >= 200)
 		{
 			m_lastUpdate = g_frameTime;
@@ -193,7 +193,7 @@ void GUI_HScrollBar::render()
 	if(!m_scrollSize)
 		return;
 
-	renderer->drawPicture(3, 220, 64, m_tRect.x1+12+m_scrollPos[0], m_tRect.y1, 12, 12);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1+12+m_scrollPos[0], m_tRect.y1, GUI_UI_ICON_SCROLLBAR_HANDLE_W, GUI_UI_ICON_SCROLLBAR_HANDLE_H);
 }
 
 GUI_VScrollBar::GUI_VScrollBar(iRect boxRect, Sint32 sSize, Sint32 sPos, Uint32 internalID)
@@ -315,11 +315,11 @@ void GUI_VScrollBar::onWheel(Sint32, Sint32, bool wheelUP)
 void GUI_VScrollBar::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPictureRepeat(3, 264, 0, 12, 96, m_tRect.x1, m_tRect.y1+12, 12, m_tRect.y2-24);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_VERTICAL_TEXTURE_X, GUI_UI_ICON_SCROLLBAR_VERTICAL_TEXTURE_Y, GUI_UI_ICON_SCROLLBAR_VERTICAL_TEXTURE_W, GUI_UI_ICON_SCROLLBAR_VERTICAL_TEXTURE_H, m_tRect.x1, m_tRect.y1+12, 12, m_tRect.y2-24);
 	if(m_buttonDown == 1)
 	{
-		renderer->drawPicture(3, 234, 122, m_tRect.x1, m_tRect.y1, 12, 12);
-		renderer->drawPicture(3, 244, 64, m_tRect.x1, m_tRect.y1+m_tRect.y2-12, 12, 12);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_UP_DOWN_X, GUI_UI_ICON_SCROLLBAR_UP_DOWN_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_UP_DOWN_W, GUI_UI_ICON_SCROLLBAR_UP_DOWN_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_DOWN_UP_X, GUI_UI_ICON_SCROLLBAR_DOWN_UP_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-12, GUI_UI_ICON_SCROLLBAR_DOWN_UP_W, GUI_UI_ICON_SCROLLBAR_DOWN_UP_H);
 		if(g_frameTime-m_lastUpdate >= 100)
 		{
 			m_lastUpdate = g_frameTime;
@@ -328,8 +328,8 @@ void GUI_VScrollBar::render()
 	}
 	else if(m_buttonDown == 2)
 	{
-		renderer->drawPicture(3, 232, 64, m_tRect.x1, m_tRect.y1, 12, 12);
-		renderer->drawPicture(3, 246, 122, m_tRect.x1, m_tRect.y1+m_tRect.y2-12, 12, 12);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_UP_UP_X, GUI_UI_ICON_SCROLLBAR_UP_UP_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_UP_UP_W, GUI_UI_ICON_SCROLLBAR_UP_UP_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_DOWN_DOWN_X, GUI_UI_ICON_SCROLLBAR_DOWN_DOWN_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-12, GUI_UI_ICON_SCROLLBAR_DOWN_DOWN_W, GUI_UI_ICON_SCROLLBAR_DOWN_DOWN_H);
 		if(g_frameTime-m_lastUpdate >= 100)
 		{
 			m_lastUpdate = g_frameTime;
@@ -338,8 +338,8 @@ void GUI_VScrollBar::render()
 	}
 	else
 	{
-		renderer->drawPicture(3, 232, 64, m_tRect.x1, m_tRect.y1, 12, 12);
-		renderer->drawPicture(3, 244, 64, m_tRect.x1, m_tRect.y1+m_tRect.y2-12, 12, 12);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_UP_UP_X, GUI_UI_ICON_SCROLLBAR_UP_UP_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_SCROLLBAR_UP_UP_W, GUI_UI_ICON_SCROLLBAR_UP_UP_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_DOWN_UP_X, GUI_UI_ICON_SCROLLBAR_DOWN_UP_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-12, GUI_UI_ICON_SCROLLBAR_DOWN_UP_W, GUI_UI_ICON_SCROLLBAR_DOWN_UP_H);
 		if(m_buttonDown == 4 && g_frameTime-m_lastUpdate >= 200)
 		{
 			m_lastUpdate = g_frameTime;
@@ -364,5 +364,5 @@ void GUI_VScrollBar::render()
 	if(!m_scrollSize)
 		return;
 
-	renderer->drawPicture(3, 220, 64, m_tRect.x1, m_tRect.y1+12+m_scrollPos[0], 12, 12);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1, m_tRect.y1+12+m_scrollPos[0], GUI_UI_ICON_SCROLLBAR_HANDLE_W, GUI_UI_ICON_SCROLLBAR_HANDLE_H);
 }

@@ -140,6 +140,8 @@
 extern Engine g_engine;
 extern Game g_game;
 
+bool g_haveSkillsOpen = false;
+
 void UTIL_recreateSkillsWindow(GUI_Container* container);
 void skills_Events(Uint32 event, Sint32 status)
 {
@@ -164,6 +166,10 @@ void skills_Events(Uint32 event, Sint32 status)
 					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeInvisible();
+
+					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(SKILLS_MAXIMINI_EVENTID));
+					if(pIcon)
+						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_X, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_Y);
 				}
 				else
 				{
@@ -172,6 +178,10 @@ void skills_Events(Uint32 event, Sint32 status)
 					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeVisible();
+
+					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(SKILLS_MAXIMINI_EVENTID));
+					if(pIcon)
+						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y);
 				}
 			}
 		}
@@ -218,7 +228,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
-		case SKILLS_EXIT_WINDOW_EVENTID: g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_SKILLS, status-19); break;
+		case SKILLS_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_SKILLS, status-19); g_haveSkillsOpen = false;} break;
 		case SKILLS_POPUP_RESETEXP_EVENTID:
 		{
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
@@ -1332,28 +1342,31 @@ void UTIL_updateSkillsWindowSkills()
 	}
 }
 
-void UTIL_createSkillsWindow()
+void UTIL_toggleSkillsWindow()
 {
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 	if(pPanel)
+	{
 		g_engine.removePanelWindow(pPanel);
+		return;
+	}
 
 	Sint32 savedHeight = g_engine.getContentWindowHeight(GUI_PANEL_WINDOW_SKILLS);
 	if(savedHeight < 38)
 		savedHeight = 119;
 	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, savedHeight+19), true, GUI_PANEL_WINDOW_SKILLS, true);
 	newWindow->setEventCallback(&skills_Events, SKILLS_RESIZE_WIDTH_EVENTID, SKILLS_RESIZE_HEIGHT_EVENTID, SKILLS_EXIT_WINDOW_EVENTID);
-	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(2, 0, 12, 12), 3, 301, 60);
+	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(2, 0, GUI_UI_ICON_SKILLSLIST_W, GUI_UI_ICON_SKILLSLIST_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLSLIST_X, GUI_UI_ICON_SKILLSLIST_Y);
 	newWindow->addChild(newImage);
-	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, 12, 12), 3, 234, 98, 234, 110, 0, "Maximise or minimise window");
+	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, GUI_UI_ICON_MINIMIZE_WINDOW_UP_W, GUI_UI_ICON_MINIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y, SKILLS_MAXIMINI_EVENTID, "Maximise or minimise window");
 	newIcon->setButtonEventCallback(&skills_Events, SKILLS_MAXIMINI_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(159, 0, 12, 12), 3, 222, 98, 222, 110, 0, "Close this window");
+	newIcon = new GUI_Icon(iRect(159, 0, GUI_UI_ICON_CLOSE_WINDOW_UP_W, GUI_UI_ICON_CLOSE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CLOSE_WINDOW_UP_X, GUI_UI_ICON_CLOSE_WINDOW_UP_Y, GUI_UI_ICON_CLOSE_WINDOW_DOWN_X, GUI_UI_ICON_CLOSE_WINDOW_DOWN_Y, 0, "Close this window");
 	newIcon->setButtonEventCallback(&skills_Events, SKILLS_CLOSE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(131, 0, 12, 12), 3, 208, 260, 220, 260, SKILLS_CONFIGURE_EVENTID, "Click here to configure the skills window");
+	newIcon = new GUI_Icon(iRect(131, 0, GUI_UI_ICON_CONFIGURE_WINDOW_UP_W, GUI_UI_ICON_CONFIGURE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CONFIGURE_WINDOW_UP_X, GUI_UI_ICON_CONFIGURE_WINDOW_UP_Y, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_X, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_Y, SKILLS_CONFIGURE_EVENTID, "Click here to configure the skills window");
 	newIcon->setButtonEventCallback(&skills_Events, SKILLS_CONFIGURE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
@@ -1364,6 +1377,7 @@ void UTIL_createSkillsWindow()
 	newContainer->startEvents();
 	newWindow->addChild(newContainer);
 	g_engine.addToPanel(newWindow);
+	g_haveSkillsOpen = true;
 }
 
 void UTIL_createSkillsPopupMenu(Sint32 x, Sint32 y)
@@ -1448,11 +1462,11 @@ void GUI_SkillDescription::setName(bool value, const std::string labelName)
 {
 	if(value)
 	{
-		PERFORM_MOVE(skillValue.m_Label, labelName);
+		skillValue.m_Label = std::move(labelName);
 		skillValue.m_nameLen = g_engine.calculateFontWidth(skillValue.m_font, labelName)-1;
 	}
 	else
-		PERFORM_MOVE(skillName.m_Label, labelName);
+		skillName.m_Label = std::move(labelName);
 }
 
 void GUI_SkillDescription::setColor(bool value, Uint8 red, Uint8 green, Uint8 blue)

@@ -32,5 +32,5 @@ GUI_Separator::GUI_Separator(iRect boxRect, Uint32 internalID)
 
 void GUI_Separator::render()
 {
-	g_engine.getRender()->drawPictureRepeat(3, 2, 210, 96, 2, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+	g_engine.getRender()->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_SEPARATOR_X, GUI_UI_ICON_HORIZONTAL_SEPARATOR_Y, GUI_UI_ICON_HORIZONTAL_SEPARATOR_W, GUI_UI_ICON_HORIZONTAL_SEPARATOR_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 }

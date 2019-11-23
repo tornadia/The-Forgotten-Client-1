@@ -171,7 +171,6 @@ enum GameOpcodes : Uint8
 
 	//Recv Opcodes
 	RecvCreatureDataOpcode = 0x03,
-	RecvChallengeOpcode = 0x06,
 	RecvLoginOrPendingOpcode = 0x0A,
 	RecvGMActionsOpcode = 0x0B,
 	RecvEnterGameOpcode = 0x0F,
@@ -184,6 +183,7 @@ enum GameOpcodes : Uint8
 	RecvStoreButtonIndicatorsOpcode = 0x19,
 	RecvPingBackOpcode = 0x1D,
 	RecvPingOpcode = 0x1E,
+	RecvChallengeOpcode = 0x1F,
 	RecvDeathOpcode = 0x28,
 	RecvStashOpcode = 0x29,
 	RecvSpecialContainersAvailableOpcode = 0x2A,
@@ -849,14 +849,14 @@ class ProtocolGame : public Protocol
 
 		//Tournament System
 		void sendTournamentInformation();
-		void sendTournamentLeaderboard();
+		void sendTournamentLeaderboard(const std::string& worldName, Uint16 currentPage, const std::string& searchCharacter, Uint8 elementsPerPage = 20);
 		void sendTournamentTicketAction();
 
 		//Some Ingame Stuff Sends
 		void sendThankYou(Uint32 statementId);
 		void sendGetOfferDescription(Uint32 offerId);
 		void sendRequestResourceBalance(Uint8 resource);
-		void sendGreet(Uint32 unknown);
+		void sendGreet(Uint32 statementId);
 		void sendGuildMessage();
 		void sendEditGuildMessage(const std::string& message);
 		void sendBlessingsDialog();
@@ -864,6 +864,8 @@ class ProtocolGame : public Protocol
 		void sendTeleport(const Position& position);
 
 	private:
+		bool canSee(const Position& position);
+
 		MessageMode translateMessageModeFromServer(Uint8 mode);
 		Uint8 translateMessageModeToServer(MessageMode mode);
 

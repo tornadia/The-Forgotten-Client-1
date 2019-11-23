@@ -31,11 +31,7 @@ enum ProtocolOS
 	PROTOCOL_OS_FLASH = 3
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum ChecksumMethods : Uint8
-#else
-enum ChecksumMethods
-#endif
 {
 	CHECKSUM_METHOD_NONE,
 	CHECKSUM_METHOD_ADLER32,

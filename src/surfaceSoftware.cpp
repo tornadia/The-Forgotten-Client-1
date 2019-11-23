@@ -49,11 +49,11 @@ SurfaceSoftware::SurfaceSoftware() : m_automapTilesBuff(SOFTWARE_MAX_AUTOMAPTILE
 	m_hardware = NULL;
 	m_pictures = NULL;
 	m_sprites = NULL;
-	#ifdef HAVE_CXX11_SUPPORT
+
 	m_spriteMasks.reserve(SOFTWARE_MAX_SPRITEMASKS);
 	m_automapTiles.reserve(SOFTWARE_MAX_AUTOMAPTILES);
 	m_pictureOptimizations.reserve(256);
-	#endif
+
 	SDL_SmoothStretch_init();
 }
 

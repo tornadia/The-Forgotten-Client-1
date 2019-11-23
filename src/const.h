@@ -119,6 +119,8 @@ const Uint32 STATICTEXT_MINIMUM_STAY_DURATION = 3000;
 //Chat control variables
 const size_t CHAT_MAXIMUM_MESSAGE_HISTORY = 500;
 
+const Uint32 MAX_CANCEL_WALK_BEFORE_STOP_AUTOWALK = 10;
+
 #define GAME_MAX_CONTAINERS 16
 #define GAME_PANEL_MINIMUM_HEIGHT 57
 #define GAME_MINIMUM_WIDTH 640
@@ -139,11 +141,7 @@ const size_t CHAT_MAXIMUM_MESSAGE_HISTORY = 500;
 #define SOFTWARE_MAX_AUTOMAPTILES 32 //32*256*256*4 ~ 8MB
 #define VULKAN_INFLIGHT_FRAMES 2
 
-#ifdef HAVE_CXX11_SUPPORT
 enum ContextMenu_Styles : Uint8
-#else
-enum ContextMenu_Styles
-#endif
 {
 	CONTEXTMENU_STYLE_STANDARD = (1 << 0),
 	CONTEXTMENU_STYLE_SEPARATED = (1 << 1),
@@ -151,11 +149,7 @@ enum ContextMenu_Styles
 	CONTEXTMENU_STYLE_UNCHECKED = (1 << 3)
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum Slots : Uint8
-#else
-enum Slots
-#endif
 {
 	SLOT_HEAD = 0,
 	SLOT_NECKLACE = 1,
@@ -170,11 +164,7 @@ enum Slots
 	SLOT_LAST = 10
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum Direction : Uint8
-#else
-enum Direction
-#endif
 {
 	DIRECTION_NORTH = 0,
 	DIRECTION_EAST = 1,
@@ -191,23 +181,18 @@ enum Direction
 	DIRECTION_INVALID = 8
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum PathFind : Sint32
-#else
-enum PathFind
-#endif
 {
 	PathFind_ReturnSuccessfull = 0,
 	PathFind_ReturnSamePosition = 1,
 	PathFind_ReturnImpossible = 2,
-	PathFind_ReturnTooFar = 3
+	PathFind_ReturnTooFar = 3,
+	PathFind_ReturnFirstGoDownStairs = 4,
+	PathFind_ReturnFirstGoUpStairs = 5,
+	PathFind_ReturnNoWay = 6
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum PathFindFlags : Uint32
-#else
-enum PathFindFlags
-#endif
 {
 	PathFindFlags_AllowCreatures = (1 << 0),
 	PathFindFlags_AllowNonWalkable = (1 << 1),
@@ -234,11 +219,7 @@ enum Skills
 	Skills_LastAdditionalSkill = 13
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum Icons : Uint32
-#else
-enum Icons
-#endif
 {
 	ICON_POISON = (1 << 0),
 	ICON_BURN = (1 << 1),
@@ -255,14 +236,13 @@ enum Icons
 	ICON_PARTY_BUFF = (1 << 12),
 	ICON_REDSWORDS = (1 << 13),
 	ICON_PIGEON = (1 << 14),
-	ICON_BLEEDING = (1 << 15)
+	ICON_BLEEDING = (1 << 15),
+	ICON_LESSERHEX = (1 << 16),
+	ICON_INTENSEHEX = (1 << 17),
+	ICON_GREATEREHEX = (1 << 18)
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum Skulls : Uint8
-#else
-enum Skulls
-#endif
 {
 	SKULL_NONE = 0,
 	SKULL_YELLOW = 1,
@@ -273,11 +253,7 @@ enum Skulls
 	SKULL_ORANGE = 6
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum PartyShields : Uint8
-#else
-enum PartyShields
-#endif
 {
 	SHIELD_NONE = 0,
 	SHIELD_WHITEYELLOW = 1,
@@ -293,11 +269,7 @@ enum PartyShields
 	SHIELD_GRAY = 11
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum GuildEmblems : Uint8
-#else
-enum GuildEmblems
-#endif
 {
 	GUILDEMBLEM_NONE = 0,
 	GUILDEMBLEM_ALLY = 1,
@@ -307,11 +279,7 @@ enum GuildEmblems
 	GUILDEMBLEM_OTHER = 5
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum CreatureTypes : Uint8
-#else
-enum CreatureTypes
-#endif
 {
 	CREATURETYPE_PLAYER = 0,
 	CREATURETYPE_MONSTER = 1,
@@ -320,17 +288,16 @@ enum CreatureTypes
 	CREATURETYPE_SUMMON_OTHERS = 4
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum CreatureIcons : Uint8
-#else
-enum CreatureIcons
-#endif
 {
 	CREATUREICON_NONE = 0,
 	CREATUREICON_SPEECH = 1,
 	CREATUREICON_TRADE = 2,
 	CREATUREICON_QUEST = 3,
-	CREATUREICON_QUESTTRADER = 4
+	CREATUREICON_QUESTTRADER = 4,
+	CREATUREICON_SPEECH1 = 5,
+	CREATUREICON_SPEECH2 = 6,
+	CREATUREICON_SPEECH3 = 7
 };
 
 enum FluidsColor
@@ -367,21 +334,13 @@ enum FluidsType
 	FluidMead = 17
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum DeathType : Uint8
-#else
-enum DeathType
-#endif
 {
 	DeathType_Regular = 0,
 	DeathType_Blessed = 1
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum MessageMode : Uint8
-#else
-enum MessageMode
-#endif
 {
 	MessageNone = 0,
 	MessageSay,
@@ -438,42 +397,26 @@ enum MessageMode
 	MessageInvalid = 0xFF
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum AttackMode : Uint8
-#else
-enum AttackMode
-#endif
 {
 	ATTACKMODE_ATTACK = 1,
 	ATTACKMODE_BALANCED = 2,
 	ATTACKMODE_DEFENSE = 3
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum ChaseMode : Uint8
-#else
-enum ChaseMode
-#endif
 {
 	CHASEMODE_STAND = 0,
 	CHASEMODE_FOLLOW = 1
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum SecureMode : Uint8
-#else
-enum SecureMode
-#endif
 {
 	SECUREMODE_SECURE = 0,
 	SECUREMODE_UNSECURE = 1
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum PvPMode : Uint8
-#else
-enum PvPMode
-#endif
 {
 	PVPMODE_DOVE = 0,
 	PVPMODE_WHITE_HAND = 1,
@@ -481,31 +424,19 @@ enum PvPMode
 	PVPMODE_RED_FIST = 3
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum MarketAction : Uint8
-#else
-enum MarketAction
-#endif
 {
 	MARKETACTION_BUY = 0,
 	MARKETACTION_SELL = 1
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum MarketRequest : Uint16
-#else
-enum MarketRequest
-#endif
 {
 	MARKETREQUEST_OWN_OFFERS = 0xFFFE,
 	MARKETREQUEST_OWN_HISTORY = 0xFFFF
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum MarketOfferState : Uint8
-#else
-enum MarketOfferState
-#endif
 {
 	OFFERSTATE_ACTIVE = 0,
 	OFFERSTATE_CANCELLED = 1,
@@ -515,11 +446,7 @@ enum MarketOfferState
 	OFFERSTATE_ACCEPTEDEX = 255
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum CyclopediaCharacterInfoType : Uint8
-#else
-enum CyclopediaCharacterInfoType
-#endif
 {
 	CHARACTERINFO_BASEINFORMATION = 0,
 	CHARACTERINFO_GENERALSTATS = 1,
@@ -535,11 +462,7 @@ enum CyclopediaCharacterInfoType
 	CHARACTERINFO_TITLES = 11
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum FeatureEventType : Uint8
-#else
-enum FeatureEventType
-#endif
 {
 	FEATUREVENT_CYCLOPEDIA_ITEMS = 1,
 	FEATUREVENT_CYCLOPEDIA_CHARACTERINFO = 2,
@@ -553,11 +476,7 @@ enum FeatureEventType
 	FEATUREVENT_CYCLOPEDIA_STORESUMMARY = 10
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum InspectPlayerState : Uint8
-#else
-enum InspectPlayerState
-#endif
 {
 	PLAYERSTATE_GRANTPERMISSION = 1,
 	PLAYERSTATE_ASKTOINSPECT = 2,
@@ -568,11 +487,7 @@ enum InspectPlayerState
 	PLAYERSTATE_REVOKEALLTOINSPECT = 7
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum PreyAction : Uint8
-#else
-enum PreyAction
-#endif
 {
 	PREYACTION_LISTREROLL = 0,
 	PREYACTION_BONUSREROLL = 1,
@@ -582,22 +497,14 @@ enum PreyAction
 	PREYACTION_UNKNOWN5 = 5
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum CyclopediaBonusEffectAction : Uint8
-#else
-enum CyclopediaBonusEffectAction
-#endif
 {
 	CYCLOPEDIA_BONUSEFFECT_UNLOCK = 0,
 	CYCLOPEDIA_BONUSEFFECT_SELECT = 1,
 	CYCLOPEDIA_BONUSEFFECT_CLEAR = 2
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum InspectObjectTypes : Uint8
-#else
-enum InspectObjectTypes
-#endif
 {
 	INSPECT_NORMALOBJECT = 0,
 	INSPECT_NPCTRADE = 1,
@@ -605,11 +512,7 @@ enum InspectObjectTypes
 	INSPECT_CYCLOPEDIA = 3
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum LootContainerAction : Uint8
-#else
-enum LootContainerAction
-#endif
 {
 	LOOTACTION_ASSIGNCONTAINER = 0,
 	LOOTACTION_CLEARCONTAINER = 1,
@@ -617,63 +520,39 @@ enum LootContainerAction
 	LOOTACTION_SETUSEFALLBACK = 3,
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum QuickLootFilter : Uint8
-#else
-enum QuickLootFilter
-#endif
 {
 	QUICKLOOT_FILTER_SKIPPEDLOOT = 0,
 	QUICKLOOT_FILTER_ACCEPTEDLOOT = 1
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum StoreProductTypes : Uint8
-#else
-enum StoreProductTypes
-#endif
 {
 	ProductTypeOther = 0,
 	ProductTypeNameChange = 1
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum AccountStatus : Uint8
-#else
-enum AccountStatus
-#endif
 {
 	AccountStatus_Ok = 0,
 	AccountStatus_Frozen = 1,
 	AccountStatus_Suspended = 2
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum SubscriptionStatus : Uint8
-#else
-enum SubscriptionStatus
-#endif
 {
 	SubscriptionStatus_Free = 0,
 	SubscriptionStatus_Premium = 1
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum BugReportCategory : Uint8
-#else
-enum BugReportCategory
-#endif
 {
 	BUG_CATEGORY_MAP = 0,
 	BUG_CATEGORY_TYPO = 1,
 	BUG_CATEGORY_TECHNICAL = 2
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum MagicEffects : Uint8
-#else
-enum MagicEffects
-#endif
 {
 	MAGIC_EFFECTS_END_LOOP = 0,
 	MAGIC_EFFECTS_DELTA = 1,
@@ -683,7 +562,45 @@ enum MagicEffects
 	MAGIC_EFFECTS_CREATE_DISTANCEEFFECT_REVERSED = 5
 };
 
-enum SortMethods
+enum TorunamentInformations : Uint8
+{
+	TOURNAMENT_INFORMATION_WORLDS = 0,
+	TOURNAMENT_INFORMATION_STAGE = 1,
+	TOURNAMENT_INFORMATION_RULES = 2,
+	TOURNAMENT_INFORMATION_UNKNOWN = 3,
+	TOURNAMENT_INFORMATION_CHARACTERS = 4
+};
+
+enum StageInformation : Uint8
+{
+	STAGE_INFORMATION_SIGNUP = 0,
+	STAGE_INFORMATION_RUNNING = 1,
+	STAGE_INFORMATION_FINISHED = 2
+};
+
+enum RulePvPType : Uint8
+{
+	RULE_OPEN_PVP = 0,
+	RULE_OPTIONAL_PVP = 1,
+	RULE_HARDCORE_PVP = 2,
+	RULE_RETRO_OPEN_PVP = 3,
+	RULE_RETRO_HARDCORE_PVP = 4
+};
+
+enum TorunamentLeaderboard : Uint8
+{
+	TOURNAMENT_LEADERBOARD_WORLDS = 0,
+	TOURNAMENT_LEADERBOARD_CHARACTERS = 1
+};
+
+enum RankIndicator : Uint8
+{
+	RANK_LEADERBOARD_NONE = 0,
+	RANK_LEADERBOARD_UP = 1,
+	RANK_LEADERBOARD_DOWN = 2
+};
+
+enum SortMethods : Uint8
 {
 	Sort_Ascending_Time = 0,
 	Sort_Descending_Time = 1,
@@ -695,6 +612,75 @@ enum SortMethods
 	Sort_Descending_Name = 7
 };
 
+enum MapMarks : Uint8
+{
+	MAPMARK_TICK = 0,
+	MAPMARK_QUESTION = 1,
+	MAPMARK_EXCLAMATION = 2,
+	MAPMARK_STAR = 3,
+	MAPMARK_CROSS = 4,
+	MAPMARK_TEMPLE = 5,
+	MAPMARK_KISS = 6,
+	MAPMARK_SHOVEL = 7,
+	MAPMARK_SWORD = 8,
+	MAPMARK_FLAG = 9,
+	MAPMARK_LOCK = 10,
+	MAPMARK_BAG = 11,
+	MAPMARK_SKULL = 12,
+	MAPMARK_DOLLAR = 13,
+	MAPMARK_REDNORTH = 14,
+	MAPMARK_REDSOUTH = 15,
+	MAPMARK_REDEAST = 16,
+	MAPMARK_REDWEST = 17,
+	MAPMARK_GREENNORTH = 18,
+	MAPMARK_GREENSOUTH = 19
+};
+
+enum PlayerVocations : Uint8
+{
+	PLAYER_VOCATION_NONE = 0,
+	PLAYER_VOCATION_KNIGHT = 1,
+	PLAYER_VOCATION_PALADIN = 2,
+	PLAYER_VOCATION_SORCERER = 3,
+	PLAYER_VOCATION_DRUID = 4
+};
+
+enum SpellGroups : Uint8
+{
+	SPELL_GROUP_NONE = 0,
+	SPELL_GROUP_ATTACK = 1,
+	SPELL_GROUP_HEALING = 2,
+	SPELL_GROUP_SUPPORT = 3,
+	SPELL_GROUP_SPECIAL = 4,
+	SPELL_GROUP_CONJURE = 5
+};
+
+enum SpellTypes : Uint8
+{
+	SPELL_TYPE_NONE = 0,
+	SPELL_TYPE_INSTANT = 1,
+	SPELL_TYPE_RUNE = 2
+};
+
+enum SpellVocations : Uint8
+{
+	SPELL_VOCATION_NONE = (SDL_static_cast(Uint8, 1) << PLAYER_VOCATION_NONE),
+	SPELL_VOCATION_KNIGHT = (SDL_static_cast(Uint8, 1) << PLAYER_VOCATION_KNIGHT),
+	SPELL_VOCATION_PALADIN = (SDL_static_cast(Uint8, 1) << PLAYER_VOCATION_PALADIN),
+	SPELL_VOCATION_SORCERER = (SDL_static_cast(Uint8, 1) << PLAYER_VOCATION_SORCERER),
+	SPELL_VOCATION_DRUID = (SDL_static_cast(Uint8, 1) << PLAYER_VOCATION_DRUID),
+	SPELL_VOCATION_KNIGHT_PALADIN = (SPELL_VOCATION_KNIGHT|SPELL_VOCATION_PALADIN),
+	SPELL_VOCATION_KNIGHT_SORCERER = (SPELL_VOCATION_KNIGHT|SPELL_VOCATION_SORCERER),
+	SPELL_VOCATION_KNIGHT_DRUID = (SPELL_VOCATION_KNIGHT|SPELL_VOCATION_DRUID),
+	SPELL_VOCATION_KNIGHT_PALADIN_SORCERER = (SPELL_VOCATION_KNIGHT|SPELL_VOCATION_PALADIN|SPELL_VOCATION_SORCERER),
+	SPELL_VOCATION_KNIGHT_PALADIN_DRUID = (SPELL_VOCATION_KNIGHT|SPELL_VOCATION_PALADIN|SPELL_VOCATION_DRUID),
+	SPELL_VOCATION_PALADIN_SORCERER = (SPELL_VOCATION_PALADIN|SPELL_VOCATION_SORCERER),
+	SPELL_VOCATION_PALADIN_DRUID = (SPELL_VOCATION_PALADIN|SPELL_VOCATION_DRUID),
+	SPELL_VOCATION_PALADIN_SORCERER_DRUID = (SPELL_VOCATION_PALADIN|SPELL_VOCATION_SORCERER|SPELL_VOCATION_DRUID),
+	SPELL_VOCATION_SORCERER_DRUID = (SPELL_VOCATION_SORCERER|SPELL_VOCATION_DRUID),
+	SPELL_VOCATION_ALL = (SPELL_VOCATION_KNIGHT|SPELL_VOCATION_PALADIN|SPELL_VOCATION_SORCERER|SPELL_VOCATION_DRUID),
+};
+
 enum OnscreenMessages
 {
 	ONSCREEN_MESSAGE_BOTTOM,
@@ -704,11 +690,7 @@ enum OnscreenMessages
 	ONSCREEN_MESSAGE_LAST
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum ClientActions : Uint8
-#else
-enum ClientActions
-#endif
 {
 	CLIENT_ACTION_FIRST = 0,
 	CLIENT_ACTION_SECOND = 1,
@@ -724,11 +706,7 @@ enum ClientActions
 	CLIENT_ACTION_SEARCHHOTKEY = 8,
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum ThingEvents : Uint32
-#else
-enum ThingEvents
-#endif
 {
 	THING_EVENT_LOOK = 0xFFF0,
 	THING_EVENT_OPEN,

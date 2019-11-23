@@ -93,10 +93,8 @@ SurfaceDirectDraw::SurfaceDirectDraw() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAP
 	m_needReset = true;
 	m_fullscreen = false;
 
-	#ifdef HAVE_CXX11_SUPPORT
 	m_spriteMasks.reserve(HARDWARE_MAX_SPRITEMASKS);
 	m_automapTiles.reserve(HARDWARE_MAX_AUTOMAPTILES);
-	#endif 
 }
 
 SurfaceDirectDraw::~SurfaceDirectDraw()
@@ -895,35 +893,7 @@ bool SurfaceDirectDraw::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	float maxv = (SDL_static_cast(float, sy+sh)+0.5f)*m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(m_gameWindow);
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_ALPHABLENDENABLE, FALSE);
@@ -1000,35 +970,7 @@ void SurfaceDirectDraw::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 	float maxv = (SDL_static_cast(float, sy+sh)+0.5f)*m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(m_gameWindow);
 	IDirect3DDevice7_SetTexture(m_device, 0, m_gameWindow->m_texture);
@@ -1060,7 +1002,7 @@ void SurfaceDirectDraw::endGameScene()
 
 void SurfaceDirectDraw::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32, Sint32 width, Sint32 height)
 {
-	//Since making the clipper for triangles would be pain the ass we'll render to texture and rerender on screen
+	//Since making the clipper for triangles would be pain in the ass we'll render to texture and rerender on screen
 	//Not the most optimal choice but should have decent performance
 	iRect& gameWindowRect = g_engine.getGameWindowRect();
 	x = gameWindowRect.x1;
@@ -1073,8 +1015,9 @@ void SurfaceDirectDraw::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sin
 	Sint32 sh = RENDERTARGET_HEIGHT;
 	if(!testClipper(x, y, w, h, sx, sy, sw, sh))
 		return;
-
-	VertexDDRAW* vertices = SDL_reinterpret_cast(VertexDDRAW*, SDL_malloc(sizeof(VertexDDRAW)*(width+1)*2));
+	
+	std::vector<VertexDDRAW> vertices;
+	vertices.reserve((width+1)*2);
 
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE);
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_DESTBLEND, D3DBLEND_ZERO);
@@ -1100,26 +1043,15 @@ void SurfaceDirectDraw::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sin
 		for(Sint32 k = -1; k < width; ++k)
 		{
 			Sint32 offset = UTIL_max<Sint32>(k, 0);
-			vertices[verticeCount].x = SDL_static_cast(float, drawX);
-			vertices[verticeCount].y = SDL_static_cast(float, drawY+32);
-			vertices[verticeCount].z = 0.0f;
-			vertices[verticeCount].color = MAKE_RGBA_COLOR(lightmap[offset1+offset].r, lightmap[offset1+offset].g, lightmap[offset1+offset].b, 255);
-			vertices[verticeCount].u = 0.0f;
-			vertices[verticeCount].v = 0.0f;
-			++verticeCount;
-
-			vertices[verticeCount].x = SDL_static_cast(float, drawX);
-			vertices[verticeCount].y = SDL_static_cast(float, drawY);
-			vertices[verticeCount].z = 0.0f;
-			vertices[verticeCount].color = MAKE_RGBA_COLOR(lightmap[offset2+offset].r, lightmap[offset2+offset].g, lightmap[offset2+offset].b, 255);
-			vertices[verticeCount].u = 0.0f;
-			vertices[verticeCount].v = 0.0f;
-			++verticeCount;
+			vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY+32), MAKE_RGBA_COLOR(lightmap[offset1 + offset].r, lightmap[offset1 + offset].g, lightmap[offset1 + offset].b, 255));
+			vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(lightmap[offset2 + offset].r, lightmap[offset2 + offset].g, lightmap[offset2 + offset].b, 255));
+			verticeCount += 2;
 			drawX += 32;
 		}
 
 		drawY += 32;
-		IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, verticeCount, 0);
+		IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, &vertices[0], verticeCount, 0);
+		vertices.clear();
 	}
 
 	IDirect3DDevice7_SetRenderTarget(m_device, m_backbuffer, 0);
@@ -1143,41 +1075,14 @@ void SurfaceDirectDraw::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sin
 	float maxv = (SDL_static_cast(float, sy+sh)+0.5f)*m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW gameWindowVertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(m_gameWindow);
 	IDirect3DDevice7_SetTexture(m_device, 0, m_gameWindow->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, gameWindowVertices, 4, 0);
 
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
-	SDL_free(vertices);
 }
 
 void SurfaceDirectDraw::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -1212,42 +1117,7 @@ void SurfaceDirectDraw::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Ui
 	float maxy = SDL_static_cast(float, y+h)-1.0f;
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-
-	VertexDDRAW vertices[5];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = 0.0f;
-	vertices[0].v = 0.0f;
-
-	vertices[1].x = maxx;
-	vertices[1].y = miny;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = 0.0f;
-	vertices[1].v = 0.0f;
-
-	vertices[2].x = maxx;
-	vertices[2].y = maxy;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = 0.0f;
-	vertices[2].v = 0.0f;
-
-	vertices[3].x = minx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = 0.0f;
-	vertices[3].v = 0.0f;
-
-	vertices[4].x = minx;
-	vertices[4].y = miny;
-	vertices[4].z = 0.0f;
-	vertices[4].color = texColor;
-	vertices[4].u = 0.0f;
-	vertices[4].v = 0.0f;
+	VertexDDRAW vertices[5] = {{minx, miny, texColor},{maxx, miny, texColor},{maxx, maxy, texColor},{minx, maxy, texColor},{minx, miny, texColor}};
 
 	IDirect3DDevice7_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirectDrawSurface7*, NULL));
 	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_LINESTRIP, DDRAW_FVF, vertices, 5, 0);
@@ -1264,35 +1134,7 @@ void SurfaceDirectDraw::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Ui
 	float maxy = SDL_static_cast(float, y+h);
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = 0.0f;
-	vertices[0].v = 0.0f;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = 0.0f;
-	vertices[1].v = 0.0f;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = 0.0f;
-	vertices[2].v = 0.0f;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = 0.0f;
-	vertices[3].v = 0.0f;
+	VertexDDRAW vertices[4] = {{minx, miny, texColor},{minx, maxy, texColor},{maxx, miny, texColor},{maxx, maxy, texColor}};
 
 	IDirect3DDevice7_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirectDrawSurface7*, NULL));
 	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
@@ -1387,41 +1229,13 @@ void SurfaceDirectDraw::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std
 					float minv = (SDL_static_cast(float, sy1)+0.5f)*tex->m_scaleH;
 					float maxv = (SDL_static_cast(float, sy1+h1)+0.5f)*tex->m_scaleH;
 
-					VertexDDRAW vertice[4];
-					vertice[0].x = minx;
-					vertice[0].y = miny;
-					vertice[0].z = 0.0f;
-					vertice[0].color = texColor;
-					vertice[0].u = minu;
-					vertice[0].v = minv;
+					vertices.emplace_back(minx, miny, minu, minv, texColor);
+					vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+					vertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-					vertice[1].x = maxx;
-					vertice[1].y = miny;
-					vertice[1].z = 0.0f;
-					vertice[1].color = texColor;
-					vertice[1].u = maxu;
-					vertice[1].v = minv;
-
-					vertice[2].x = minx;
-					vertice[2].y = maxy;
-					vertice[2].z = 0.0f;
-					vertice[2].color = texColor;
-					vertice[2].u = minu;
-					vertice[2].v = maxv;
-
-					vertice[3].x = maxx;
-					vertice[3].y = maxy;
-					vertice[3].z = 0.0f;
-					vertice[3].color = texColor;
-					vertice[3].u = maxu;
-					vertice[3].v = maxv;
-
-					vertices.push_back(vertice[0]);
-					vertices.push_back(vertice[1]);
-					vertices.push_back(vertice[2]);
-					vertices.push_back(vertice[3]);
-					vertices.push_back(vertice[2]);
-					vertices.push_back(vertice[1]);
+					vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+					vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+					vertices.emplace_back(minx, maxy, minu, maxv, texColor);
 				}
 				rx += cW[character]+cX[0];
 			}
@@ -1458,35 +1272,7 @@ void SurfaceDirectDraw::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, S
 	float maxv = (SDL_static_cast(float, sy+sh)+0.5f)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(tex);
 	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
@@ -1536,41 +1322,13 @@ void SurfaceDirectDraw::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy
 				float minv = (SDL_static_cast(float, sy1)+0.5f)*tex->m_scaleH;
 				float maxv = (SDL_static_cast(float, sy1+h1)+0.5f)*tex->m_scaleH;
 
-				VertexDDRAW vertice[4];
-				vertice[0].x = minx;
-				vertice[0].y = miny;
-				vertice[0].z = 0.0f;
-				vertice[0].color = texColor;
-				vertice[0].u = minu;
-				vertice[0].v = minv;
+				vertices.emplace_back(minx, miny, minu, minv, texColor);
+				vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+				vertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-				vertice[1].x = maxx;
-				vertice[1].y = miny;
-				vertice[1].z = 0.0f;
-				vertice[1].color = texColor;
-				vertice[1].u = maxu;
-				vertice[1].v = minv;
-
-				vertice[2].x = minx;
-				vertice[2].y = maxy;
-				vertice[2].z = 0.0f;
-				vertice[2].color = texColor;
-				vertice[2].u = minu;
-				vertice[2].v = maxv;
-
-				vertice[3].x = maxx;
-				vertice[3].y = maxy;
-				vertice[3].z = 0.0f;
-				vertice[3].color = texColor;
-				vertice[3].u = maxu;
-				vertice[3].v = maxv;
-
-				vertices.push_back(vertice[0]);
-				vertices.push_back(vertice[1]);
-				vertices.push_back(vertice[2]);
-				vertices.push_back(vertice[3]);
-				vertices.push_back(vertice[2]);
-				vertices.push_back(vertice[1]);
+				vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+				vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+				vertices.emplace_back(minx, maxy, minu, maxv, texColor);
 			}
 			cx += sw;
 		}
@@ -1606,35 +1364,7 @@ void SurfaceDirectDraw::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint
 	float maxv = (SDL_static_cast(float, sy+h)+0.5f)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(tex);
 	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
@@ -1724,35 +1454,7 @@ void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 	float maxv = (SDL_static_cast(float, sy+h)+0.5f)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(tex);
 	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
@@ -1803,35 +1505,7 @@ void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 	float maxv = (SDL_static_cast(float, sy+sh)+0.5f)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(tex);
 	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
@@ -1925,35 +1599,7 @@ void SurfaceDirectDraw::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint
 	float maxv = (SDL_static_cast(float, sy+sh)+0.5f)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(tex);
 	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
@@ -2070,35 +1716,7 @@ void SurfaceDirectDrawComp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 	float maxv = (SDL_static_cast(float, sy+h)+0.5f)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(tex);
 	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
@@ -2131,35 +1749,7 @@ void SurfaceDirectDrawComp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint
 	float maxv = (SDL_static_cast(float, sy+sh)+0.5f)*tex->m_scaleH;
 	
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(tex);
 	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
@@ -2391,35 +1981,6 @@ void SurfaceDirectDrawPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 	float maxv = (SDL_static_cast(float, sy+h)+0.5f)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
 	if(m_scheduleSpriteDraw)
 	{
 		if(tex != m_spriteAtlas)
@@ -2427,16 +1988,17 @@ void SurfaceDirectDrawPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 			checkScheduledSprites();
 			m_spriteAtlas = tex;
 		}
+		m_gameWindowVertices.emplace_back(minx, miny, minu, minv, texColor);
+		m_gameWindowVertices.emplace_back(minx, maxy, minu, maxv, texColor);
+		m_gameWindowVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-		m_gameWindowVertices.push_back(vertices[0]);
-		m_gameWindowVertices.push_back(vertices[1]);
-		m_gameWindowVertices.push_back(vertices[2]);
-		m_gameWindowVertices.push_back(vertices[3]);
-		m_gameWindowVertices.push_back(vertices[2]);
-		m_gameWindowVertices.push_back(vertices[1]);
+		m_gameWindowVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+		m_gameWindowVertices.emplace_back(maxx, miny, maxu, minv, texColor);
+		m_gameWindowVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	}
 	else
 	{
+		VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 		updateTextureScaling(tex);
 		IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
 		IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
@@ -2481,35 +2043,7 @@ void SurfaceDirectDrawPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint
 	float maxv = (SDL_static_cast(float, sy+sh)+0.5f)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	VertexDDRAW vertices[4];
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].z = 0.0f;
-	vertices[0].color = texColor;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
-
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].z = 0.0f;
-	vertices[1].color = texColor;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].z = 0.0f;
-	vertices[2].color = texColor;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].z = 0.0f;
-	vertices[3].color = texColor;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
+	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
 
 	updateTextureScaling(tex);
 	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);

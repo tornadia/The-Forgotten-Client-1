@@ -138,10 +138,8 @@ SurfaceOpenglES2::SurfaceOpenglES2() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAPTI
 	}
 	#endif
 
-	#ifdef HAVE_CXX11_SUPPORT
 	m_spriteMasks.reserve(HARDWARE_MAX_SPRITEMASKS);
 	m_automapTiles.reserve(HARDWARE_MAX_AUTOMAPTILES);
-	#endif
 }
 
 SurfaceOpenglES2::~SurfaceOpenglES2()
@@ -1159,19 +1157,19 @@ void SurfaceOpenglES2::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std:
 				float minv = cY[character]*tex->m_scaleH;
 				float maxv = (cY[character]+cH[character])*tex->m_scaleH;
 
-				vertices.push_back(minx); vertices.push_back(miny);
-				vertices.push_back(minx); vertices.push_back(maxy);
-				vertices.push_back(maxx); vertices.push_back(miny);
-				vertices.push_back(maxx); vertices.push_back(maxy);
-				vertices.push_back(maxx); vertices.push_back(miny);
-				vertices.push_back(minx); vertices.push_back(maxy);
+				vertices.emplace_back(minx); vertices.emplace_back(miny);
+				vertices.emplace_back(minx); vertices.emplace_back(maxy);
+				vertices.emplace_back(maxx); vertices.emplace_back(miny);
+				vertices.emplace_back(maxx); vertices.emplace_back(maxy);
+				vertices.emplace_back(maxx); vertices.emplace_back(miny);
+				vertices.emplace_back(minx); vertices.emplace_back(maxy);
 
-				texCoords.push_back(minu); texCoords.push_back(minv);
-				texCoords.push_back(minu); texCoords.push_back(maxv);
-				texCoords.push_back(maxu); texCoords.push_back(minv);
-				texCoords.push_back(maxu); texCoords.push_back(maxv);
-				texCoords.push_back(maxu); texCoords.push_back(minv);
-				texCoords.push_back(minu); texCoords.push_back(maxv);
+				texCoords.emplace_back(minu); texCoords.emplace_back(minv);
+				texCoords.emplace_back(minu); texCoords.emplace_back(maxv);
+				texCoords.emplace_back(maxu); texCoords.emplace_back(minv);
+				texCoords.emplace_back(maxu); texCoords.emplace_back(maxv);
+				texCoords.emplace_back(maxu); texCoords.emplace_back(minv);
+				texCoords.emplace_back(minu); texCoords.emplace_back(maxv);
 				rx += cW[character] + cX[0];
 			}
 			break;
@@ -1252,19 +1250,19 @@ void SurfaceOpenglES2::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy,
 			float minv = sy*tex->m_scaleH;
 			float maxv = (sy+curH)*tex->m_scaleH;
 
-			vertices.push_back(minx); vertices.push_back(miny);
-			vertices.push_back(minx); vertices.push_back(maxy);
-			vertices.push_back(maxx); vertices.push_back(miny);
-			vertices.push_back(maxx); vertices.push_back(maxy);
-			vertices.push_back(maxx); vertices.push_back(miny);
-			vertices.push_back(minx); vertices.push_back(maxy);
+			vertices.emplace_back(minx); vertices.emplace_back(miny);
+			vertices.emplace_back(minx); vertices.emplace_back(maxy);
+			vertices.emplace_back(maxx); vertices.emplace_back(miny);
+			vertices.emplace_back(maxx); vertices.emplace_back(maxy);
+			vertices.emplace_back(maxx); vertices.emplace_back(miny);
+			vertices.emplace_back(minx); vertices.emplace_back(maxy);
 
-			texCoords.push_back(minu); texCoords.push_back(minv);
-			texCoords.push_back(minu); texCoords.push_back(maxv);
-			texCoords.push_back(maxu); texCoords.push_back(minv);
-			texCoords.push_back(maxu); texCoords.push_back(maxv);
-			texCoords.push_back(maxu); texCoords.push_back(minv);
-			texCoords.push_back(minu); texCoords.push_back(maxv);
+			texCoords.emplace_back(minu); texCoords.emplace_back(minv);
+			texCoords.emplace_back(minu); texCoords.emplace_back(maxv);
+			texCoords.emplace_back(maxu); texCoords.emplace_back(minv);
+			texCoords.emplace_back(maxu); texCoords.emplace_back(maxv);
+			texCoords.emplace_back(maxu); texCoords.emplace_back(minv);
+			texCoords.emplace_back(minu); texCoords.emplace_back(maxv);
 			cx += sw;
 		}
 		y += sh;
@@ -1928,19 +1926,19 @@ void SurfaceOpenglES2Perf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 			m_spriteAtlas = tex;
 		}
 
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(maxy);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(maxy);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(maxy);
+		m_gameWindowVertices.emplace_back(minx); m_gameWindowVertices.emplace_back(miny);
+		m_gameWindowVertices.emplace_back(minx); m_gameWindowVertices.emplace_back(maxy);
+		m_gameWindowVertices.emplace_back(maxx); m_gameWindowVertices.emplace_back(miny);
+		m_gameWindowVertices.emplace_back(maxx); m_gameWindowVertices.emplace_back(maxy);
+		m_gameWindowVertices.emplace_back(maxx); m_gameWindowVertices.emplace_back(miny);
+		m_gameWindowVertices.emplace_back(minx); m_gameWindowVertices.emplace_back(maxy);
 
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(maxv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(maxv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(maxv);
+		m_gameWindowTexCoords.emplace_back(minu); m_gameWindowTexCoords.emplace_back(minv);
+		m_gameWindowTexCoords.emplace_back(minu); m_gameWindowTexCoords.emplace_back(maxv);
+		m_gameWindowTexCoords.emplace_back(maxu); m_gameWindowTexCoords.emplace_back(minv);
+		m_gameWindowTexCoords.emplace_back(maxu); m_gameWindowTexCoords.emplace_back(maxv);
+		m_gameWindowTexCoords.emplace_back(maxu); m_gameWindowTexCoords.emplace_back(minv);
+		m_gameWindowTexCoords.emplace_back(minu); m_gameWindowTexCoords.emplace_back(maxv);
 	}
 	else
 	{

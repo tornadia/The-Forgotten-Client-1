@@ -92,6 +92,24 @@ SDL_FORCE_INLINE T UTIL_min(T a, T b) {return (a < b) ? a : b;}
 template <typename T>
 SDL_FORCE_INLINE T UTIL_max(T a, T b) {return (a > b) ? a : b;}
 
+SDL_FORCE_INLINE bool UTIL_isPartyMember(Uint8 shield)
+{
+	return shield == SHIELD_WHITEYELLOW || shield == SHIELD_BLUE || shield == SHIELD_YELLOW || shield == SHIELD_BLUE_SHAREDEXP ||
+		shield == SHIELD_YELLOW_SHAREDEXP || shield == SHIELD_BLUE_NOSHAREDEXP_BLINK || shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK ||
+		shield == SHIELD_BLUE_NOSHAREDEXP || shield == SHIELD_YELLOW_NOSHAREDEXP;
+}
+SDL_FORCE_INLINE bool UTIL_isPartyLeader(Uint8 shield)
+{
+	return shield == SHIELD_WHITEYELLOW || shield == SHIELD_YELLOW || shield == SHIELD_YELLOW_SHAREDEXP ||
+		shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || shield == SHIELD_YELLOW_NOSHAREDEXP;
+}
+SDL_FORCE_INLINE bool UTIL_isPartySharedEnabled(Uint8 shield)
+{
+	return shield == SHIELD_YELLOW_SHAREDEXP || shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || shield == SHIELD_YELLOW_NOSHAREDEXP ||
+		shield == SHIELD_BLUE_SHAREDEXP || shield == SHIELD_BLUE_NOSHAREDEXP_BLINK || shield == SHIELD_BLUE_NOSHAREDEXP;
+}
+
+
 void UTIL_initSubsystem();
 
 typedef bool(*LPUTIL_FastCopy)(Uint8*, const Uint8*, size_t);

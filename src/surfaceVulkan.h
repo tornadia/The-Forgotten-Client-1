@@ -86,13 +86,8 @@ struct PushConstant_Sharpen
 	float pxHeight;
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, VulkanTexture*> U32BImages;
 typedef std::unordered_map<Uint64, VulkanTexture*> U64BImages;
-#else
-typedef std::map<Uint32, VulkanTexture*> U32BImages;
-typedef std::map<Uint64, VulkanTexture*> U64BImages;
-#endif
 
 class SurfaceVulkan : public Surface
 {

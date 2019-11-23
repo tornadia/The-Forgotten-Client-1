@@ -83,12 +83,7 @@ bool Config::openToSave(const char* fileName)
 
 void Config::insertKey(const std::string& keyName, const std::string& value)
 {
-	#ifdef HAVE_CXX11_SUPPORT
 	m_keys.emplace_back(keyName, value);
-	#else
-	ConfigKey newKey(keyName, value);
-	m_keys.push_back(newKey);
-	#endif
 }
 
 std::string Config::fetchKey(const std::string& keyName)

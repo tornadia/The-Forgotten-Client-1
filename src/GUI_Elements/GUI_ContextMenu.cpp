@@ -34,8 +34,8 @@ GUI_ContextMenu::GUI_ContextMenu()
 void GUI_ContextMenu::addContextMenu(Uint8 style, Uint32 eventId, const std::string text, const std::string shortcut)
 {
 	ContextMenuChild newChild;
-	PERFORM_MOVE(newChild.text, text);
-	PERFORM_MOVE(newChild.shortcut, shortcut);
+	newChild.text = std::move(text);
+	newChild.shortcut = std::move(shortcut);
 	newChild.eventId = eventId;
 	newChild.childStyle = style;
 	m_childs.push_back(newChild);
@@ -162,15 +162,15 @@ void GUI_ContextMenu::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 void GUI_ContextMenu::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPictureRepeat(3, 0, 0, 96, 96, m_tRect.x1+3, m_tRect.y1+3, m_tRect.x2-6, m_tRect.y2-6);
-	renderer->drawPicture(3, 98, 201, m_tRect.x1, m_tRect.y1, 3, 3);
-	renderer->drawPicture(3, 101, 201, m_tRect.x1+m_tRect.x2-3, m_tRect.y1, 3, 3);
-	renderer->drawPicture(3, 98, 204, m_tRect.x1, m_tRect.y1+m_tRect.y2-3, 3, 3);
-	renderer->drawPicture(3, 101, 204, m_tRect.x1+m_tRect.x2-3, m_tRect.y1+m_tRect.y2-3, 3, 3);
-	renderer->drawPictureRepeat(3, 2, 211, 96, 3, m_tRect.x1+3, m_tRect.y1, m_tRect.x2-6, 3);
-	renderer->drawPictureRepeat(3, 260, 0, 3, 96, m_tRect.x1, m_tRect.y1+3, 3, m_tRect.y2-6);
-	renderer->drawPictureRepeat(3, 2, 211, 96, 3, m_tRect.x1+3, m_tRect.y1+m_tRect.y2-3, m_tRect.x2-6, 3);
-	renderer->drawPictureRepeat(3, 260, 0, 3, 96, m_tRect.x1+m_tRect.x2-3, m_tRect.y1+3, 3, m_tRect.y2-6);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1+3, m_tRect.y1+3, m_tRect.x2-6, m_tRect.y2-6);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_TOPLEFT_BORDER_X, GUI_UI_ICON_TOPLEFT_BORDER_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_TOPLEFT_BORDER_W, GUI_UI_ICON_TOPLEFT_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_TOPRIGHT_BORDER_X, GUI_UI_ICON_TOPRIGHT_BORDER_Y, m_tRect.x1+m_tRect.x2-3, m_tRect.y1, GUI_UI_ICON_TOPRIGHT_BORDER_W, GUI_UI_ICON_TOPRIGHT_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BOTLEFT_BORDER_X, GUI_UI_ICON_BOTLEFT_BORDER_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-3, GUI_UI_ICON_BOTLEFT_BORDER_W, GUI_UI_ICON_BOTLEFT_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_BOTRIGHT_BORDER_X, GUI_UI_ICON_BOTRIGHT_BORDER_Y, m_tRect.x1+m_tRect.x2-3, m_tRect.y1+m_tRect.y2-3, GUI_UI_ICON_BOTRIGHT_BORDER_W, GUI_UI_ICON_BOTRIGHT_BORDER_H);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_DIVIDER_X, GUI_UI_ICON_HORIZONTAL_DIVIDER_Y, GUI_UI_ICON_HORIZONTAL_DIVIDER_W, GUI_UI_ICON_HORIZONTAL_DIVIDER_H, m_tRect.x1+3, m_tRect.y1, m_tRect.x2-6, 3);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_DIVIDER_X, GUI_UI_ICON_VERTICAL_DIVIDER_Y, GUI_UI_ICON_VERTICAL_DIVIDER_W, GUI_UI_ICON_VERTICAL_DIVIDER_H, m_tRect.x1, m_tRect.y1+3, 3, m_tRect.y2-6);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_DIVIDER_X, GUI_UI_ICON_HORIZONTAL_DIVIDER_Y, GUI_UI_ICON_HORIZONTAL_DIVIDER_W, GUI_UI_ICON_HORIZONTAL_DIVIDER_H, m_tRect.x1+3, m_tRect.y1+m_tRect.y2-3, m_tRect.x2-6, 3);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_DIVIDER_X, GUI_UI_ICON_VERTICAL_DIVIDER_Y, GUI_UI_ICON_VERTICAL_DIVIDER_W, GUI_UI_ICON_VERTICAL_DIVIDER_H, m_tRect.x1+m_tRect.x2-3, m_tRect.y1+3, 3, m_tRect.y2-6);
 
 	Sint32 startY = m_tRect.y1+6, index = 0;
 	bool nextLineSeparator = false;
@@ -178,7 +178,7 @@ void GUI_ContextMenu::render()
 	{
 		if(nextLineSeparator)
 		{
-			renderer->drawPictureRepeat(3, 2, 210, 96, 2, m_tRect.x1+4, startY-2, m_tRect.x2-8, 2);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_SEPARATOR_X, GUI_UI_ICON_HORIZONTAL_SEPARATOR_Y, GUI_UI_ICON_HORIZONTAL_SEPARATOR_W, GUI_UI_ICON_HORIZONTAL_SEPARATOR_H, m_tRect.x1+4, startY-2, m_tRect.x2-8, 2);
 			startY += 8;
 			nextLineSeparator = false;
 		}
@@ -191,12 +191,12 @@ void GUI_ContextMenu::render()
 			g_engine.drawFont(CLIENT_FONT_OUTLINED, m_tRect.x1+6, startY, (*it).text, 223, 223, 223, CLIENT_FONT_ALIGN_LEFT);
 		if((*it).childStyle & CONTEXTMENU_STYLE_CHECKED)
 		{
-			renderer->drawPicture(3, 308, 108, m_tRect.x1+6, startY, 12, 12);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_CHECKBOX_CHECKED_X, GUI_UI_CHECKBOX_CHECKED_Y, m_tRect.x1+6, startY, GUI_UI_CHECKBOX_CHECKED_W, GUI_UI_CHECKBOX_CHECKED_H);
 			g_engine.drawFont(CLIENT_FONT_OUTLINED, m_tRect.x1+22, startY, (*it).text, 223, 223, 223, CLIENT_FONT_ALIGN_LEFT);
 		}
 		if((*it).childStyle & CONTEXTMENU_STYLE_UNCHECKED)
 		{
-			renderer->drawPicture(3, 308, 96, m_tRect.x1+6, startY, 12, 12);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_CHECKBOX_UNCHECKED_X, GUI_UI_CHECKBOX_UNCHECKED_Y, m_tRect.x1+6, startY, GUI_UI_CHECKBOX_UNCHECKED_W, GUI_UI_CHECKBOX_UNCHECKED_H);
 			g_engine.drawFont(CLIENT_FONT_OUTLINED, m_tRect.x1+22, startY, (*it).text, 223, 223, 223, CLIENT_FONT_ALIGN_LEFT);
 		}
 		if(!(*it).shortcut.empty())

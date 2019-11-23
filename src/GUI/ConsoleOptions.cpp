@@ -111,9 +111,7 @@ void console_options_Events(Uint32 event, Sint32)
 			}
 		}
 		break;
-		case CONSOLE_OPTIONS_HELP_EVENTID:
-			UTIL_OpenURL(CONSOLE_OPTIONS_HELP_LINK);
-			break;
+		case CONSOLE_OPTIONS_HELP_EVENTID: UTIL_OpenURL(CONSOLE_OPTIONS_HELP_LINK); break;
 	}
 }
 
@@ -148,15 +146,15 @@ void UTIL_consoleOptions()
 	newCheckBox->setBoxEventCallback(&console_options_Events, CONSOLE_OPTIONS_PRIV_MSGS_EVENTID);
 	newCheckBox->startEvents();
 	newWindow->addChild(newCheckBox);
-	GUI_Button* newButton = new GUI_Button(iRect(CONSOLE_OPTIONS_WIDTH-56, CONSOLE_OPTIONS_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(CONSOLE_OPTIONS_WIDTH-56, CONSOLE_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&console_options_Events, CONSOLE_OPTIONS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(CONSOLE_OPTIONS_WIDTH-109, CONSOLE_OPTIONS_HEIGHT-30, 43, 20), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(CONSOLE_OPTIONS_WIDTH-109, CONSOLE_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&console_options_Events, CONSOLE_OPTIONS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(CONSOLE_OPTIONS_WIDTH-162, CONSOLE_OPTIONS_HEIGHT-30, 43, 20), "Help");
+	newButton = new GUI_Button(iRect(CONSOLE_OPTIONS_WIDTH-162, CONSOLE_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
 	newButton->setButtonEventCallback(&console_options_Events, CONSOLE_OPTIONS_HELP_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

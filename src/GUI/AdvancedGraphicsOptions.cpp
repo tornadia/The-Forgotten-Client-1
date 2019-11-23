@@ -98,9 +98,7 @@ void advanced_graphics_options_Events(Uint32 event, Sint32 status)
 {
 	switch(event)
 	{
-		case GRAPHICS_OPTIONS_HELP_EVENTID:
-			UTIL_OpenURL(GRAPHICS_OPTIONS_HELP_LINK);
-			break;
+		case GRAPHICS_OPTIONS_HELP_EVENTID: UTIL_OpenURL(GRAPHICS_OPTIONS_HELP_LINK); break;
 		case GRAPHICS_OPTIONS_CANCEL_EVENTID:
 		{
 			GUI_Window* pWindow = g_engine.getCurrentWindow();
@@ -341,15 +339,15 @@ void UTIL_advancedGraphicsOptions()
 		g_engine.removeWindow(pWindow);
 
 	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, GRAPHICS_OPTIONS_WIDTH, GRAPHICS_OPTIONS_HEIGHT), GRAPHICS_OPTIONS_TITLE, GUI_WINDOW_ADVANCEDGRAPHICSOPTIONS);
-	GUI_Button* newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-56, GRAPHICS_OPTIONS_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-56, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-109, GRAPHICS_OPTIONS_HEIGHT-30, 43, 20), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-109, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-162, GRAPHICS_OPTIONS_HEIGHT-30, 43, 20), "Help");
+	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-162, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
 	newButton->setButtonEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_HELP_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

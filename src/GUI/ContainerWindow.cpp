@@ -58,6 +58,45 @@ void container_Events(Uint32 event, Sint32 status)
 	event >>= 8;
 	switch(event)
 	{
+		case CONTAINER_MAXIMINI_EVENTID:
+		{
+			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_CONTAINERS_START + SDL_static_cast(Uint32, index));
+			if(pPanel)
+			{
+				GUI_Panel* parent = pPanel->getParent();
+				if(!parent)
+					break;
+
+				iRect& pRect = pPanel->getOriginalRect();
+				if(pRect.y2 > 19)
+				{
+					pPanel->setCachedHeight(pRect.y2);
+					pPanel->setSize(pRect.x2, 19);
+					parent->checkPanels();
+
+					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(CONTAINER_CONTAINER_EVENTID));
+					if(pContainer)
+						pContainer->makeInvisible();
+
+					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(CONTAINER_MAXIMINI_EVENTID));
+					if(pIcon)
+						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_X, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_Y);
+				}
+				else
+				{
+					UTIL_ResizePanel(SDL_reinterpret_cast(void*, pPanel), pRect.x2, pPanel->getCachedHeight());
+
+					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(CONTAINER_CONTAINER_EVENTID));
+					if(pContainer)
+						pContainer->makeVisible();
+
+					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(CONTAINER_MAXIMINI_EVENTID));
+					if(pIcon)
+						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y);
+				}
+			}
+		}
+		break;
 		case CONTAINER_CLOSE_EVENTID:
 		case CONTAINER_CLOSED_EVENTID:
 		{
@@ -87,7 +126,7 @@ void container_Events(Uint32 event, Sint32 status)
 					if(pContainer)
 					{
 						iRect cRect = pContainer->getRect();
-						cRect.y2 = status- 43;
+						cRect.y2 = status-43;
 						pContainer->setRect(cRect);
 					}
 				}
@@ -172,7 +211,7 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 		}
 		else if(container->hasParent())
 		{
-			GUI_Icon* newIcon = new GUI_Icon(iRect(135, 0, 12, 12), 3, 234, 98, 234, 110, CONTAINER_PARENT_EVENTID, "Show higher container");
+			GUI_Icon* newIcon = new GUI_Icon(iRect(135, 0, GUI_UI_ICON_PARENT_WINDOW_UP_W, GUI_UI_ICON_PARENT_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PARENT_WINDOW_UP_X, GUI_UI_ICON_PARENT_WINDOW_UP_Y, GUI_UI_ICON_PARENT_WINDOW_DOWN_X, GUI_UI_ICON_PARENT_WINDOW_DOWN_Y, CONTAINER_PARENT_EVENTID, "Show higher container");
 			newIcon->setButtonEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_PARENT_EVENTID));
 			newIcon->startEvents();
 			pPanel->addChild(newIcon);
@@ -186,7 +225,7 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 		}
 		else if(container->canUseDepotSearch())
 		{
-			GUI_Icon* newIcon = new GUI_Icon(iRect((container->hasParent() ? 119 : 131), 0, 12, 12), 3, 234, 98, 234, 110, CONTAINER_DEPOTSEARCH_EVENTID, "Search for items stored in your depot, supply stash and your inbox");
+			GUI_Icon* newIcon = new GUI_Icon(iRect((container->hasParent() ? 119 : 131), 0, GUI_UI_ICON_SEARCH_WINDOW_UP_W, GUI_UI_ICON_SEARCH_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SEARCH_WINDOW_UP_X, GUI_UI_ICON_SEARCH_WINDOW_UP_Y, GUI_UI_ICON_SEARCH_WINDOW_DOWN_X, GUI_UI_ICON_SEARCH_WINDOW_DOWN_Y, CONTAINER_DEPOTSEARCH_EVENTID, "Search for items stored in your depot, supply stash and your inbox");
 			newIcon->setButtonEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_DEPOTSEARCH_EVENTID));
 			newIcon->startEvents();
 			pPanel->addChild(newIcon);
@@ -237,7 +276,7 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 			}
 			else if(hasPrevPage)
 			{
-				GUI_Icon* newIcon = new GUI_Icon(iRect(135, panelRect.y2-25, 18, 18), 3, 306, 200, 458, 398, CONTAINER_PREV_PAGE_EVENTID);
+				GUI_Icon* newIcon = new GUI_Icon(iRect(135, panelRect.y2-25, GUI_UI_ICON_BROWSE_LEFT_UP_W, GUI_UI_ICON_BROWSE_LEFT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_UP_X, GUI_UI_ICON_BROWSE_LEFT_UP_Y, GUI_UI_ICON_BROWSE_LEFT_DOWN_X, GUI_UI_ICON_BROWSE_LEFT_DOWN_Y, CONTAINER_PREV_PAGE_EVENTID);
 				newIcon->setButtonEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_PREV_PAGE_EVENTID));
 				newIcon->startEvents();
 				pPanel->addChild(newIcon);
@@ -251,7 +290,7 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 			}
 			else if(hasNextPage)
 			{
-				GUI_Icon* newIcon = new GUI_Icon(iRect(6, panelRect.y2-25, 18, 18), 3, 324, 200, 458, 398, CONTAINER_NEXT_PAGE_EVENTID);
+				GUI_Icon* newIcon = new GUI_Icon(iRect(6, panelRect.y2-25, GUI_UI_ICON_BROWSE_RIGHT_UP_W, GUI_UI_ICON_BROWSE_RIGHT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_UP_X, GUI_UI_ICON_BROWSE_RIGHT_UP_Y, GUI_UI_ICON_BROWSE_RIGHT_DOWN_X, GUI_UI_ICON_BROWSE_RIGHT_DOWN_Y, CONTAINER_NEXT_PAGE_EVENTID);
 				newIcon->setButtonEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_NEXT_PAGE_EVENTID));
 				newIcon->startEvents();
 				pPanel->addChild(newIcon);
@@ -294,11 +333,11 @@ void UTIL_createContainerWindow(Uint8 index)
 	newWindow->setEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_RESIZE_WIDTH_EVENTID), container_CreateEvent(index, CONTAINER_RESIZE_HEIGHT_EVENTID), container_CreateEvent(index, CONTAINER_EXIT_WINDOW_EVENTID));
 	GUI_ContainerImage* newImage = new GUI_ContainerImage(iRect(2, 0, 12, 12), index);
 	newWindow->addChild(newImage);
-	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, 12, 12), 3, 234, 98, 234, 110, 0, "Maximise or minimise window");
+	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, GUI_UI_ICON_MINIMIZE_WINDOW_UP_W, GUI_UI_ICON_MINIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y, CONTAINER_MAXIMINI_EVENTID, "Maximise or minimise window");
 	newIcon->setButtonEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_MAXIMINI_EVENTID));
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(159, 0, 12, 12), 3, 222, 98, 222, 110, 0, "Close this window");
+	newIcon = new GUI_Icon(iRect(159, 0, GUI_UI_ICON_CLOSE_WINDOW_UP_W, GUI_UI_ICON_CLOSE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CLOSE_WINDOW_UP_X, GUI_UI_ICON_CLOSE_WINDOW_UP_Y, GUI_UI_ICON_CLOSE_WINDOW_DOWN_X, GUI_UI_ICON_CLOSE_WINDOW_DOWN_Y, 0, "Close this window");
 	newIcon->setButtonEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_CLOSE_EVENTID));
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
@@ -459,7 +498,7 @@ void GUI_ContainerItem::onRMouseDown(Sint32, Sint32)
 void GUI_ContainerItem::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(3, 186, 64, m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2);
 
 	Container* container = g_game.findContainer(m_cid);
 	if(!container)

@@ -77,13 +77,8 @@ struct OpenglESTexture
 	float m_scaleH;
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, OpenglESTexture*> U32BGLESTextures;
 typedef std::unordered_map<Uint64, OpenglESTexture*> U64BGLESTextures;
-#else
-typedef std::map<Uint32, OpenglESTexture*> U32BGLESTextures;
-typedef std::map<Uint64, OpenglESTexture*> U64BGLESTextures;
-#endif
 
 class SurfaceOpenglES : public Surface
 {

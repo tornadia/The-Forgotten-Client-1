@@ -104,7 +104,7 @@ bool AnimatedText::needAdditionalOffset()
 
 void AnimatedText::setText(const std::string text)
 {
-	PERFORM_MOVE(m_text, text);
+	m_text = std::move(text);
 	m_cachedHalfTextSize = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text)/2;
 }
 

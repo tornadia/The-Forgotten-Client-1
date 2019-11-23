@@ -30,7 +30,19 @@ class GUI_Minimap : public GUI_Element
 		GUI_Minimap(iRect boxRect, Uint32 internalID = 0);
 		~GUI_Minimap() {;}
 
+		void onLMouseDown(Sint32 x, Sint32 y);
+		void onLMouseUp(Sint32 x, Sint32 y);
+		//void onRMouseDown(Sint32 x, Sint32 y);
+		//void onRMouseUp(Sint32 x, Sint32 y);
+		void onWheel(Sint32 x, Sint32 y, bool wheelUP);
+		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
+
 		void render();
+
+	protected:
+		iRect m_mouseEvent;
+		bool m_bMouseDragging;
+		bool m_bMouseAutowalk;
 };
 
 #endif /* __FILE_GUI_MINIMAP_h_ */

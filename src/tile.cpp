@@ -36,8 +36,11 @@ Tile::Tile(const Position& position)
 
 Tile::~Tile()
 {
-	if(m_ground)
-		delete m_ground;
+	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
+		(*it)->resetDrawnTile();
+
+	for(std::vector<Effect*>::iterator it = m_effects.begin(), end = m_effects.end(); it != end; ++it)
+		delete (*it);
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 		delete (*it);
@@ -45,12 +48,9 @@ Tile::~Tile()
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 		delete (*it);
 
-	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
-		(*it)->resetDrawnTile();
-
-	for(std::vector<Effect*>::iterator it = m_effects.begin(), end = m_effects.end(); it != end; ++it)
-		delete (*it);
-
+	if(m_ground)
+		delete m_ground;
+	
 	m_topItems.clear();
 	m_downItems.clear();
 	m_creatures.clear();

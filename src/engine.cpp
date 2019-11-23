@@ -46,7 +46,6 @@
 #include "GUI_Elements/GUI_Description.h"
 #include "GUI_Elements/GUI_ContextMenu.h"
 #include "GUI_Elements/GUI_Log.h"
-#include "GUI/GUI_UTIL.h"
 #include "GUI/itemUI.h"
 #include "GUI/Chat.h"
 
@@ -71,28 +70,28 @@ GUI_Window* g_mainWindow = NULL;
 
 Engine::Engine()
 {
-	m_engines.push_back(CLIENT_ENGINE_SOFTWARE);
+	m_engines.emplace_back(CLIENT_ENGINE_SOFTWARE);
 	#if defined(SDL_VIDEO_VULKAN)
-	m_engines.push_back(CLIENT_ENGINE_VULKAN);
+	m_engines.emplace_back(CLIENT_ENGINE_VULKAN);
 	#endif
 	#if defined(SDL_VIDEO_RENDER_D3D11)
-	m_engines.push_back(CLIENT_ENGINE_DIRECT3D11);
+	m_engines.emplace_back(CLIENT_ENGINE_DIRECT3D11);
 	#endif
 	#if defined(SDL_VIDEO_RENDER_DDRAW)
-	m_engines.push_back(CLIENT_ENGINE_DIRECT3D7);
+	m_engines.emplace_back(CLIENT_ENGINE_DIRECT3D7);
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL)
-	m_engines.push_back(CLIENT_ENGINE_OPENGL);
+	m_engines.emplace_back(CLIENT_ENGINE_OPENGL);
 	#else
 	#if defined(SDL_VIDEO_RENDER_OGL_ES)
-	m_engines.push_back(CLIENT_ENGINE_OPENGLES);
+	m_engines.emplace_back(CLIENT_ENGINE_OPENGLES);
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL_ES2)
-	m_engines.push_back(CLIENT_ENGINE_OPENGLES2);
+	m_engines.emplace_back(CLIENT_ENGINE_OPENGLES2);
 	#endif
 	#endif
 	#if defined(SDL_VIDEO_RENDER_D3D)
-	m_engines.push_back(CLIENT_ENGINE_DIRECT3D);
+	m_engines.emplace_back(CLIENT_ENGINE_DIRECT3D);
 	#endif
 
 	m_clientHost.assign("127.0.0.1");
@@ -117,6 +116,7 @@ Engine::Engine()
 	m_antialiasing = CLIENT_ANTIALIASING_NORMAL;
 	m_perfMode = false;
 	m_unlimitedFPS = true;
+	m_battleSortMethod = Sort_Ascending_Time;
 	m_attackMode = ATTACKMODE_BALANCED;
 	m_chaseMode = CHASEMODE_STAND;
 	m_secureMode = SECUREMODE_SECURE;
@@ -841,6 +841,7 @@ bool Engine::init()
 	}
 	m_surface->doResize(m_windowW, m_windowH);
 	m_surface->init();
+	m_surface->spriteManagerReset();
 	return true;
 }
 
@@ -850,13 +851,13 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 	switch(font)
 	{
 		case CLIENT_FONT_NONOUTLINED:
-			picture = 2;
+			picture = GUI_FONT_NONOUTLINED_IMAGE;
 			break;
 		case CLIENT_FONT_OUTLINED:
-			picture = 4;
+			picture = GUI_FONT_OUTLINED_IMAGE;
 			break;
 		case CLIENT_FONT_SMALL:
-			picture = 5;
+			picture = GUI_FONT_SMALL_IMAGE;
 			break;
 	}
 
@@ -1283,11 +1284,7 @@ void Engine::onKeyUp(SDL_Event event)
 					//Send mount
 				}
 				break;
-				case CLIENT_HOTKEY_MOVEMENT_STOPACTIONS:
-				{
-					//Stop actions
-				}
-				break;
+				case CLIENT_HOTKEY_MOVEMENT_STOPACTIONS: g_game.stopAutoWalk(); break;
 				case CLIENT_HOTKEY_DIALOGS_OPENBUGREPORTS:
 				{
 					//Open bug reports
@@ -1301,21 +1298,9 @@ void Engine::onKeyUp(SDL_Event event)
 				case CLIENT_HOTKEY_DIALOGS_OPENOPTIONS: UTIL_options(); break;
 				case CLIENT_HOTKEY_DIALOGS_OPENHOTKEYS: UTIL_hotkeyOptions(); break;
 				case CLIENT_HOTKEY_DIALOGS_OPENQUESTLOG: g_game.sendOpenQuestLog(); break;
-				case CLIENT_HOTKEY_WINDOWS_OPENVIPWINDOW:
-				{
-					//Toggle vip window
-				}
-				break;
-				case CLIENT_HOTKEY_WINDOWS_OPENBATTLEWINDOW:
-				{
-					//Toggle battle window
-				}
-				break;
-				case CLIENT_HOTKEY_WINDOWS_OPENSKILLSWINDOW:
-				{
-					//Toggle skills window
-				}
-				break;
+				case CLIENT_HOTKEY_WINDOWS_OPENVIPWINDOW: UTIL_toggleVipWindow(); break;
+				case CLIENT_HOTKEY_WINDOWS_OPENBATTLEWINDOW: UTIL_toggleBattleWindow(); break;
+				case CLIENT_HOTKEY_WINDOWS_OPENSKILLSWINDOW: UTIL_toggleSkillsWindow(); break;
 				case CLIENT_HOTKEY_CHAT_CLOSECHANNEL: g_game.closeCurrentChannel(); break;
 				case CLIENT_HOTKEY_CHAT_OPENCHANNELLIST: g_game.sendRequestChannels(); break;
 				case CLIENT_HOTKEY_CHAT_OPENHELPCHANNEL: g_game.openHelpChannel(); break;
@@ -1453,6 +1438,8 @@ void Engine::onMouseMove(Sint32 x, Sint32 y)
 			}
 		}
 	}
+	else
+		g_mainWindow->onMouseMove(x, y, g_mainWindow->isInsideRect(x, y));
 }
 
 void Engine::onLMouseDown(Sint32 x, Sint32 y)
@@ -1600,6 +1587,8 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 				m_panels.erase(it);
 				m_panels.push_back(gPanel);
 				itemui = SDL_reinterpret_cast(ItemUI*, gPanel->onAction(x, y));
+				if(!itemui && g_game.getSelectID() != 0)
+					topCreature = g_map.getCreatureById(g_game.getSelectID());
 			}
 			else if(m_gameWindowRect.isPointInside(x, y))
 			{
@@ -1814,8 +1803,21 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 						if(tile)
 						{
 							Position& autoWalkPosition = tile->getPosition();
-							//Autowalk
+							g_game.startAutoWalk(autoWalkPosition);
 						}
+					}
+				}
+			}
+			else
+			{
+				Uint16 keyMods = UTIL_parseModifiers(SDL_static_cast(Uint16, SDL_GetModState()));
+				if(keyMods == KMOD_NONE && m_gameWindowRect.isPointInside(x, y))
+				{
+					Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, false);
+					if(tile)
+					{
+						Position& autoWalkPosition = tile->getPosition();
+						g_game.startAutoWalk(autoWalkPosition);
 					}
 				}
 			}
@@ -2441,18 +2443,18 @@ void Engine::redraw()
 	if(m_ingame)
 	{
 		g_map.render();
-		m_surface->drawPictureRepeat(3, 0, 0, 96, 96, 0, 0, m_windowW-176, m_windowH-140);
+		m_surface->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, 0, 0, m_windowW-176, m_windowH-140);
 		m_surface->drawGameScene(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2);
 		m_surface->setClipRect(m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2);
 		g_map.renderInformations(m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2, m_scale, m_scaledSize);
 		m_surface->disableClipRect();
+		g_chat.render(m_chatWindowRect);
 		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 			(*it)->render();
-		g_chat.render(m_chatWindowRect);
 	}
 	else
 	{
-		m_surface->drawBackground(0, 0, 0, 640, 480, 0, 0, m_windowW, m_windowH);
+		m_surface->drawBackground(GUI_BACKGROUND_IMAGE, GUI_BACKGROUND_X, GUI_BACKGROUND_Y, GUI_BACKGROUND_W, GUI_BACKGROUND_H, 0, 0, m_windowW, m_windowH);
 		if(g_mainWindow)
 			g_mainWindow->render();
 	}
@@ -2617,30 +2619,8 @@ void Engine::drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8
 	}
 }
 
-void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint32 outfitColor)
+void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation, Uint32 outfitColor)
 {
-	Uint8 animationFrame;
-	if(thing->m_category != ThingCategory_Creature)
-	{
-		if(thing->m_category == ThingCategory_Effect)
-		{
-			Uint8 animCount = UTIL_max<Uint8>(1, (thing->m_frameGroup[ThingFrameGroup_Idle].m_animCount-2));
-			animationFrame = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), animCount)+1;
-		}
-		else
-			animationFrame = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), thing->m_frameGroup[ThingFrameGroup_Idle].m_animCount);
-	}
-	else
-	{
-		if(false || thing->hasFlag(ThingAttribute_AnimateAlways))
-		{
-			Sint32 ticks = (1000 / thing->m_frameGroup[ThingFrameGroup_Idle].m_animCount);
-			animationFrame = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ticks)), thing->m_frameGroup[ThingFrameGroup_Idle].m_animCount);
-		}
-		else
-			animationFrame = 0;
-	}
-
 	Uint8 fx = thing->m_frameGroup[ThingFrameGroup_Idle].m_width;
 	Uint8 fy = thing->m_frameGroup[ThingFrameGroup_Idle].m_height;
 	Uint8 fl = thing->m_frameGroup[ThingFrameGroup_Idle].m_layers;
@@ -2648,8 +2628,8 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 	{
 		if(fl > 1)
 		{
-			Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, 0, 0, 0, xPattern, yPattern, zPattern, animationFrame);
-			Uint32 spriteMask = thing->getSprite(ThingFrameGroup_Idle, 0, 0, 1, xPattern, yPattern, zPattern, animationFrame);
+			Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, 0, 0, 0, xPattern, yPattern, zPattern, animation);
+			Uint32 spriteMask = thing->getSprite(ThingFrameGroup_Idle, 0, 0, 1, xPattern, yPattern, zPattern, animation);
 			if(sprite != 0)
 			{
 				if(spriteMask != 0)
@@ -2660,7 +2640,7 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 		}
 		else
 		{
-			Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, 0, 0, 0, xPattern, yPattern, zPattern, animationFrame);
+			Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, 0, 0, 0, xPattern, yPattern, zPattern, animation);
 			if(sprite != 0)
 				m_surface->drawSprite(sprite, x, y, scaled, scaled, 0, 0, 32, 32);
 		}
@@ -2680,8 +2660,8 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 				Sint32 posXc = x+scaled-scale;
 				for(Uint8 cx = 0; cx < fx; ++cx)
 				{
-					Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, cx, cy, 0, xPattern, yPattern, zPattern, animationFrame);
-					Uint32 spriteMask = thing->getSprite(ThingFrameGroup_Idle, cx, cy, 1, xPattern, yPattern, zPattern, animationFrame);
+					Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, cx, cy, 0, xPattern, yPattern, zPattern, animation);
+					Uint32 spriteMask = thing->getSprite(ThingFrameGroup_Idle, cx, cy, 1, xPattern, yPattern, zPattern, animation);
 					if(sprite != 0)
 					{
 						Sint32 dx = posXc, dy = posYc, dw = scale, dh = scale;
@@ -2720,7 +2700,7 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 				Sint32 posXc = x+scaled-scale;
 				for(Uint8 cx = 0; cx < fx; ++cx)
 				{
-					Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, cx, cy, 0, xPattern, yPattern, zPattern, animationFrame);
+					Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, cx, cy, 0, xPattern, yPattern, zPattern, animation);
 					if(sprite != 0)
 					{
 						Sint32 dx = posXc, dy = posYc, dw = scale, dh = scale;
@@ -2751,19 +2731,13 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 	}
 }
 
-void Engine::drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern)
+void Engine::drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation)
 {
-	Uint8 animationFrame;
-	if(thing->m_frameGroup[ThingFrameGroup_Default].m_animCount > 1)
-		animationFrame = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / EFFECT_TICKS_PER_FRAME)), thing->m_frameGroup[ThingFrameGroup_Default].m_animCount);
-	else
-		animationFrame = 0;
-
 	Uint8 fx = thing->m_frameGroup[ThingFrameGroup_Default].m_width;
 	Uint8 fy = thing->m_frameGroup[ThingFrameGroup_Default].m_height;
 	if(fx == 1 && fy == 1)
 	{
-		Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, animationFrame);
+		Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, animation);
 		if(sprite != 0)
 			m_surface->drawSprite(sprite, x, y, scaled, scaled, 0, 0, 32, 32);
 	}
@@ -2780,7 +2754,7 @@ void Engine::drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 			Sint32 posXc = x+scaled-scale;
 			for(Uint8 cx = 0; cx < fx; ++cx)
 			{
-				Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, 0, xPattern, yPattern, zPattern, animationFrame);
+				Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, 0, xPattern, yPattern, zPattern, animation);
 				if(sprite != 0)
 				{
 					Sint32 dx = posXc, dy = posYc, dw = scale, dh = scale;
@@ -2810,13 +2784,13 @@ void Engine::drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 	}
 }
 
-void Engine::drawDistanceEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern)
+void Engine::drawDistanceEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8 xPattern, Uint8 yPattern, Uint8 zPattern, Uint8 animation)
 {
 	Uint8 fx = thing->m_frameGroup[ThingFrameGroup_Default].m_width;
 	Uint8 fy = thing->m_frameGroup[ThingFrameGroup_Default].m_height;
 	if(fx == 1 && fy == 1)
 	{
-		Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, 0);
+		Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, animation);
 		if(sprite != 0)
 			m_surface->drawSprite(sprite, x, y, scaled, scaled, 0, 0, 32, 32);
 	}
@@ -2833,7 +2807,7 @@ void Engine::drawDistanceEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 sca
 			Sint32 posXc = x+scaled-scale;
 			for(Uint8 cx = 0; cx < fx; ++cx)
 			{
-				Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, 0, xPattern, yPattern, zPattern, 0);
+				Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, 0, xPattern, yPattern, zPattern, animation);
 				if(sprite != 0)
 				{
 					Sint32 dx = posXc, dy = posYc, dw = scale, dh = scale;
@@ -3440,11 +3414,11 @@ GUI_ContextMenu* Engine::createThingContextMenu(Creature* creature, ItemUI* item
 			if(!(g_game.getIcons() & ICON_SWORDS))
 			{
 				Uint8 playerShield = creature->getShield();
-				if(playerShield == SHIELD_WHITEYELLOW || playerShield == SHIELD_BLUE || playerShield == SHIELD_YELLOW || playerShield == SHIELD_BLUE_SHAREDEXP || playerShield == SHIELD_YELLOW_SHAREDEXP || playerShield == SHIELD_BLUE_NOSHAREDEXP_BLINK || playerShield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || playerShield == SHIELD_BLUE_NOSHAREDEXP || playerShield == SHIELD_YELLOW_NOSHAREDEXP)
+				if(UTIL_isPartyMember(playerShield))
 				{
-					if(playerShield == SHIELD_WHITEYELLOW || playerShield == SHIELD_YELLOW || playerShield == SHIELD_YELLOW_SHAREDEXP || playerShield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || playerShield == SHIELD_YELLOW_NOSHAREDEXP)
+					if(UTIL_isPartyLeader(playerShield))
 					{
-						if(playerShield == SHIELD_YELLOW_SHAREDEXP || playerShield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || playerShield == SHIELD_YELLOW_NOSHAREDEXP)
+						if(UTIL_isPartySharedEnabled(playerShield))
 							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_DISABLESHAREDEXPERIENCE, "Disable Shared Experience", "");
 						else
 							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_ENABLESHAREDEXPERIENCE, "Enable Shared Experience", "");
@@ -3748,16 +3722,16 @@ void Engine::processGameStart()
 	g_game.sendPingBack();
 	g_game.sendAttackModes();
 
-	m_panels.push_back(new GUI_Panel(iRect(m_windowW-176, 0, 176, 349), GUI_PANEL_MAIN));
-	m_panels.push_back(new GUI_Panel(iRect(m_windowW-176, 349, 176, m_windowH-349), GUI_PANEL_RIGHT1));
+	m_panels.push_back(new GUI_Panel(iRect(m_windowW-176, 0, 176, 393), GUI_PANEL_MAIN));
+	m_panels.push_back(new GUI_Panel(iRect(m_windowW-176, 393, 176, m_windowH-393), GUI_PANEL_RIGHT1));
 	UTIL_createMinimapPanel();
 	UTIL_createHealthPanel();
 	UTIL_createInventoryPanel();
 	UTIL_createButtonsPanel();
 
-	UTIL_createSkillsWindow();
-	//UTIL_createBattleWindow();
-	//UTIL_createVipWindow();
+	//UTIL_toggleSkillsWindow();
+	//UTIL_toggleBattleWindow();
+	//UTIL_toggleVipWindow();
 }
 
 void Engine::processGameEnd()

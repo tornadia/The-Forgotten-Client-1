@@ -34,12 +34,15 @@ typedef struct
 	float pv_41, pv_42, pv_43, pv_44;
 } VertexShaderConstants;
 
-typedef struct
+struct VertexD3D11
 {
+	VertexD3D11(float x, float y, float u, float v, DWORD color) : x(x), y(y), color(color), u(u), v(v) {}
+	VertexD3D11(float x, float y, DWORD color) : x(x), y(y), color(color), u(0.0f), v(0.0f) {}
+
 	float x, y;
 	float u, v;
 	DWORD color;
-} VertexD3D11;
+};
 
 struct Direct3D11Texture
 {
@@ -55,13 +58,8 @@ struct Direct3D11Texture
 	bool m_linearSample;
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, Direct3D11Texture*> U32BD3D11Textures;
 typedef std::unordered_map<Uint64, Direct3D11Texture*> U64BD3D11Textures;
-#else
-typedef std::map<Uint32, Direct3D11Texture*> U32BD3D11Textures;
-typedef std::map<Uint64, Direct3D11Texture*> U64BD3D11Textures;
-#endif
 
 class SurfaceDirect3D11 : public Surface
 {

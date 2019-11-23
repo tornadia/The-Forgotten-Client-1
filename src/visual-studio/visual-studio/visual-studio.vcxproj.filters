@@ -354,6 +354,9 @@
     <ClCompile Include="..\..\GUI\ContainerWindow.cpp">
       <Filter>Source Files\GUI</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\GUI\SpellsWindow.cpp">
+      <Filter>Source Files\TODO</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\connection.h">
@@ -625,6 +628,9 @@
     </ClInclude>
     <ClInclude Include="..\..\GUI\ContainerWindow.h">
       <Filter>Header Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\gui_const.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

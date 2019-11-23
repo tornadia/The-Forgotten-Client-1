@@ -29,6 +29,12 @@
 #define CHANNEL_ID_NPC 0xFFFFFFF2
 #define CHANNEL_ID_RVR 0xFFFFFFF3
 
+#define CHANNEL_NAME_DEFAULT_LEGACY "Default"
+#define CHANNEL_NAME_DEFAULT "Local Chat"
+#define CHANNEL_NAME_SERVERLOG "Server Log"
+#define CHANNEL_NAME_NPC "NPCs"
+#define CHANNEL_NAME_RVR "Report Rule Violation"
+
 class GUI_Console;
 struct Channel
 {
@@ -75,6 +81,9 @@ class Chat
 		void addChannelMessage(Uint32 channelId, MessageMode mode, Uint32 statementId, const std::string& playerName, Uint16 playerLevel, const std::string& text, time_t timestamp);
 		void sendMessage();
 		Channel* getPrivateChannel(const std::string& receiver);
+		void switchToNextChannel();
+		void switchToPreviousChannel();
+		void setCurrentChannel(Uint32 channelId);
 		Channel* getChannel(Uint32 channelId);
 		Channel* getCurrentChannel();
 

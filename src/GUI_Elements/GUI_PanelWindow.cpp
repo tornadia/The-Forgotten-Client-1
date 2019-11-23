@@ -184,7 +184,7 @@ void GUI_PanelWindow::onLMouseDown(Sint32 x, Sint32 y)
 			return;
 		}
 	}
-	if(m_windowed)
+	if(m_windowed && m_tRect.y2 > 19)
 	{
 		iRect dragWindow = iRect(m_tRect.x1, m_tRect.y1+m_tRect.y2-4, m_tRect.x2, 4);
 		if(dragWindow.isPointInside(x, y))
@@ -283,7 +283,7 @@ void GUI_PanelWindow::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
 		(*it)->onMouseMove(x, y, isInsideParent);
 
-	if(m_windowed)
+	if(m_windowed && m_tRect.y2 > 19)
 	{
 		iRect dragWindow = iRect(m_tRect.x1, m_tRect.y1+m_tRect.y2-4, m_tRect.x2, 4);
 		if(dragWindow.isPointInside(x, y))
@@ -332,31 +332,31 @@ void GUI_PanelWindow::render()
 {
 	Surface* renderer = g_engine.getRender();
 	if(m_bMouseDragging)
-		renderer->drawPictureRepeat(3, 416, 416, 96, 96, m_nRect.x1, m_nRect.y1, m_nRect.x2, m_nRect.y2);
+		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_DARKGREY_X, GUI_UI_BACKGROUND_DARKGREY_Y, GUI_UI_BACKGROUND_DARKGREY_W, GUI_UI_BACKGROUND_DARKGREY_H, m_nRect.x1, m_nRect.y1, m_nRect.x2, m_nRect.y2);
 	if(m_windowed)
 	{
-		renderer->drawPicture(3, 98, 178, m_tRect.x1-2, m_tRect.y1-2, 4, 15);
-		renderer->drawPictureRepeat(3, 2, 178, 96, 15, m_tRect.x1+2, m_tRect.y1-2, m_tRect.x2-4, 15);
-		renderer->drawPicture(3, 102, 178, m_tRect.x1+m_tRect.x2-2, m_tRect.y1-2, 4, 15);
-		renderer->drawPicture(3, 98, 193, m_tRect.x1-2, m_tRect.y1+m_tRect.y2-6, 4, 4);
-		renderer->drawPictureRepeat(3, 2, 193, 96, 4, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-6, m_tRect.x2-4, 4);
-		renderer->drawPicture(3, 102, 193, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+m_tRect.y2-6, 4, 4);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_PWINDOW_LEFT_CENTER_X, GUI_UI_ICON_PWINDOW_LEFT_CENTER_Y, m_tRect.x1-2, m_tRect.y1-2, GUI_UI_ICON_PWINDOW_LEFT_CENTER_W, GUI_UI_ICON_PWINDOW_LEFT_CENTER_H);
+		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_PWINDOW_TOP_CENTER_X, GUI_UI_ICON_PWINDOW_TOP_CENTER_Y, GUI_UI_ICON_PWINDOW_TOP_CENTER_W, GUI_UI_ICON_PWINDOW_TOP_CENTER_H, m_tRect.x1+2, m_tRect.y1-2, m_tRect.x2-4, 15);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_PWINDOW_RIGHT_CENTER_X, GUI_UI_ICON_PWINDOW_RIGHT_CENTER_Y, m_tRect.x1+m_tRect.x2-2, m_tRect.y1-2, GUI_UI_ICON_PWINDOW_RIGHT_CENTER_W, GUI_UI_ICON_PWINDOW_RIGHT_CENTER_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_PWINDOW_BOTLEFT_BORDER_X, GUI_UI_ICON_PWINDOW_BOTLEFT_BORDER_Y, m_tRect.x1-2, m_tRect.y1+m_tRect.y2-6, GUI_UI_ICON_PWINDOW_BOTLEFT_BORDER_W, GUI_UI_ICON_PWINDOW_BOTLEFT_BORDER_H);
+		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_BOTTOM_SLIDER_X, GUI_UI_ICON_BOTTOM_SLIDER_Y, GUI_UI_ICON_BOTTOM_SLIDER_W, GUI_UI_ICON_BOTTOM_SLIDER_H, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-6, m_tRect.x2-4, 4);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_PWINDOW_BOTRIGHT_BORDER_X, GUI_UI_ICON_PWINDOW_BOTRIGHT_BORDER_Y, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+m_tRect.y2-6, GUI_UI_ICON_PWINDOW_BOTRIGHT_BORDER_W, GUI_UI_ICON_PWINDOW_BOTRIGHT_BORDER_H);
 		if(!m_bMouseDragging)
 		{
-			renderer->drawPicture(3, 99, 198, m_tRect.x1+m_tRect.x2, m_tRect.y1+m_tRect.y2-2, 2, 2);
-			renderer->drawPictureRepeat(3, 2, 198, 96, 2, m_tRect.x1-2, m_tRect.y1 + m_tRect.y2-2, m_tRect.x2+2, 2);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1+m_tRect.x2, m_tRect.y1+m_tRect.y2-2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1-2, m_tRect.y1 + m_tRect.y2-2, m_tRect.x2+2, 2);
 		}
 		if(m_tRect.y2 > 19)
 		{
-			renderer->drawPictureRepeat(3, 0, 0, 96, 96, m_tRect.x1+2, m_tRect.y1+13, m_tRect.x2-4, m_tRect.y2-19);
-			renderer->drawPictureRepeat(3, 256, 0, 4, 96, m_tRect.x1-2, m_tRect.y1+13, 4, m_tRect.y2-19);
-			renderer->drawPictureRepeat(3, 260, 0, 4, 96, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+13, 4, m_tRect.y2-19);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1+2, m_tRect.y1+13, m_tRect.x2-4, m_tRect.y2-19);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_LEFT_SLIDER_X, GUI_UI_ICON_LEFT_SLIDER_Y, GUI_UI_ICON_LEFT_SLIDER_W, GUI_UI_ICON_LEFT_SLIDER_H, m_tRect.x1-2, m_tRect.y1+13, 4, m_tRect.y2-19);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_RIGHT_SLIDER_X, GUI_UI_ICON_RIGHT_SLIDER_Y, GUI_UI_ICON_RIGHT_SLIDER_W, GUI_UI_ICON_RIGHT_SLIDER_H, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+13, 4, m_tRect.y2-19);
 		}
 	}
 	else
-		renderer->drawPictureRepeat(3, 0, 0, 96, 96, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
 		(*it)->render();
 	if(m_windowed && m_tRect.y2 > 19)
-		renderer->drawPicture(3, 258, 98, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-21, 16, 16);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_PWINDOW_RESIZER_X, GUI_UI_ICON_PWINDOW_RESIZER_Y, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-21, GUI_UI_ICON_PWINDOW_RESIZER_W, GUI_UI_ICON_PWINDOW_RESIZER_H);
 }

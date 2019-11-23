@@ -217,5 +217,41 @@ typedef union LootContainerData
 	LootContainer_SetUseFallback setUseFallback;
 } LootContainerData;
 
+struct SpellData
+{
+	SpellData(std::string a1, std::string a2, Uint8 a3, Uint8 a4, Uint32 a5, Uint8 a6, Uint16 a7, bool a8, Uint8 a9, Uint32 a10, Uint8 a11, Uint16 a12, Uint16 a13):
+		spellIncantation(a1), spellName(a2), spellGroup(a3), spellSecondGroup(0), spellId(a4), spellPrice(a5), spellType(a6), spellReqLevel(a7),
+		spellVocations(a9), spellReqPremium(a8), spellReqMana(a10), spellReqSoul(a11), spellRuneId(0), spellCooldown(a12), spellGroupCooldown(a13), spellSecondGroupCooldown(0) {}
+	
+	SpellData(std::string a1, std::string a2, Uint8 a3, Uint8 a4, Uint8 a5, Uint32 a6, Uint8 a7, Uint16 a8, bool a9, Uint8 a10, Uint32 a11, Uint8 a12, Uint16 a13, Uint16 a14, Uint16 a15):
+		spellIncantation(a1), spellName(a2), spellGroup(a3), spellSecondGroup(a4), spellId(a5), spellPrice(a6), spellType(a7), spellReqLevel(a8),
+		spellVocations(a10), spellReqPremium(a9), spellReqMana(a11), spellReqSoul(a12), spellRuneId(0), spellCooldown(a13), spellGroupCooldown(a14), spellSecondGroupCooldown(a15) {}
+
+	SpellData(std::string a1, std::string a2, Uint8 a3, Uint8 a4, Uint32 a5, Uint8 a6, Uint16 a7, bool a8, Uint8 a9, Uint32 a10, Uint8 a11, Uint16 a12, Uint16 a13, Uint16 a14):
+		spellIncantation(a1), spellName(a2), spellGroup(a3), spellSecondGroup(0), spellId(a4), spellPrice(a5), spellType(a6), spellReqLevel(a7),
+		spellVocations(a9), spellReqPremium(a8), spellReqMana(a10), spellReqSoul(a11), spellRuneId(a12), spellCooldown(a13), spellGroupCooldown(a14), spellSecondGroupCooldown(0) {}
+
+	SpellData(std::string a1, std::string a2, Uint8 a3, Uint8 a4, Uint8 a5, Uint32 a6, Uint8 a7, Uint16 a8, bool a9, Uint8 a10, Uint32 a11, Uint8 a12, Uint16 a13, Uint16 a14, Uint16 a15, Uint16 a16):
+		spellIncantation(a1), spellName(a2), spellGroup(a3), spellSecondGroup(a4), spellId(a5), spellPrice(a6), spellType(a7), spellReqLevel(a8),
+		spellVocations(a10), spellReqPremium(a9), spellReqMana(a11), spellReqSoul(a12), spellRuneId(a13), spellCooldown(a14), spellGroupCooldown(a15), spellSecondGroupCooldown(a16) {}
+
+	std::string spellIncantation;
+	std::string spellName;
+	Uint32 spellPrice;
+	Uint32 spellReqMana;
+	Uint16 spellReqLevel;
+	Uint16 spellCooldown;
+	Uint16 spellGroupCooldown;
+	Uint16 spellSecondGroupCooldown;
+	Uint16 spellRuneId;
+	Uint8 spellGroup;
+	Uint8 spellSecondGroup;
+	Uint8 spellId;
+	Uint8 spellType;
+	Uint8 spellVocations;
+	Uint8 spellReqSoul;
+	bool spellReqPremium;
+};
+
 #endif /* __FILE_STRUCTURES_h_ */
 

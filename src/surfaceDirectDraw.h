@@ -26,12 +26,15 @@
 
 #if defined(SDL_VIDEO_RENDER_DDRAW)
 
-typedef struct
+struct VertexDDRAW
 {
+	VertexDDRAW(float x, float y, float u, float v, DWORD color) : x(x), y(y), z(0.0f), color(color), u(u), v(v) {}
+	VertexDDRAW(float x, float y, DWORD color) : x(x), y(y), z(0.0f), color(color), u(0.0f), v(0.0f) {}
+
 	float x, y, z;
 	DWORD color;
 	float u, v;
-} VertexDDRAW;
+};
 
 typedef struct IDirectDrawSurface7 IDirectDrawSurface7;
 struct DirectDrawTexture
@@ -46,13 +49,8 @@ struct DirectDrawTexture
 	bool m_linearSample;
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 typedef std::unordered_map<Uint32, DirectDrawTexture*> U32BDDRAWTextures;
 typedef std::unordered_map<Uint64, DirectDrawTexture*> U64BDDRAWTextures;
-#else
-typedef std::map<Uint32, DirectDrawTexture*> U32BDDRAWTextures;
-typedef std::map<Uint64, DirectDrawTexture*> U64BDDRAWTextures;
-#endif
 
 typedef struct IDirectDraw IDirectDraw;
 typedef struct IDirectDraw7 IDirectDraw7;

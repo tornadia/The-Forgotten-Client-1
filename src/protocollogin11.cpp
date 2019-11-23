@@ -24,7 +24,6 @@
 #include "http.h"
 
 #include "GUI_Elements/GUI_Window.h"
-#include "GUI/GUI_UTIL.h"
 #include "json/json.h"
 
 extern Engine g_engine;

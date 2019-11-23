@@ -44,8 +44,8 @@
 #define GRAPHICS_OPTIONS_BUTTON_ADVANCED_TITLE "Advanced"
 #define GRAPHICS_OPTIONS_BUTTON_ADVANCED_X 132
 #define GRAPHICS_OPTIONS_BUTTON_ADVANCED_Y 199
-#define GRAPHICS_OPTIONS_BUTTON_ADVANCED_W 86
-#define GRAPHICS_OPTIONS_BUTTON_ADVANCED_H 20
+#define GRAPHICS_OPTIONS_BUTTON_ADVANCED_W GUI_UI_BUTTON_86PX_GRAY_UP_W
+#define GRAPHICS_OPTIONS_BUTTON_ADVANCED_H GUI_UI_BUTTON_86PX_GRAY_UP_H
 #define GRAPHICS_OPTIONS_BUTTON_ADVANCED_EVENTID 1004
 #define GRAPHICS_OPTIONS_LISTBOX_RESOLUTIONS_X 18
 #define GRAPHICS_OPTIONS_LISTBOX_RESOLUTIONS_Y 82
@@ -66,9 +66,7 @@ void graphics_options_Events(Uint32 event, Sint32)
 {
 	switch(event)
 	{
-		case GRAPHICS_OPTIONS_HELP_EVENTID:
-			UTIL_OpenURL(GRAPHICS_OPTIONS_HELP_LINK);
-			break;
+		case GRAPHICS_OPTIONS_HELP_EVENTID: UTIL_OpenURL(GRAPHICS_OPTIONS_HELP_LINK); break;
 		case GRAPHICS_OPTIONS_CANCEL_EVENTID:
 		{
 			GUI_Window* pWindow = g_engine.getCurrentWindow();
@@ -157,15 +155,15 @@ void UTIL_graphicsOptions()
 	newCheckBox->setBoxEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_CHECKBOX_FSCREEN_EVENTID);
 	newCheckBox->startEvents();
 	newWindow->addChild(newCheckBox);
-	GUI_Button* newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-56, GRAPHICS_OPTIONS_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-56, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-109, GRAPHICS_OPTIONS_HEIGHT-30, 43, 20), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-109, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-162, GRAPHICS_OPTIONS_HEIGHT-30, 43, 20), "Help");
+	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-162, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
 	newButton->setButtonEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_HELP_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

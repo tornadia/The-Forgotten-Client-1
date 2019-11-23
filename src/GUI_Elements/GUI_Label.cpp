@@ -27,7 +27,7 @@ extern Engine g_engine;
 GUI_Label::GUI_Label(iRect boxRect, const std::string labelName, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue)
 {
 	setRect(boxRect);
-	PERFORM_MOVE(m_Label, labelName);
+	m_Label = std::move(labelName);
 	m_font = CLIENT_FONT_NONOUTLINED;
 	m_red = red;
 	m_green = green;
@@ -38,7 +38,7 @@ GUI_Label::GUI_Label(iRect boxRect, const std::string labelName, Uint32 internal
 
 void GUI_Label::setName(const std::string labelName)
 {
-	PERFORM_MOVE(m_Label, labelName);
+	m_Label = std::move(labelName);
 }
 
 void GUI_Label::render()

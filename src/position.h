@@ -156,10 +156,13 @@ struct Position
 
 	Position translatedToDirections(std::vector<Direction>& directions)
 	{
+		//In cipbia the max path tiles is 127(probably because of int8_t limit)
+		size_t tileSize = UTIL_min<size_t>(0x7F, directions.size());
+
 		Position pos = *this;
-		for(std::vector<Direction>::reverse_iterator it = directions.rbegin(), end = directions.rend(); it != end; ++it)
+		for(size_t i = 1; i <= tileSize; ++i)
 		{
-			switch(*it)
+			switch(directions[directions.size()-i])
 			{
 				case DIRECTION_NORTH: --pos.y; break;
 				case DIRECTION_EAST: ++pos.x; break;

@@ -24,11 +24,7 @@
 
 #include "position.h"
 
-#ifdef HAVE_CXX11_SUPPORT
 enum Stats_Cached_State : Uint16
-#else
-enum Stats_Cached_State
-#endif
 {
 	CACHED_STAT_LEVEL = (1 << 0),
 	CACHED_STAT_EXPERIENCE = (1 << 1),
@@ -44,11 +40,7 @@ enum Stats_Cached_State
 	CACHED_STAT_XPGAIN = (1 << 11)
 };
 
-#ifdef HAVE_CXX11_SUPPORT
 enum Skills_Cached_State : Uint16
-#else
-enum Skills_Cached_State
-#endif
 {
 	CACHED_SKILL_FIST = (1 << 0),
 	CACHED_SKILL_CLUB = (1 << 1),
@@ -109,10 +101,12 @@ class Game
 		void processCloseChannel(Uint16 channelId);
 
 		void sendLogout();
+		void sendAutoWalk(const std::vector<Direction>& path);
 		void sendWalk(Direction dir);
 		void sendTurn(Direction dir);
 		void sendSay(MessageMode mode, Uint16 channelId, const std::string& receiver, const std::string& message);
 		void sendRequestChannels();
+		void sendCreatePrivateChannel();
 		void sendOpenChannel(Uint16 channelId);
 		void sendCloseChannel(Uint16 channelId);
 		void sendOpenPrivateChannel(const std::string& receiver);
@@ -152,6 +146,9 @@ class Game
 		void sendBrowseField(const Position& position);
 		void sendOpenParentContainer(const Position& position);
 
+		void startAutoWalk(const Position& toPosition);
+		void stopAutoWalk();
+		void checkServerMovement(Direction dir);
 		void checkLocalCreatureMovement();
 		void checkMovement(Direction dir);
 		void releaseMovement();
@@ -170,6 +167,10 @@ class Game
 		void minimapScrollNorth();
 		void minimapScrollSouth();
 		void minimapScrollWest();
+		void minimapScrollNorthWest();
+		void minimapScrollNorthEast();
+		void minimapScrollSouthWest();
+		void minimapScrollSouthEast();
 		void minimapZoomIn();
 		void minimapZoomOut();
 
@@ -289,6 +290,11 @@ class Game
 		Uint32 m_playerMana;
 		Uint32 m_playerMaxMana;
 		Uint32 m_icons;
+		Uint32 m_cancelWalkCounter;
+
+		Position m_autoWalkDestination;
+		Position m_limitWalkDestination;
+		Position m_lastCancelWalkPos;
 
 		Uint16 m_playerLevel;
 		Uint16 m_playerMagicLevel;

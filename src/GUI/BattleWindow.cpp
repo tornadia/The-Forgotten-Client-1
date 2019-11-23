@@ -28,8 +28,10 @@
 #include "../GUI_Elements/GUI_Icon.h"
 #include "../GUI_Elements/GUI_Container.h"
 #include "../GUI_Elements/GUI_ContextMenu.h"
+#include "../GUI_Elements/GUI_Flash.h"
 #include "../game.h"
 #include "../map.h"
+#include "../tile.h"
 #include "../creature.h"
 #include "BattleWindow.h"
 
@@ -41,13 +43,37 @@
 #define BATTLE_RESIZE_HEIGHT_EVENTID 1004
 #define BATTLE_EXIT_WINDOW_EVENTID 1005
 #define BATTLE_CONTAINER_EVENTID 1006
+#define BATTLE_FLASH_EVENTID 1007
 
-bool g_recreateBattleWindow = false;
-std::vector<Creature*> g_battleCreatures;
+#define SORT_ASCENDING_TIME_EVENTID 1500
+#define SORT_DESCENDING_TIME_EVENTID 1501
+#define SORT_ASCENDING_DISTANCE_EVENTID 1502
+#define SORT_DESCENDING_DISTANCE_EVENTID 1503
+#define SORT_ASCENDING_HEALTH_EVENTID 1504
+#define SORT_DESCENDING_HEALTH_EVENTID 1505
+#define SORT_ASCENDING_NAME_EVENTID 1506
+#define SORT_DESCENDING_NAME_EVENTID 1507
+
+#define PARTY_TITLE "Party List"
+#define PARTY_MAXIMINI_EVENTID 2000
+#define PARTY_CLOSE_EVENTID 2001
+#define PARTY_CONFIGURE_EVENTID 2002
+#define PARTY_RESIZE_WIDTH_EVENTID 2003
+#define PARTY_RESIZE_HEIGHT_EVENTID 2004
+#define PARTY_EXIT_WINDOW_EVENTID 2005
+#define PARTY_CONTAINER_EVENTID 2006
 
 extern Engine g_engine;
 extern Game g_game;
 extern Map g_map;
+
+bool g_haveBattleOpen = false;
+bool g_havePartyOpen = false;
+bool g_needSortCreatures = false;
+bool g_recreateBattleWindow = false;
+bool g_recreatePartyWindow = false;
+Uint8 g_mouseAction = 0;
+std::vector<Creature*> g_battleCreatures;
 
 void battle_Events(Uint32 event, Sint32 status)
 {
@@ -72,6 +98,18 @@ void battle_Events(Uint32 event, Sint32 status)
 					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(BATTLE_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeInvisible();
+
+					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(BATTLE_MAXIMINI_EVENTID));
+					if(pIcon)
+						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_X, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_Y);
+
+					GUI_Flash* pFlash = SDL_static_cast(GUI_Flash*, pPanel->getChild(BATTLE_FLASH_EVENTID));
+					if(pFlash)
+					{
+						iRect cRect = pFlash->getRect();
+						cRect.y2 = 19;
+						pFlash->setRect(cRect);
+					}
 				}
 				else
 				{
@@ -80,6 +118,18 @@ void battle_Events(Uint32 event, Sint32 status)
 					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(BATTLE_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeVisible();
+
+					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(BATTLE_MAXIMINI_EVENTID));
+					if(pIcon)
+						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y);
+
+					GUI_Flash* pFlash = SDL_static_cast(GUI_Flash*, pPanel->getChild(BATTLE_FLASH_EVENTID));
+					if(pFlash)
+					{
+						iRect cRect = pFlash->getRect();
+						cRect.y2 = pPanel->getCachedHeight();
+						pFlash->setRect(cRect);
+					}
 				}
 			}
 		}
@@ -106,7 +156,7 @@ void battle_Events(Uint32 event, Sint32 status)
 				if(pIcon)
 				{
 					iRect& iconRect = pIcon->getRect();
-					UTIL_createBattlePopupMenu(NULL, iconRect.x1, iconRect.y1+12);
+					UTIL_createBattlePopupMenu(iconRect.x1, iconRect.y1+12);
 				}
 			}
 		}
@@ -123,36 +173,366 @@ void battle_Events(Uint32 event, Sint32 status)
 					cRect.y2 = status-19;
 					pContainer->setRect(cRect);
 				}
+				
+				GUI_Flash* pFlash = SDL_static_cast(GUI_Flash*, pPanel->getChild(BATTLE_FLASH_EVENTID));
+				if(pFlash)
+				{
+					iRect cRect = pFlash->getRect();
+					cRect.y2 = status;
+					pFlash->setRect(cRect);
+				}
 			}
 		}
 		break;
-		case BATTLE_EXIT_WINDOW_EVENTID: g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_BATTLE, status); break;
+		case BATTLE_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_BATTLE, status); g_haveBattleOpen = false;} break;
+		case BATTLE_FLASH_EVENTID:
+		{
+			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_BATTLE);
+			if(pPanel)
+			{
+				GUI_Flash* pFlash = SDL_static_cast(GUI_Flash*, pPanel->getChild(BATTLE_FLASH_EVENTID));
+				if(pFlash)
+					pPanel->removeChild(pFlash);
+			}
+		}
+		break;
+
+		case SORT_ASCENDING_TIME_EVENTID:
+		{
+			if(g_engine.getBattleSortMethod() != Sort_Ascending_Time)
+			{
+				g_engine.setBattleSortMethod(Sort_Ascending_Time);
+				UTIL_sortBattleWindow();
+			}
+		}
+		break;
+		case SORT_DESCENDING_TIME_EVENTID:
+		{
+			if(g_engine.getBattleSortMethod() != Sort_Descending_Time)
+			{
+				g_engine.setBattleSortMethod(Sort_Descending_Time);
+				UTIL_sortBattleWindow();
+			}
+		}
+		break;
+		case SORT_ASCENDING_DISTANCE_EVENTID:
+		{
+			if(g_engine.getBattleSortMethod() != Sort_Ascending_Distance)
+			{
+				g_engine.setBattleSortMethod(Sort_Ascending_Distance);
+				UTIL_sortBattleWindow();
+			}
+		}
+		break;
+		case SORT_DESCENDING_DISTANCE_EVENTID:
+		{
+			if(g_engine.getBattleSortMethod() != Sort_Descending_Distance)
+			{
+				g_engine.setBattleSortMethod(Sort_Descending_Distance);
+				UTIL_sortBattleWindow();
+			}
+		}
+		break;
+		case SORT_ASCENDING_HEALTH_EVENTID:
+		{
+			if(g_engine.getBattleSortMethod() != Sort_Ascending_HP)
+			{
+				g_engine.setBattleSortMethod(Sort_Ascending_HP);
+				UTIL_sortBattleWindow();
+			}
+		}
+		break;
+		case SORT_DESCENDING_HEALTH_EVENTID:
+		{
+			if(g_engine.getBattleSortMethod() != Sort_Descending_HP)
+			{
+				g_engine.setBattleSortMethod(Sort_Descending_HP);
+				UTIL_sortBattleWindow();
+			}
+		}
+		break;
+		case SORT_ASCENDING_NAME_EVENTID:
+		{
+			if(g_engine.getBattleSortMethod() != Sort_Ascending_Name)
+			{
+				g_engine.setBattleSortMethod(Sort_Ascending_Name);
+				UTIL_sortBattleWindow();
+			}
+		}
+		break;
+		case SORT_DESCENDING_NAME_EVENTID:
+		{
+			if(g_engine.getBattleSortMethod() != Sort_Descending_Name)
+			{
+				g_engine.setBattleSortMethod(Sort_Descending_Name);
+				UTIL_sortBattleWindow();
+			}
+		}
+		break;
+
+		case PARTY_MAXIMINI_EVENTID:
+		{
+			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_PARTY);
+			if(pPanel)
+			{
+				GUI_Panel* parent = pPanel->getParent();
+				if(!parent)
+					break;
+
+				iRect& pRect = pPanel->getOriginalRect();
+				if(pRect.y2 > 19)
+				{
+					pPanel->setCachedHeight(pRect.y2);
+					pPanel->setSize(pRect.x2, 19);
+					parent->checkPanels();
+
+					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(PARTY_CONTAINER_EVENTID));
+					if(pContainer)
+						pContainer->makeInvisible();
+
+					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(PARTY_MAXIMINI_EVENTID));
+					if(pIcon)
+						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_X, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_Y);
+				}
+				else
+				{
+					UTIL_ResizePanel(SDL_reinterpret_cast(void*, pPanel), pRect.x2, pPanel->getCachedHeight());
+
+					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(PARTY_CONTAINER_EVENTID));
+					if(pContainer)
+						pContainer->makeVisible();
+
+					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(PARTY_MAXIMINI_EVENTID));
+					if(pIcon)
+						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y);
+				}
+			}
+		}
+		break;
+		case PARTY_CLOSE_EVENTID:
+		{
+			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_PARTY);
+			if(pPanel)
+			{
+				GUI_Panel* parent = pPanel->getParent();
+				if(!parent)
+					break;
+
+				parent->removePanel(pPanel);
+			}
+		}
+		break;
+		case PARTY_CONFIGURE_EVENTID:
+		{
+			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_PARTY);
+			if(pPanel)
+			{
+				GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(PARTY_CONTAINER_EVENTID));
+				if(pIcon)
+				{
+					iRect& iconRect = pIcon->getRect();
+					UTIL_createBattlePopupMenu(iconRect.x1, iconRect.y1+12);
+				}
+			}
+		}
+		break;
+		case PARTY_RESIZE_HEIGHT_EVENTID:
+		{
+			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_PARTY);
+			if(pPanel)
+			{
+				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(PARTY_CONTAINER_EVENTID));
+				if(pContainer)
+				{
+					iRect cRect = pContainer->getRect();
+					cRect.y2 = status-19;
+					pContainer->setRect(cRect);
+				}
+			}
+		}
+		break;
+		case PARTY_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_PARTY, status); g_havePartyOpen = false;} break;
 	}
 }
 
-struct AscByTime {bool operator()(Creature*, Creature*) {return false;}};
-struct DescByTime {bool operator()(Creature*, Creature*) {return false;}};
-struct AscByDistance {bool operator()(Creature* a, Creature* b) {return UTIL_max<Sint32>(Position::getDistanceX(a->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(a->getCurrentPosition(), g_map.getCentralPosition())) < UTIL_max<Sint32>(Position::getDistanceX(b->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(b->getCurrentPosition(), g_map.getCentralPosition()));}};
-struct DescByDistance {bool operator()(Creature* a, Creature* b) {return UTIL_max<Sint32>(Position::getDistanceX(a->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(a->getCurrentPosition(), g_map.getCentralPosition())) > UTIL_max<Sint32>(Position::getDistanceX(b->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(b->getCurrentPosition(), g_map.getCentralPosition()));}};
-struct AscByHP {bool operator()(Creature* a, Creature* b) {return a->getHealth() < b->getHealth();}};
-struct DescByHP {bool operator()(Creature* a, Creature* b) {return a->getHealth() > b->getHealth();}};
-struct AscByName {bool operator()(Creature* a, Creature* b) {return a->getName() < b->getName();}};
-struct DescByName {bool operator()(Creature* a, Creature* b) {return a->getName() > b->getName();}};
-
-void UTIL_sortBattleWindow(SortMethods method)
+void UTIL_sortWindows()
 {
-	switch(method)
+	switch(g_engine.getBattleSortMethod())
 	{
-		case Sort_Ascending_Time: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), AscByTime()); break;
-		case Sort_Descending_Time: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), DescByTime()); break;
-		case Sort_Ascending_Distance: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), AscByDistance()); break;
-		case Sort_Descending_Distance: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), DescByDistance()); break;
-		case Sort_Ascending_HP: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), AscByHP()); break;
-		case Sort_Descending_HP: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), DescByHP()); break;
-		case Sort_Ascending_Name: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), AscByName()); break;
-		default: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), DescByName()); break;
+		case Sort_Ascending_Time: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getVisibleTime() < b->getVisibleTime();}); break;
+		case Sort_Descending_Time: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool{return a->getVisibleTime() > b->getVisibleTime();}); break;
+		case Sort_Ascending_Distance:
+		{
+			std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool
+			{
+				Sint32 a_distance = UTIL_max<Sint32>(Position::getDistanceX(a->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(a->getCurrentPosition(), g_map.getCentralPosition()));
+				Sint32 b_distance = UTIL_max<Sint32>(Position::getDistanceX(b->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(b->getCurrentPosition(), g_map.getCentralPosition()));
+				return a_distance < b_distance;
+			});
+		}
+		break;
+		case Sort_Descending_Distance:
+		{
+			std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool
+			{
+				Sint32 a_distance = UTIL_max<Sint32>(Position::getDistanceX(a->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(a->getCurrentPosition(), g_map.getCentralPosition()));
+				Sint32 b_distance = UTIL_max<Sint32>(Position::getDistanceX(b->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(b->getCurrentPosition(), g_map.getCentralPosition()));
+				return a_distance > b_distance;
+			});
+		}
+		break;
+		case Sort_Ascending_HP: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getHealth() < b->getHealth();}); break;
+		case Sort_Descending_HP: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getHealth() > b->getHealth();}); break;
+		case Sort_Ascending_Name: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getName() < b->getName();}); break;
+		case Sort_Descending_Name: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getName() > b->getName();}); break;
 	}
 	g_recreateBattleWindow = true;
+	g_recreatePartyWindow = true;
+}
+
+void UTIL_sortBattleWindow()
+{
+	g_needSortCreatures = true;
+}
+
+void UTIL_addBattleCreature(void* creature)
+{
+	//We need to have cache of every creature for Party List widget
+	SortMethods sortMethod = g_engine.getBattleSortMethod();
+	if(sortMethod != Sort_Ascending_Time && sortMethod != Sort_Descending_Time)
+	{
+		for(std::vector<Creature*>::iterator it = g_battleCreatures.begin(), end = g_battleCreatures.end(); it != end; ++it)
+		{
+			Creature* exCreature = (*it);
+			switch(sortMethod)
+			{
+				case Sort_Ascending_Distance:
+				{
+					Sint32 a_distance = UTIL_max<Sint32>(Position::getDistanceX(SDL_reinterpret_cast(Creature*, creature)->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(SDL_reinterpret_cast(Creature*, creature)->getCurrentPosition(), g_map.getCentralPosition()));
+					Sint32 b_distance = UTIL_max<Sint32>(Position::getDistanceX(exCreature->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(exCreature->getCurrentPosition(), g_map.getCentralPosition()));
+					if(a_distance < b_distance)
+					{
+						g_battleCreatures.insert(it, SDL_reinterpret_cast(Creature*, creature));
+						goto Skip_Loop;
+					}
+				}
+				break;
+				case Sort_Descending_Distance:
+				{
+					Sint32 a_distance = UTIL_max<Sint32>(Position::getDistanceX(SDL_reinterpret_cast(Creature*, creature)->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(SDL_reinterpret_cast(Creature*, creature)->getCurrentPosition(), g_map.getCentralPosition()));
+					Sint32 b_distance = UTIL_max<Sint32>(Position::getDistanceX(exCreature->getCurrentPosition(), g_map.getCentralPosition()), Position::getDistanceY(exCreature->getCurrentPosition(), g_map.getCentralPosition()));
+					if(a_distance > b_distance)
+					{
+						g_battleCreatures.insert(it, SDL_reinterpret_cast(Creature*, creature));
+						goto Skip_Loop;
+					}
+				}
+				break;
+				case Sort_Ascending_HP:
+				{
+					if(SDL_reinterpret_cast(Creature*, creature)->getHealth() < exCreature->getHealth())
+					{
+						g_battleCreatures.insert(it, SDL_reinterpret_cast(Creature*, creature));
+						goto Skip_Loop;
+					}
+				}
+				break;
+				case Sort_Descending_HP:
+				{
+					if(SDL_reinterpret_cast(Creature*, creature)->getHealth() > exCreature->getHealth())
+					{
+						g_battleCreatures.insert(it, SDL_reinterpret_cast(Creature*, creature));
+						goto Skip_Loop;
+					}
+				}
+				break;
+				case Sort_Ascending_Name:
+				{
+					if(SDL_reinterpret_cast(Creature*, creature)->getName() < exCreature->getName())
+					{
+						g_battleCreatures.insert(it, SDL_reinterpret_cast(Creature*, creature));
+						goto Skip_Loop;
+					}
+				}
+				break;
+				case Sort_Descending_Name:
+				{
+					if(SDL_reinterpret_cast(Creature*, creature)->getName() > exCreature->getName())
+					{
+						g_battleCreatures.insert(it, SDL_reinterpret_cast(Creature*, creature));
+						goto Skip_Loop;
+					}
+				}
+				break;
+			}
+		}
+	}
+	g_battleCreatures.push_back(SDL_reinterpret_cast(Creature*, creature));
+
+	Skip_Loop:
+	g_recreateBattleWindow = true;
+	g_recreatePartyWindow = true;
+}
+
+void UTIL_removeBattleCreature(void* creature)
+{
+	std::vector<Creature*>::iterator it = std::find(g_battleCreatures.begin(), g_battleCreatures.end(), SDL_reinterpret_cast(Creature*, creature));
+	if(it != g_battleCreatures.end())
+	{
+		g_battleCreatures.erase(it);
+		g_recreateBattleWindow = true;
+		g_recreatePartyWindow = true;
+	}
+}
+
+void UTIL_resetBattleCreatures()
+{
+	g_battleCreatures.clear();
+	g_recreateBattleWindow = true;
+	g_recreatePartyWindow = true;
+}
+
+void UTIL_refreshBattleWindow()
+{
+	for(std::vector<Creature*>::iterator it = g_battleCreatures.begin(), end = g_battleCreatures.end(); it != end; ++it)
+	{
+		Creature* creature = (*it);
+		if(creature->hasNeedUpdate())
+		{
+			if(!creature->isVisible())
+			{
+				creature->setVisible(true);
+				g_recreateBattleWindow = true;
+			}
+
+			creature->setNeedUpdate(false);
+		}
+		else if(creature->isVisible())
+		{
+			if(g_game.getSelectID() == creature->getId())
+				g_game.setSelectID(0);
+
+			creature->setVisible(false);
+			g_recreateBattleWindow = true;
+		}
+	}
+
+	if(g_recreateBattleWindow)
+	{
+		SortMethods sortMethod = g_engine.getBattleSortMethod();
+		if(sortMethod == Sort_Ascending_Time || sortMethod == Sort_Descending_Time)
+			UTIL_sortBattleWindow();
+	}
+}
+
+void UTIL_refreshPartyWindow()
+{
+	g_recreatePartyWindow = true;
+}
+
+bool CanSeeOnBattle(Creature* creature)
+{
+	return !creature->isLocalCreature() && creature->isVisible();
 }
 
 void UTIL_recreateBattleWindow(GUI_Container* container)
@@ -166,42 +546,65 @@ void UTIL_recreateBattleWindow(GUI_Container* container)
 			return;
 	}
 	container->clearChilds();
-	Sint32 PosY = 0;
+	Sint32 PosY = -9;
 	size_t creatures = g_battleCreatures.size();
 	for(size_t i = 0; i < creatures; ++i)
 	{
-		GUI_BattleCreature* newBattleCreature = new GUI_BattleCreature(iRect(5, PosY, 145, 20), i);
-		container->addChild(newBattleCreature);
-		PosY += 23;
+		if(CanSeeOnBattle(g_battleCreatures[i]))
+		{
+			GUI_BattleCreature* newBattleCreature = new GUI_BattleCreature(iRect(1, PosY, 155, 23), i);
+			newBattleCreature->startEvents();
+			container->addChild(newBattleCreature);
+			PosY += 23;
+		}
 	}
 }
 
 void UTIL_flashBattleWindow()
 {
-	//16 blinks: 255, 160, 0
+	if(!g_haveBattleOpen)
+		UTIL_toggleBattleWindow();
+		
+	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_BATTLE);
+	if(pPanel)
+	{
+		GUI_Flash* pFlash = SDL_static_cast(GUI_Flash*, pPanel->getChild(BATTLE_FLASH_EVENTID));
+		if(pFlash)
+			pFlash->reset();
+		else
+		{
+			iRect& pRect = pPanel->getOriginalRect();
+			pFlash = new GUI_Flash(iRect(0, 0, pRect.x2, pRect.y2), BATTLE_FLASH_EVENTID);
+			pFlash->setEndEventCallback(&battle_Events, BATTLE_FLASH_EVENTID);
+			pPanel->addChild(pFlash);
+		}
+	}
 }
 
-void UTIL_createBattleWindow()
+void UTIL_toggleBattleWindow()
 {
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_BATTLE);
 	if(pPanel)
+	{
 		g_engine.removePanelWindow(pPanel);
+		return;
+	}
 
 	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 117), true, GUI_PANEL_WINDOW_BATTLE, true);
 	newWindow->setEventCallback(&battle_Events, BATTLE_RESIZE_WIDTH_EVENTID, BATTLE_RESIZE_HEIGHT_EVENTID, BATTLE_EXIT_WINDOW_EVENTID);
-	GUI_BattleOptimizer* newBattleOptimizer = new GUI_BattleOptimizer(iRect(19, 2, 0, 0));
-	newWindow->addChild(newBattleOptimizer);
-	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(2, 0, 12, 12), 3, 289, 60);
+	GUI_BattleChecker* newBattleChecker = new GUI_BattleChecker(iRect(19, 2, 0, 0));
+	newWindow->addChild(newBattleChecker);
+	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(2, 0, GUI_UI_ICON_BATTLELIST_W, GUI_UI_ICON_BATTLELIST_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLELIST_X, GUI_UI_ICON_BATTLELIST_Y);
 	newWindow->addChild(newImage);
-	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, 12, 12), 3, 234, 98, 234, 110, 0, "Maximise or minimise window");
+	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, GUI_UI_ICON_MINIMIZE_WINDOW_UP_W, GUI_UI_ICON_MINIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y, BATTLE_MAXIMINI_EVENTID, "Maximise or minimise window");
 	newIcon->setButtonEventCallback(&battle_Events, BATTLE_MAXIMINI_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(159, 0, 12, 12), 3, 222, 98, 222, 110, 0, "Close this window");
+	newIcon = new GUI_Icon(iRect(159, 0, GUI_UI_ICON_CLOSE_WINDOW_UP_W, GUI_UI_ICON_CLOSE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CLOSE_WINDOW_UP_X, GUI_UI_ICON_CLOSE_WINDOW_UP_Y, GUI_UI_ICON_CLOSE_WINDOW_DOWN_X, GUI_UI_ICON_CLOSE_WINDOW_DOWN_Y, 0, "Close this window");
 	newIcon->setButtonEventCallback(&battle_Events, BATTLE_CLOSE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(131, 0, 12, 12), 3, 208, 260, 220, 260, 0, "Click here to configure the battle list");
+	newIcon = new GUI_Icon(iRect(131, 0, GUI_UI_ICON_CONFIGURE_WINDOW_UP_W, GUI_UI_ICON_CONFIGURE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CONFIGURE_WINDOW_UP_X, GUI_UI_ICON_CONFIGURE_WINDOW_UP_Y, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_X, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_Y, 0, "Click here to configure the battle list");
 	newIcon->setButtonEventCallback(&battle_Events, BATTLE_CONFIGURE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
@@ -213,33 +616,106 @@ void UTIL_createBattleWindow()
 	newWindow->addChild(newContainer);
 	g_engine.addToPanel(newWindow);
 	g_recreateBattleWindow = false;
+	g_haveBattleOpen = true;
 }
 
-void UTIL_createBattlePopupMenu(void* data, Sint32 x, Sint32 y)
+void UTIL_createBattlePopupMenu(Sint32 x, Sint32 y)
 {
-	Creature* creature = SDL_reinterpret_cast(Creature*, data);
-	GUI_ContextMenu* newMenu = g_engine.createThingContextMenu(creature, NULL, NULL);
-	newMenu->addSeparator();
-	newMenu->addContextMenu(CONTEXTMENU_STYLE_CHECKED, 0, "Sort Ascending by Display Time", "");
-	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Descending by Display Time", "");
-	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Ascending by Distance", "");
-	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Descending by Distance", "");
-	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Ascending by Hit Points", "");
-	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Descending by Hit Points", "");
-	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Ascending by Name", "");
-	newMenu->addContextMenu(CONTEXTMENU_STYLE_UNCHECKED, 0, "Sort Descending by Name", "");
+	SortMethods sortMethod = g_engine.getBattleSortMethod();
+	GUI_ContextMenu* newMenu = new GUI_ContextMenu();
+	newMenu->addContextMenu((sortMethod == Sort_Ascending_Time ? CONTEXTMENU_STYLE_CHECKED : CONTEXTMENU_STYLE_UNCHECKED), SORT_ASCENDING_TIME_EVENTID, "Sort Ascending by Display Time", "");
+	newMenu->addContextMenu((sortMethod == Sort_Descending_Time ? CONTEXTMENU_STYLE_CHECKED : CONTEXTMENU_STYLE_UNCHECKED), SORT_DESCENDING_TIME_EVENTID, "Sort Descending by Display Time", "");
+	newMenu->addContextMenu((sortMethod == Sort_Ascending_Distance ? CONTEXTMENU_STYLE_CHECKED : CONTEXTMENU_STYLE_UNCHECKED), SORT_ASCENDING_DISTANCE_EVENTID, "Sort Ascending by Distance", "");
+	newMenu->addContextMenu((sortMethod == Sort_Descending_Distance ? CONTEXTMENU_STYLE_CHECKED : CONTEXTMENU_STYLE_UNCHECKED), SORT_DESCENDING_DISTANCE_EVENTID, "Sort Descending by Distance", "");
+	newMenu->addContextMenu((sortMethod == Sort_Ascending_HP ? CONTEXTMENU_STYLE_CHECKED : CONTEXTMENU_STYLE_UNCHECKED), SORT_ASCENDING_HEALTH_EVENTID, "Sort Ascending by Hit Points", "");
+	newMenu->addContextMenu((sortMethod == Sort_Descending_HP ? CONTEXTMENU_STYLE_CHECKED : CONTEXTMENU_STYLE_UNCHECKED), SORT_DESCENDING_HEALTH_EVENTID, "Sort Descending by Hit Points", "");
+	newMenu->addContextMenu((sortMethod == Sort_Ascending_Name ? CONTEXTMENU_STYLE_CHECKED : CONTEXTMENU_STYLE_UNCHECKED), SORT_ASCENDING_NAME_EVENTID, "Sort Ascending by Name", "");
+	newMenu->addContextMenu((sortMethod == Sort_Descending_Name ? CONTEXTMENU_STYLE_CHECKED : CONTEXTMENU_STYLE_UNCHECKED), SORT_DESCENDING_NAME_EVENTID, "Sort Descending by Name", "");
 	newMenu->setEventCallback(&battle_Events);
 	g_engine.showContextMenu(newMenu, x, y);
 }
 
-GUI_BattleOptimizer::GUI_BattleOptimizer(iRect boxRect, Uint32 internalID)
+bool CanSeeOnParty(Creature* creature)
+{
+	return !creature->isLocalCreature() && UTIL_isPartyMember(creature->getShield());
+}
+
+void UTIL_recreatePartyWindow(GUI_Container* container)
+{
+	if(!container)
+	{
+		GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_PARTY);
+		if(pPanel)
+			container = SDL_static_cast(GUI_Container*, pPanel->getChild(PARTY_CONTAINER_EVENTID));
+		if(!container)
+			return;
+	}
+	container->clearChilds();
+	Sint32 PosY = -9;
+	size_t creatures = g_battleCreatures.size();
+	for(size_t i = 0; i < creatures; ++i)
+	{
+		if(CanSeeOnParty(g_battleCreatures[i]))
+		{
+			GUI_BattleCreature* newBattleCreature = new GUI_BattleCreature(iRect(1, PosY, 155, 30), i, true);
+			newBattleCreature->startEvents();
+			container->addChild(newBattleCreature);
+			PosY += 30;
+		}
+	}
+}
+
+void UTIL_togglePartyWindow()
+{
+	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_PARTY);
+	if(pPanel)
+	{
+		g_engine.removePanelWindow(pPanel);
+		return;
+	}
+
+	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 117), true, GUI_PANEL_WINDOW_PARTY, true);
+	newWindow->setEventCallback(&battle_Events, PARTY_RESIZE_WIDTH_EVENTID, PARTY_RESIZE_HEIGHT_EVENTID, PARTY_EXIT_WINDOW_EVENTID);
+	GUI_PartyChecker* newPartyChecker = new GUI_PartyChecker(iRect(19, 2, 0, 0));
+	newWindow->addChild(newPartyChecker);
+	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(2, 0, GUI_UI_ICON_BATTLELIST_W, GUI_UI_ICON_BATTLELIST_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLELIST_X, GUI_UI_ICON_BATTLELIST_Y);
+	newWindow->addChild(newImage);
+	GUI_Icon* newIcon = new GUI_Icon(iRect(147, 0, GUI_UI_ICON_MINIMIZE_WINDOW_UP_W, GUI_UI_ICON_MINIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y, PARTY_MAXIMINI_EVENTID, "Maximise or minimise window");
+	newIcon->setButtonEventCallback(&battle_Events, PARTY_MAXIMINI_EVENTID);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(159, 0, GUI_UI_ICON_CLOSE_WINDOW_UP_W, GUI_UI_ICON_CLOSE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CLOSE_WINDOW_UP_X, GUI_UI_ICON_CLOSE_WINDOW_UP_Y, GUI_UI_ICON_CLOSE_WINDOW_DOWN_X, GUI_UI_ICON_CLOSE_WINDOW_DOWN_Y, 0, "Close this window");
+	newIcon->setButtonEventCallback(&battle_Events, PARTY_CLOSE_EVENTID);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	newIcon = new GUI_Icon(iRect(131, 0, GUI_UI_ICON_CONFIGURE_WINDOW_UP_W, GUI_UI_ICON_CONFIGURE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CONFIGURE_WINDOW_UP_X, GUI_UI_ICON_CONFIGURE_WINDOW_UP_Y, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_X, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_Y, 0, "Click here to configure the battle list");
+	newIcon->setButtonEventCallback(&battle_Events, PARTY_CONFIGURE_EVENTID);
+	newIcon->startEvents();
+	newWindow->addChild(newIcon);
+	GUI_Label* newLabel = new GUI_Label(iRect(19, 2, 0, 0), PARTY_TITLE, 0, 144, 144, 144);
+	newWindow->addChild(newLabel);
+	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, 98), newWindow, PARTY_CONTAINER_EVENTID);
+	UTIL_recreatePartyWindow(newContainer);
+	newContainer->startEvents();
+	newWindow->addChild(newContainer);
+	g_engine.addToPanel(newWindow);
+	g_recreatePartyWindow = false;
+	g_havePartyOpen = true;
+}
+
+GUI_BattleChecker::GUI_BattleChecker(iRect boxRect, Uint32 internalID)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
 }
 
-void GUI_BattleOptimizer::render()
+void GUI_BattleChecker::render()
 {
+	if(g_needSortCreatures)
+	{
+		UTIL_sortWindows();
+		g_needSortCreatures = false;
+	}
 	if(g_recreateBattleWindow)
 	{
 		UTIL_recreateBattleWindow(NULL);
@@ -247,14 +723,151 @@ void GUI_BattleOptimizer::render()
 	}
 }
 
-GUI_BattleCreature::GUI_BattleCreature(iRect boxRect, size_t index, Uint32 internalID)
+GUI_PartyChecker::GUI_PartyChecker(iRect boxRect, Uint32 internalID)
+{
+	setRect(boxRect);
+	m_internalID = internalID;
+}
+
+void GUI_PartyChecker::render()
+{
+	if(g_needSortCreatures)
+	{
+		UTIL_sortWindows();
+		g_needSortCreatures = false;
+	}
+	if(g_recreatePartyWindow)
+	{
+		UTIL_recreatePartyWindow(NULL);
+		g_recreatePartyWindow = false;
+	}
+}
+
+GUI_BattleCreature::GUI_BattleCreature(iRect boxRect, size_t index, bool partyWindow, Uint32 internalID)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
 	m_index = index;
+	m_partyWindow = partyWindow;
+}
+
+void GUI_BattleCreature::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
+{
+	Creature* creature = g_battleCreatures[m_index];
+	if(isInsideParent && m_tRect.isPointInside(x, y))
+		g_game.setSelectID(creature->getId());
+	else if(g_game.getSelectID() == creature->getId())
+		g_game.setSelectID(0);
+}
+
+void GUI_BattleCreature::onLMouseDown(Sint32, Sint32)
+{
+	g_mouseAction = 1;
+}
+
+void GUI_BattleCreature::onLMouseUp(Sint32 x, Sint32 y)
+{
+	Uint32 selectCreatureID = g_game.getSelectID();
+	if(selectCreatureID != 0 && g_mouseAction != 0)
+	{
+		Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
+		if((mouseState & SDL_BUTTON_RMASK) && g_engine.hasClassicControl())
+		{
+			g_mouseAction = 2;
+			return;
+		}
+
+		Creature* creature = g_battleCreatures[m_index];
+		if(selectCreatureID != creature->getId())
+			return;
+
+		Uint16 keyMods = UTIL_parseModifiers(SDL_static_cast(Uint16, SDL_GetModState()));
+		if((m_partyWindow && keyMods != KMOD_CTRL) || g_mouseAction == 2 || keyMods == KMOD_SHIFT)
+		{
+			if(g_game.hasGameFeature(GAME_FEATURE_LOOKATCREATURE))
+				g_game.sendLookInBattle(selectCreatureID);
+			else
+			{
+				Position& position = creature->getCurrentPosition();
+				Tile* creatureTile = g_map.getTile(position);
+				if(creatureTile)
+					g_game.sendLookAt(position, 0x62, SDL_static_cast(Uint8, creatureTile->getThingStackPos(creature)));
+			}
+		}
+		else if(keyMods == KMOD_CTRL)
+		{
+			//set classic control to false so we display client shortcuts
+			bool classicControl = g_engine.hasClassicControl();
+			g_engine.setClassicControl(false);
+			GUI_ContextMenu* newMenu = g_engine.createThingContextMenu(creature, NULL, NULL);
+			newMenu->setEventCallback(&Engine::standardThingEvent);
+			g_engine.showContextMenu(newMenu, x, y);
+			g_engine.setClassicControl(classicControl);
+		}
+		else if(keyMods == KMOD_ALT || keyMods == KMOD_NONE)
+			g_game.sendAttack((g_game.getAttackID() == creature->getId()) ? NULL : creature);
+
+		g_mouseAction = 0;
+	}
+	else
+		g_mouseAction = 0;
+}
+
+void GUI_BattleCreature::onRMouseDown(Sint32, Sint32)
+{
+	g_mouseAction = 1;
+}
+
+void GUI_BattleCreature::onRMouseUp(Sint32 x, Sint32 y)
+{
+	Uint32 selectCreatureID = g_game.getSelectID();
+	if(selectCreatureID != 0 && g_mouseAction != 0)
+	{
+		Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
+		if((mouseState & SDL_BUTTON_LMASK) && g_engine.hasClassicControl())
+		{
+			g_mouseAction = 2;
+			return;
+		}
+
+		Creature* creature = g_battleCreatures[m_index];
+		if(selectCreatureID != creature->getId())
+			return;
+
+		Uint16 keyMods = UTIL_parseModifiers(SDL_static_cast(Uint16, SDL_GetModState()));
+		if((m_partyWindow && keyMods == KMOD_ALT) || g_mouseAction == 2 || keyMods == KMOD_SHIFT)
+		{
+			if(g_game.hasGameFeature(GAME_FEATURE_LOOKATCREATURE))
+				g_game.sendLookInBattle(selectCreatureID);
+			else
+			{
+				Position& position = creature->getCurrentPosition();
+				Tile* creatureTile = g_map.getTile(position);
+				if(creatureTile)
+					g_game.sendLookAt(position, 0x62, SDL_static_cast(Uint8, creatureTile->getThingStackPos(creature)));
+			}
+		}
+		else if(keyMods == KMOD_CTRL || keyMods == KMOD_NONE)
+		{
+			//set classic control to false so we display client shortcuts
+			bool classicControl = g_engine.hasClassicControl();
+			g_engine.setClassicControl(false);
+			GUI_ContextMenu* newMenu = g_engine.createThingContextMenu(creature, NULL, NULL);
+			newMenu->setEventCallback(&Engine::standardThingEvent);
+			g_engine.showContextMenu(newMenu, x, y);
+			g_engine.setClassicControl(classicControl);
+		}
+		else if(!m_partyWindow && keyMods == KMOD_ALT)
+			g_game.sendAttack((g_game.getAttackID() == creature->getId()) ? NULL : creature);
+
+		g_mouseAction = 0;
+	}
+	else
+		g_mouseAction = 0;
 }
 
 void GUI_BattleCreature::render()
 {
-	g_engine.getRender()->fillRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 176, 176, 176, 255);
+	Creature* creature = g_battleCreatures[m_index];
+	creature->renderOnBattle(m_tRect.x1, m_tRect.y1, m_partyWindow);
 }

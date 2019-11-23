@@ -90,11 +90,10 @@ SurfaceVulkan::SurfaceVulkan() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAPTILES), 
 	m_scaled_gameWindow = NULL;
 	m_pictures = NULL;
 	m_gameWindow = NULL;
+
 	m_vulkanVertices.reserve(1048576);
-	#ifdef HAVE_CXX11_SUPPORT
 	m_spriteMasks.reserve(HARDWARE_MAX_SPRITEMASKS);
 	m_automapTiles.reserve(HARDWARE_MAX_AUTOMAPTILES);
-	#endif
 }
 
 SurfaceVulkan::~SurfaceVulkan()
@@ -2113,18 +2112,11 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	setupTextureRendering(m_gameWindow);
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
@@ -2190,17 +2182,11 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	minv = 0.0f;
 	maxv = m_scaled_gameWindow->m_height*m_scaled_gameWindow->m_scaleH;
 
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	setupTextureRendering(m_scaled_gameWindow);
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
@@ -2255,18 +2241,11 @@ void SurfaceVulkan::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Si
 	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -2370,14 +2349,9 @@ void SurfaceVulkan::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 
 			float minx = SDL_static_cast(float, drawX);
 			float miny = SDL_static_cast(float, drawY);
 			float maxy = miny+SDL_static_cast(float, scale);
-
-			#ifdef HAVE_CXX11_SUPPORT
 			m_vulkanVertices.emplace_back(minx, maxy, 0.0f, 0.0f, MAKE_RGBA_COLOR(lightmap[offset1+offset].r, lightmap[offset+offset1].g, lightmap[offset1+offset].b, 255));
 			m_vulkanVertices.emplace_back(minx, miny, 0.0f, 0.0f, MAKE_RGBA_COLOR(lightmap[offset2+offset].r, lightmap[offset2+offset].g, lightmap[offset2+offset].b, 255));
-			#else
-			m_vulkanVertices.push_back(VertexVulkan(minx, maxy, 0.0f, 0.0f, MAKE_RGBA_COLOR(lightmap[offset1+offset].r, lightmap[offset1+offset].g, lightmap[offset1+offset].b, 255)));
-			m_vulkanVertices.push_back(VertexVulkan(minx, miny, 0.0f, 0.0f, MAKE_RGBA_COLOR(lightmap[offset2+offset].r, lightmap[offset2+offset].g, lightmap[offset2+offset].b, 255)));
-			#endif
+
 			verticeCount += 2;
 			drawX += scale;
 		}
@@ -2416,20 +2390,12 @@ void SurfaceVulkan::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 
 	float maxy = SDL_static_cast(float, y+h);
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, 0.0f, 0.0f, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, 0.0f, 0.0f, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, 0.0f, 0.0f, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, 0.0f, 0.0f, texColor);
 	m_vulkanVertices.emplace_back(minx, miny, 0.0f, 0.0f, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, 0.0f, 0.0f, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, 0.0f, 0.0f, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, 0.0f, 0.0f, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, 0.0f, 0.0f, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, 0.0f, 0.0f, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 5, 1, m_vertexOffset, 0);
 	m_vertexOffset += 5;
 }
@@ -2444,18 +2410,11 @@ void SurfaceVulkan::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 
 	float maxy = SDL_static_cast(float, y+h);
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-	
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, 0.0f, 0.0f, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, 0.0f, 0.0f, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, 0.0f, 0.0f, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, 0.0f, 0.0f, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, 0.0f, 0.0f, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, 0.0f, 0.0f, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, 0.0f, 0.0f, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, 0.0f, 0.0f, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -2535,7 +2494,6 @@ void SurfaceVulkan::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::st
 				float minv = cY[character]*tex->m_scaleH;
 				float maxv = (cY[character]+cH[character])*tex->m_scaleH;
 
-				#ifdef HAVE_CXX11_SUPPORT
 				m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 				m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 				m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
@@ -2543,15 +2501,7 @@ void SurfaceVulkan::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::st
 				m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
 				m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 				m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-				#else
-				m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-				m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-				m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
 
-				m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-				m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-				m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-				#endif
 				drawTriangles += 6;
 				rx += cW[character] + cX[0];
 			}
@@ -2592,18 +2542,11 @@ void SurfaceVulkan::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint3
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -2638,7 +2581,6 @@ void SurfaceVulkan::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Si
 			float minv = sy*tex->m_scaleH;
 			float maxv = (sy+curH)*tex->m_scaleH;
 
-			#ifdef HAVE_CXX11_SUPPORT
 			m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 			m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 			m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
@@ -2646,15 +2588,7 @@ void SurfaceVulkan::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Si
 			m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
 			m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 			m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-			#else
-			m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-			m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-			m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
 
-			m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-			m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-			m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-			#endif
 			drawTriangles += 6;
 			cx += sw;
 		}
@@ -2694,18 +2628,11 @@ void SurfaceVulkan::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x
 	float maxv = (sy+h)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -2786,18 +2713,11 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 	float maxv = tex->m_height*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -2847,18 +2767,11 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -2951,18 +2864,11 @@ void SurfaceVulkan::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint8 co
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -3069,18 +2975,11 @@ void SurfaceVulkanComp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 	float maxv = tex->m_height*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -3112,18 +3011,11 @@ void SurfaceVulkanComp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }
@@ -3433,7 +3325,6 @@ void SurfaceVulkanPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 			m_spriteAtlas = tex;
 		}
 
-		#ifdef HAVE_CXX11_SUPPORT
 		m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
@@ -3441,15 +3332,7 @@ void SurfaceVulkanPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 		m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
 		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		#else
-		m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-		m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-		m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
 
-		m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-		m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-		m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-		#endif
 		m_gameVertices += 6;
 	}
 	else
@@ -3457,17 +3340,11 @@ void SurfaceVulkanPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
 		setupTextureRendering(tex);
 
-		#ifdef HAVE_CXX11_SUPPORT
 		m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 		m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-		#else
-		m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-		m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-		m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-		m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-		#endif
+
 		vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 		m_vertexOffset += 4;
 	}
@@ -3512,18 +3389,11 @@ void SurfaceVulkanPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w
 	float maxv = (sy+sh)*tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-
-	#ifdef HAVE_CXX11_SUPPORT
 	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
 	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
 	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
 	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-	#else
-	m_vulkanVertices.push_back(VertexVulkan(minx, miny, minu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(minx, maxy, minu, maxv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, miny, maxu, minv, texColor));
-	m_vulkanVertices.push_back(VertexVulkan(maxx, maxy, maxu, maxv, texColor));
-	#endif
+
 	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 	m_vertexOffset += 4;
 }

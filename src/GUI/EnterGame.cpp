@@ -61,8 +61,8 @@
 #define ENTERGAME_ACCOUNT_BUTTON_LINK "https://secure.tibia.com/account/?subtopic=createaccount"
 #define ENTERGAME_ACCOUNT_BUTTON_X 132
 #define ENTERGAME_ACCOUNT_BUTTON_Y 94
-#define ENTERGAME_ACCOUNT_BUTTON_W 86
-#define ENTERGAME_ACCOUNT_BUTTON_H 20
+#define ENTERGAME_ACCOUNT_BUTTON_W GUI_UI_BUTTON_86PX_GRAY_UP_W
+#define ENTERGAME_ACCOUNT_BUTTON_H GUI_UI_BUTTON_86PX_GRAY_UP_H
 #define ENTERGAME_ACCOUNT_BUTTON_EVENTID 1002
 
 extern Engine g_engine;
@@ -75,9 +75,7 @@ void enterGame_Events(Uint32 event, Sint32)
 {
 	switch(event)
 	{
-		case ENTERGAME_ACCOUNT_BUTTON_EVENTID:
-			UTIL_OpenURL(ENTERGAME_ACCOUNT_BUTTON_LINK);
-			break;
+		case ENTERGAME_ACCOUNT_BUTTON_EVENTID: UTIL_OpenURL(ENTERGAME_ACCOUNT_BUTTON_LINK); break;
 		case ENTERGAME_CANCEL_EVENTID:
 		{
 			GUI_Window* pWindow = g_engine.getCurrentWindow();
@@ -219,11 +217,11 @@ void UTIL_createEnterGame()
 	newButton->setButtonEventCallback(&enterGame_Events, ENTERGAME_ACCOUNT_BUTTON_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(ENTERGAME_WIDTH-56, ENTERGAME_HEIGHT-30, 43, 20), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	newButton = new GUI_Button(iRect(ENTERGAME_WIDTH-56, ENTERGAME_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&enterGame_Events, ENTERGAME_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(ENTERGAME_WIDTH-109, ENTERGAME_HEIGHT-30, 43, 20), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(ENTERGAME_WIDTH-109, ENTERGAME_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&enterGame_Events, ENTERGAME_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

@@ -34,12 +34,12 @@
 #define HEALTH_FLASH_EVENTID 1000
 #define HEALTH_MARK_X 9
 #define HEALTH_MARK_Y 4
-#define HEALTH_MARK_W 12
-#define HEALTH_MARK_H 11
+#define HEALTH_MARK_W GUI_UI_SYMBOL_HEALTH_W
+#define HEALTH_MARK_H GUI_UI_SYMBOL_HEALTH_H
 #define HEALTH_BAR_X 26
 #define HEALTH_BAR_Y 4
-#define HEALTH_BAR_W 90
-#define HEALTH_BAR_H 11
+#define HEALTH_BAR_W GUI_UI_BAR_HEALTH_W
+#define HEALTH_BAR_H GUI_UI_BAR_HEALTH_H
 #define HEALTH_BAR_EVENTID 1001
 #define HEALTH_LABEL_X 126
 #define HEALTH_LABEL_Y 4
@@ -49,12 +49,12 @@
 #define HEALTH_PERCENT_EVENTID 1003
 #define MANA_MARK_X 10
 #define MANA_MARK_Y 17
-#define MANA_MARK_W 12
-#define MANA_MARK_H 11
+#define MANA_MARK_W GUI_UI_SYMBOL_MANA_W
+#define MANA_MARK_H GUI_UI_SYMBOL_MANA_H
 #define MANA_BAR_X 26
 #define MANA_BAR_Y 17
-#define MANA_BAR_W 90
-#define MANA_BAR_H 11
+#define MANA_BAR_W GUI_UI_BAR_MANA_W
+#define MANA_BAR_H GUI_UI_BAR_MANA_H
 #define MANA_BAR_EVENTID 1004
 #define MANA_LABEL_X 126
 #define MANA_LABEL_Y 17
@@ -132,9 +132,9 @@ void UTIL_createHealthPanel()
 		g_engine.removePanelWindow(pPanel);
 
 	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, HEALTH_WIDTH, HEALTH_HEIGHT), false, GUI_PANEL_WINDOW_HEALTH);
-	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(HEALTH_MARK_X, HEALTH_MARK_Y, HEALTH_MARK_W, HEALTH_MARK_H), 3, 220, 76);
+	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(HEALTH_MARK_X, HEALTH_MARK_Y, HEALTH_MARK_W, HEALTH_MARK_H), GUI_UI_IMAGE, GUI_UI_SYMBOL_HEALTH_X, GUI_UI_SYMBOL_HEALTH_Y);
 	newWindow->addChild(newImage);
-	newImage = new GUI_StaticImage(iRect(MANA_MARK_X, MANA_MARK_Y, MANA_MARK_W, MANA_MARK_H), 3, 220, 87);
+	newImage = new GUI_StaticImage(iRect(MANA_MARK_X, MANA_MARK_Y, MANA_MARK_W, MANA_MARK_H), GUI_UI_IMAGE, GUI_UI_SYMBOL_MANA_X, GUI_UI_SYMBOL_MANA_Y);
 	newWindow->addChild(newImage);
 	GUI_Health* newHP = new GUI_Health(iRect(HEALTH_BAR_X, HEALTH_BAR_Y, HEALTH_BAR_W, HEALTH_BAR_H), HEALTH_BAR_EVENTID);
 	newHP->setPercent(SDL_static_cast(Sint32, g_game.getPlayerHealthPercent())*90/100);
@@ -188,8 +188,8 @@ GUI_Health::GUI_Health(iRect boxRect, Uint32 internalID)
 void GUI_Health::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(3, 96, 64, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
-	renderer->drawPicture(3, 96, 75, m_tRect.x1, m_tRect.y1, m_percent, m_tRect.y2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_BAR_EMPTY_X, GUI_UI_BAR_EMPTY_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_BAR_HEALTH_X, GUI_UI_BAR_HEALTH_Y, m_tRect.x1, m_tRect.y1, m_percent, m_tRect.y2);
 }
 
 GUI_Mana::GUI_Mana(iRect boxRect, Uint32 internalID)
@@ -202,6 +202,6 @@ GUI_Mana::GUI_Mana(iRect boxRect, Uint32 internalID)
 void GUI_Mana::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(3, 96, 64, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
-	renderer->drawPicture(3, 96, 86, m_tRect.x1, m_tRect.y1, m_percent, m_tRect.y2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_BAR_EMPTY_X, GUI_UI_BAR_EMPTY_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_BAR_MANA_X, GUI_UI_BAR_MANA_Y, m_tRect.x1, m_tRect.y1, m_percent, m_tRect.y2);
 }

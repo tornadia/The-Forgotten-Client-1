@@ -69,8 +69,5 @@ void GUI_Flash::render()
 	}
 
 	Surface* renderer = g_engine.getRender();
-	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, 1, 255, 160, 0, 255);
-	renderer->drawRectangle(m_tRect.x1, m_tRect.y1+1, 1, m_tRect.y2-1, 255, 160, 0, 255);
-	renderer->drawRectangle(m_tRect.x1+1, m_tRect.y1+m_tRect.y2-1, m_tRect.x2-1, 1, 255, 160, 0, 255);
-	renderer->drawRectangle(m_tRect.x1+m_tRect.x2-1, m_tRect.y1+1, 1, m_tRect.y2-2, 255, 160, 0, 255);
+	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 255, 160, 0, 255);
 }

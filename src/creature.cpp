@@ -47,7 +47,6 @@ Creature::Creature()
 		m_mountAnimator[i] = NULL;
 	}
 
-	m_tile = NULL;
 	m_walkTile = NULL;
 	m_drawnTile = NULL;
 
@@ -57,6 +56,7 @@ Creature::Creature()
 	m_walkEndTime = 0;
 	m_walkTime = 0;
 	m_timedSquareStartTime = 0;
+	m_visibleTime = 0;
 
 	m_walkedPixels = 0;
 	m_walkOffsetX = 0;
@@ -86,6 +86,7 @@ Creature::Creature()
 	m_red = 0;
 	m_green = 188;
 	m_blue = 0;
+	m_manaPercent = 100;
 
 	m_direction = DIRECTION_SOUTH;
 	m_turnDirection = DIRECTION_SOUTH;
@@ -102,6 +103,9 @@ Creature::Creature()
 	m_unpassable = true;
 	m_showTimedSquare = false;
 	m_showStaticSquare = false;
+	m_showStatus = true;
+	m_isVisible = false;
+	m_needUpdate = false;
 }
 
 void Creature::preMove(const Position& fromPos, const Position& toPos)
@@ -221,15 +225,17 @@ void Creature::move(const Position& fromPos, const Position& toPos, Tile* oldTil
 	}
 
 	m_walkTile = newTile;
-	if(m_preWalking && !preMove)
+	if(!preMove)
 	{
-		m_preWalking = false;
-		return;
+		if(m_preWalking)
+		{
+			m_preWalking = false;
+			return;
+		}
+		else if(m_isLocalCreature)
+			g_game.checkServerMovement(m_walkDirection);
 	}
-	else if(m_isLocalCreature)
-	{
-		//pass to g_game to check if we need decrease autowalk directions
-	}
+
 	m_walking = true;
 	m_preWalking = preMove;
 	m_walkStartTime = g_frameTime;
@@ -249,7 +255,7 @@ void Creature::stopMove()
 	m_walking = false;
 	if(m_isLocalCreature)
 		g_game.checkLocalCreatureMovement();
-
+	
 	if(m_turnDirection != m_direction)
 		m_direction = m_turnDirection;
 }
@@ -264,7 +270,9 @@ void Creature::addToDrawnTile(Tile* tile)
 
 void Creature::resetDrawnTile()
 {
-	stopMove();
+	m_currentFrame = ThingFrameGroup_Idle;
+	m_preWalking = false;
+	m_walking = false;
 	m_drawnTile = NULL;
 }
 
@@ -587,6 +595,7 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 
 void Creature::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 drawY, float scale, bool visible)
 {
+	setNeedUpdate(true);
 	if(m_health < 1)
 		return;
 
@@ -600,25 +609,28 @@ void Creature::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32
 
 	drawX += getOffsetX();
 	drawY += getOffsetY();
-	if(m_thingType->m_category != ThingCategory_Creature)
+	if(m_thingType)
 	{
-		if(m_thingType->m_category == ThingCategory_Effect)
+		if(m_thingType->m_category != ThingCategory_Creature)
 		{
-			drawX -= 8;
-			drawY -= 8;
-		}
-	}
-	else
-	{
-		if(m_mountType)
-		{
-			drawX -= SDL_static_cast(Sint32, m_mountType->m_displacement[0]);
-			drawY -= SDL_static_cast(Sint32, m_mountType->m_displacement[1]);
+			if(m_thingType->m_category == ThingCategory_Effect)
+			{
+				drawX -= 8;
+				drawY -= 8;
+			}
 		}
 		else
 		{
-			drawX -= SDL_static_cast(Sint32, m_thingType->m_displacement[0]);
-			drawY -= SDL_static_cast(Sint32, m_thingType->m_displacement[1]);
+			if(m_mountType)
+			{
+				drawX -= SDL_static_cast(Sint32, m_mountType->m_displacement[0]);
+				drawY -= SDL_static_cast(Sint32, m_mountType->m_displacement[1]);
+			}
+			else
+			{
+				drawX -= SDL_static_cast(Sint32, m_thingType->m_displacement[0]);
+				drawY -= SDL_static_cast(Sint32, m_thingType->m_displacement[1]);
+			}
 		}
 	}
 	posX += SDL_static_cast(Sint32, drawX*scale);
@@ -641,32 +653,209 @@ void Creature::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32
 				m_showShield = !m_showShield;
 			}
 			if(m_showShield)
-				renderer->drawPicture(3, m_shieldX, m_shieldY, POSX, POSY, 11, 11);
+				renderer->drawPicture(GUI_UI_IMAGE, m_shieldX, m_shieldY, POSX, POSY, GUI_UI_ICON_SHIELD_BLUE_W, GUI_UI_ICON_SHIELD_BLUE_H);
 		}
 		else
-			renderer->drawPicture(3, m_shieldX, m_shieldY, POSX, POSY, 11, 11);
+			renderer->drawPicture(GUI_UI_IMAGE, m_shieldX, m_shieldY, POSX, POSY, GUI_UI_ICON_SHIELD_BLUE_W, GUI_UI_ICON_SHIELD_BLUE_H);
 		POSX += 13;
 	}
 
 	if(m_emblem != GUILDEMBLEM_NONE)
-		renderer->drawPicture(3, m_emblemX, m_emblemY, POSX, POSY+13, 11, 11);
+		renderer->drawPicture(GUI_UI_IMAGE, m_emblemX, m_emblemY, POSX, POSY+13, GUI_UI_ICON_GUILDWAR_ALLY_W, GUI_UI_ICON_GUILDWAR_ALLY_H);
 
 	if(m_skull != SKULL_NONE)
 	{
-		renderer->drawPicture(3, m_skullX, m_skullY, POSX, POSY, 11, 11);
+		renderer->drawPicture(GUI_UI_IMAGE, m_skullX, m_skullY, POSX, POSY, GUI_UI_ICON_YELLOWSKULL_W, GUI_UI_ICON_YELLOWSKULL_H);
 		POSX += 13;
 	}
 
-	if(m_type >= CREATURETYPE_SUMMON_OWN)
+	if(m_type == CREATURETYPE_SUMMON_OWN || m_type == CREATURETYPE_SUMMON_OTHERS)
 	{
-		renderer->drawPicture(3, m_typeX, m_typeY, POSX, POSY, 11, 11);
+		renderer->drawPicture(GUI_UI_IMAGE, m_typeX, m_typeY, POSX, POSY, GUI_UI_ICON_SUMMONOWN_W, GUI_UI_ICON_SUMMONOWN_H);
 		POSX += 13;
 	}
 
 	if(m_icon != CREATUREICON_NONE)
 	{
-		renderer->drawPicture(3, m_iconX, m_iconY, POSX, POSY, 18, 18);
+		renderer->drawPicture(GUI_UI_IMAGE, m_iconX, m_iconY, POSX, POSY, GUI_UI_ICON_BUBBLE_SPEECH_W, GUI_UI_ICON_BUBBLE_SPEECH_H);
 		POSX += 20;
+	}
+}
+
+void Creature::renderOnBattle(Sint32 posX, Sint32 posY, bool renderManaBar)
+{
+	Surface* renderer = g_engine.getRender();
+	if(m_thingType)
+	{
+		Uint8 animation;
+		if(m_outfitAnimator[ThingFrameGroup_Idle])
+		{
+			//Calculate with new animation
+			animation = SDL_static_cast(Uint8, m_outfitAnimator[ThingFrameGroup_Idle]->getPhase(m_outfitAnimation[ThingFrameGroup_Idle]));
+		}
+		else
+		{
+			//Calculate with old animation
+			if(m_thingType->m_category == ThingCategory_Effect)
+			{
+				Uint8 animCount = m_thingType->m_frameGroup[ThingFrameGroup_Idle].m_animCount;
+				if(animCount > 2)
+					animation = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), animCount-2)+1;
+				else
+					animation = 0;
+			}
+			else if (m_thingType->m_category == ThingCategory_Item)
+				animation = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), m_thingType->m_frameGroup[ThingFrameGroup_Idle].m_animCount);
+			else if (m_thingType->hasFlag(ThingAttribute_AnimateAlways))
+				animation = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / CREATURE_TICKS_PER_FRAME)), m_thingType->m_frameGroup[ThingFrameGroup_Idle].m_animCount);
+			else
+				animation = 0;
+		}
+		g_engine.drawOutfit(m_thingType, posX, posY, 20, DIRECTION_SOUTH, 0, 0, animation, m_outfit);
+	}
+
+	Uint8 red, green, blue;
+	if(m_isVisible)
+	{
+		red = 192;
+		green = 192;
+		blue = 192;
+	}
+	else
+	{
+		red = 128;
+		green = 128;
+		blue = 128;
+	}
+
+	Sint32 squareX = posX;
+	Sint32 squareY = posY;
+	Sint32 squareW = 20;
+	Sint32 squareH = 20;
+	if(g_game.getAttackID() == m_id)
+	{
+		if(g_game.getSelectID() == m_id)
+		{
+			red = 248;
+			green = 164;
+			blue = 164;
+			renderer->drawRectangle(squareX, squareY, squareW, squareH, red, green, blue, 255);
+		}
+		else
+		{
+			red = 224;
+			green = 64;
+			blue = 64;
+			renderer->drawRectangle(squareX, squareY, squareW, squareH, red, green, blue, 255);
+		}
+
+		squareX += 1;
+		squareY += 1;
+		squareW -= 2;
+		squareH -= 2;
+	}
+	else if(g_game.getFollowID() == m_id)
+	{
+		if(g_game.getSelectID() == m_id)
+		{
+			red = 180;
+			green = 248;
+			blue = 180;
+			renderer->drawRectangle(squareX, squareY, squareW, squareH, red, green, blue, 255);
+		}
+		else
+		{
+			red = 64;
+			green = 224;
+			blue = 64;
+			renderer->drawRectangle(squareX, squareY, squareW, squareH, red, green, blue, 255);
+		}
+
+		squareX += 1;
+		squareY += 1;
+		squareW -= 2;
+		squareH -= 2;
+	}
+	else if(g_game.getSelectID() == m_id)
+	{
+		red = 248;
+		green = 248;
+		blue = 248;
+		renderer->drawRectangle(squareX, squareY, squareW, squareH, red, green, blue, 255);
+		squareX += 1;
+		squareY += 1;
+		squareW -= 2;
+		squareH -= 2;
+	}
+	if(m_showStaticSquare)
+	{
+		renderer->drawRectangle(squareX, squareY, squareW, squareH, m_staticSquareRed, m_staticSquareGreen, m_staticSquareBlue, 255);
+		squareX += 1;
+		squareY += 1;
+		squareW -= 2;
+		squareH -= 2;
+	}
+	if(m_showTimedSquare)
+		renderer->drawRectangle(squareX, squareY, squareW, squareH, m_timedSquareRed, m_timedSquareGreen, m_timedSquareBlue, 255);
+
+	posX += 22;
+	posY += 4;
+	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, posX, posY, m_name, red, green, blue, CLIENT_FONT_ALIGN_LEFT);
+	if(m_showStatus)
+	{
+		renderer->drawRectangle(posX-1, posY+14, 132, 5, 0, 0, 0, 255);
+		renderer->fillRectangle(posX, posY+15, SDL_static_cast(Sint32, m_health)*130/100, 3, m_red, m_green, m_blue, 255);
+		if(renderManaBar)
+		{
+			renderer->drawRectangle(posX-1, posY+20, 132, 5, 0, 0, 0, 255);
+			renderer->fillRectangle(posX, posY+21, SDL_static_cast(Sint32, m_manaPercent)*130/100, 3, 0, 0, 255, 255);
+		}
+	}
+	else
+	{
+		renderer->drawRectangle(posX-1, posY+14, 132, 5, 0, 0, 0, 255);
+		renderer->fillRectangle(posX, posY+15, 130, 3, 112, 112, 112, 255);
+		if(renderManaBar)
+		{
+			renderer->drawRectangle(posX-1, posY+20, 132, 5, 0, 0, 0, 255);
+			renderer->fillRectangle(posX, posY+21, 130, 3, 112, 112, 112, 255);
+		}
+	}
+
+	posX += 133;
+	if(m_skull != SKULL_NONE)
+	{
+		posX -= 13;
+		renderer->drawPicture(GUI_UI_IMAGE, m_skullX, m_skullY, posX, posY, GUI_UI_ICON_YELLOWSKULL_W, GUI_UI_ICON_YELLOWSKULL_H);
+	}
+
+	if(m_shield != SHIELD_NONE)
+	{
+		posX -= 13;
+		if(m_shield == SHIELD_BLUE_NOSHAREDEXP_BLINK || m_shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK)
+		{
+			if(g_frameTime-m_shieldTime >= CREATURE_SHIELD_BLINK_TICKS)
+			{
+				m_shieldTime = g_frameTime;
+				m_showShield = !m_showShield;
+			}
+			if(m_showShield)
+				renderer->drawPicture(GUI_UI_IMAGE, m_shieldX, m_shieldY, posX, posY, GUI_UI_ICON_SHIELD_BLUE_W, GUI_UI_ICON_SHIELD_BLUE_H);
+		}
+		else
+			renderer->drawPicture(GUI_UI_IMAGE, m_shieldX, m_shieldY, posX, posY, GUI_UI_ICON_SHIELD_BLUE_W, GUI_UI_ICON_SHIELD_BLUE_H);
+	}
+
+	if(m_emblem != GUILDEMBLEM_NONE)
+	{
+		posX -= 13;
+		renderer->drawPicture(GUI_UI_IMAGE, m_emblemX, m_emblemY, posX, posY, GUI_UI_ICON_GUILDWAR_ALLY_W, GUI_UI_ICON_GUILDWAR_ALLY_H);
+	}
+
+	if(m_type == CREATURETYPE_SUMMON_OWN || m_type == CREATURETYPE_SUMMON_OTHERS)
+	{
+		posX -= 13;
+		renderer->drawPicture(GUI_UI_IMAGE, m_typeX, m_typeY, posX, posY, GUI_UI_ICON_SUMMONOWN_W, GUI_UI_ICON_SUMMONOWN_H);
 	}
 }
 
@@ -695,7 +884,7 @@ void Creature::hideStaticSquare()
 
 void Creature::setName(const std::string name)
 {
-	PERFORM_MOVE(m_name, name);
+	m_name = std::move(name);
 	m_nameLen = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_name)/2;
 }
 
@@ -745,7 +934,10 @@ void Creature::turnDirection(Direction direction)
 	if(m_walking)
 		m_turnDirection = direction;//Schedule turn direction after walk complete
 	else
+	{
+		m_turnDirection = direction;
 		m_direction = direction;//Change our direction right away if we not walking
+	}
 }
 
 void Creature::setOutfit(Uint16 lookType, Uint16 lookTypeEx, Uint8 lookHead, Uint8 lookBody, Uint8 lookLegs, Uint8 lookFeet, Uint8 lookAddons, Uint16 lookMount)
@@ -787,130 +979,123 @@ void Creature::setSkull(Uint8 skull)
 	{
 		case SKULL_YELLOW:
 		{
-			m_skullX = 65;
-			m_skullY = 225;
+			m_skullX = GUI_UI_ICON_YELLOWSKULL_X;
+			m_skullY = GUI_UI_ICON_YELLOWSKULL_Y;
 		}
 		break;
 		case SKULL_GREEN:
 		{
-			m_skullX = 54;
-			m_skullY = 225;
+			m_skullX = GUI_UI_ICON_GREENSKULL_X;
+			m_skullY = GUI_UI_ICON_GREENSKULL_Y;
 		}
 		break;
 		case SKULL_WHITE:
 		{
-			m_skullX = 76;
-			m_skullY = 225;
+			m_skullX = GUI_UI_ICON_WHITESKULL_X;
+			m_skullY = GUI_UI_ICON_WHITESKULL_Y;
 		}
 		break;
 		case SKULL_RED:
 		{
-			m_skullX = 87;
-			m_skullY = 225;
+			m_skullX = GUI_UI_ICON_REDSKULL_X;
+			m_skullY = GUI_UI_ICON_REDSKULL_Y;
 		}
 		break;
 		case SKULL_BLACK:
 		{
-			m_skullX = 98;
-			m_skullY = 297;
+			m_skullX = GUI_UI_ICON_BLACKSKULL_X;
+			m_skullY = GUI_UI_ICON_BLACKSKULL_Y;
 		}
 		break;
 		case SKULL_ORANGE:
 		{
-			m_skullX = 208;
-			m_skullY = 218;
+			m_skullX = GUI_UI_ICON_ORANGOSKULL_X;
+			m_skullY = GUI_UI_ICON_ORANGOSKULL_Y;
 		}
 		break;
-		default:
-		{
-			m_skullX = 290;
-			m_skullY = 12;
-		}
-		break;
+		default: m_skull = SKULL_NONE; break;
 	}
 }
 
 void Creature::setShield(Uint8 shield)
 {
+	if(m_shield != shield)
+		UTIL_refreshPartyWindow();
+
 	m_shield = shield;
 	switch(shield)
 	{
 		case SHIELD_WHITEYELLOW:
 		{
-			m_shieldX = 76;
-			m_shieldY = 236;
+			m_shieldX = GUI_UI_ICON_SHIELD_WHITEYELLOW_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_WHITEYELLOW_Y;
 		}
 		break;
 		case SHIELD_WHITEBLUE:
 		{
-			m_shieldX = 87;
-			m_shieldY = 236;
+			m_shieldX = GUI_UI_ICON_SHIELD_WHITEBLUE_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_WHITEBLUE_Y;
 		}
 		break;
 		case SHIELD_BLUE:
 		{
-			m_shieldX = 65;
-			m_shieldY = 236;
+			m_shieldX = GUI_UI_ICON_SHIELD_BLUE_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_BLUE_Y;
 		}
 		break;
 		case SHIELD_YELLOW:
 		{
-			m_shieldX = 54;
-			m_shieldY = 236;
+			m_shieldX = GUI_UI_ICON_SHIELD_YELLOW_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_YELLOW_Y;
 		}
 		break;
 		case SHIELD_BLUE_SHAREDEXP:
 		{
-			m_shieldX = 87;
-			m_shieldY = 214;
+			m_shieldX = GUI_UI_ICON_SHIELD_BLUE_SHAREDEXP_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_BLUE_SHAREDEXP_Y;
 		}
 		break;
 		case SHIELD_YELLOW_SHAREDEXP:
 		{
-			m_shieldX = 76;
-			m_shieldY = 214;
+			m_shieldX = GUI_UI_ICON_SHIELD_YELLOW_SHAREDEXP_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_YELLOW_SHAREDEXP_Y;
 		}
 		break;
 		case SHIELD_BLUE_NOSHAREDEXP_BLINK:
 		{
-			m_shieldX = 179;
-			m_shieldY = 261;
+			m_shieldX = GUI_UI_ICON_SHIELD_BLUE_NOSHAREDEXP_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_BLUE_NOSHAREDEXP_Y;
 			m_shieldTime = g_frameTime;
 			m_showShield = true;
 		}
 		break;
 		case SHIELD_YELLOW_NOSHAREDEXP_BLINK:
 		{
-			m_shieldX = 168;
-			m_shieldY = 261;
+			m_shieldX = GUI_UI_ICON_SHIELD_YELLOW_NOSHAREDEXP_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_YELLOW_NOSHAREDEXP_Y;
 			m_shieldTime = g_frameTime;
 			m_showShield = true;
 		}
 		break;
 		case SHIELD_BLUE_NOSHAREDEXP:
 		{
-			m_shieldX = 179;
-			m_shieldY = 261;
+			m_shieldX = GUI_UI_ICON_SHIELD_BLUE_NOSHAREDEXP_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_BLUE_NOSHAREDEXP_Y;
 		}
 		break;
 		case SHIELD_YELLOW_NOSHAREDEXP:
 		{
-			m_shieldX = 168;
-			m_shieldY = 261;
+			m_shieldX = GUI_UI_ICON_SHIELD_YELLOW_NOSHAREDEXP_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_YELLOW_NOSHAREDEXP_Y;
 		}
 		break;
 		case SHIELD_GRAY:
 		{
-			m_shieldX = 43;
-			m_shieldY = 236;
+			m_shieldX = GUI_UI_ICON_SHIELD_GRAY_X;
+			m_shieldY = GUI_UI_ICON_SHIELD_GRAY_Y;
 		}
 		break;
-		default:
-		{
-			m_shieldX = 290;
-			m_shieldY = 12;
-		}
-		break;
+		default: m_shield = SHIELD_NONE; break;
 	}
 }
 
@@ -921,40 +1106,35 @@ void Creature::setEmblem(Uint8 emblem)
 	{
 		case GUILDEMBLEM_ALLY:
 		{
-			m_emblemX = 287;
-			m_emblemY = 218;
+			m_emblemX = GUI_UI_ICON_GUILDWAR_ALLY_X;
+			m_emblemY = GUI_UI_ICON_GUILDWAR_ALLY_Y;
 		}
 		break;
 		case GUILDEMBLEM_ENEMY:
 		{
-			m_emblemX = 298;
-			m_emblemY = 218;
+			m_emblemX = GUI_UI_ICON_GUILDWAR_ENEMY_X;
+			m_emblemY = GUI_UI_ICON_GUILDWAR_ENEMY_Y;
 		}
 		break;
 		case GUILDEMBLEM_NEUTRAL:
 		{
-			m_emblemX = 309;
-			m_emblemY = 218;
+			m_emblemX = GUI_UI_ICON_GUILDWAR_NEUTRAL_X;
+			m_emblemY = GUI_UI_ICON_GUILDWAR_NEUTRAL_Y;
 		}
 		break;
 		case GUILDEMBLEM_MEMBER:
 		{
-			m_emblemX = 219;
-			m_emblemY = 218;
+			m_emblemX = GUI_UI_ICON_GUILDWAR_MEMBER_X;
+			m_emblemY = GUI_UI_ICON_GUILDWAR_MEMBER_Y;
 		}
 		break;
 		case GUILDEMBLEM_OTHER:
 		{
-			m_emblemX = 276;
-			m_emblemY = 218;
+			m_emblemX = GUI_UI_ICON_GUILDWAR_OTHER_X;
+			m_emblemY = GUI_UI_ICON_GUILDWAR_OTHER_Y;
 		}
 		break;
-		default:
-		{
-			m_emblemX = 290;
-			m_emblemY = 12;
-		}
-		break;
+		default: m_emblem = GUILDEMBLEM_NONE; break;
 	}
 }
 
@@ -965,20 +1145,14 @@ void Creature::setType(Uint8 type)
 	{
 		case CREATURETYPE_SUMMON_OWN:
 		{
-			m_typeX = 220;
-			m_typeY = 229;
+			m_typeX = GUI_UI_ICON_SUMMONOWN_X;
+			m_typeY = GUI_UI_ICON_SUMMONOWN_Y;
 		}
 		break;
 		case CREATURETYPE_SUMMON_OTHERS:
 		{
-			m_typeX = 220;
-			m_typeY = 240;
-		}
-		break;
-		default:
-		{
-			m_typeX = 290;
-			m_typeY = 12;
+			m_typeX = GUI_UI_ICON_SUMMONOTHERS_X;
+			m_typeY = GUI_UI_ICON_SUMMONOTHERS_Y;
 		}
 		break;
 	}
@@ -991,35 +1165,55 @@ void Creature::setIcon(Uint8 icon)
 	{
 		case CREATUREICON_SPEECH:
 		{
-			m_iconX = 240;
-			m_iconY = 317;
+			m_iconX = GUI_UI_ICON_BUBBLE_SPEECH_X;
+			m_iconY = GUI_UI_ICON_BUBBLE_SPEECH_Y;
 		}
 		break;
 		case CREATUREICON_TRADE:
 		{
-			m_iconX = 240;
-			m_iconY = 335;
+			m_iconX = GUI_UI_ICON_BUBBLE_TRADE_X;
+			m_iconY = GUI_UI_ICON_BUBBLE_TRADE_Y;
 		}
 		break;
 		case CREATUREICON_QUEST:
 		{
-			m_iconX = 240;
-			m_iconY = 353;
+			m_iconX = GUI_UI_ICON_BUBBLE_QUEST_X;
+			m_iconY = GUI_UI_ICON_BUBBLE_QUEST_Y;
 		}
 		break;
 		case CREATUREICON_QUESTTRADER:
 		{
-			m_iconX = 190;
-			m_iconY = 254;
+			m_iconX = GUI_UI_ICON_BUBBLE_QUESTTRADER_X;
+			m_iconY = GUI_UI_ICON_BUBBLE_QUESTTRADER_Y;
 		}
 		break;
-		default:
+		case CREATUREICON_SPEECH1:
 		{
-			m_iconX = 290;
-			m_iconY = 12;
+			m_iconX = GUI_UI_ICON_BUBBLE_SPEECH_X;
+			m_iconY = GUI_UI_ICON_BUBBLE_SPEECH_Y;
 		}
 		break;
+		case CREATUREICON_SPEECH2:
+		{
+			m_iconX = GUI_UI_ICON_BUBBLE_SPEECH_X;
+			m_iconY = GUI_UI_ICON_BUBBLE_SPEECH_Y;
+		}
+		break;
+		case CREATUREICON_SPEECH3:
+		{
+			m_iconX = GUI_UI_ICON_BUBBLE_SPEECH2_X;
+			m_iconY = GUI_UI_ICON_BUBBLE_SPEECH2_Y;
+		}
+		break;
+		default: m_icon = CREATUREICON_NONE; break;
 	}
+}
+
+void Creature::setVisible(bool visible)
+{
+	m_isVisible = visible;
+	if(m_isVisible)
+		m_visibleTime = g_frameTime;
 }
 
 std::pair<Sint32, Sint32> Creature::getDisplacement()

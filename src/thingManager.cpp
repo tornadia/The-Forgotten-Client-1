@@ -32,8 +32,6 @@ extern Uint32 g_datRevision;
 
 /*flags: These are values that represent how the client can interact with the appearance, and it's mostly used for Objects.
 
-container: If the appearance is a Container
-
 write: If the object is writable and editable.
 max_text_length: Maximum number of characters it can hold.
 
@@ -85,6 +83,7 @@ ThingType::ThingType()
 	}
 
 	m_flags = 0;
+	m_marketData.m_restrictVocation = 0;
 
 	m_groundSpeed = 100;
 	m_writableSize[0] = m_writableSize[1] = 0;
@@ -1218,19 +1217,19 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 										{
 											Uint16 restrictedVocs = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
 											if(restrictedVocs == 0)
-												m_marketData.m_restrictVocation = 0;//None
+												m_marketData.m_restrictVocation += 0;//None
 											else if(restrictedVocs == 1)
-												m_marketData.m_restrictVocation = 1;//Knight
+												m_marketData.m_restrictVocation += 1;//Knight
 											else if(restrictedVocs == 2)
-												m_marketData.m_restrictVocation = 2;//Paladin
+												m_marketData.m_restrictVocation += 2;//Paladin
 											else if(restrictedVocs == 3)
-												m_marketData.m_restrictVocation = 3;//Sorcerer
+												m_marketData.m_restrictVocation += 3;//Sorcerer
 											else if(restrictedVocs == 4)
-												m_marketData.m_restrictVocation = 4;//Druid
+												m_marketData.m_restrictVocation += 4;//Druid
 											else if(restrictedVocs == 10)
-												m_marketData.m_restrictVocation = 10;//Promoted
+												m_marketData.m_restrictVocation += 10;//Promoted
 											else
-												m_marketData.m_restrictVocation = 0xFFFF;//Any
+												m_marketData.m_restrictVocation = 0xFF;//Any
 
 											haveData = (SDL_RWtell(rwops) < marketLimit);
 										} while(haveData && SDL_ReadU8(rwops) == 40);
@@ -1244,19 +1243,19 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 										{
 											Uint16 restrictedVocs = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
 											if(restrictedVocs == 0)
-												m_marketData.m_restrictVocation = 0;//None
+												m_marketData.m_restrictVocation += 0;//None
 											else if(restrictedVocs == 1)
-												m_marketData.m_restrictVocation = 1;//Knight
+												m_marketData.m_restrictVocation += 1;//Knight
 											else if(restrictedVocs == 2)
-												m_marketData.m_restrictVocation = 2;//Paladin
+												m_marketData.m_restrictVocation += 2;//Paladin
 											else if(restrictedVocs == 3)
-												m_marketData.m_restrictVocation = 3;//Sorcerer
+												m_marketData.m_restrictVocation += 3;//Sorcerer
 											else if(restrictedVocs == 4)
-												m_marketData.m_restrictVocation = 4;//Druid
+												m_marketData.m_restrictVocation += 4;//Druid
 											else if(restrictedVocs == 10)
-												m_marketData.m_restrictVocation = 10;//Promoted
+												m_marketData.m_restrictVocation += 10;//Promoted
 											else
-												m_marketData.m_restrictVocation = 0xFFFF;//Any
+												m_marketData.m_restrictVocation = 0xFF;//Any
 										}
 									}
 								}
@@ -1543,27 +1542,15 @@ bool ThingManager::loadAppearances(const char* filename)
 				Uint8 tagLow = SDL_static_cast(Uint8, tag);
 				if(tagHigh == 1 && tagLow == 10)// repeated .tibia.protobuf.appearances.Appearance object = 1;
 				{
-					#ifdef HAVE_CXX11_SUPPORT
 					tempItems.emplace_back();
 					ThingType& tType = tempItems.back();
 					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Items, file);
-					#else
-					ThingType tType;
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Items, file);
-					tempItems.push_back(tType);
-					#endif
 				}
 				else if(tagHigh == 2 && tagLow == 18)// repeated .tibia.protobuf.appearances.Appearance outfit = 2;
 				{
-					#ifdef HAVE_CXX11_SUPPORT
 					tempCreatures.emplace_back();
 					ThingType& tType = tempCreatures.back();
 					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Creatures, file);
-					#else
-					ThingType tType;
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Creatures, file);
-					tempCreatures.push_back(tType);
-					#endif
 					if(!tType.m_frameGroup[ThingFrameGroup_Moving].m_sprites.empty() && tType.m_frameGroup[ThingFrameGroup_Idle].m_sprites.empty())
 					{
 						FrameGroup& fromFrame = tType.m_frameGroup[ThingFrameGroup_Moving];
@@ -1582,27 +1569,15 @@ bool ThingManager::loadAppearances(const char* filename)
 				}
 				else if(tagHigh == 3 && tagLow == 26)// repeated .tibia.protobuf.appearances.Appearance effect = 3;
 				{
-					#ifdef HAVE_CXX11_SUPPORT
 					tempEffect.emplace_back();
 					ThingType& tType = tempEffect.back();
 					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Effects, file);
-					#else
-					ThingType tType;
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Effects, file);
-					tempEffect.push_back(tType);
-					#endif
 				}
 				else if(tagHigh == 4 && tagLow == 34)// repeated .tibia.protobuf.appearances.Appearance missile = 4;
 				{
-					#ifdef HAVE_CXX11_SUPPORT
 					tempDistanceEffects.emplace_back();
 					ThingType& tType = tempDistanceEffects.back();
 					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), DistanceEffects, file);
-					#else
-					ThingType tType;
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), DistanceEffects, file);
-					tempDistanceEffects.push_back(tType);
-					#endif
 				}
 				else
 					break;
