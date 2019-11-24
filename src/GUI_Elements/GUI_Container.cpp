@@ -84,6 +84,7 @@ void GUI_Container::setActiveElement(GUI_Element* actElement)
 
 void GUI_Container::clearChilds()
 {
+	setActiveElement(NULL);
 	m_contentSize = 0;
 	m_lastPosX = 0;
 	m_lastPosY = 0;
@@ -107,6 +108,9 @@ void GUI_Container::addChild(GUI_Element* pChild)
 
 void GUI_Container::removeChild(GUI_Element* pChild)
 {
+	if(pChild == m_actElement)
+		setActiveElement(NULL);
+
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
 	{
 		if((*it) == pChild)

@@ -24,6 +24,8 @@
 #include "connection.h"
 #include "http.h"
 
+#define SDL_REPEAT 2
+
 SDL_Cursor* g_currentCursor = NULL;
 SDL_Cursor* g_cursors[CLIENT_CURSOR_LAST];
 Connection* g_connection = NULL;
@@ -130,11 +132,11 @@ void SDL_CheckKeyRepeat()
 		{
 			if(interval > g_keyRepeat.interval)
 			{
-				g_keyRepeat.timestamp += g_keyRepeat.interval;
+				g_keyRepeat.timestamp = g_frameTime;
 				SDL_Event event;
 				event.key.type = SDL_KEYDOWN;
-				event.key.state = SDL_PRESSED;
-				event.key.repeat = 0;
+				event.key.state = SDL_REPEAT;
+				event.key.repeat = 1;
 				event.key.keysym.scancode = SDL_SCANCODE_UNKNOWN; //We don't use scancodes
 				event.key.keysym.sym = g_keyRepeat.key;
 				event.key.keysym.mod = SDL_static_cast(Uint16, SDL_GetModState());
@@ -380,10 +382,12 @@ int main(int argc, char* argv[])
 					case SDL_KEYDOWN:
 					case SDL_KEYUP:
 					{
-						if(event.key.windowID == g_engine.m_windowId && event.key.repeat == 0)
+						if(event.key.windowID == g_engine.m_windowId && (event.key.state == SDL_REPEAT || event.key.repeat == 0))
 						{
 							event.key.keysym.mod = UTIL_parseModifiers(event.key.keysym.mod);
-							if(event.key.state == SDL_PRESSED)
+							if(event.key.state == SDL_REPEAT)
+								g_engine.onKeyDown(event);
+							else if(event.key.state == SDL_PRESSED)
 							{
 								g_engine.onKeyDown(event);
 								if(g_keyRepeat.timestamp == 0 || g_keyRepeat.key != event.key.keysym.sym)

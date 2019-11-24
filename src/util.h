@@ -77,7 +77,7 @@ void UTIL_UpdatePanels(void* pPanel, Sint32 x, Sint32 y);
 void UTIL_ResizePanel(void* pPanel, Sint32 x, Sint32 y);
 
 void UTIL_replaceString(std::string& str, const std::string& sought, const std::string& replacement);
-StringVector UTIL_explodeString(const std::string& inString, const std::string& separator, int32_t limit = -1);
+StringVector UTIL_explodeString(const std::string& inString, const std::string& separator, Sint32 limit = -1);
 Sint32 UTIL_random(Sint32 min_range, Sint32 max_range);
 Uint16 UTIL_parseModifiers(Uint16 mods);
 std::string UTIL_ipv4_tostring(Uint32 ipV4);

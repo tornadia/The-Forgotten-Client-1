@@ -138,7 +138,7 @@ bool AutomapArea::load()
 	if(!areafile)
 	{
 		SDL_memset(m_color, 0, 256*256);
-		SDL_memset(m_speed, 0, 256*256);
+		SDL_memset(m_speed, 250, 256*256);
 		return false;
 	}
 	
@@ -411,19 +411,19 @@ void Automap::render(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 	renderer->disableClipRect();
 }
 
-bool Automap::wasSeen(const Position& pos)
+Uint8 Automap::getColor(const Position& pos)
 {
 	AutomapArea* area = getArea(pos.x, pos.y, pos.z);
 	if(area)
-		return (area->getColor((pos.x & 0xFF), (pos.y & 0xFF)) != 0);
-	return false;
+		return area->getColor(pos.x, pos.y);
+	return 0;
 }
 
 Uint8 Automap::getSpeed(const Position& pos)
 {
 	AutomapArea* area = getArea(pos.x, pos.y, pos.z);
 	if(area)
-		return area->getSpeed((pos.x & 0xFF), (pos.y & 0xFF));
+		return area->getSpeed(pos.x, pos.y);
 	return 0;
 }
 

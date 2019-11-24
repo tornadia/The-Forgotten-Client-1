@@ -20,9 +20,9 @@ message Map {
 }
 
 message Position {
- optional uint16 x = 1;
- optional uint16 y = 2;
- optional uint8 z = 3;
+ optional uint32 x = 1;
+ optional uint32 y = 2;
+ optional uint32 z = 3;
 }
 
 message Territory {

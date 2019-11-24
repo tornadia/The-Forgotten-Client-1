@@ -43,7 +43,7 @@ struct AStarNode
 	Uint16 x, y;
 };
 
-static const Sint32 MAX_NODES_COMPLEXITY = 16384;//Should be divisible by 32, most welcomed multiply factor of 2
+static const Sint32 MAX_NODES_COMPLEXITY = 50000;
 static const Sint32 MAP_NORMALWALKFACTOR = 1;
 static const Sint32 MAP_DIAGONALWALKFACTOR = 2;
 
@@ -58,17 +58,15 @@ class AStarNodes
 		void closeNode(AStarNode* node);
 		void openNode(AStarNode* node);
 		SDL_FORCE_INLINE Sint32 getNodeSize() const {return curNode;}
-		SDL_FORCE_INLINE Sint32 getClosedNodes() const {return closedNodes;}
 		AStarNode* getNodeByPosition(Uint32 xy);
 
 		static Sint32 getMapWalkFactor(AStarNode* node, const Position& neighborPos);
 
 	private:
+		std::vector<Sint32> openNodes;
+		std::vector<Sint32> openNodeTotalCost;
 		std::unordered_map<Uint32, Uint32> nodesTable;
-		Sint32* calculatedNodes;
 		AStarNode* nodes;
-		bool* openNodes;
-		Sint32 closedNodes;
 		Sint32 curNode;
 };
 
@@ -95,7 +93,7 @@ class Map
 		void checkDistanceEffects();
 		void addDistanceEffect(DistanceEffect* distanceEffect, Uint8 posZ);
 
-		PathFind findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos, Uint32 flags = 0);
+		PathFind findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos);
 		Tile* findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature* &topCreature, bool multifloor);
 
 		Creature* getLocalCreature() {return m_localCreature;}

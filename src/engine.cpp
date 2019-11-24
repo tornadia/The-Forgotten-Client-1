@@ -1112,9 +1112,29 @@ void Engine::onKeyDown(SDL_Event event)
 	{
 		switch(hotkey->hotkey)
 		{
-			case CLIENT_HOTKEY_DIALOGS_OPENTERMINAL: return;
-			case CLIENT_HOTKEY_UI_TOGGLEFPSINDICATOR: return;
-			case CLIENT_HOTKEY_UI_TOGGLEFULLSCREEN: return;
+			case CLIENT_HOTKEY_DIALOGS_OPENTERMINAL:
+			{
+				if(event.key.repeat == 0)
+					m_showLogger = !m_showLogger;
+			}
+			return;
+			case CLIENT_HOTKEY_UI_TOGGLEFPSINDICATOR:
+			{
+				if(event.key.repeat == 0)
+					m_showPerformance = !m_showPerformance;
+			}
+			return;
+			case CLIENT_HOTKEY_UI_TOGGLEFULLSCREEN:
+			{
+				if(event.key.repeat == 0)
+				{
+					m_windowW = m_windowCachedW;
+					m_windowH = m_windowCachedH;
+					m_fullscreen = !m_fullscreen;
+					g_inited = false;
+				}
+			}
+			return;
 		}
 	}
 	
@@ -1170,8 +1190,100 @@ void Engine::onKeyDown(SDL_Event event)
 				case CLIENT_HOTKEY_MOVEMENT_TURNNORTH: g_game.sendTurn(DIRECTION_NORTH); break;
 				case CLIENT_HOTKEY_MOVEMENT_TURNWEST: g_game.sendTurn(DIRECTION_WEST); break;
 				case CLIENT_HOTKEY_MOVEMENT_TURNSOUTH: g_game.sendTurn(DIRECTION_SOUTH); break;
+				case CLIENT_HOTKEY_MOVEMENT_MOUNT:
+				{
+					//Send mount
+				}
+				break;
+				case CLIENT_HOTKEY_MOVEMENT_STOPACTIONS:
+				{
+					if(event.key.repeat == 0)
+						g_game.stopAutoWalk();
+				}
+				break;
+				case CLIENT_HOTKEY_DIALOGS_OPENBUGREPORTS:
+				{
+					//Open bug reports
+				}
+				break;
+				case CLIENT_HOTKEY_DIALOGS_OPENIGNORELIST:
+				{
+					//Open ignore list
+				}
+				break;
+				case CLIENT_HOTKEY_DIALOGS_OPENOPTIONS:
+				{
+					if(event.key.repeat == 0)
+						UTIL_options();
+				}
+				break;
+				case CLIENT_HOTKEY_DIALOGS_OPENHOTKEYS:
+				{
+					if(event.key.repeat == 0)
+						UTIL_hotkeyOptions();
+				}
+				break;
+				case CLIENT_HOTKEY_DIALOGS_OPENQUESTLOG:
+				{
+					if(event.key.repeat == 0)
+						g_game.sendOpenQuestLog();
+				}
+				break;
+				case CLIENT_HOTKEY_WINDOWS_OPENVIPWINDOW:
+				{
+					if(event.key.repeat == 0)
+						UTIL_toggleVipWindow();
+				}
+				break;
+				case CLIENT_HOTKEY_WINDOWS_OPENBATTLEWINDOW:
+				{
+					if(event.key.repeat == 0)
+						UTIL_toggleBattleWindow();
+				}
+				break;
+				case CLIENT_HOTKEY_WINDOWS_OPENSKILLSWINDOW:
+				{
+					if(event.key.repeat == 0)
+						UTIL_toggleSkillsWindow();
+				}
+				break;
+				case CLIENT_HOTKEY_CHAT_CLOSECHANNEL:
+				{
+					if(event.key.repeat == 0)
+						g_game.closeCurrentChannel();
+				}
+				break;
 				case CLIENT_HOTKEY_CHAT_NEXTCHANNEL: g_game.switchToNextChannel(); break;
 				case CLIENT_HOTKEY_CHAT_PREVIOUSCHANNEL: g_game.switchToPreviousChannel(); break;
+				case CLIENT_HOTKEY_CHAT_OPENCHANNELLIST:
+				{
+					if(event.key.repeat == 0)
+						g_game.sendRequestChannels();
+				}
+				break;
+				case CLIENT_HOTKEY_CHAT_OPENHELPCHANNEL:
+				{
+					if(event.key.repeat == 0)
+						g_game.openHelpChannel();
+				}
+				break;
+				case CLIENT_HOTKEY_CHAT_OPENNPCCHANNEL:
+				{
+					if(event.key.repeat == 0)
+						g_game.openNPCChannel();
+				}
+				break;
+				case CLIENT_HOTKEY_CHAT_DEFAULTCHANNEL:
+				{
+					if(event.key.repeat == 0)
+						g_game.switchToDefault();
+				}
+				break;
+				case CLIENT_HOTKEY_CHAT_TOGGLECHAT:
+				{
+					//Toggle chat
+				}
+				break;
 				case CLIENT_HOTKEY_MINIMAP_CENTER: g_game.minimapCenter(); break;
 				case CLIENT_HOTKEY_MINIMAP_FLOORDOWN: g_game.minimapFloorDown(); break;
 				case CLIENT_HOTKEY_MINIMAP_FLOORUP: g_game.minimapFloorUp(); break;
@@ -1181,6 +1293,121 @@ void Engine::onKeyDown(SDL_Event event)
 				case CLIENT_HOTKEY_MINIMAP_SCROLLWEST: g_game.minimapScrollWest(); break;
 				case CLIENT_HOTKEY_MINIMAP_ZOOMIN: g_game.minimapZoomIn(); break;
 				case CLIENT_HOTKEY_MINIMAP_ZOOMOUT: g_game.minimapZoomOut(); break;
+				case CLIENT_HOTKEY_UI_TOGGLECREATUREINFO:
+				{
+					//Toggle creature info
+				}
+				break;
+				case CLIENT_HOTKEY_COMBAT_SETOFFENSIVE:
+				{
+					if(event.key.repeat == 0)
+					{
+						setAttackMode(ATTACKMODE_ATTACK);
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_COMBAT_SETBALANCED:
+				{
+					if(event.key.repeat == 0)
+					{
+						setAttackMode(ATTACKMODE_BALANCED);
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_COMBAT_SETDEFENSIVE:
+				{
+					if(event.key.repeat == 0)
+					{
+						setAttackMode(ATTACKMODE_DEFENSE);
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_COMBAT_TOGGLECHASEMODE:
+				{
+					if(event.key.repeat == 0)
+					{
+						setChaseMode((getChaseMode() == CHASEMODE_STAND ? CHASEMODE_FOLLOW : CHASEMODE_STAND));
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_COMBAT_TOGGLESECUREMODE:
+				{
+					if(event.key.repeat == 0)
+					{
+						setSecureMode((getSecureMode() == SECUREMODE_SECURE ? SECUREMODE_UNSECURE : SECUREMODE_SECURE));
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_PVPMODE_SETDOVE:
+				{
+					if(event.key.repeat == 0)
+					{
+						setPvpMode(PVPMODE_DOVE);
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_PVPMODE_SETREDFIST:
+				{
+					if(event.key.repeat == 0)
+					{
+						setPvpMode(PVPMODE_RED_FIST);
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_PVPMODE_SETWHITEHAND:
+				{
+					if(event.key.repeat == 0)
+					{
+						setPvpMode(PVPMODE_WHITE_HAND);
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_PVPMODE_SETYELLOWHAND:
+				{
+					if(event.key.repeat == 0)
+					{
+						setPvpMode(PVPMODE_YELLOW_HAND);
+						g_game.sendAttackModes();
+					}
+				}
+				break;
+				case CLIENT_HOTKEY_MISC_LENSHELP:
+				{
+					/*if(event.key.repeat == 0)
+						setAction(CLIENT_ACTION_LENSHELP);*/
+				}
+				break;
+				case CLIENT_HOTKEY_MISC_CHANGECHARACTER:
+				{
+					if(event.key.repeat == 0)
+						UTIL_createCharacterList();
+				}
+				break;
+				case CLIENT_HOTKEY_MISC_CHANGEOUTFIT:
+				{
+					if(event.key.repeat == 0)
+						g_game.sendRequestOutfit();
+				}
+				break;
+				case CLIENT_HOTKEY_MISC_LOGOUT:
+				{
+					if(event.key.repeat == 0)
+						g_game.sendLogout();
+				}
+				break;
+				case CLIENT_HOTKEY_MISC_TAKESCREENSHOT:
+				{
+					//Screenshot
+				}
+				break;
 				case CLIENT_HOTKEY_MISC_NEXTPRESET:
 				{
 					//Switch to next preset
@@ -1213,28 +1440,6 @@ void Engine::onKeyUp(SDL_Event event)
 		m_description = NULL;
 	}
 
-	HotkeyUsage* hotkey = getHotkey(event.key.keysym.sym, event.key.keysym.mod);
-	if(hotkey)
-	{
-		switch(hotkey->hotkey)
-		{
-			case CLIENT_HOTKEY_DIALOGS_OPENTERMINAL:
-				m_showLogger = !m_showLogger;
-				return;
-			case CLIENT_HOTKEY_UI_TOGGLEFPSINDICATOR:
-				m_showPerformance = !m_showPerformance;
-				return;
-			case CLIENT_HOTKEY_UI_TOGGLEFULLSCREEN:
-			{
-				m_windowW = m_windowCachedW;
-				m_windowH = m_windowCachedH;
-				m_fullscreen = !m_fullscreen;
-				g_inited = false;
-			}
-			return;
-		}
-	}
-
 	if(m_showLogger)
 	{
 		g_logger.onKeyUp(event);
@@ -1265,6 +1470,7 @@ void Engine::onKeyUp(SDL_Event event)
 				g_chat.onKeyUp(event);
 		}
 
+		HotkeyUsage* hotkey = getHotkey(event.key.keysym.sym, event.key.keysym.mod);
 		if(hotkey)
 		{
 			switch(hotkey->hotkey)
@@ -1279,111 +1485,9 @@ void Engine::onKeyUp(SDL_Event event)
 				case CLIENT_HOTKEY_MOVEMENT_GOSOUTHEAST:
 					g_game.releaseMovement();
 					break;
-				case CLIENT_HOTKEY_MOVEMENT_MOUNT:
-				{
-					//Send mount
-				}
-				break;
-				case CLIENT_HOTKEY_MOVEMENT_STOPACTIONS: g_game.stopAutoWalk(); break;
-				case CLIENT_HOTKEY_DIALOGS_OPENBUGREPORTS:
-				{
-					//Open bug reports
-				}
-				break;
-				case CLIENT_HOTKEY_DIALOGS_OPENIGNORELIST:
-				{
-					//Open ignore list
-				}
-				break;
-				case CLIENT_HOTKEY_DIALOGS_OPENOPTIONS: UTIL_options(); break;
-				case CLIENT_HOTKEY_DIALOGS_OPENHOTKEYS: UTIL_hotkeyOptions(); break;
-				case CLIENT_HOTKEY_DIALOGS_OPENQUESTLOG: g_game.sendOpenQuestLog(); break;
-				case CLIENT_HOTKEY_WINDOWS_OPENVIPWINDOW: UTIL_toggleVipWindow(); break;
-				case CLIENT_HOTKEY_WINDOWS_OPENBATTLEWINDOW: UTIL_toggleBattleWindow(); break;
-				case CLIENT_HOTKEY_WINDOWS_OPENSKILLSWINDOW: UTIL_toggleSkillsWindow(); break;
-				case CLIENT_HOTKEY_CHAT_CLOSECHANNEL: g_game.closeCurrentChannel(); break;
-				case CLIENT_HOTKEY_CHAT_OPENCHANNELLIST: g_game.sendRequestChannels(); break;
-				case CLIENT_HOTKEY_CHAT_OPENHELPCHANNEL: g_game.openHelpChannel(); break;
-				case CLIENT_HOTKEY_CHAT_OPENNPCCHANNEL: g_game.openNPCChannel(); break;
-				case CLIENT_HOTKEY_CHAT_DEFAULTCHANNEL: g_game.switchToDefault(); break;
-				case CLIENT_HOTKEY_CHAT_TOGGLECHAT:
-				{
-					//Toggle chat
-				}
-				break;
-				case CLIENT_HOTKEY_UI_TOGGLECREATUREINFO:
-				{
-					//Toggle creature info
-				}
-				break;
-				case CLIENT_HOTKEY_COMBAT_SETOFFENSIVE:
-				{
-					setAttackMode(ATTACKMODE_ATTACK);
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_COMBAT_SETBALANCED:
-				{
-					setAttackMode(ATTACKMODE_BALANCED);
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_COMBAT_SETDEFENSIVE:
-				{
-					setAttackMode(ATTACKMODE_DEFENSE);
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_COMBAT_TOGGLECHASEMODE:
-				{
-					setChaseMode((getChaseMode() == CHASEMODE_STAND ? CHASEMODE_FOLLOW : CHASEMODE_STAND));
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_COMBAT_TOGGLESECUREMODE:
-				{
-					setSecureMode((getSecureMode() == SECUREMODE_SECURE ? SECUREMODE_UNSECURE : SECUREMODE_SECURE));
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_PVPMODE_SETDOVE:
-				{
-					setPvpMode(PVPMODE_DOVE);
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_PVPMODE_SETREDFIST:
-				{
-					setPvpMode(PVPMODE_RED_FIST);
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_PVPMODE_SETWHITEHAND:
-				{
-					setPvpMode(PVPMODE_WHITE_HAND);
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_PVPMODE_SETYELLOWHAND:
-				{
-					setPvpMode(PVPMODE_YELLOW_HAND);
-					g_game.sendAttackModes();
-				}
-				break;
-				case CLIENT_HOTKEY_MISC_LENSHELP: /*setAction(CLIENT_ACTION_LENSHELP);*/ break;
-				case CLIENT_HOTKEY_MISC_CHANGECHARACTER: UTIL_createCharacterList(); break;
-				case CLIENT_HOTKEY_MISC_CHANGEOUTFIT: g_game.sendRequestOutfit(); break;
-				case CLIENT_HOTKEY_MISC_LOGOUT: g_game.sendLogout(); break;
-				case CLIENT_HOTKEY_MISC_TAKESCREENSHOT:
-				{
-					//Screenshot
-				}
-				break;
 			}
 			return;
 		}
-
-		g_chat.onKeyUp(event);
 	}
 }
 

@@ -47,6 +47,7 @@ class AutomapArea
 		void renderMarks(Sint32 zoom, Sint32 diff, Sint32 x, Sint32 y, Sint32 x1, Sint32 y1, Sint32 x2, Sint32 y2);
 		void setTileDetail(Uint16 x, Uint16 y, Uint8 color, Uint8 speed);
 
+		Position& getBasePosition() {return m_basepos;}
 		Uint8 getColor(Uint16 x, Uint16 y);
 		Uint8 getSpeed(Uint16 x, Uint16 y);
 
@@ -85,7 +86,7 @@ class Automap
 		void setTileDetail(Uint16 x, Uint16 y, Uint8 z, Uint8 color, Uint8 speed);
 		void render(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
-		bool wasSeen(const Position& pos);
+		Uint8 getColor(const Position& pos);
 		Uint8 getSpeed(const Position& pos);
 
 		Sint32 getZoom() {return m_zoom;}

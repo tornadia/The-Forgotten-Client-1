@@ -41,26 +41,13 @@ extern Uint32 g_frameTime;
 
 AStarNodes::AStarNodes(const Position& startPos)
 {
+	openNodes.reserve(MAX_NODES_COMPLEXITY);
+	openNodeTotalCost.reserve(MAX_NODES_COMPLEXITY);
+	//nodesSearch.reserve(MAX_NODES_COMPLEXITY);
 	nodesTable.reserve(MAX_NODES_COMPLEXITY);
-	#ifdef __USE_SSE__
-	if(SDL_HasSSE())
-	{
-		calculatedNodes = SDL_reinterpret_cast(Sint32*, _mm_malloc(sizeof(Sint32)*MAX_NODES_COMPLEXITY, 32));
-		nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode)*MAX_NODES_COMPLEXITY));
-		openNodes = SDL_reinterpret_cast(bool*, SDL_malloc(sizeof(bool)*MAX_NODES_COMPLEXITY));
-		SDL_memset4(calculatedNodes, SDL_MAX_SINT32, MAX_NODES_COMPLEXITY);
-	}
-	else
-	#endif
-	{
-		calculatedNodes = SDL_reinterpret_cast(Sint32*, SDL_malloc(sizeof(Sint32)*MAX_NODES_COMPLEXITY));
-		nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode)*MAX_NODES_COMPLEXITY));
-		openNodes = SDL_reinterpret_cast(bool*, SDL_malloc(sizeof(bool)*MAX_NODES_COMPLEXITY));
-	}
+	nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode)*MAX_NODES_COMPLEXITY));
 
 	curNode = 1;
-	closedNodes = 0;
-	openNodes[0] = true;
 
 	AStarNode& startNode = nodes[0];
 	startNode.parent = nullptr;
@@ -69,25 +56,15 @@ AStarNodes::AStarNodes(const Position& startPos)
 	startNode.f = 0;
 	startNode.g = 0;
 	nodesTable[(startPos.x << 16) | startPos.y] = 0;
-	calculatedNodes[0] = 0;
+	//calculatedNodes[0] = 0;
+	openNodes.emplace_back(0);
+	openNodeTotalCost.emplace_back(0);
+	//nodesSearch.push_back(&startNode);
 }
 
 AStarNodes::~AStarNodes()
 {
-	#ifdef __USE_SSE__
-	if(SDL_HasSSE())
-	{
-		_mm_free(calculatedNodes);
-		SDL_free(nodes);
-		SDL_free(openNodes);
-	}
-	else
-	#endif
-	{
-		SDL_free(calculatedNodes);
-		SDL_free(nodes);
-		SDL_free(openNodes);
-	}
+	SDL_free(nodes);
 }
 
 bool AStarNodes::createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 Sx, Sint32 Sy, const Position& targetPos, const Position& pos)
@@ -95,9 +72,7 @@ bool AStarNodes::createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 S
 	if(curNode >= MAX_NODES_COMPLEXITY)
 		return false;
 
-	int32_t retNode = curNode++;
-	openNodes[retNode] = true;
-
+	Sint32 retNode = curNode++;
 	const Sint32 Dx = Position::getDistanceX(targetPos, pos);
 	const Sint32 Dy = Position::getDistanceY(targetPos, pos);
 
@@ -108,115 +83,181 @@ bool AStarNodes::createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 S
 	node.f = f;
 	node.g = ((Dx - Sx) << 3) + ((Dy - Sy) << 3) + (((Dx > Dy) ? Dx : Dy) << 3);
 	nodesTable[xy] = retNode;
-	calculatedNodes[retNode] = f + node.g;
+	//calculatedNodes[retNode] = f + node.g;
+	openNodes.emplace_back(retNode);
+	openNodeTotalCost.emplace_back(f + node.g);
+	//nodesSearch.push_back(&node);
 	return true;
 }
 
+#ifdef __USE_SSE2__
+SDL_FORCE_INLINE __m128i _mm_sse2_min_epi32(const __m128i a, const __m128i b)
+{
+	__m128i mask = _mm_cmpgt_epi32(a, b);
+	return _mm_or_si128(_mm_and_si128(mask, b), _mm_andnot_si128(mask, a));
+};
+
+SDL_FORCE_INLINE __m128i _mm_sse2_blendv_epi8(const __m128i a, const __m128i b, __m128i mask)
+{
+	mask = _mm_cmplt_epi8(mask, _mm_setzero_si128());
+	return _mm_or_si128(_mm_andnot_si128(mask, a), _mm_and_si128(mask, b));
+};
+#endif
+
 AStarNode* AStarNodes::getBestNode()
 {
-	#ifdef __USE_AVX2__
-	if(SDL_HasAVX2())
+	//Branchless best node search
+	Sint32 best_node_f = SDL_MAX_SINT32;
+	Sint32 best_node = -1;
+
+	size_t it = 0;
+	size_t end = openNodes.size();
+	if(end >= 8)
 	{
-		const __m256i increment = _mm256_set1_epi32(8);
-		__m256i indices = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
-		__m256i minindices = indices;
-		__m256i minvalues = _mm256_load_si256(reinterpret_cast<const __m256i*>(calculatedNodes));
-		for(Sint32 pos = 8; pos < curNode; pos += 8)
+		#ifdef __USE_AVX2__
+		if(SDL_HasAVX2())
 		{
-			const __m256i values = _mm256_load_si256(reinterpret_cast<const __m256i*>(&calculatedNodes[pos]));
-			indices = _mm256_add_epi32(indices, increment);
-			minindices = _mm256_blendv_epi8(minindices, indices, _mm256_cmpgt_epi32(minvalues, values));
-			minvalues = _mm256_min_epi32(values, minvalues);
-		}
+			const __m256i increment = _mm256_set1_epi32(8);
+			__m256i indices = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
+			__m256i minindices = indices;
+			__m256i minvalues = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&openNodeTotalCost[it]));
 
-		alignas(32) Sint32 values_array[8];
-		alignas(32) Sint32 indices_array[8];
-		_mm256_store_si256(reinterpret_cast<__m256i*>(values_array), minvalues);
-		_mm256_store_si256(reinterpret_cast<__m256i*>(indices_array), minindices);
-
-		Sint32 best_node = indices_array[0];
-		Sint32 best_node_f = values_array[0];
-		for(Sint32 i = 1; i < 8; ++i)
-		{
-			if(values_array[i] < best_node_f)
+			it += 8; end -= 8;
+			for(; it <= end; it += 8)
 			{
-				best_node_f = values_array[i];
-				best_node = indices_array[i];
+				__m256i values = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&openNodeTotalCost[it]));
+				indices = _mm256_add_epi32(indices, increment);
+				minindices = _mm256_blendv_epi8(minindices, indices, _mm256_cmpgt_epi32(minvalues, values));
+				minvalues = _mm256_min_epi32(values, minvalues);
+			}
+			end += 8;
+
+			alignas(32) Sint32 values_array[8];
+			alignas(32) Sint32 indices_array[8];
+			_mm256_store_si256(reinterpret_cast<__m256i*>(values_array), minvalues);
+			_mm256_store_si256(reinterpret_cast<__m256i*>(indices_array), minindices);
+
+			best_node = openNodes[indices_array[0]];
+			best_node_f = values_array[0];
+			for(Sint32 i = 1; i < 8; ++i)
+			{
+				Sint32 total_cost = values_array[i];
+				best_node = (total_cost < best_node_f ? openNodes[indices_array[i]] : best_node);
+				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
 			}
 		}
-		return ((best_node != -1 && openNodes[best_node]) ? &nodes[best_node] : NULL);
-	}
-	else
-	#endif
-	#ifdef __USE_SSE2__
-	if(SDL_HasSSE2())
-	{
-		const __m128i increment = _mm_set1_epi32(4);
-		__m128i indices = _mm_setr_epi32(0, 1, 2, 3);
-		__m128i minindices = indices;
-		__m128i minvalues = _mm_load_si128(reinterpret_cast<const __m128i*>(calculatedNodes));
-		for(Sint32 pos = 4; pos < curNode; pos += 4)
+		else
+		#endif
+		#ifdef __USE_SSE4_1__
+		if(SDL_HasSSE41())
 		{
-			const __m128i values = _mm_load_si128(reinterpret_cast<const __m128i*>(&calculatedNodes[pos]));
-			indices = _mm_add_epi32(indices, increment);
-			minindices = _mm_blendv_epi8(minindices, indices, _mm_cmplt_epi32(values, minvalues));
-			minvalues = _mm_min_epi32(values, minvalues);
-		}
+			const __m128i increment = _mm_set1_epi32(4);
+			__m128i indices = _mm_setr_epi32(0, 1, 2, 3);
+			__m128i minindices = indices;
+			__m128i minvalues = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&openNodeTotalCost[it]));
 
-		alignas(16) Sint32 values_array[4];
-		alignas(16) Sint32 indices_array[4];
-		_mm_store_si128(reinterpret_cast<__m128i*>(values_array), minvalues);
-		_mm_store_si128(reinterpret_cast<__m128i*>(indices_array), minindices);
-
-		Sint32 best_node = indices_array[0];
-		Sint32 best_node_f = values_array[0];
-		for(Sint32 i = 1; i < 4; ++i)
-		{
-			if(values_array[i] < best_node_f)
+			it += 4; end -= 4;
+			for(; it <= end; it += 4)
 			{
-				best_node_f = values_array[i];
-				best_node = indices_array[i];
+				__m128i values = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&openNodeTotalCost[it]));
+				indices = _mm_add_epi32(indices, increment);
+				minindices = _mm_blendv_epi8(minindices, indices, _mm_cmplt_epi32(values, minvalues));
+				minvalues = _mm_min_epi32(values, minvalues);
+			}
+			end += 4;
+			
+			alignas(16) Sint32 values_array[4];
+			alignas(16) Sint32 indices_array[4];
+			_mm_store_si128(reinterpret_cast<__m128i*>(values_array), minvalues);
+			_mm_store_si128(reinterpret_cast<__m128i*>(indices_array), minindices);
+
+			best_node = openNodes[indices_array[0]];
+			best_node_f = values_array[0];
+			for(Sint32 i = 1; i < 4; ++i)
+			{
+				Sint32 total_cost = values_array[i];
+				best_node = (total_cost < best_node_f ? openNodes[indices_array[i]] : best_node);
+				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
 			}
 		}
-		return ((best_node != -1 && openNodes[best_node]) ? &nodes[best_node] : NULL);
-	}
-	else
-	#endif
-	{
-		Sint32 best_node_f = SDL_MAX_SINT32;
-		Sint32 best_node = -1;
-		for(Sint32 i = 0; i < curNode; ++i)
+		else
+		#endif
+		#ifdef __USE_SSE2__
+		if(SDL_HasSSE2())
 		{
-			if(!openNodes[i])
-				continue;
+			const __m128i increment = _mm_set1_epi32(4);
+			__m128i indices = _mm_setr_epi32(0, 1, 2, 3);
+			__m128i minindices = indices;
+			__m128i minvalues = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&openNodeTotalCost[it]));
 
-			if(calculatedNodes[i] < best_node_f)
+			it += 4; end -= 4;
+			for(; it <= end; it += 4)
 			{
-				best_node_f = calculatedNodes[i];
-				best_node = i;
+				__m128i values = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&openNodeTotalCost[it]));
+				indices = _mm_add_epi32(indices, increment);
+				minindices = _mm_sse2_blendv_epi8(minindices, indices, _mm_cmplt_epi32(values, minvalues));
+				minvalues = _mm_sse2_min_epi32(values, minvalues);
+			}
+			end += 4;
+
+			alignas(16) Sint32 values_array[4];
+			alignas(16) Sint32 indices_array[4];
+			_mm_store_si128(reinterpret_cast<__m128i*>(values_array), minvalues);
+			_mm_store_si128(reinterpret_cast<__m128i*>(indices_array), minindices);
+
+			best_node = openNodes[indices_array[0]];
+			best_node_f = values_array[0];
+			for(Sint32 i = 1; i < 4; ++i)
+			{
+				Sint32 total_cost = values_array[i];
+				best_node = (total_cost < best_node_f ? openNodes[indices_array[i]] : best_node);
+				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
 			}
 		}
-		return (best_node != -1 ? &nodes[best_node] : NULL);
+		else
+		#endif
+		{
+			//Nothing here because we use standard code part for non-sse code
+		}
 	}
+
+	for(; it < end; ++it)
+	{
+		Sint32 total_cost = openNodeTotalCost[it];
+		best_node = (total_cost < best_node_f ? openNodes[it] : best_node);
+		best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
+	}
+	return (best_node != -1 ? &nodes[best_node] : NULL);
 }
 
 void AStarNodes::closeNode(AStarNode* node)
 {
 	Sint32 index = SDL_static_cast(Sint32, node - nodes);
-	calculatedNodes[index] = SDL_MAX_SINT32;
-	openNodes[index] = false;
-	++closedNodes;
+	for(size_t it = 0, end = openNodes.size(); it < end; ++it)
+	{
+		if(openNodes[it] == index)
+		{
+			openNodes.erase(openNodes.begin() + it);
+			openNodeTotalCost.erase(openNodeTotalCost.begin() + it);
+			break;
+		}
+	}
 }
 
 void AStarNodes::openNode(AStarNode* node)
 {
 	Sint32 index = SDL_static_cast(Sint32, node - nodes);
-	calculatedNodes[index] = nodes[index].f + nodes[index].g;
-	if(!openNodes[index])
+	for(size_t it = 0, end = openNodes.size(); it < end; ++it)
 	{
-		openNodes[index] = true;
-		--closedNodes;
+		if(openNodes[it] == index)
+		{
+			openNodeTotalCost[it] = nodes[index].f + nodes[index].g;
+			return;
+		}
 	}
+
+	openNodes.emplace_back(index);
+	openNodeTotalCost.emplace_back(nodes[index].f + nodes[index].g);
 }
 
 AStarNode* AStarNodes::getNodeByPosition(Uint32 xy)
@@ -879,7 +920,7 @@ void Map::addDistanceEffect(DistanceEffect* distanceEffect, Uint8 posZ)
 	m_distanceEffects[posZ].push_back(distanceEffect);
 }
 
-PathFind Map::findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos, Uint32 flags)
+PathFind Map::findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos)
 {
 	directions.clear();
 	if(startPos == endPos)
@@ -894,7 +935,12 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 	if(endTile)
 	{
 		if(!endTile->isWalkable())
-			return PathFind_ReturnNoWay;
+			return PathFind_ReturnImpossible;
+	}
+	else
+	{
+		if(g_automap.getSpeed(endPos) == 0)
+			return PathFind_ReturnImpossible;
 	}
 
 	static Sint32 dirNeighbors[8][5][2] = {
@@ -915,6 +961,19 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 
 	const Sint32 Sx = Position::getDistanceX(endPos, startPos);
 	const Sint32 Sy = Position::getDistanceY(endPos, startPos);
+	if(Sx > 127 || Sy > 127)
+		return PathFind_ReturnTooFar;
+
+	AutomapArea* areas[4];
+	areas[0] = g_automap.getArea(startPos.x-127, startPos.y-127, startPos.z);
+	areas[1] = g_automap.getArea(startPos.x-127, startPos.y+127, startPos.z);
+	areas[2] = g_automap.getArea(startPos.x+127, startPos.y+127, startPos.z);
+	areas[3] = g_automap.getArea(startPos.x+127, startPos.y-127, startPos.z);
+
+	Sint32 startX = startPos.x-127;
+	Sint32 startY = startPos.y-127;
+	Uint16 areaX = areas[0]->getBasePosition().x+256;
+	Uint16 areaY = areas[0]->getBasePosition().y+256;
 
 	AStarNodes nodes(startPos);
 	AStarNode* found = nullptr;
@@ -927,7 +986,7 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 				break;
 			return PathFind_ReturnNoWay;
 		}
-
+		
 		const Sint32 x = n->x;
 		const Sint32 y = n->y;
 		pos.x = SDL_static_cast(Uint16, x);
@@ -980,64 +1039,50 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 		const Sint32 f = n->f;
 		for(Uint32 i = 0; i < dirCount; ++i)
 		{
-			pos.x = SDL_static_cast(Uint16, x + *neighbors++);
-			pos.y = SDL_static_cast(Uint16, y + *neighbors++);
+			Sint32 tmpX = x + *neighbors++;
+			Sint32 tmpY = y + *neighbors++;
+			Sint32 posX = tmpX-startX;
+			Sint32 posY = tmpY-startY;
+			if(SDL_static_cast(Uint32, posX) > 254 || SDL_static_cast(Uint32, posY) > 254)
+				continue;
 
-			bool wasSeen = false;
-			bool hasCreature = false;
-			bool isNotWalkable = false;
-			bool isNotPathable = false;
-			Uint16 speed = 100;
+			pos.x = SDL_static_cast(Uint16, tmpX);
+			pos.y = SDL_static_cast(Uint16, tmpY);
 
+			Sint32 speed = 100;
 			endTile = getTile(pos);
 			if(endTile)
 			{
-				wasSeen = true;
-				hasCreature = endTile->getTopCreature();
-				isNotWalkable = !endTile->isWalkable();
-				isNotPathable = !endTile->isPathable();
+				if(endTile->getTopCreature() || !endTile->isWalkable() || !endTile->isPathable())
+					continue;
+
 				speed = endTile->getGroundSpeed();
 			}
 			else
 			{
-				bool wasSeenTile = g_automap.wasSeen(pos);
-				if(wasSeenTile)
+				Sint32 index;
+				if(pos.x < areaX)
+					index = (pos.y < areaY ? 0 : 1);
+				else
+					index = (pos.y < areaY ? 3 : 2);
+
+				//Not seen tiles should have 250 speed - that's how it working on Tibia
+				speed = SDL_static_cast(Sint32, areas[index]->getSpeed(pos.x, pos.y));
+				if(speed == 0)
+					continue;
+
+				/*if(areas[index]->getColor(pos.x, pos.y) == 0)
 				{
-					wasSeen = true;
-					speed = g_automap.getSpeed(pos);
-					isNotWalkable = (speed == 0);
-				}
+					//Make unseen tile cost so high that they should be consider last
+					//or should we not because these tiles already have high cost?
+					speed *= 100000;
+				}*/
 			}
 
 			const Sint32 walkFactor = AStarNodes::getMapWalkFactor(n, pos);
-			if(pos.x != endPos.x || pos.y != endPos.y)
-			{
-				if(!(flags & PathFindFlags_AllowUnseenTiles) && !wasSeen)
-					continue;
-				if(wasSeen)
-				{
-					if(!(flags & PathFindFlags_AllowCreatures) && hasCreature)
-						continue;
-					if(!(flags & PathFindFlags_AllowNonPathable) && isNotPathable)
-						continue;
-					if(!(flags & PathFindFlags_AllowNonWalkable) && isNotWalkable)
-						continue;
-				}
-			}
-			else
-			{
-				if(!(flags & PathFindFlags_AllowUnseenTiles) && !wasSeen)
-					continue;
-				if(wasSeen)
-				{
-					if(!(flags & PathFindFlags_AllowNonWalkable) && isNotWalkable)
-						continue;
-				}
-			}
+			const Sint32 cost = f + (speed * walkFactor);
 
-			const Sint32 cost = f + (SDL_static_cast(Sint32, speed) * walkFactor);
-
-			const Uint32 posXY = (pos.x << 16) | pos.y;
+			const Uint32 posXY = (SDL_static_cast(Uint32, pos.x) << 16) | SDL_static_cast(Uint32, pos.y);
 			AStarNode* neighborNode = nodes.getNodeByPosition(posXY);
 			if(neighborNode)
 			{
@@ -1075,8 +1120,11 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 
 		prevx = pos.x;
 		prevy = pos.y;
-		if((flags & PathFindFlags_AllowNonPathable) || getTile(pos))//In case of not allowing non pathable tiles we can only send the tiles we know
+
+		endTile = getTile(pos);
+		if(endTile)
 		{
+			//We can only send the tiles we know
 			if(dx == 1)
 			{
 				if(dy == 1)

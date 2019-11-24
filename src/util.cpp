@@ -493,7 +493,7 @@ void UTIL_replaceString(std::string& str, const std::string& sought, const std::
 	}
 }
 
-StringVector UTIL_explodeString(const std::string& inString, const std::string& separator, int32_t limit)
+StringVector UTIL_explodeString(const std::string& inString, const std::string& separator, Sint32 limit)
 {
 	StringVector returnVector;
 	std::string::size_type start = 0, end = 0;

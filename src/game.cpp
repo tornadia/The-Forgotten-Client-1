@@ -1215,23 +1215,19 @@ void Game::startAutoWalk(const Position& toPosition)
 		return;
 	}
 
-	PathFind result = g_map.findPath(m_autoWalkDirections, pos, toPosition, 0);
+	PathFind result = g_map.findPath(m_autoWalkDirections, pos, toPosition);
 	if(result != PathFind_ReturnSuccessfull)
 	{
-		result = g_map.findPath(m_autoWalkDirections, pos, toPosition, PathFindFlags_AllowUnseenTiles);
-		if(result != PathFind_ReturnSuccessfull)
+		switch(result)
 		{
-			switch(result)
-			{
-				case PathFind_ReturnImpossible: g_game.processTextMessage(MessageFailure, "Sorry, not possible."); break;
-				case PathFind_ReturnTooFar: g_game.processTextMessage(MessageFailure, "Destination is out of range."); break;
-				case PathFind_ReturnFirstGoDownStairs: g_game.processTextMessage(MessageFailure, "First go downstairs."); break;
-				case PathFind_ReturnFirstGoUpStairs: g_game.processTextMessage(MessageFailure, "First go upstairs."); break;
-				case PathFind_ReturnNoWay: g_game.processTextMessage(MessageFailure, "There is no way."); break;
-			}
-			m_autoWalkDestination.x = 0xFFFF;
-			return;
+			case PathFind_ReturnImpossible: g_game.processTextMessage(MessageFailure, "Sorry, not possible."); break;
+			case PathFind_ReturnTooFar: g_game.processTextMessage(MessageFailure, "Destination is out of range."); break;
+			case PathFind_ReturnFirstGoDownStairs: g_game.processTextMessage(MessageFailure, "First go downstairs."); break;
+			case PathFind_ReturnFirstGoUpStairs: g_game.processTextMessage(MessageFailure, "First go upstairs."); break;
+			case PathFind_ReturnNoWay: g_game.processTextMessage(MessageFailure, "There is no way."); break;
 		}
+		m_autoWalkDestination.x = 0xFFFF;
+		return;
 	}
 
 	if(m_autoWalkDirections.size() == 1)
@@ -1485,7 +1481,7 @@ void Game::switchToPreviousChannel()
 void Game::closeCurrentChannel()
 {
 	Channel* channel = g_chat.getCurrentChannel();
-	if(channel)
+	if(channel && channel->channelClosable)
 		g_chat.leaveChannel(channel->channelId);
 }
 

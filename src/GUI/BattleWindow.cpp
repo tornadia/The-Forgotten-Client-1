@@ -762,7 +762,10 @@ void GUI_BattleCreature::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 
 void GUI_BattleCreature::onLMouseDown(Sint32, Sint32)
 {
-	g_mouseAction = 1;
+	if(g_mouseAction == 1 && g_engine.hasClassicControl())
+		g_mouseAction = 2;
+	else
+		g_mouseAction = 1;
 }
 
 void GUI_BattleCreature::onLMouseUp(Sint32 x, Sint32 y)
@@ -772,10 +775,7 @@ void GUI_BattleCreature::onLMouseUp(Sint32 x, Sint32 y)
 	{
 		Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
 		if((mouseState & SDL_BUTTON_RMASK) && g_engine.hasClassicControl())
-		{
-			g_mouseAction = 2;
 			return;
-		}
 
 		Creature* creature = g_battleCreatures[m_index];
 		if(selectCreatureID != creature->getId())
@@ -815,7 +815,10 @@ void GUI_BattleCreature::onLMouseUp(Sint32 x, Sint32 y)
 
 void GUI_BattleCreature::onRMouseDown(Sint32, Sint32)
 {
-	g_mouseAction = 1;
+	if(g_mouseAction == 1 && g_engine.hasClassicControl())
+		g_mouseAction = 2;
+	else
+		g_mouseAction = 1;
 }
 
 void GUI_BattleCreature::onRMouseUp(Sint32 x, Sint32 y)
@@ -825,10 +828,7 @@ void GUI_BattleCreature::onRMouseUp(Sint32 x, Sint32 y)
 	{
 		Uint32 mouseState = SDL_GetMouseState(NULL, NULL);
 		if((mouseState & SDL_BUTTON_LMASK) && g_engine.hasClassicControl())
-		{
-			g_mouseAction = 2;
 			return;
-		}
 
 		Creature* creature = g_battleCreatures[m_index];
 		if(selectCreatureID != creature->getId())
