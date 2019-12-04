@@ -114,24 +114,21 @@ void GUI_Panel::resizePanel(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
 
 				iRect& pRect = (*it)->getOriginalRect();
 				Sint32 pHeight = pRect.y2;
-				(*it)->setSize(pRect.x2, pHeight+diff);
+				(*it)->setSize(pRect.x2, UTIL_min<Sint32>(pHeight+diff, (*it)->getMaxHeight()));
 				checkPanels();
 			}
 		}
 	}
-	else
+	else if(height < maxHeight)
 	{
 		if(it == m_panels.end())
 		{
-			if(height < maxHeight)
-			{
-				Sint32 newHeight = UTIL_min<Sint32>(y, maxHeight);
-				pPanel->setSize(x, newHeight);
+			Sint32 newHeight = UTIL_min<Sint32>(y, maxHeight);
+			pPanel->setSize(x, newHeight);
 
-				Sint32 diff = newHeight-height;
-				m_lastPosY += diff;
-				m_freeHeight -= diff;
-			}
+			Sint32 diff = newHeight-height;
+			m_lastPosY += diff;
+			m_freeHeight -= diff;
 		}
 		else
 		{
@@ -152,6 +149,7 @@ void GUI_Panel::resizePanel(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
 					{
 						iRect& pRect = (*rit)->getOriginalRect();
 						Sint32 pHeight = pRect.y2;
+						minHeight = (*it)->getMinHeight();
 						if(pHeight > minHeight)
 						{
 							Sint32 diff = UTIL_min<Sint32>(expectDiff, pHeight-minHeight);

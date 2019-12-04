@@ -23,6 +23,7 @@
 #include "../engine.h"
 #include "../GUI_Elements/GUI_Panel.h"
 #include "../GUI_Elements/GUI_PanelWindow.h"
+#include "../GUI_Elements/GUI_Content.h"
 #include "../GUI_Elements/GUI_Label.h"
 #include "../GUI_Elements/GUI_Icon.h"
 #include "../game.h"
@@ -43,6 +44,7 @@
 #define CONTAINER_PAGE_TEXT_EVENTID 1010
 #define CONTAINER_PREV_PAGE_EVENTID 1011
 #define CONTAINER_NEXT_PAGE_EVENTID 1012
+#define CONTAINER_PAGE_CONTENT_EVENTID 1013
 
 extern Engine g_engine;
 extern Game g_game;
@@ -78,6 +80,10 @@ void container_Events(Uint32 event, Sint32 status)
 					if(pContainer)
 						pContainer->makeInvisible();
 
+					GUI_Content* pContent = SDL_static_cast(GUI_Content*, pPanel->getChild(CONTAINER_PAGE_CONTENT_EVENTID));
+					if(pContent)
+						pContent->makeInvisible();
+
 					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(CONTAINER_MAXIMINI_EVENTID));
 					if(pIcon)
 						pIcon->setData(GUI_UI_IMAGE, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_X, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_Y);
@@ -89,6 +95,10 @@ void container_Events(Uint32 event, Sint32 status)
 					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(CONTAINER_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeVisible();
+
+					GUI_Content* pContent = SDL_static_cast(GUI_Content*, pPanel->getChild(CONTAINER_PAGE_CONTENT_EVENTID));
+					if(pContent)
+						pContent->makeVisible();
 
 					GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(CONTAINER_MAXIMINI_EVENTID));
 					if(pIcon)
@@ -128,6 +138,15 @@ void container_Events(Uint32 event, Sint32 status)
 						iRect cRect = pContainer->getRect();
 						cRect.y2 = status-43;
 						pContainer->setRect(cRect);
+					}
+
+					GUI_Content* pContent = SDL_static_cast(GUI_Content*, pPanel->getChild(CONTAINER_PAGE_CONTENT_EVENTID));
+					if(pContent)
+					{
+						iRect pRect = pPanel->getRect();
+						iRect cRect = pContent->getRect();
+						cRect.y1 = pRect.y1+status-30;
+						pContent->setRect(cRect);
 					}
 				}
 				else
@@ -251,64 +270,64 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 		if(container->hasPages())
 		{
 			iRect& panelRect = pPanel->getRect();
+			GUI_Content* pContent = SDL_static_cast(GUI_Content*, pPanel->getChild(CONTAINER_PAGE_CONTENT_EVENTID));
+			if(!pContent)
+			{
+				pContent = new GUI_Content(iRect(2, panelRect.y2-30, 168, 24), CONTAINER_PAGE_CONTENT_EVENTID);
+				pContent->startEvents();
+				pPanel->addChild(pContent);
+			}
+
 			Uint16 currentPage = 1+(container->getFirstIndex()/SDL_static_cast(Uint16, container->getCapacity()));
 			Uint16 totalPages = 1+((container->getSize() > 0 ? (container->getSize()-1) : 0)/SDL_static_cast(Uint16, container->getCapacity()));
 			bool hasPrevPage = (currentPage > 1);
 			bool hasNextPage = (totalPages > currentPage);
 
 			Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Page %u of %u", SDL_static_cast(Uint32, currentPage), SDL_static_cast(Uint32, totalPages));
-			pLabel = SDL_static_cast(GUI_Label*, pPanel->getChild(CONTAINER_PAGE_TEXT_EVENTID));
+			pLabel = SDL_static_cast(GUI_Label*, pContent->getChild(CONTAINER_PAGE_TEXT_EVENTID));
 			if(pLabel)
 				pLabel->setName(std::string(g_buffer, SDL_static_cast(size_t, len)));
 			else
 			{
-				GUI_Label* newLabel = new GUI_Label(iRect(88, panelRect.y2-20, 0, 0), std::string(g_buffer, SDL_static_cast(size_t, len)), CONTAINER_TITLE_EVENTID, 168, 168, 168);
+				GUI_Label* newLabel = new GUI_Label(iRect(88, 9, 0, 0), std::string(g_buffer, SDL_static_cast(size_t, len)), CONTAINER_TITLE_EVENTID, 168, 168, 168);
 				newLabel->setFont(CLIENT_FONT_SMALL);
 				newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
-				pPanel->addChild(newLabel);
+				pContent->addChild(newLabel);
 			}
 
-			pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(CONTAINER_PREV_PAGE_EVENTID));
+			pIcon = SDL_static_cast(GUI_Icon*, pContent->getChild(CONTAINER_PREV_PAGE_EVENTID));
 			if(pIcon)
 			{
 				if(!hasPrevPage)
-					pPanel->removeChild(pIcon);
+					pContent->removeChild(pIcon);
 			}
 			else if(hasPrevPage)
 			{
-				GUI_Icon* newIcon = new GUI_Icon(iRect(135, panelRect.y2-25, GUI_UI_ICON_BROWSE_LEFT_UP_W, GUI_UI_ICON_BROWSE_LEFT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_UP_X, GUI_UI_ICON_BROWSE_LEFT_UP_Y, GUI_UI_ICON_BROWSE_LEFT_DOWN_X, GUI_UI_ICON_BROWSE_LEFT_DOWN_Y, CONTAINER_PREV_PAGE_EVENTID);
+				GUI_Icon* newIcon = new GUI_Icon(iRect(6, 3, GUI_UI_ICON_BROWSE_LEFT_UP_W, GUI_UI_ICON_BROWSE_LEFT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_LEFT_UP_X, GUI_UI_ICON_BROWSE_LEFT_UP_Y, GUI_UI_ICON_BROWSE_LEFT_DOWN_X, GUI_UI_ICON_BROWSE_LEFT_DOWN_Y, CONTAINER_PREV_PAGE_EVENTID);
 				newIcon->setButtonEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_PREV_PAGE_EVENTID));
 				newIcon->startEvents();
-				pPanel->addChild(newIcon);
+				pContent->addChild(newIcon);
 			}
 
-			pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(CONTAINER_NEXT_PAGE_EVENTID));
+			pIcon = SDL_static_cast(GUI_Icon*, pContent->getChild(CONTAINER_NEXT_PAGE_EVENTID));
 			if(pIcon)
 			{
 				if(!hasNextPage)
-					pPanel->removeChild(pIcon);
+					pContent->removeChild(pIcon);
 			}
 			else if(hasNextPage)
 			{
-				GUI_Icon* newIcon = new GUI_Icon(iRect(6, panelRect.y2-25, GUI_UI_ICON_BROWSE_RIGHT_UP_W, GUI_UI_ICON_BROWSE_RIGHT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_UP_X, GUI_UI_ICON_BROWSE_RIGHT_UP_Y, GUI_UI_ICON_BROWSE_RIGHT_DOWN_X, GUI_UI_ICON_BROWSE_RIGHT_DOWN_Y, CONTAINER_NEXT_PAGE_EVENTID);
+				GUI_Icon* newIcon = new GUI_Icon(iRect(135, 3, GUI_UI_ICON_BROWSE_RIGHT_UP_W, GUI_UI_ICON_BROWSE_RIGHT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BROWSE_RIGHT_UP_X, GUI_UI_ICON_BROWSE_RIGHT_UP_Y, GUI_UI_ICON_BROWSE_RIGHT_DOWN_X, GUI_UI_ICON_BROWSE_RIGHT_DOWN_Y, CONTAINER_NEXT_PAGE_EVENTID);
 				newIcon->setButtonEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_NEXT_PAGE_EVENTID));
 				newIcon->startEvents();
-				pPanel->addChild(newIcon);
+				pContent->addChild(newIcon);
 			}
 		}
 		else
 		{
-			pLabel = SDL_static_cast(GUI_Label*, pPanel->getChild(CONTAINER_PAGE_TEXT_EVENTID));
-			if(pLabel)
-				pPanel->removeChild(pLabel);
-
-			pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(CONTAINER_PREV_PAGE_EVENTID));
-			if(pIcon)
-				pPanel->removeChild(pIcon);
-
-			pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(CONTAINER_NEXT_PAGE_EVENTID));
-			if(pIcon)
-				pPanel->removeChild(pIcon);
+			GUI_Content* pContent = SDL_static_cast(GUI_Content*, pPanel->getChild(CONTAINER_PAGE_CONTENT_EVENTID));
+			if(pContent)
+				pPanel->removeChild(pContent);
 		}
 	}
 }
@@ -329,7 +348,7 @@ void UTIL_createContainerWindow(Uint8 index)
 		return;
 
 	Sint32 defaultHeight = 40*SDL_static_cast(Sint32, UTIL_max<size_t>(1, ((container->getItems().size()+3)/4)));
-	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 19+defaultHeight), true, windowId, true);
+	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 19+defaultHeight+(container->hasPages() ? 24 : 0)), true, windowId, true);
 	newWindow->setEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_RESIZE_WIDTH_EVENTID), container_CreateEvent(index, CONTAINER_RESIZE_HEIGHT_EVENTID), container_CreateEvent(index, CONTAINER_EXIT_WINDOW_EVENTID));
 	GUI_ContainerImage* newImage = new GUI_ContainerImage(iRect(2, 0, 12, 12), index);
 	newWindow->addChild(newImage);

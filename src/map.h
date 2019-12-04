@@ -77,6 +77,7 @@ class Map
 		~Map();
 
 		Tile* getTile(const Position& position);
+		Tile* getTileOrCreate(const Position& position);
 		Tile* resetTile(const Position& position, Sint32 offset);
 		void cleanTile(const Position& position, Sint32 offset);
 
@@ -86,12 +87,13 @@ class Map
 		void addOnscreenText(OnscreenMessages position, MessageMode mode, const std::string& text);
 		void addAnimatedText(const Position& position, Uint8 color, const std::string& text);
 		void addStaticText(const Position& position, const std::string& name, MessageMode mode, const std::string& text);
-		void removeDistanceEffects(Uint8 posZ);
 		void changeMap(Direction direction);
 
 		void checkMagicEffects();
 		void checkDistanceEffects();
 		void addDistanceEffect(DistanceEffect* distanceEffect, Uint8 posZ);
+		void removeDistanceEffects(Uint8 posZ);
+		void removeMagicEffects(const Position& position, Uint16 effectId);
 
 		PathFind findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos);
 		Tile* findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature* &topCreature, bool multifloor);

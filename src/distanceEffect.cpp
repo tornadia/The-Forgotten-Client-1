@@ -160,6 +160,14 @@ DistanceEffect* DistanceEffect::createDistanceEffect(const Position& pos, const 
 	return newDistanceEffect;
 }
 
+Uint16 DistanceEffect::getID()
+{
+	if(m_thingType)
+		return m_thingType->m_id;
+
+	return 0;
+}
+
 float DistanceEffect::getFlightProgress()
 {
 	return (g_frameTime-m_startTime)/(1000.f*m_flightTime);

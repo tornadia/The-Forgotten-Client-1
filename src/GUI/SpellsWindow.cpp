@@ -41,7 +41,7 @@
 extern Engine g_engine;
 extern Game g_game;
 
-std::vector<SpellData> g_spells =
+SpellData g_spells[] =
 {
 	//{incantation, name, group[, secondGroup], id, price, type, reqLvl, reqPrem, vocations, reqMana, reqSoul[, runeId], cooldown, groupCooldown[, secondGroupCooldown]}
 	{"exura", "Light Healing", SPELL_GROUP_HEALING, 0x05, 0, SPELL_TYPE_INSTANT, 8, false, SPELL_VOCATION_PALADIN_SORCERER_DRUID, 20, 0, 1, 1},

@@ -114,18 +114,7 @@ void GUI_Window::setActiveElement(GUI_Element* actElement)
 
 	m_actElement = actElement;
 	if(m_actElement)
-	{
         m_actElement->activate();
-		for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
-		{
-			if((*it) == m_actElement)
-			{
-				m_childs.erase(it);
-				break;
-			}
-		}
-		m_childs.push_back(m_actElement);
-	}
 }
 
 void GUI_Window::onReshape(Sint32 w, Sint32 h)
@@ -215,8 +204,7 @@ void GUI_Window::onKeyUp(SDL_Event event)
 
 void GUI_Window::onLMouseDown(Sint32 x, Sint32 y)
 {
-	std::vector<GUI_Element*> childsBackup = m_childs;
-	for(std::vector<GUI_Element*>::reverse_iterator it = childsBackup.rbegin(), end = childsBackup.rend(); it != end; ++it)
+	for(std::vector<GUI_Element*>::reverse_iterator it = m_childs.rbegin(), end = m_childs.rend(); it != end; ++it)
 	{
 		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
 		{
@@ -244,13 +232,15 @@ void GUI_Window::onLMouseUp(Sint32 x, Sint32 y)
 		m_bMouseDragging = false;
 
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
-		(*it)->onLMouseUp(x, y);
+	{
+		if((*it)->isEventable())
+			(*it)->onLMouseUp(x, y);
+	}
 }
 
 void GUI_Window::onRMouseDown(Sint32 x, Sint32 y)
 {
-	std::vector<GUI_Element*> childsBackup = m_childs;
-	for(std::vector<GUI_Element*>::reverse_iterator it = childsBackup.rbegin(), end = childsBackup.rend(); it != end; ++it)
+	for(std::vector<GUI_Element*>::reverse_iterator it = m_childs.rbegin(), end = m_childs.rend(); it != end; ++it)
 	{
 		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
 		{
@@ -264,13 +254,15 @@ void GUI_Window::onRMouseDown(Sint32 x, Sint32 y)
 void GUI_Window::onRMouseUp(Sint32 x, Sint32 y)
 {
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
-		(*it)->onRMouseUp(x, y);
+	{
+		if((*it)->isEventable())
+			(*it)->onRMouseUp(x, y);
+	}
 }
 
 void GUI_Window::onWheel(Sint32 x, Sint32 y, bool wheelUP)
 {
-	std::vector<GUI_Element*> childsBackup = m_childs;
-	for(std::vector<GUI_Element*>::reverse_iterator it = childsBackup.rbegin(), end = childsBackup.rend(); it != end; ++it)
+	for(std::vector<GUI_Element*>::reverse_iterator it = m_childs.rbegin(), end = m_childs.rend(); it != end; ++it)
 	{
 		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
 		{

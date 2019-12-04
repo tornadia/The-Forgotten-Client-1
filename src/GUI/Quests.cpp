@@ -84,7 +84,8 @@ void quests_Events(Uint32 event, Sint32 status)
 				if(pListBox)
 					select = pListBox->getSelect();
 
-				g_game.sendOpenQuestLine(g_questsLogCache[status].questId);
+				if(select != -1)
+					g_game.sendOpenQuestLine(g_questsLogCache[select].questId);
 			}
 		}
 		break;

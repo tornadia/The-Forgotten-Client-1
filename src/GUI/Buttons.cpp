@@ -25,6 +25,8 @@
 #include "../GUI_Elements/GUI_PanelWindow.h"
 #include "../GUI_Elements/GUI_Button.h"
 #include "../GUI_Elements/GUI_Icon.h"
+#include "../GUI_Elements/GUI_StaticImage.h"
+#include "../game.h"
 
 #define BUTTONS_SKILLS_TITLE "Skills"
 #define BUTTONS_SKILLS_DESCRIPTION1 "Open skills window"
@@ -69,6 +71,7 @@
 #define BUTTONS_TOURNAMENT_EVENTID 1014
 #define BUTTONS_LEADERBOARD_DESCRIPTION1 "Open tournament leaderboard window"
 #define BUTTONS_LEADERBOARD_DESCRIPTION2 "Close tournament leaderboard window"
+#define BUTTONS_LEADERBOARD_DESCRIPTION3 "Opens tournament window. Only available on Tournament game worlds."
 #define BUTTONS_LEADERBOARD_EVENTID 1015
 #define BUTTONS_FRIENDS_DESCRIPTION "Open friends window"
 #define BUTTONS_FRIENDS_EVENTID 1016
@@ -77,6 +80,7 @@
 #define BUTTONS_PARTY_EVENTID 1017
 
 extern Engine g_engine;
+extern Game g_game;
 
 extern bool g_haveSkillsOpen;
 extern bool g_haveBattleOpen;
@@ -101,9 +105,9 @@ void buttons_Events(Uint32 event, Sint32)
 		case BUTTONS_BATTLE_EVENTID: UTIL_toggleBattleWindow(); break;
 		case BUTTONS_VIP_EVENTID: UTIL_toggleVipWindow(); break;
 		case BUTTONS_LOGOUT_EVENTID: break;
-		case BUTTONS_QUESTLOG_EVENTID: break;
+		case BUTTONS_QUESTLOG_EVENTID: g_game.sendOpenQuestLog(); break;
 		case BUTTONS_OPTIONS_EVENTID: UTIL_options(); break;
-		case BUTTONS_HELP_EVENTID: break;
+		case BUTTONS_HELP_EVENTID: UTIL_help(); break;
 		case BUTTONS_UNJUSTIFIED_EVENTID: break;
 		case BUTTONS_PREY_EVENTID: break;
 		case BUTTONS_SPELLS_EVENTID: break;
@@ -162,11 +166,20 @@ void UTIL_createButtonsPanel()
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_ANALYTICS_EVENTID);
 		newRadioIcon->startEvents();
 		newWindow->addChild(newRadioIcon);
-		newRadioIcon = new GUI_RadioIcon(iRect(96, 25, GUI_UI_ICON_LEADERBOARD_UP_W, GUI_UI_ICON_LEADERBOARD_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LEADERBOARD_UP_X, GUI_UI_ICON_LEADERBOARD_UP_Y, GUI_UI_ICON_LEADERBOARD_DOWN_X, GUI_UI_ICON_LEADERBOARD_DOWN_Y, 0, BUTTONS_LEADERBOARD_DESCRIPTION1);
-		newRadioIcon->setRadioEventCallback(&CheckLeaderboardWindowOpen, BUTTONS_LEADERBOARD_DESCRIPTION2);
-		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LEADERBOARD_EVENTID);
-		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		if(g_game.getTournamentEnabled())
+		{
+			newRadioIcon = new GUI_RadioIcon(iRect(96, 25, GUI_UI_ICON_LEADERBOARD_UP_W, GUI_UI_ICON_LEADERBOARD_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LEADERBOARD_UP_X, GUI_UI_ICON_LEADERBOARD_UP_Y, GUI_UI_ICON_LEADERBOARD_DOWN_X, GUI_UI_ICON_LEADERBOARD_DOWN_Y, 0, BUTTONS_LEADERBOARD_DESCRIPTION1);
+			newRadioIcon->setRadioEventCallback(&CheckLeaderboardWindowOpen, BUTTONS_LEADERBOARD_DESCRIPTION2);
+			newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LEADERBOARD_EVENTID);
+			newRadioIcon->startEvents();
+			newWindow->addChild(newRadioIcon);
+		}
+		else
+		{
+			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(96, 25, GUI_UI_ICON_LEADERBOARD_DISABLED_W, GUI_UI_ICON_LEADERBOARD_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_LEADERBOARD_DISABLED_X, GUI_UI_ICON_LEADERBOARD_DISABLED_Y, 0, BUTTONS_LEADERBOARD_DESCRIPTION3);
+			newImage->startEvents();
+			newWindow->addChild(newImage);
+		}
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 3, GUI_UI_ICON_PARTYLIST_UP_W, GUI_UI_ICON_PARTYLIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PARTYLIST_UP_X, GUI_UI_ICON_PARTYLIST_UP_Y, GUI_UI_ICON_PARTYLIST_DOWN_X, GUI_UI_ICON_PARTYLIST_DOWN_Y, 0, BUTTONS_PARTY_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPartyWindowOpen, BUTTONS_PARTY_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_PARTY_EVENTID);

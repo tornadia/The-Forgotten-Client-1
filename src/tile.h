@@ -38,7 +38,6 @@ class Tile
 		~Tile();
 
 		void render(Sint32 posX, Sint32 posY, bool visible_tile);
-		void rerenderTile(Sint32 posX, Sint32 posY, bool visible_tile);
 		void renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 drawY, float scale, bool visible);
 
 		Uint32 getThingStackPos(Thing* thing);
@@ -58,6 +57,7 @@ class Tile
 
 		void checkMagicEffects();
 		void addEffect(Effect* effect);
+		void removeMagicEffects(Uint16 effectId);
 
 		bool isLookingPossible();
 		bool isWalkable();

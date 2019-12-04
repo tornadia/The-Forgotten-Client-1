@@ -164,14 +164,14 @@ void hotkey_Events(Uint32 event, Sint32)
 		case HOTKEYS_CANCEL_EVENTID:
 		{
 			GUI_Window* pWindow = g_engine.getCurrentWindow();
-			if(pWindow && pWindow->getInternalID() == GUI_WINDOW_KEYBOARD)
+			if(pWindow && pWindow->getInternalID() == GUI_WINDOW_HOTKEYS)
 				g_engine.removeWindow(pWindow);
 		}
 		break;
 		case HOTKEYS_OK_EVENTID:
 		{
 			GUI_Window* pWindow = g_engine.getCurrentWindow();
-			if(pWindow && pWindow->getInternalID() == GUI_WINDOW_KEYBOARD)
+			if(pWindow && pWindow->getInternalID() == GUI_WINDOW_HOTKEYS)
 				g_engine.removeWindow(pWindow);
 		}
 		break;
@@ -180,11 +180,11 @@ void hotkey_Events(Uint32 event, Sint32)
 
 void UTIL_hotkeyOptions()
 {
-	GUI_Window* pWindow = g_engine.getWindow(GUI_WINDOW_KEYBOARD);
+	GUI_Window* pWindow = g_engine.getWindow(GUI_WINDOW_HOTKEYS);
 	if(pWindow)
 		g_engine.removeWindow(pWindow);
 
-	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, HOTKEYS_WIDTH, HOTKEYS_HEIGHT), HOTKEYS_TITLE, GUI_WINDOW_KEYBOARD);
+	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, HOTKEYS_WIDTH, HOTKEYS_HEIGHT), HOTKEYS_TITLE, GUI_WINDOW_HOTKEYS);
 
 	GUI_ListBox* newListBox = new GUI_ListBox(iRect(HOTKEYS_PRESETS_X, HOTKEYS_PRESETS_Y, HOTKEYS_PRESETS_W, HOTKEYS_PRESETS_H), HOTKEYS_PRESETS_EVENTID);
 	newListBox->add("Test0");
@@ -193,6 +193,8 @@ void UTIL_hotkeyOptions()
 	newListBox->add("Test3");
 	newListBox->add("Test4");
 	newListBox->add("Test5");
+	for(auto test : hotkeyTable)
+		newListBox->add(test.hotkeyName);
 	newListBox->startEvents();
 	newWindow->addChild(newListBox);
 

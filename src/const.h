@@ -85,7 +85,8 @@ const Sint32 CLIENT_CURSOR_ARROW = 0;
 const Sint32 CLIENT_CURSOR_CROSSHAIR = 1;
 const Sint32 CLIENT_CURSOR_RESIZENS = 2;
 const Sint32 CLIENT_CURSOR_RESIZEWE = 3;
-const Sint32 CLIENT_CURSOR_LAST = 4;
+const Sint32 CLIENT_CURSOR_LENSHELP = 4;
+const Sint32 CLIENT_CURSOR_LAST = 5;
 
 //Antialiasing control variables
 const Uint8 CLIENT_ANTIALIASING_NONE = 0;

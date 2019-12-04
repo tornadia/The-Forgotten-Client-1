@@ -23,6 +23,19 @@
 #define __FILE_GUI_SKILLSWINDOW_h_
 
 #include "../GUI_Elements/GUI_Element.h"
+#include "../GUI_Elements/GUI_Container.h"
+
+class GUI_SkillsContainer : public GUI_Container
+{
+	public:
+		GUI_SkillsContainer(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID = 0);
+
+		void onRMouseDown(Sint32 x, Sint32 y);
+		void onRMouseUp(Sint32 x, Sint32 y);
+
+	protected:
+		bool m_rmouse;
+};
 
 class GUI_SkillSeparator : public GUI_Element
 {

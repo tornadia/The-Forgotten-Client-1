@@ -69,16 +69,10 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 1:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 433, 164), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Welcome to Tibia! Use your arrow keys or left-click with your mouse", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Welcome to Tibia! Use your\x0E\xFF\x7F\x7F arrow keys\x0F or\x0E\xFF\x7F\x7F left-click\x0F with your mouse", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "to walk around.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(174, 34, 0, 0), "arrow keys", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(258, 34, 0, 0), "left-click", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(186, 74, 43, 30), GUI_TUTORIAL_IMAGE, 233, 340);
@@ -101,22 +95,13 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 2:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 428, 259), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Very good! You can also left-click on your automap to go to a", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Very good! You can also\x0E\xFF\x7F\x7F left-click\x0F on your\x0E\xFF\x7F\x7F automap\x0F to go to a", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "certain spot. Try to click on the new marker on your automap after", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "certain spot. Try to click on the\x0E\xFF\x7F\x7F new marker\x0F on your automap after", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "you closed this window.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(155, 34, 0, 0), "left-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(260, 34, 0, 0), "automap", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(204, 48, 0, 0), "new marker", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(160, 89, 110, 110), GUI_TUTORIAL_IMAGE, 233, 230);
@@ -134,25 +119,14 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			g_engine.addWindow(newWindow);
 		}
 		break;
-		case 3:
-			UTIL_flashQuestsButton();
-			break;
+		case 3: UTIL_flashQuestsButton(); break;
 		case 4:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 430, 251), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Do you see a chest like this in this room? Right-click on it and select", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Do you see a\x0E\xFF\x7F\x7F chest\x0F like this in this room?\x0E\xFF\x7F\x7F Right-click\x0F on it and select", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "'Open' from the context menu to take what's inside.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(93, 34, 0, 0), "chest", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(252, 34, 0, 0), "Right-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(21, 48, 0, 0), "Open", 0, 255, 127, 127);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "'\x0E\xFF\x7F\x7FOpen\x0F' from the context menu to take what's inside.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(130, 74, 50, 57), GUI_TUTORIAL_IMAGE, 180, 113);
@@ -175,31 +149,13 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 5:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 428, 371), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "You now have a bag to carry items. There is also a coat inside. Drag", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "You now have a\x0E\xFF\x7F\x7F bag\x0F to carry items. There is also a\x0E\xFF\x7F\x7F coat\x0F inside.\x0E\xFF\x7F\x7F Drag\x0F", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "and drop it from the bag to your armor slot to wear it after you", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "\x0E\xFF\x7F\x7F" "and drop\x0F it from the\x0E\xFF\x7F\x7F bag\x0F to your\x0E\xFF\x7F\x7F armor slot\x0F to wear it after you", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "closed this window.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(109, 34, 0, 0), "bag", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(308, 34, 0, 0), "coat", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(376, 34, 0, 0), "Drag", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "and drop", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(138, 48, 0, 0), "bag", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(208, 48, 0, 0), "armor slot", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(153, 89, 118, 171), GUI_TUTORIAL_IMAGE, 343, 126);
@@ -222,28 +178,16 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 6:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 434, 324), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Light your torch by right-clicking it and selecting 'Use'. It will slowly", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Light your\x0E\xFF\x7F\x7F torch\x0F by\x0E\xFF\x7F\x7F right-clicking\x0F it and selecting '\x0E\xFF\x7F\x7FUse\x0F'. It will slowly", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "burn down as long as it is lit. 'Use' it again to turn it off once you", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "burn down as long as it is lit. '\x0E\xFF\x7F\x7FUse\x0F' it again to turn it off once you", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "leave the darkness. You can use many things in Tibia, just explore", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 76, 0, 0), "the room!", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(81, 34, 0, 0), "torch", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(133, 34, 0, 0), "right-clicking", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(309, 34, 0, 0), "Use", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(185, 48, 0, 0), "Use", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(128, 104, 169, 160), GUI_TUTORIAL_IMAGE, 0, 222);
@@ -261,28 +205,17 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			g_engine.addWindow(newWindow);
 		}
 		break;
-		case 7:
-			UTIL_flashBattleWindow();
-			break;
+		case 7: UTIL_flashBattleWindow(); break;
 		case 8:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 426, 245), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Excellent fighting technique! You can loot the bodies of creatures", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Excellent fighting technique! You can loot the\x0E\xFF\x7F\x7F bodies\x0F of creatures", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "which you have killed by right-clicking on them and selecting 'Open'", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "which you have killed by\x0E\xFF\x7F\x7F right-clicking\x0F on them and selecting '\x0E\xFF\x7F\x7FOpen\x0F'", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "from the context menu.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(282, 34, 0, 0), "bodies", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(158, 48, 0, 0), "right-clicking", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(371, 48, 0, 0), "Open", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(118, 89, 172, 82), GUI_TUTORIAL_IMAGE, 0, 126);
@@ -305,25 +238,13 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 9:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 389, 137), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Do you see the loot window to your right? Drag and drop the", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Do you see the\x0E\xFF\x7F\x7F loot window\x0F to your right?\x0E\xFF\x7F\x7F Drag and drop\x0F the", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "cockroach leg into your bag to take it with you! Collect 3", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "\x0E\xFF\x7F\x7F" "cockroach leg\x0F into your\x0E\xFF\x7F\x7F bag\x0F to take it with you! Collect 3", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "cockroach legs for Santiago!", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(106, 34, 0, 0), "loot window", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(261, 34, 0, 0), "Drag and drop", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "cockroach leg", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(156, 48, 0, 0), "bag", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_Separator* newSeparator = new GUI_Separator(iRect(13, 97, 363, 2));
@@ -342,31 +263,16 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 10:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 433, 290), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "With your new shovel which you can find in your inventory now you", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "With your new\x0E\xFF\x7F\x7F shovel\x0F which you can find in your inventory now you", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "can dig holes on certain spots. Follow the path to the east to find", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "such a place! When there right-click the shovel, select 'Use with' and", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "such a place! When there\x0E\xFF\x7F\x7F right-click\x0F the shovel, select '\x0E\xFF\x7F\x7FUse with\x0F' and", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 76, 0, 0), "then left-click on the loose stone pile.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(102, 34, 0, 0), "shovel", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(162, 62, 0, 0), "right-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(334, 62, 0, 0), "Use with", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(48, 76, 0, 0), "left-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(146, 76, 0, 0), "loose stone pile", 0, 255, 127, 127);
+			newLabel = new GUI_Label(iRect(18, 76, 0, 0), "then\x0E\xFF\x7F\x7F left-click\x0F on the\x0E\xFF\x7F\x7F loose stone pile\x0F.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(112, 104, 203, 113), GUI_TUTORIAL_IMAGE, 0, 0);
@@ -389,28 +295,13 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 11:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 422, 275), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "With your rope you can climb up a rope spot to exit this cave again.", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "With your\x0E\xFF\x7F\x7F rope\x0F you can climb up a rope spot to exit this cave again.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "Right-click the rope, select 'Use with' and then left-click on the", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "\x0E\xFF\x7F\x7F" "Right-click\x0F the rope, select '\x0E\xFF\x7F\x7FUse with\x0F' and then\x0E\xFF\x7F\x7F left-click\x0F on the", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "rope spot.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(76, 34, 0, 0), "rope", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "Right-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(182, 48, 0, 0), "Use with", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(291, 48, 0, 0), "left-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "rope spot", 0, 255, 127, 127);
+			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "\x0E\xFF\x7F\x7F" "rope spot\x0F.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(102, 89, 190, 80), GUI_TUTORIAL_IMAGE, 203, 0);
@@ -432,15 +323,11 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			g_engine.addWindow(newWindow);
 		}
 		break;
-		case 12:
-		{
-			//<The outfit window should be opened now>
-		}
-		break;
+		case 12: g_game.sendRequestOutfit(); break;
 		case 13:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 426, 403), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Look at the NPC trade window to your right. Left-click on the", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Look at the\x0E\xFF\x7F\x7F NPC trade window\x0F to your right. Left-click on the", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "button 'Sell' to see what you can sell to an NPC. The button 'Buy'", labelId++, 223, 223, 223);
@@ -449,37 +336,16 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "shows what you can buy from an NPC.\n", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 90, 0, 0), "To sell meat or ham to Carlos, left-click on 'Sell' and choose either", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 90, 0, 0), "To sell meat or ham to Carlos,\x0E\xFF\x7F\x7F left-click\x0F on '\x0E\xFF\x7F\x7FSell\x0F' and choose either", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 104, 0, 0), "'meat' or 'ham'. If you want to sell more than one piece, left-click", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 104, 0, 0), "'\x0E\xFF\x7F\x7Fmeat\x0F' or '\x0E\xFF\x7F\x7Fham\x0F'. If you want to sell more than one piece, left-click", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 118, 0, 0), "and hold the slide bar, then drag it to the desired amount. Click 'Ok'", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 118, 0, 0), "and hold the slide bar, then drag it to the desired amount.\x0E\xFF\x7F\x7F Click\x0F '\x0E\xFF\x7F\x7FOk\x0F'", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 132, 0, 0), "to finish the trade.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(88, 34, 0, 0), "NPC trade window", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(191, 90, 0, 0), "left-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(269, 90, 0, 0), "Sell", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(21, 104, 0, 0), "meat", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(75, 104, 0, 0), "ham", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(353, 118, 0, 0), "Click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(385, 118, 0, 0), "Ok", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(128, 161, 175, 161), GUI_TUTORIAL_IMAGE, 300, 348);
@@ -505,7 +371,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Welcome to the village of Rookgaard! You are on your own now, but", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "there are a few new marks on your automap. Check them out for", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "there are a few new\x0E\xFF\x7F\x7F marks\x0F on your\x0E\xFF\x7F\x7F automap\x0F. Check them out for", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "important locations and NPCs to talk to. Fight monsters to earn", labelId++, 223, 223, 223);
@@ -518,12 +384,6 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 104, 0, 0), "druid. Have fun!", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(138, 48, 0, 0), "marks", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(223, 48, 0, 0), "automap", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_Separator* newSeparator = new GUI_Separator(iRect(13, 142, 401, 2));
@@ -539,11 +399,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			g_engine.addWindow(newWindow);
 		}
 		break;
-		case 15:
-		{
-			//<Nothing??>
-		}
-		break;
+		case 15: /*<Nothing??>*/ break;
 		case 16:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 434, 228), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
@@ -553,16 +409,10 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "Tibia. Be careful not to attack someone by accident. If you see a", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "character with a white skull or with a red skull, they have previously", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "character with a\x0E\xFF\x7F\x7F white skull\x0F or with a\x0E\xFF\x7F\x7F red skull\x0F, they have previously", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 76, 0, 0), "attacked or even killed other characters.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(117, 62, 0, 0), "white skull", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(235, 62, 0, 0), "red skull", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(154, 104, 64, 64), GUI_TUTORIAL_IMAGE, 169, 230);
@@ -582,17 +432,9 @@ void UTIL_createTutorialHint(Uint32 hintId)
 			g_engine.addWindow(newWindow);
 		}
 		break;
-		case 17:
-		{
-			//<Nothing??>
-		}
-		break;
-		case 18:
-			UTIL_flashFollowButton();
-			break;
-		case 19:
-			UTIL_flashHealthPanel();
-			break;
+		case 17: /*<Nothing??>*/ break;
+		case 18: UTIL_flashFollowButton(); break;
+		case 19: UTIL_flashHealthPanel(); break;
 		case 20:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 423, 384), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
@@ -620,10 +462,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 21:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 253, 149), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Use the arrow keys to walk on stairs.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(65, 34, 0, 0), "arrow keys", 0, 255, 127, 127);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Use the\x0E\xFF\x7F\x7F arrow keys\x0F to walk on stairs.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(104, 59, 43, 30), GUI_TUTORIAL_IMAGE, 233, 340);
@@ -644,10 +483,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 22:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 242, 242), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Type 'hi' in your Local Chat window.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(113, 34, 0, 0), "Local Chat", 0, 255, 127, 127);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Type 'hi' in your\x0E\xFF\x7F\x7F Local Chat\x0F window.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(39, 59, 163, 123), GUI_TUTORIAL_IMAGE, 457, 0);
@@ -668,13 +504,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 23:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 268, 255), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Right-click exactly here to use ladders.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Right-click exactly", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(200, 34, 0, 0), "ladders", 0, 255, 127, 127);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "\x0E\xFF\x7F\x7F" "Right-click exactly\x0F here to use\x0E\xFF\x7F\x7F ladders\x0F.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(38, 59, 71, 91), GUI_TUTORIAL_IMAGE, 461, 123);
@@ -697,28 +527,13 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 24:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 402, 358), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Push the branch by left-clicking on it, then hold the left mouse", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Push the branch by\x0E\xFF\x7F\x7F left-clicking\x0F on it, then\x0E\xFF\x7F\x7F hold\x0F the left mouse", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "button and drag the branch on its destination. Right-click and", labelId++, 223, 223, 223);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "button\x0E\xFF\x7F\x7F and drag\x0F the branch on its destination.\x0E\xFF\x7F\x7F Right-click\x0F and", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "choose 'Use with' cart.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(131, 34, 0, 0), "left-clicking", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(268, 34, 0, 0), "hold", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(61, 48, 0, 0), "and drag", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(288, 48, 0, 0), "Right-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(64, 62, 0, 0), "Use with", 0, 255, 127, 127);
+			newLabel = new GUI_Label(iRect(18, 62, 0, 0), "choose '\x0E\xFF\x7F\x7FUse with\x0F' cart.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(78, 89, 153, 210), GUI_TUTORIAL_IMAGE, 475, 259);
@@ -808,13 +623,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 29:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 289, 328), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Open the 'Options' menu and find 'Hotkeys'.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(76, 34, 0, 0), "Options", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(212, 34, 0, 0), "Hotkeys", 0, 255, 127, 127);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Open the '\x0E\xFF\x7F\x7FOptions\x0F' menu and find '\x0E\xFF\x7F\x7FHotkeys\x0F'.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(26, 59, 128, 145), GUI_TUTORIAL_IMAGE, 475, 469);
@@ -860,10 +669,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 31:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 219, 288), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Press F1 to cast the new spell.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(53, 34, 0, 0), "F1", 0, 255, 127, 127);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Press\x0E\xFF\x7F\x7F F1\x0F to cast the new spell.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(18, 59, 183, 169), GUI_TUTORIAL_IMAGE, 720, 320);
@@ -884,16 +690,10 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 32:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 319, 336), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Find the rune in your inventory, right-click on it,", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Find the rune in your inventory,\x0E\xFF\x7F\x7F right-click\x0F on it,", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "choose 'Use with' and then click on the monster.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(204, 34, 0, 0), "right-click", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(64, 48, 0, 0), "Use with", 0, 255, 127, 127);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "choose '\x0E\xFF\x7F\x7FUse with\x0F' and then click on the monster.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(71, 74, 114, 63), GUI_TUTORIAL_IMAGE, 300, 509);
@@ -939,13 +739,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 34:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 289, 328), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Open the 'Options' menu and find 'Hotkeys'.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(76, 34, 0, 0), "Options", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(212, 34, 0, 0), "Hotkeys", 0, 255, 127, 127);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Open the '\x0E\xFF\x7F\x7FOptions\x0F' menu and find '\x0E\xFF\x7F\x7FHotkeys\x0F'.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(26, 59, 128, 145), GUI_TUTORIAL_IMAGE, 475, 469);
@@ -989,10 +783,7 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 36:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 213, 208), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Press F2 to cast the new spell.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(53, 34, 0, 0), "F2", 0, 255, 127, 127);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Press\x0E\xFF\x7F\x7F F2\x0F to cast the new spell.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(60, 59, 92, 89), GUI_TUTORIAL_IMAGE, 800, 222);
@@ -1013,19 +804,10 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 37:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 420, 258), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Click on the chase opponent icon in the combat controls, then click", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Click on the\x0E\xFF\x7F\x7F chase opponent\x0F icon in the\x0E\xFF\x7F\x7F combat controls\x0F, then click", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "on a cockroach in the battle list.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(87, 34, 0, 0), "chase opponent", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(243, 34, 0, 0), "combat controls", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(143, 48, 0, 0), "battle list", 0, 255, 127, 127);
+			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "on a cockroach in the\x0E\xFF\x7F\x7F battle list\x0F.", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(101, 74, 51, 78), GUI_TUTORIAL_IMAGE, 620, 98);
@@ -1050,16 +832,10 @@ void UTIL_createTutorialHint(Uint32 hintId)
 		case 38:
 		{
 			GUI_Window* newWindow = new GUI_Window(iRect(0, 0, 415, 358), "Tutorial Hint", GUI_WINDOW_TUTORIALHINT);
-			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Open the dead cockroach by right-clicking it and choosing 'Open',", labelId++, 223, 223, 223);
+			GUI_Label* newLabel = new GUI_Label(iRect(18, 34, 0, 0), "Open the\x0E\xFF\x7F\x7F dead cockroach\x0F by right-clicking it and choosing '\x0E\xFF\x7F\x7FOpen\x0F',", labelId++, 223, 223, 223);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			newLabel = new GUI_Label(iRect(18, 48, 0, 0), "then drag the cockroach leg to your bag.", labelId++, 223, 223, 223);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(73, 34, 0, 0), "dead cockroach", 0, 255, 127, 127);
-			newLabel->setFont(CLIENT_FONT_OUTLINED);
-			newWindow->addChild(newLabel);
-			newLabel = new GUI_Label(iRect(357, 34, 0, 0), "Open", 0, 255, 127, 127);
 			newLabel->setFont(CLIENT_FONT_OUTLINED);
 			newWindow->addChild(newLabel);
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(48, 74, 97, 109), GUI_TUTORIAL_IMAGE, 476, 614);

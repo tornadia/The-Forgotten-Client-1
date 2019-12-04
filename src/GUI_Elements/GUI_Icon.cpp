@@ -120,7 +120,7 @@ void GUI_RadioIcon::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 	}
 	if(inside)
 	{
-		if(m_eventRadioChecked && m_eventRadioChecked())
+		if(!m_radioDescription.empty() && m_eventRadioChecked && m_eventRadioChecked())
 			g_engine.showDescription(x, y, m_radioDescription);
 		else if(!m_description.empty())
 			g_engine.showDescription(x, y, m_description);

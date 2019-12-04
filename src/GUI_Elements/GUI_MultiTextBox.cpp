@@ -695,7 +695,8 @@ Uint32 GUI_MultiTextBox::getCursorPosition(Sint32 x, Sint32 y)
 	if(y < posY)
 		return SDL_static_cast(Uint32, (*it).lineStart);
 
-	for(std::vector<MultiLine>::iterator end = m_lines.end(); it != end; ++it)
+	std::vector<MultiLine>::iterator end = m_lines.end();
+	for(; it != end; ++it)
 	{
 		MultiLine& currentLine = (*it);
 		if(SDL_static_cast(Uint32, y-posY) < 14)
@@ -720,5 +721,7 @@ Uint32 GUI_MultiTextBox::getCursorPosition(Sint32 x, Sint32 y)
 		if(posY > endY)
 			break;
 	}
+	if(it == end)
+		return SDL_static_cast(Uint32, m_sText.length());
 	return SDL_static_cast(Uint32, (*it).lineStart+(*it).lineLength-1);
 }

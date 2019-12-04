@@ -84,6 +84,7 @@ void ProtocolGame::parseMessage(InputMessage& msg)
 		case RecvDeathOpcode: parseDeath(msg); break;
 		case RecvStashOpcode: parseStash(msg); break;
 		case RecvSpecialContainersAvailableOpcode: parseSpecialContainersAvailable(msg); break;
+		case RecvPartyHuntAnalyserOpcode: parsePartyHuntAnalyser(msg); break;
 		case RecvClientCheckOpcode: parseClientCheck(msg); break;
 		case RecvMapDescriptionOpcode: parseMapDescription(msg); break;
 		case RecvMapNorthOpcode: parseMapNorth(msg); break;
@@ -164,12 +165,18 @@ void ProtocolGame::parseMessage(InputMessage& msg)
 		case RecvWalkWaitOpcode: parseWalkWait(msg); break;
 		case RecvUnjustifiedStatsOpcode: parseUnjustifiedStats(msg); break;
 		case RecvPvpSituationsOpcode: parsePvpSituations(msg); break;
+		case RecvBestiaryTrackerOpcode: parseBestiaryTracker(msg); break;
+		case RecvPreyHuntingTaskBaseDataOpcode: parsePreyHuntingTaskBaseData(msg); break;
+		case RecvPreyHuntingTaskDataOpcode: parsePreyHuntingTaskData(msg); break;
 		case RecvFloorChangeUpOpcode: parseFloorChangeUp(msg); break;
 		case RecvFloorChangeDownOpcode: parseFloorChangeDown(msg); break;
 		case RecvUpdateLootContainersOpcode: parseUpdateLootContainers(msg); break;
 		case RecvPlayerDataTournamentOpcode: parsePlayerDataTournament(msg); break;
+		case RecvCyclopediaHouseActionResultOpcode: parseCyclopediaHouseActionResult(msg); break;
 		case RecvTournamentInformationOpcode: parseTournamentInformation(msg); break;
 		case RecvTournamentLeaderboardOpcode: parseTournamentLeaderboard(msg); break;
+		case RecvCyclopediaStaticHouseDataOpcode: parseCyclopediaStaticHouseData(msg); break;
+		case RecvCyclopediaCurrentHouseDataOpcode: parseCyclopediaCurrentHouseData(msg); break;
 		case RecvChooseOutfitOpcode: parseChooseOutfit(msg); break;
 		case RecvExivaSuppressedOpcode: parseExivaSuppressed(msg); break;
 		case RecvUpdateExivaOptionsOpcode: parseUpdateExivaOptions(msg); break;
@@ -254,46 +261,49 @@ void ProtocolGame::parseLogin(InputMessage& msg)
 	}
 
 	bool canReportBugs = msg.getBool();
+	bool canChangePvPFrames = true;
 	if(g_clientVersion >= 1054)
-	{
-		bool canChangePvPFrameRate = msg.getBool();
-		(void)canChangePvPFrameRate;
-	}
+		canChangePvPFrames = msg.getBool();
 
+	bool expertModeEnabled = false;
 	if(g_clientVersion >= 1058)
-	{
-		bool expertModeEnabled = msg.getBool();
-		(void)expertModeEnabled;
-		//g_game.setExpertPvpMode(expertModeEnabled);
-	}
+		expertModeEnabled = msg.getBool();
+	else if(g_clientVersion >= 1000)
+		expertModeEnabled = true;
 
 	if(g_game.hasGameFeature(GAME_FEATURE_STORE))
 	{
-		std::string storeURL = msg.getString();//URL to store images
-		Uint16 storePackages = msg.getU16();//Premium coin package size
-		(void)storeURL;
-		(void)storePackages;
+		const std::string storeURL = msg.getString();
+		Uint16 storePackages = msg.getU16();
+		g_game.setStoreUrl(storeURL);
+		g_game.setStorePackages(storePackages);
 	}
 
+	bool haveExivaRestrictions = false;
 	if(g_clientVersion >= 1149)
-	{
-		Uint8 exivaRestrictions = msg.getU8();
-		(void)exivaRestrictions;
-	}
+		haveExivaRestrictions = msg.getBool();
 
 	if(g_game.hasGameFeature(GAME_FEATURE_TOURNAMENTS))
 	{
-		Uint8 tournamentStatus = msg.getU8();
-		if(tournamentStatus)
+		bool tournamentEnabled = msg.getBool();
+		if(tournamentEnabled)
 		{
 			Sint32 tournamentFactor = SDL_static_cast(Sint32, msg.getU32());
-			(void)tournamentFactor;
+			g_game.setPlayerTournamentFactor(tournamentFactor);
+			if(g_clientVersion >= 1230)
+			{
+				msg.getU8();//??
+			}
 		}
+		g_game.setTournamentEnabled(tournamentEnabled);
 	}
 
 	g_game.setPlayerID(playerId);
 	g_game.setServerBeat(serverBeat);
 	g_game.setCanReportBugs(canReportBugs);
+	g_game.setCanChangePvpFrames(canChangePvPFrames);
+	g_game.setExpertPvpMode(expertModeEnabled);
+	g_game.setHaveExivaRestrictions(haveExivaRestrictions);
 
 	Creature* creature = g_map.getCreatureById(playerId);
 	if(creature)
@@ -1003,6 +1013,7 @@ void ProtocolGame::parseCloseDepotSearch(InputMessage&)
 void ProtocolGame::parseInspectionList(InputMessage& msg)
 {
 	Uint8 creatureType = msg.getU8();//1 - player
+	msg.getU8();//??
 
 	Uint8 size = msg.getU8();
 	for(Uint8 i = 0; i < size; ++i)
@@ -1118,7 +1129,7 @@ void ProtocolGame::parseNpcOpenTrade(InputMessage& msg)
 	{
 		npcName = msg.getString();
 		if(g_clientVersion >= 1203)
-			msg.getU16();
+			msg.getU16();//??
 	}
 	(void)npcName;
 
@@ -1259,7 +1270,7 @@ void ProtocolGame::parseMagicEffects(InputMessage& msg)
 					effectId = SDL_static_cast(Uint16, msg.getU8());
 
 				g_map.checkMagicEffects();
-				Tile* tile = g_map.getTile(fromPos);
+				Tile* tile = g_map.getTileOrCreate(fromPos);
 				if(tile)
 				{
 					Effect* effect = Effect::createEffect(fromPos, effectId);
@@ -1315,7 +1326,7 @@ void ProtocolGame::parseMagicEffect(InputMessage& msg)
 		type = SDL_static_cast(Uint16, msg.getU8());
 
 	g_map.checkMagicEffects();
-	Tile* tile = g_map.getTile(pos);
+	Tile* tile = g_map.getTileOrCreate(pos);
 	if(tile)
 	{
 		Effect* effect = Effect::createEffect(pos, type);
@@ -1326,15 +1337,14 @@ void ProtocolGame::parseMagicEffect(InputMessage& msg)
 
 void ProtocolGame::parseRemoveMagicEffect(InputMessage& msg)
 {
-	//TODO: add remove magic effect feature
 	const Position pos = msg.getPosition();
 	Uint16 effectId;
 	if(g_game.hasGameFeature(GAME_FEATURE_EFFECTS_U16))
 		effectId = msg.getU16();
 	else
 		effectId = SDL_static_cast(Uint16, msg.getU8());
-	(void)pos;
-	(void)effectId;
+
+	g_map.removeMagicEffects(pos, effectId);
 }
 
 void ProtocolGame::parseAnimatedText(InputMessage& msg)
@@ -1443,7 +1453,6 @@ void ProtocolGame::parseCreatureUpdate(InputMessage& msg)
 		}
 		break;
 	}
-	(void)creatureId;
 }
 
 void ProtocolGame::parseCreatureHealth(InputMessage& msg)
@@ -2245,6 +2254,7 @@ void ProtocolGame::parsePlayerData(InputMessage& msg)
 
 	UTIL_updateHealthPanel();
 	UTIL_updateSkillsWindowStats();
+	UTIL_updateInventoryPanel();
 	g_game.resetCachedStats();
 }
 
@@ -2348,7 +2358,7 @@ void ProtocolGame::parsePlayerModes(InputMessage& msg)
 {
 	Uint8 fightMode = msg.getU8();
 	Uint8 chaseMode = msg.getU8();
-	bool safeMode = msg.getBool();
+	Uint8 safeMode = msg.getU8();
 
 	Uint8 pvpMode = 0;
 	if(g_game.hasGameFeature(GAME_FEATURE_PVP_MODE))
@@ -2368,39 +2378,27 @@ void ProtocolGame::parsePlayerStoreDeepLink(InputMessage& msg)
 			case 3:
 			{
 				msg.getU8();//??
-				msg.getU8();//??
-				msg.getU8();//??
 			}
 			break;
 			case 2:
 			{
 				msg.getRawString();//??
 				msg.getRawString();//??
-				msg.getU8();//??
-				msg.getU8();//??
 			}
 			break;
 			case 4:
 			{
 				msg.getU32();//??
-				msg.getU8();//??
-				msg.getU8();//??
 			}
 			break;
 			case 5:
 			{
 				msg.getRawString();//??
-				msg.getU8();//??
-				msg.getU8();//??
-			}
-			break;
-			default:
-			{
-				msg.getU8();//??
-				msg.getU8();//??
 			}
 			break;
 		}
+		msg.getU8();//??
+		msg.getU8();//??
 	}
 }
 
@@ -2599,7 +2597,7 @@ void ProtocolGame::parseCloseChannel(InputMessage& msg)
 void ProtocolGame::parseChannelEvent(InputMessage& msg)
 {
 	Uint16 channelId = msg.getU16();
-	const std::string playerName = msg.getString();
+	const std::string playerName = UTIL_formatCreatureName(msg.getString());
 	Uint8 eventType = msg.getU8();
 	(void)channelId;
 	(void)playerName;
@@ -2682,7 +2680,7 @@ void ProtocolGame::parseFriendSystemData(InputMessage& msg)
 		case 0:
 		{
 			Uint8 something = msg.getU8();//??
-			if(something != 1)
+			if(something == 1)
 				msg.getRawString();//??
 		}
 		break;
@@ -2703,6 +2701,39 @@ void ProtocolGame::parseFriendSystemData(InputMessage& msg)
 				msg.getRawString();//??
 				msg.getRawString();//??
 				msg.getU16();//??
+
+				Uint16 lookType;
+				if(g_game.hasGameFeature(GAME_FEATURE_LOOKTYPE_U16))
+					lookType = msg.getU16();
+				else
+					lookType = SDL_static_cast(Uint16, msg.getU8());
+
+				Uint16 lookTypeEx = 0;
+				Uint8 lookHead = 0;
+				Uint8 lookBody = 0;
+				Uint8 lookLegs = 0;
+				Uint8 lookFeet = 0;
+				Uint8 lookAddons = 0;
+				if(lookType != 0)
+				{
+					lookHead = msg.getU8();
+					lookBody = msg.getU8();
+					lookLegs = msg.getU8();
+					lookFeet = msg.getU8();
+					if(g_game.hasGameFeature(GAME_FEATURE_ADDONS))
+						lookAddons = msg.getU8();
+				}
+				else
+					lookTypeEx = msg.getU16();
+
+				(void)lookType;
+				(void)lookTypeEx;
+				(void)lookHead;
+				(void)lookBody;
+				(void)lookLegs;
+				(void)lookFeet;
+				(void)lookAddons;
+
 				msg.getU8();//??
 				msg.getU32();//??
 			}
@@ -2845,7 +2876,7 @@ void ProtocolGame::parseQuestLog(InputMessage& msg)
 		newQuestLogElement.questName = msg.getString();
 		newQuestLogElement.questCompleted = msg.getBool();
 	}
-	(void)questLogElements;
+	UTIL_createQuestLog(0xFFFFFFFF, questLogElements);
 }
 
 void ProtocolGame::parseQuestLine(InputMessage& msg)
@@ -2862,8 +2893,7 @@ void ProtocolGame::parseQuestLine(InputMessage& msg)
 		newQuestLineElement.missionName = msg.getString();
 		newQuestLineElement.missionDescription = msg.getString();
 	}
-	(void)questId;
-	(void)questLineElements;
+	UTIL_createQuestine(questId, questLineElements);
 }
 
 void ProtocolGame::parseTrackedQuestFlags(InputMessage& msg)
@@ -2876,6 +2906,7 @@ void ProtocolGame::parseTrackedQuestFlags(InputMessage& msg)
 		for(Uint8 i = 0; i < size; ++i)
 		{
 			msg.getU16();
+			msg.getRawString();
 			msg.getRawString();
 			msg.getRawString();
 		}
@@ -3217,12 +3248,8 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 		(void)sortType;
 		if(g_clientVersion >= 1185)
 		{
-			Uint16 shownFilters = msg.getU16();
-			for(Uint16 i = 0; i < shownFilters; ++i)
-			{
-				Uint8 filterId = msg.getU8();
-				(void)filterId;
-			}
+			const std::string shownFilter = msg.getString();
+			(void)shownFilter;
 		}
 
 		Uint16 offers = msg.getU16();
@@ -3627,7 +3654,7 @@ void ProtocolGame::parseItemLooted(InputMessage& msg)
 }
 
 void ProtocolGame::parseKillTracking(InputMessage& msg)
-{;
+{
 	const std::string name = msg.getString();
 	Uint16 lookType;
 	if(g_game.hasGameFeature(GAME_FEATURE_LOOKTYPE_U16))
@@ -3668,6 +3695,99 @@ void ProtocolGame::parseKillTracking(InputMessage& msg)
 		(void)item;
 	}
 	(void)name;
+}
+
+void ProtocolGame::parsePartyHuntAnalyser(InputMessage& msg)
+{
+	msg.getU32();//??
+	msg.getU32();//??
+	msg.getU8();//??
+	Uint8 count = msg.getU8();
+	for(Uint8 i = 0; i < count; ++i)
+	{
+		msg.getU32();//??
+		msg.getBool();//??
+		msg.getU64();//??
+		msg.getU64();//??
+		msg.getU64();//??
+		msg.getU64();//??
+	}
+
+	bool something = msg.getBool();
+	if(something)
+	{
+		count = msg.getU8();
+		for(Uint8 i = 0; i < count; ++i)
+		{
+			msg.getU32();//??
+			msg.getRawString();//??
+		}
+	}
+}
+
+void ProtocolGame::parseBestiaryTracker(InputMessage& msg)
+{
+	Uint8 count = msg.getU8();
+	for(Uint8 i = 0; i < count; ++i)
+	{
+		msg.getU16();//??
+		msg.getU32();//??
+		msg.getU16();//??
+		msg.getU16();//??
+		msg.getU16();//??
+		msg.getBool();//??
+	}
+}
+
+void ProtocolGame::parsePreyHuntingTaskBaseData(InputMessage& msg)
+{
+	Uint16 size = msg.getU16();
+	for(Uint16 i = 0; i < size; ++i)
+	{
+		msg.getU16();//??
+		msg.getU8();//??
+	}
+
+	Uint8 count = msg.getU8();
+	for(Uint8 i = 0; i < count; ++i)
+	{
+		msg.getU8();//??
+		msg.getU8();//??
+		msg.getU16();//??
+		msg.getU16();//??
+		msg.getU16();//??
+		msg.getU16();//??
+	}
+}
+
+void ProtocolGame::parsePreyHuntingTaskData(InputMessage& msg)
+{
+	msg.getU8();//??
+	Uint8 something = msg.getU8();
+	if(something == 0)
+	{
+		msg.getU8();//??
+	}
+	else if(something > 1)
+	{
+		if(something <= 3)
+		{
+			Uint16 size = msg.getU16();
+			for(Uint16 i = 0; i < size; ++i)
+			{
+				msg.getU16();//??
+				msg.getBool();//??
+			}
+		}
+		else if(something <= 5)
+		{
+			msg.getU16();//??
+			msg.getBool();//??
+			msg.getU16();//??
+			msg.getU16();//??
+			msg.getU8();//??
+		}
+	}
 }
 
 void ProtocolGame::parseRefreshImbuingDialog(InputMessage& msg)
@@ -3744,8 +3864,8 @@ void ProtocolGame::parseResourceBalance(InputMessage& msg)
 	Uint8 type = msg.getU8();
 	if(type == 30)
 	{
-		Sint32 difference = SDL_static_cast(Sint32, msg.getU32());
-		(void)difference;
+		Sint32 balance = SDL_static_cast(Sint32, msg.getU32());
+		(void)balance;
 	}
 	else
 	{
@@ -3942,6 +4062,13 @@ void ProtocolGame::parsePreyPrices(InputMessage& msg)
 		msg.getU8();//??
 		msg.getU8();//??
 	}
+	if(g_clientVersion >= 1230)
+	{
+		msg.getU32();//??
+		msg.getU32();//??
+		msg.getU8();//??
+		msg.getU8();//??
+	}
 }
 
 void ProtocolGame::parseMonsterCyclopedia(InputMessage& msg)
@@ -3967,7 +4094,7 @@ void ProtocolGame::parseMonsterCyclopediaMonsters(InputMessage& msg)
 	for(Uint16 i = 0; i < monsters; ++i)
 	{
 		Uint16 monsterId = msg.getU16();
-		Uint8 progress = msg.getBool();
+		Uint8 progress = msg.getU8();
 		if(progress > 0)
 		{
 			Uint8 occurence = msg.getU8();
@@ -4730,6 +4857,103 @@ void ProtocolGame::parseCyclopediaMapData(InputMessage& msg)
 			msg.getU16();//??
 		}
 		break;
+	}
+}
+
+void ProtocolGame::parseCyclopediaHouseActionResult(InputMessage& msg)
+{
+	msg.getU32();//??
+	Uint8 something1 = msg.getU8();//??
+	Uint8 something2 = msg.getU8();//??
+	if(something1 == 1 && something2 == 0)
+	{
+		msg.getBool();//??
+	}
+}
+
+void ProtocolGame::parseCyclopediaStaticHouseData(InputMessage& msg)
+{
+	msg.getU32();//??
+	msg.getU8();//??
+	msg.getU8();//??
+	msg.getU8();//??
+	msg.getU8();//??
+	msg.getU8();//??
+	msg.getU8();//??
+	Uint8 count = msg.getU8();//??
+	for(Uint8 i = 0; i < count; ++i)
+	{
+		msg.getU32();//??
+	}
+
+	Uint16 size = msg.getU16();
+	for(Uint16 i = 0; i < size; ++i)
+	{
+		msg.getU32();//??
+	}
+}
+
+void ProtocolGame::parseCyclopediaCurrentHouseData(InputMessage& msg)
+{
+	Uint16 size = msg.getU16();
+	for(Uint16 i = 0; i < size; ++i)
+	{
+		msg.getU32();//??
+		msg.getBool();//??
+		Uint8 something = msg.getU8();//??
+		if(something == 0)
+		{
+			msg.getRawString();//??
+			bool something2 = msg.getBool();//??
+			msg.getU8();//??
+			if(/*probably some data from house client files*/false)
+			{
+				//detect what data we need
+				msg.getU32();//??
+				msg.getU64();//??
+			}
+			if(something2)
+			{
+				msg.getU64();//??
+			}
+		}
+		else if((something - 2) <= 2)
+		{
+			msg.getRawString();//??
+			msg.getU32();//??
+			bool something2 = msg.getBool();//??
+			if(something2)
+			{
+				msg.getU8();//??
+				msg.getU8();//??
+			}
+			if(something == 3)
+			{
+				msg.getU32();//??
+				msg.getRawString();//??
+				msg.getBool();//??
+				msg.getU64();//??
+				bool something3 = msg.getBool();//??
+				if(something3)
+				{
+					msg.getU8();//??
+					msg.getU8();//??
+				}
+				if(something2)
+				{
+					msg.getU8();//??
+				}
+
+			}
+			else if(something == 4)
+			{
+				msg.getU32();//??
+				if(something2)
+				{
+					msg.getU8();//??
+				}
+			}
+		}
 	}
 }
 
@@ -6052,7 +6276,7 @@ void ProtocolGame::sendRequestOutfit()
 	msg.addU8(GameRequestOutfitOpcode);
 	if(g_clientVersion >= 1220)
 	{
-		volatile Uint8 something = 0;
+		Uint8 something = 0;
 		msg.addU8(something);
 		if(something == 1 || something == 3)
 			msg.addU16(0);
@@ -6146,7 +6370,7 @@ void ProtocolGame::sendAddVipGroup(Uint8 groupType, const std::string& name)
 	}
 	else if(groupType == 2)
 	{
-		msg.addU8(3);
+		msg.addU8(2);
 		msg.addU8(0);//??
 		msg.addString(name);
 	}
@@ -6577,6 +6801,43 @@ void ProtocolGame::sendOpenCyclopediaCharacterInfo(CyclopediaCharacterInfoType c
 	onSend(msg);
 }
 
+void ProtocolGame::sendTrackBestiaryRace()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GameTrackBestiaryRaceOpcode);
+	msg.addU16(0);//??
+	msg.addBool(false);//??
+	onSend(msg);
+}
+
+void ProtocolGame::sendPartyHuntAnalyser()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GamePartyHuntAnalyserOpcode);
+	Uint8 partyHuntType = 0;
+	msg.addU8(partyHuntType);//??
+	switch(partyHuntType)
+	{
+		case 1:
+		{
+			msg.addU8(0);//??
+		}
+		break;
+		case 2:
+		{
+			std::vector<std::pair<Uint16, Uint32>> data;//??
+			msg.addU16(SDL_static_cast(Uint16, data.size()));
+			for(std::vector<std::pair<Uint16, Uint32>>::iterator it = data.begin(), end = data.end(); it != end; ++it)
+			{
+				msg.addU16((*it).first);//??
+				msg.addU32((*it).second);//??
+			}
+		}
+		break;
+	}
+	onSend(msg);
+}
+
 void ProtocolGame::sendFeatureEvent(FeatureEventType type, bool active)
 {
 	OutputMessage msg(getHeaderPos());
@@ -6764,6 +7025,56 @@ void ProtocolGame::sendSetHirelingName()
 	msg.addString("");//??
 	msg.addU32(0);//??
 	msg.addU32(0);//??
+	onSend(msg);
+}
+
+void ProtocolGame::sendCyclopediaHouseAction()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GameCyclopediaHouseActionOpcode);
+	Uint8 houseActionType = 0;
+	msg.addU8(houseActionType);//??
+	if(houseActionType != 0)
+		msg.addU32(0);//??
+	
+	switch(houseActionType)
+	{
+		case 0:
+		{
+			msg.addString("");//??
+		}
+		break;
+		case 3:
+		{
+			msg.addU32(0);//??
+			msg.addString("");//??
+		}
+		case 1:
+		{
+			msg.addU64(0);//??
+		}
+		break;
+		case 2:
+		{
+			msg.addU32(0);//??
+		}
+		break;
+	}
+	onSend(msg);
+}
+
+void ProtocolGame::sendPreyHuntingTaskAction()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GamePreyHuntingTaskActionOpcode);
+	msg.addU8(0);//??
+	Uint8 something = 0;
+	msg.addU8(something);//??
+	if(something == 3)
+	{
+		msg.addBool(false);//??
+		msg.addU16(0);//??
+	}
 	onSend(msg);
 }
 
@@ -7469,9 +7780,9 @@ Creature* ProtocolGame::getCreature(InputMessage& msg, Uint16 thingId, const Pos
 				creatureType = msg.getU8();
 			else
 			{
-				if(creatureId >= 0x10000000 && creatureId < 0x40000000)
+				if(creatureId < 0x40000000)
 					creatureType = CREATURETYPE_PLAYER;
-				else if(creatureId >= 0x40000000 && creatureId < 0x80000000)
+				else if(creatureId < 0x80000000)
 					creatureType = CREATURETYPE_MONSTER;
 				else
 					creatureType = CREATURETYPE_NPC;
@@ -7670,6 +7981,13 @@ Item* ProtocolGame::getItem(InputMessage& msg, Uint16 thingId, const Position& p
 		}
 	}
 
+	if(g_game.hasGameFeature(GAME_FEATURE_QUICK_LOOT) && ttype->hasFlag(ThingAttribute_Container))
+	{
+		bool assignedToQuickLoot = msg.getBool();
+		if(assignedToQuickLoot)
+			msg.getU32();
+	}
+
 	Sint32 phase = AnimationPhase_Automatic;
 	if(g_game.hasGameFeature(GAME_FEATURE_ITEM_ANIMATION_PHASES))
 	{
@@ -7683,13 +8001,6 @@ Item* ProtocolGame::getItem(InputMessage& msg, Uint16 thingId, const Position& p
 			else
 				phase = SDL_static_cast(Sint32, startPhase);
 		}
-	}
-
-	if(g_game.hasGameFeature(GAME_FEATURE_QUICK_LOOT) && ttype->hasFlag(ThingAttribute_Container))
-	{
-		bool assignedToQuickLoot = msg.getBool();
-		if(assignedToQuickLoot)
-			msg.getU32();
 	}
 	return Item::createItem(pos, thingId, count, phase);
 }

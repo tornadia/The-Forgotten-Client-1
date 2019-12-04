@@ -36,8 +36,10 @@ class Effect
 
 		static Effect* createEffect(const Position& pos, Uint16 type);
 
+		Uint16 getID();
 		SDL_FORCE_INLINE const Position& getPos() {return m_position;}
 		bool canBeDeleted();
+		bool isTopEffect() {return m_topEffect;}
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
@@ -55,6 +57,7 @@ class Effect
 		Uint8 m_xPattern;
 		Uint8 m_yPattern;
 		Uint8 m_zPattern;
+		bool m_topEffect;
 };
 
 class EffectNULL : public Effect

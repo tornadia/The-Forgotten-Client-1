@@ -192,7 +192,7 @@ void ProtocolLogin::parseCharacterList(InputMessage& msg)
 		accountPremDays = SDL_static_cast(Uint32, msg.getU16());
 		accountSubStatus = (accountPremDays > 0 ? SubscriptionStatus_Premium : SubscriptionStatus_Free);
 		if(accountPremDays == 0xFFFF)
-			accountPremDays = 0;
+			accountPremDays = 0xFFFFFFFF;
 	}
 
 	GUI_Window* pWindow = g_engine.getWindow(GUI_WINDOW_MESSAGEBOX);

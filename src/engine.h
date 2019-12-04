@@ -94,7 +94,7 @@ class Engine
 		bool RecreateWindow(bool vulkan, bool opengl = false);
 		bool init();
 
-		void initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Sint32 vchars, Sint32 maxchw, Sint32 maxchh);
+		void initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Sint32 vchars, Sint32 maxchw, Sint32 maxchh, Sint32 spaceh);
 		Uint32 calculateFontWidth(Uint8 fontId, const std::string& text, size_t pos, size_t len);
 		Uint32 calculateFontWidth(Uint8 fontId, const std::string& text);
 
@@ -153,8 +153,9 @@ class Engine
 		void enableMoveItem(Sint32 x, Sint32 y);
 		void setActionData(ClientActions data, Uint32 creatureId, Uint16 itemId, Uint16 posX, Uint16 posY, Uint8 posZ, Uint8 posStack);
 		void setAction(ClientActions action);
+		SDL_FORCE_INLINE ClientActionData& getActionData(Uint8 action) {return m_actionDataStructure[action];}
 		SDL_FORCE_INLINE ClientActions getAction() {return m_actionData;}
-
+	
 		void showContextMenu(GUI_ContextMenu* menu, Sint32 mouseX, Sint32 mouseY);
 		void showDescription(Sint32 mouseX, Sint32 mouseY, const std::string& description, Uint32 delay = 500);
 		bool addToPanel(GUI_PanelWindow* pPanel, Sint32 preferredPanel = -1);
@@ -271,12 +272,14 @@ class Engine
 		SDL_INLINE void setShowInfoMessages(bool infoMessages) {m_showInfoMessages = infoMessages;}
 		SDL_INLINE void setShowEventMessages(bool eventMessages) {m_showEventMessages = eventMessages;}
 		SDL_INLINE void setShowStatusMessages(bool statusMessages) {m_showStatusMessages = statusMessages;}
+		SDL_INLINE void setShowStatusOthersMessages(bool statusMessages) {m_showStatusOthersMessages = statusMessages;}
 		SDL_INLINE void setShowTimestamps(bool timestamps) {m_showTimestamps = timestamps;}
 		SDL_INLINE void setShowLevels(bool levels) {m_showLevels = levels;}
 		SDL_INLINE void setShowPrivateMessages(bool privateMessages) {m_showPrivateMessages = privateMessages;}
 		SDL_FORCE_INLINE bool hasShowInfoMessages() {return m_showInfoMessages;}
 		SDL_FORCE_INLINE bool hasShowEventMessages() {return m_showEventMessages;}
 		SDL_FORCE_INLINE bool hasShowStatusMessages() {return m_showStatusMessages;}
+		SDL_FORCE_INLINE bool hasShowStatusOthersMessages() {return m_showStatusOthersMessages;}
 		SDL_FORCE_INLINE bool hasShowTimestamps() {return m_showTimestamps;}
 		SDL_FORCE_INLINE bool hasShowLevels() {return m_showLevels;}
 		SDL_FORCE_INLINE bool hasShowPrivateMessages() {return m_showPrivateMessages;}
@@ -393,6 +396,7 @@ class Engine
 		bool m_showInfoMessages;
 		bool m_showEventMessages;
 		bool m_showStatusMessages;
+		bool m_showStatusOthersMessages;
 		bool m_showTimestamps;
 		bool m_showLevels;
 		bool m_showPrivateMessages;

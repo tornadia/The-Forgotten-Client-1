@@ -68,18 +68,7 @@ void GUI_Container::setActiveElement(GUI_Element* actElement)
 
 	m_actElement = actElement;
 	if(m_actElement)
-	{
         m_actElement->activate();
-		for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
-		{
-			if((*it) == m_actElement)
-			{
-				m_childs.erase(it);
-				break;
-			}
-		}
-		m_childs.push_back(m_actElement);
-	}
 }
 
 void GUI_Container::clearChilds()
@@ -163,8 +152,7 @@ void GUI_Container::onLMouseDown(Sint32 x, Sint32 y)
 		return;
 	}
 
-	std::vector<GUI_Element*> childsBackup = m_childs;
-	for(std::vector<GUI_Element*>::reverse_iterator it = childsBackup.rbegin(), end = childsBackup.rend(); it != end; ++it)
+	for(std::vector<GUI_Element*>::reverse_iterator it = m_childs.rbegin(), end = m_childs.rend(); it != end; ++it)
 	{
 		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
 		{
@@ -182,7 +170,10 @@ void GUI_Container::onLMouseUp(Sint32 x, Sint32 y)
 
 	m_scrollBar->onLMouseUp(x, y);
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
-		(*it)->onLMouseUp(x, y);
+	{
+		if((*it)->isEventable())
+			(*it)->onLMouseUp(x, y);
+	}
 }
 
 void GUI_Container::onRMouseDown(Sint32 x, Sint32 y)
@@ -196,8 +187,7 @@ void GUI_Container::onRMouseDown(Sint32 x, Sint32 y)
 		return;
 	}
 
-	std::vector<GUI_Element*> childsBackup = m_childs;
-	for(std::vector<GUI_Element*>::reverse_iterator it = childsBackup.rbegin(), end = childsBackup.rend(); it != end; ++it)
+	for(std::vector<GUI_Element*>::reverse_iterator it = m_childs.rbegin(), end = m_childs.rend(); it != end; ++it)
 	{
 		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
 		{
@@ -215,7 +205,10 @@ void GUI_Container::onRMouseUp(Sint32 x, Sint32 y)
 
 	m_scrollBar->onRMouseUp(x, y);
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
-		(*it)->onRMouseUp(x, y);
+	{
+		if((*it)->isEventable())
+			(*it)->onRMouseUp(x, y);
+	}
 }
 
 void GUI_Container::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
@@ -239,8 +232,7 @@ void GUI_Container::onWheel(Sint32 x, Sint32 y, bool wheelUP)
 	(void)y;
 	/*
 	It breaks scrolling by mouse so it is disabled untill there's reason to enable it
-	std::vector<GUI_Element*> childsBackup = m_childs;
-	for(std::vector<GUI_Element*>::reverse_iterator it = childsBackup.rbegin(), end = childsBackup.rend(); it != end; ++it)
+	for(std::vector<GUI_Element*>::reverse_iterator it = m_childs.rbegin(), end = m_childs.rend(); it != end; ++it)
 	{
 		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
 		{

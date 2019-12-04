@@ -493,7 +493,7 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 		squareW -= 4;
 		squareH -= 4;
 	}
-	if(m_showStaticSquare)
+	if(m_showStaticSquare && g_engine.hasShowPvPFrames())
 	{
 		renderer->drawRectangle(squareX, squareY, squareW, squareH, m_staticSquareRed, m_staticSquareGreen, m_staticSquareBlue, 255);
 		renderer->drawRectangle(squareX+1, squareY+1, squareW-2, squareH-2, m_staticSquareRed, m_staticSquareGreen, m_staticSquareBlue, 255);
@@ -643,30 +643,34 @@ void Creature::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32
 
 	Sint32 POSX = posX+9;
 	Sint32 POSY = posY+18;
-	if(m_shield != SHIELD_NONE)
+	if(g_engine.hasShowMarks())
 	{
-		if(m_shield == SHIELD_BLUE_NOSHAREDEXP_BLINK || m_shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK)
+		if(m_shield != SHIELD_NONE)
 		{
-			if(g_frameTime-m_shieldTime >= CREATURE_SHIELD_BLINK_TICKS)
+			if(m_shield == SHIELD_BLUE_NOSHAREDEXP_BLINK || m_shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK)
 			{
-				m_shieldTime = g_frameTime;
-				m_showShield = !m_showShield;
+				if(g_frameTime - m_shieldTime >= CREATURE_SHIELD_BLINK_TICKS)
+				{
+					m_shieldTime = g_frameTime;
+					m_showShield = !m_showShield;
+				}
+				if(m_showShield)
+					renderer->drawPicture(GUI_UI_IMAGE, m_shieldX, m_shieldY, POSX, POSY, GUI_UI_ICON_SHIELD_BLUE_W, GUI_UI_ICON_SHIELD_BLUE_H);
 			}
-			if(m_showShield)
+			else
 				renderer->drawPicture(GUI_UI_IMAGE, m_shieldX, m_shieldY, POSX, POSY, GUI_UI_ICON_SHIELD_BLUE_W, GUI_UI_ICON_SHIELD_BLUE_H);
+
+			POSX += 13;
 		}
-		else
-			renderer->drawPicture(GUI_UI_IMAGE, m_shieldX, m_shieldY, POSX, POSY, GUI_UI_ICON_SHIELD_BLUE_W, GUI_UI_ICON_SHIELD_BLUE_H);
-		POSX += 13;
-	}
 
-	if(m_emblem != GUILDEMBLEM_NONE)
-		renderer->drawPicture(GUI_UI_IMAGE, m_emblemX, m_emblemY, POSX, POSY+13, GUI_UI_ICON_GUILDWAR_ALLY_W, GUI_UI_ICON_GUILDWAR_ALLY_H);
+		if(m_emblem != GUILDEMBLEM_NONE)
+			renderer->drawPicture(GUI_UI_IMAGE, m_emblemX, m_emblemY, POSX, POSY + 13, GUI_UI_ICON_GUILDWAR_ALLY_W, GUI_UI_ICON_GUILDWAR_ALLY_H);
 
-	if(m_skull != SKULL_NONE)
-	{
-		renderer->drawPicture(GUI_UI_IMAGE, m_skullX, m_skullY, POSX, POSY, GUI_UI_ICON_YELLOWSKULL_W, GUI_UI_ICON_YELLOWSKULL_H);
-		POSX += 13;
+		if(m_skull != SKULL_NONE)
+		{
+			renderer->drawPicture(GUI_UI_IMAGE, m_skullX, m_skullY, POSX, POSY, GUI_UI_ICON_YELLOWSKULL_W, GUI_UI_ICON_YELLOWSKULL_H);
+			POSX += 13;
+		}
 	}
 
 	if(m_type == CREATURETYPE_SUMMON_OWN || m_type == CREATURETYPE_SUMMON_OTHERS)
@@ -675,7 +679,7 @@ void Creature::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32
 		POSX += 13;
 	}
 
-	if(m_icon != CREATUREICON_NONE)
+	if(m_icon != CREATUREICON_NONE && g_engine.hasShowIcons())
 	{
 		renderer->drawPicture(GUI_UI_IMAGE, m_iconX, m_iconY, POSX, POSY, GUI_UI_ICON_BUBBLE_SPEECH_W, GUI_UI_ICON_BUBBLE_SPEECH_H);
 		POSX += 20;
@@ -787,7 +791,7 @@ void Creature::renderOnBattle(Sint32 posX, Sint32 posY, bool renderManaBar)
 		squareW -= 2;
 		squareH -= 2;
 	}
-	if(m_showStaticSquare)
+	if(m_showStaticSquare && g_engine.hasShowPvPFrames())
 	{
 		renderer->drawRectangle(squareX, squareY, squareW, squareH, m_staticSquareRed, m_staticSquareGreen, m_staticSquareBlue, 255);
 		squareX += 1;

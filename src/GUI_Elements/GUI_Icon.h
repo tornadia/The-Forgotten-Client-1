@@ -53,7 +53,7 @@ class GUI_RadioIcon : public GUI_Icon
 	public:
 		GUI_RadioIcon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID = 0, const std::string description = "");
 
-		void setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description);
+		void setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description = "");
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 		

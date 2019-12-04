@@ -108,23 +108,20 @@ void UTIL_createCharacterList()
 	}
 	else if(accountSubstatus == SubscriptionStatus_Premium)
 	{
-		if(accountPremDays == 0)
+		if(accountPremDays == 0xFFFFFFFF)
 		{
 			newLabel = new GUI_Label(iRect(18, (newCharacterList ? 312 : 222), 0, 0), "Gratis Premium Account");
 			newWindow->addChild(newLabel);
 		}
 		else
 		{
-			SDL_snprintf(g_buffer, sizeof(g_buffer), "Premium Account (%u day%s left)", accountPremDays, (accountPremDays > 1 ? "s" : ""));
+			if(accountPremDays <= 5)
+				SDL_snprintf(g_buffer, sizeof(g_buffer), "Premium Account (\x0E\xF8\x60\x60%u day%s left\x0F)", accountPremDays, (accountPremDays > 1 ? "s" : ""));
+			else
+				SDL_snprintf(g_buffer, sizeof(g_buffer), "Premium Account (%u day%s left)", accountPremDays, (accountPremDays > 1 ? "s" : ""));
+
 			newLabel = new GUI_Label(iRect(18, (newCharacterList ? 312 : 222), 0, 0), g_buffer);
 			newWindow->addChild(newLabel);
-			if(accountPremDays <= 5)
-			{
-				//Overwrite the days left part as red
-				SDL_snprintf(g_buffer, sizeof(g_buffer), "%u day%s left", accountPremDays, (accountPremDays > 1 ? "s" : ""));
-				newLabel = new GUI_Label(iRect(126, (newCharacterList ? 312 : 222), 0, 0), g_buffer, 0, 248, 96, 96);
-				newWindow->addChild(newLabel);
-			}
 		}
 	}
 	else

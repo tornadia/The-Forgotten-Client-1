@@ -41,6 +41,11 @@ ItemUI::ItemUI(ThingType* type)
 	m_displayCount = false;
 }
 
+ItemUI* ItemUI::createItemUI(Uint16 itemId, Uint16 count, Sint32 phase)
+{
+	return ItemUI::createItemUI(g_thingManager.getThingType(ThingCategory_Item, itemId), count, phase);
+}
+
 ItemUI* ItemUI::createItemUI(ThingType* type, Uint16 count, Sint32 phase)
 {
 	if(!type)
@@ -154,6 +159,113 @@ ItemUI* ItemUI::createItemUI(ThingType* type, Uint16 count, Sint32 phase)
 	if(newItem->m_animator)
 		newItem->m_animator->resetAnimation(newItem->m_animation, phase);
 	return newItem;
+}
+
+void ItemUI::setSubtype(Uint16 count, bool showCount)
+{
+	if(!m_thingType)
+		return;
+
+	Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, count));
+	if(m_thingType->hasFlag(ThingAttribute_Stackable))
+	{
+		m_count = count;
+		if(m_thingType->m_frameGroup[ThingFrameGroup_Default].m_patternX == 4 && m_thingType->m_frameGroup[ThingFrameGroup_Default].m_patternY == 2)
+		{
+			if(count <= 1)
+			{
+				m_xPattern = 0;
+				m_yPattern = 0;
+			}
+			else if(count < 5)
+			{
+				m_xPattern = SDL_static_cast(Uint8, count-1);
+				m_yPattern = 0;
+			}
+			else
+			{
+				m_xPattern = ((count < 10) ? 0 : (count < 25) ? 1 : (count < 50) ? 2 : 3);
+				m_yPattern = 1;
+			}
+		}
+		m_stringCount = std::string(g_buffer, SDL_static_cast(size_t, len));
+		m_displayCount = showCount;
+	}
+	else if(m_thingType->hasFlag(ThingAttribute_Chargeable))
+	{
+		m_stringCount = std::string(g_buffer, SDL_static_cast(size_t, len));
+		m_displayCount = showCount;
+	}
+	else if(m_thingType->hasFlag(ThingAttribute_Splash) || m_thingType->hasFlag(ThingAttribute_FluidContainer))
+	{
+		m_subtype = SDL_static_cast(Uint8, count);
+		Sint32 fluid = SDL_static_cast(Sint32, count);
+		if(g_game.hasGameFeature(GAME_FEATURE_NEWFLUIDS))
+		{
+			switch(count)
+			{
+				case FluidNone:
+					fluid = FluidTransparent;
+					break;
+				case FluidWater:
+					fluid = FluidBlue;
+					break;
+				case FluidMana:
+					fluid = FluidPurple;
+					break;
+				case FluidBeer:
+					fluid = FluidBrown;
+					break;
+				case FluidOil:
+					fluid = FluidBrown;
+					break;
+				case FluidBlood:
+					fluid = FluidRed;
+					break;
+				case FluidSlime:
+					fluid = FluidGreen;
+					break;
+				case FluidMud:
+					fluid = FluidBrown;
+					break;
+				case FluidLemonade:
+					fluid = FluidYellow;
+					break;
+				case FluidMilk:
+					fluid = FluidWhite;
+					break;
+				case FluidWine:
+					fluid = FluidPurple;
+					break;
+				case FluidHealth:
+					fluid = FluidRed;
+					break;
+				case FluidUrine:
+					fluid = FluidYellow;
+					break;
+				case FluidRum:
+					fluid = FluidBrown;
+					break;
+				case FluidFruidJuice:
+					fluid = FluidYellow;
+					break;
+				case FluidCoconutMilk:
+					fluid = FluidWhite;
+					break;
+				case FluidTea:
+					fluid = FluidBrown;
+					break;
+				case FluidMead:
+					fluid = FluidBrown;
+					break;
+				default:
+					fluid = FluidTransparent;
+					break;
+			}
+		}
+		m_xPattern = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (fluid % 4)), m_thingType->m_frameGroup[ThingFrameGroup_Default].m_patternX);
+		m_yPattern = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (fluid / 4)), m_thingType->m_frameGroup[ThingFrameGroup_Default].m_patternY);
+	}
 }
 
 Uint16 ItemUI::getID()

@@ -50,7 +50,7 @@ SDL_FORCE_INLINE Uint32 UTIL_power_of_2(Uint32 input)
 void UTIL_integer_scale(Sint32& w, Sint32& h, Sint32 expectW, Sint32 expectH, Sint32 limitW, Sint32 limitH);
 SDL_FORCE_INLINE float UTIL_sqrtf(float x)
 {
-	//(~95%) accuracy should be enought for light system and much faster than sqrt intrinsic
+	//(~95%) accuracy should be enough for light system and much faster than sqrt intrinsic
 	Uint32 i = *SDL_reinterpret_cast(Uint32*, &x);
 	i += (127 << 23); i >>= 1;
 	return *SDL_reinterpret_cast(float*, &i);
@@ -61,7 +61,6 @@ void SDL_WriteLEString(SDL_RWops* src, const std::string& text);
 
 Uint32 SDL_ReadProtobufTag(SDL_RWops* src);
 Uint32 SDL_ReadProtobufSize(SDL_RWops* src);
-Uint32 SDL_ReadProtobufTwoBytes(SDL_RWops* src);
 Uint64 SDL_ReadProtobufVariant(SDL_RWops* src);
 std::string SDL_ReadProtobufString(SDL_RWops* src);
 
@@ -88,27 +87,54 @@ std::string UTIL_formatDate(const char* format, time_t time);
 template<typename T>
 SDL_FORCE_INLINE T UTIL_safeMod(T value, T denom) {return (denom > 1 ? value % denom : 0);}
 template <typename T>
-SDL_FORCE_INLINE T UTIL_min(T a, T b) {return (a < b) ? a : b;}
+SDL_FORCE_INLINE T UTIL_min(T a, T b) {return (a < b ? a : b);}
 template <typename T>
-SDL_FORCE_INLINE T UTIL_max(T a, T b) {return (a > b) ? a : b;}
+SDL_FORCE_INLINE T UTIL_max(T a, T b) {return (a > b ? a : b);}
 
 SDL_FORCE_INLINE bool UTIL_isPartyMember(Uint8 shield)
 {
-	return shield == SHIELD_WHITEYELLOW || shield == SHIELD_BLUE || shield == SHIELD_YELLOW || shield == SHIELD_BLUE_SHAREDEXP ||
-		shield == SHIELD_YELLOW_SHAREDEXP || shield == SHIELD_BLUE_NOSHAREDEXP_BLINK || shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK ||
-		shield == SHIELD_BLUE_NOSHAREDEXP || shield == SHIELD_YELLOW_NOSHAREDEXP;
+	switch(shield)
+	{
+		case SHIELD_WHITEYELLOW:
+		case SHIELD_BLUE:
+		case SHIELD_YELLOW:
+		case SHIELD_BLUE_SHAREDEXP:
+		case SHIELD_YELLOW_SHAREDEXP:
+		case SHIELD_BLUE_NOSHAREDEXP_BLINK:
+		case SHIELD_YELLOW_NOSHAREDEXP_BLINK:
+		case SHIELD_BLUE_NOSHAREDEXP:
+		case SHIELD_YELLOW_NOSHAREDEXP:
+			return true;
+	}
+	return false;
 }
 SDL_FORCE_INLINE bool UTIL_isPartyLeader(Uint8 shield)
 {
-	return shield == SHIELD_WHITEYELLOW || shield == SHIELD_YELLOW || shield == SHIELD_YELLOW_SHAREDEXP ||
-		shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || shield == SHIELD_YELLOW_NOSHAREDEXP;
+	switch(shield)
+	{
+		case SHIELD_WHITEYELLOW:
+		case SHIELD_YELLOW:
+		case SHIELD_YELLOW_SHAREDEXP:
+		case SHIELD_YELLOW_NOSHAREDEXP_BLINK:
+		case SHIELD_YELLOW_NOSHAREDEXP:
+			return true;
+	}
+	return false;
 }
 SDL_FORCE_INLINE bool UTIL_isPartySharedEnabled(Uint8 shield)
 {
-	return shield == SHIELD_YELLOW_SHAREDEXP || shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK || shield == SHIELD_YELLOW_NOSHAREDEXP ||
-		shield == SHIELD_BLUE_SHAREDEXP || shield == SHIELD_BLUE_NOSHAREDEXP_BLINK || shield == SHIELD_BLUE_NOSHAREDEXP;
+	switch(shield)
+	{
+		case SHIELD_YELLOW_SHAREDEXP:
+		case SHIELD_YELLOW_NOSHAREDEXP_BLINK:
+		case SHIELD_YELLOW_NOSHAREDEXP:
+		case SHIELD_BLUE_SHAREDEXP:
+		case SHIELD_BLUE_NOSHAREDEXP_BLINK:
+		case SHIELD_BLUE_NOSHAREDEXP:
+			return true;
+	}
+	return false;
 }
-
 
 void UTIL_initSubsystem();
 

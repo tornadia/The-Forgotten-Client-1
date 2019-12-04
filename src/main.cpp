@@ -210,12 +210,14 @@ void initCursors()
 		g_cursors[CLIENT_CURSOR_CROSSHAIR] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
 		g_cursors[CLIENT_CURSOR_RESIZENS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
 		g_cursors[CLIENT_CURSOR_RESIZEWE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+		g_cursors[CLIENT_CURSOR_LENSHELP] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);//We can't do much about this
 	}
 	else
 	{//Some of drivers don't support system cursors or they aren't exactly what we want
 		g_cursors[CLIENT_CURSOR_CROSSHAIR] = createCursor(crosshair_pixels, 9, 9);
 		g_cursors[CLIENT_CURSOR_RESIZENS] = createCursor(resizens_pixels, 4, 9);
 		g_cursors[CLIENT_CURSOR_RESIZEWE] = createCursor(resizewe_pixels, 9, 4);
+		g_cursors[CLIENT_CURSOR_LENSHELP] = createCursor(lenshelp_pixels, 6, 6);
 	}
 	//These functions can fail but let's assume we don't run out of memory at this stage
 	setCursor(CLIENT_CURSOR_ARROW);

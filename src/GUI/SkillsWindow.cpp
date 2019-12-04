@@ -26,8 +26,8 @@
 #include "../GUI_Elements/GUI_StaticImage.h"
 #include "../GUI_Elements/GUI_Label.h"
 #include "../GUI_Elements/GUI_Icon.h"
-#include "../GUI_Elements/GUI_Container.h"
 #include "../GUI_Elements/GUI_ContextMenu.h"
+#include "../GUI_Elements/GUI_ScrollBar.h"
 #include "../game.h"
 #include "SkillsWindow.h"
 
@@ -142,7 +142,7 @@ extern Game g_game;
 
 bool g_haveSkillsOpen = false;
 
-void UTIL_recreateSkillsWindow(GUI_Container* container);
+void UTIL_recreateSkillsWindow(GUI_SkillsContainer* container);
 void skills_Events(Uint32 event, Sint32 status)
 {
 	switch(event)
@@ -163,7 +163,7 @@ void skills_Events(Uint32 event, Sint32 status)
 					pPanel->setSize(pRect.x2, 19);
 					parent->checkPanels();
 
-					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+					GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeInvisible();
 
@@ -175,7 +175,7 @@ void skills_Events(Uint32 event, Sint32 status)
 				{
 					UTIL_ResizePanel(SDL_reinterpret_cast(void*, pPanel), pRect.x2, pPanel->getCachedHeight());
 
-					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+					GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeVisible();
 
@@ -218,7 +218,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					iRect cRect = pContainer->getRect();
@@ -241,7 +241,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowLevelBar(!g_engine.getShowLevelBar());
@@ -255,7 +255,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowStaminaBar(!g_engine.getShowStaminaBar());
@@ -269,7 +269,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowTrainingBar(!g_engine.getShowTrainingBar());
@@ -283,7 +283,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowMagLevelBar(!g_engine.getShowMagLevelBar());
@@ -297,7 +297,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowSkillBar(Skills_Fist, !g_engine.getShowSkillBar(Skills_Fist));
@@ -311,7 +311,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowSkillBar(Skills_Club, !g_engine.getShowSkillBar(Skills_Club));
@@ -325,7 +325,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowSkillBar(Skills_Sword, !g_engine.getShowSkillBar(Skills_Sword));
@@ -339,7 +339,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowSkillBar(Skills_Axe, !g_engine.getShowSkillBar(Skills_Axe));
@@ -353,7 +353,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowSkillBar(Skills_Distance, !g_engine.getShowSkillBar(Skills_Distance));
@@ -367,7 +367,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowSkillBar(Skills_Shielding, !g_engine.getShowSkillBar(Skills_Shielding));
@@ -381,7 +381,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowSkillBar(Skills_Fishing, !g_engine.getShowSkillBar(Skills_Fishing));
@@ -395,7 +395,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowLevelBar(true);
@@ -421,7 +421,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 			if(pPanel)
 			{
-				GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+				GUI_SkillsContainer* pContainer = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 				if(pContainer)
 				{
 					g_engine.setShowLevelBar(false);
@@ -445,6 +445,29 @@ void skills_Events(Uint32 event, Sint32 status)
 	}
 }
 
+Uint32 getSkillXPGainRate()
+{
+	Uint32 percent = 100;
+	if(g_game.hasGameFeature(GAME_FEATURE_EXPERIENCE_BONUS))
+	{
+		if(g_game.hasGameFeature(GAME_FEATURE_DETAILED_EXPERIENCE_BONUS))
+		{
+			percent = SDL_static_cast(Uint32, g_game.getPlayerBaseXpGain());
+			percent += SDL_static_cast(Uint32, g_game.getPlayerTournamentFactor());
+			percent += SDL_static_cast(Uint32, g_game.getPlayerVoucherXpGain());
+			percent += SDL_static_cast(Uint32, g_game.getPlayerGrindingXpGain());
+			percent += SDL_static_cast(Uint32, g_game.getPlayerStoreXpGain());
+			percent = percent*SDL_static_cast(Uint32, g_game.getPlayerHuntingXpGain())/100;
+		}
+		else
+		{
+			percent += SDL_static_cast(Uint32, g_game.getPlayerTournamentFactor());
+			percent += SDL_static_cast(Uint32, g_game.getPlayerExpBonus()*100.0);
+		}
+	}
+	return percent;
+}
+
 std::string getSkillData(Uint32 skillId)
 {
 	std::string result;
@@ -464,20 +487,7 @@ std::string getSkillData(Uint32 skillId)
 		break;
 		case SKILLS_XPGAIN_EVENTID:
 		{
-			Uint32 percent = 100;
-			if(g_game.hasGameFeature(GAME_FEATURE_EXPERIENCE_BONUS))
-			{
-				if(g_game.hasGameFeature(GAME_FEATURE_DETAILED_EXPERIENCE_BONUS))
-				{
-					percent = SDL_static_cast(Uint32, g_game.getPlayerBaseXpGain());
-					percent += SDL_static_cast(Uint32, g_game.getPlayerVoucherXpGain());
-					percent += SDL_static_cast(Uint32, g_game.getPlayerGrindingXpGain());
-					percent += SDL_static_cast(Uint32, g_game.getPlayerStoreXpGain());
-					percent = percent*SDL_static_cast(Uint32, g_game.getPlayerHuntingXpGain())/100;
-				}
-				else
-					percent += SDL_static_cast(Uint32, g_game.getPlayerExpBonus()*100.0);
-			}
+			Uint32 percent = getSkillXPGainRate();
 			Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u%%", percent);
 			result = std::string(g_buffer, SDL_static_cast(size_t, len));
 		}
@@ -621,13 +631,13 @@ std::string getSkillData(Uint32 skillId)
 	return result;
 }
 
-void UTIL_recreateSkillsWindow(GUI_Container* container)
+void UTIL_recreateSkillsWindow(GUI_SkillsContainer* container)
 {
 	if(!container)
 	{
 		GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 		if(pPanel)
-			container = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+			container = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 		if(!container)
 			return;
 	}
@@ -661,6 +671,13 @@ void UTIL_recreateSkillsWindow(GUI_Container* container)
 	newDescription = new GUI_SkillDescription(iRect(10, PosY, 135, 12), SKILLS_XPGAIN_EVENTID);
 	newDescription->setName(false, SKILLS_XPGAIN_TITLE);
 	newDescription->setName(true, getSkillData(SKILLS_XPGAIN_EVENTID));
+	Uint32 percent = getSkillXPGainRate();
+	Uint32 basePercent = (g_game.hasGameFeature(GAME_FEATURE_EXPERIENCE_BONUS) ? SDL_static_cast(Uint32, g_game.getPlayerBaseXpGain()) : 100);
+	if(percent > basePercent)
+		newDescription->setColor(true, 68, 172, 36);
+	else if(percent < basePercent)
+		newDescription->setColor(true, 255, 152, 84);
+
 	container->addChild(newDescription);
 	PosY += 14;
 	GUI_SkillSeparator* newSeparator = new GUI_SkillSeparator(iRect(10, PosY, 135, 1));
@@ -707,13 +724,13 @@ void UTIL_recreateSkillsWindow(GUI_Container* container)
 		if(g_engine.getShowStaminaBar())
 		{
 			Uint32 staminaMinutes = SDL_static_cast(Uint32, g_game.getPlayerStamina());
-			Uint8 percent;
+			Uint8 staminaPercent;
 			if(g_clientVersion <= 840)
-				percent = SDL_static_cast(Uint8, (staminaMinutes * 100) / 3360);
+				staminaPercent = SDL_static_cast(Uint8, (staminaMinutes * 100) / 3360);
 			else
-				percent = SDL_static_cast(Uint8, (staminaMinutes * 100) / 2520);
+				staminaPercent = SDL_static_cast(Uint8, (staminaMinutes * 100) / 2520);
 			GUI_SkillBar* newBar = new GUI_SkillBar(iRect(10, PosY+12, 135, 5), SKILLS_STAMINA_BAR_EVENTID);
-			newBar->setPercent(percent);
+			newBar->setPercent(staminaPercent);
 			if(g_clientVersion <= 840)
 				newBar->setColor(192, 96, 0);
 			else
@@ -1011,10 +1028,10 @@ void UTIL_recreateSkillsWindow(GUI_Container* container)
 
 void UTIL_updateSkillsWindowStats()
 {
-	GUI_Container* container = NULL;
+	GUI_SkillsContainer* container = NULL;
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 	if(pPanel)
-		container = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+		container = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 	if(!container)
 		return;
 
@@ -1042,7 +1059,18 @@ void UTIL_updateSkillsWindowStats()
 	{
 		pDescription = SDL_static_cast(GUI_SkillDescription*, container->getChild(SKILLS_XPGAIN_EVENTID));
 		if(pDescription)
+		{
 			pDescription->setName(true, getSkillData(SKILLS_XPGAIN_EVENTID));
+
+			Uint32 percent = getSkillXPGainRate();
+			Uint32 basePercent = (g_game.hasGameFeature(GAME_FEATURE_EXPERIENCE_BONUS) ? SDL_static_cast(Uint32, g_game.getPlayerBaseXpGain()) : 100);
+			if(percent > basePercent)
+				pDescription->setColor(true, 68, 172, 36);
+			else if(percent < basePercent)
+				pDescription->setColor(true, 255, 152, 84);
+			else
+				pDescription->setColor(true, 175, 175, 175);
+		}
 	}
 
 	if(g_game.hasCachedStat(CACHED_STAT_HEALTH))
@@ -1152,10 +1180,10 @@ void UTIL_updateSkillsWindowStats()
 
 void UTIL_updateSkillsWindowSkills()
 {
-	GUI_Container* container = NULL;
+	GUI_SkillsContainer* container = NULL;
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_SKILLS);
 	if(pPanel)
-		container = SDL_static_cast(GUI_Container*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
+		container = SDL_static_cast(GUI_SkillsContainer*, pPanel->getChild(SKILLS_CONTAINER_EVENTID));
 	if(!container)
 		return;
 
@@ -1372,7 +1400,7 @@ void UTIL_toggleSkillsWindow()
 	newWindow->addChild(newIcon);
 	GUI_Label* newLabel = new GUI_Label(iRect(19, 2, 0, 0), SKILLS_TITLE, 0, 144, 144, 144);
 	newWindow->addChild(newLabel);
-	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, savedHeight), newWindow, SKILLS_CONTAINER_EVENTID);
+	GUI_SkillsContainer* newContainer = new GUI_SkillsContainer(iRect(2, 13, 168, savedHeight), newWindow, SKILLS_CONTAINER_EVENTID);
 	UTIL_recreateSkillsWindow(newContainer);
 	newContainer->startEvents();
 	newWindow->addChild(newContainer);
@@ -1401,6 +1429,50 @@ void UTIL_createSkillsPopupMenu(Sint32 x, Sint32 y)
 	newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, SKILLS_POPUP_HIDEALL_EVENTID, SKILLS_POPUP_HIDEALL, "");
 	newMenu->setEventCallback(&skills_Events);
 	g_engine.showContextMenu(newMenu, x, y);
+}
+
+GUI_SkillsContainer::GUI_SkillsContainer(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID) : GUI_Container(boxRect, parent, internalID)
+{
+	m_rmouse = false;
+}
+
+void GUI_SkillsContainer::onRMouseDown(Sint32 x, Sint32 y)
+{
+	if(!m_visible)
+		return;
+
+	if(m_scrollBar->getRect().isPointInside(x, y))
+	{
+		m_scrollBar->onRMouseDown(x, y);
+		return;
+	}
+	m_rmouse = true;
+
+	std::vector<GUI_Element*> childsBackup = m_childs;
+	for(std::vector<GUI_Element*>::reverse_iterator it = childsBackup.rbegin(), end = childsBackup.rend(); it != end; ++it)
+	{
+		if((*it)->isEventable() && (*it)->getRect().isPointInside(x, y))
+		{
+			setActiveElement((*it));
+			(*it)->onRMouseDown(x, y);
+			return;
+		}
+	}
+}
+
+void GUI_SkillsContainer::onRMouseUp(Sint32 x, Sint32 y)
+{
+	if(!m_visible)
+		return;
+
+	m_scrollBar->onRMouseUp(x, y);
+	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+		(*it)->onRMouseUp(x, y);
+
+	if(m_rmouse && isInsideRect(x, y))
+		UTIL_createSkillsPopupMenu(x, y);;
+
+	m_rmouse = false;
 }
 
 GUI_SkillSeparator::GUI_SkillSeparator(iRect boxRect, Uint32 internalID)
@@ -1536,51 +1608,72 @@ void GUI_SkillDescription::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 			case SKILLS_XPGAIN_EVENTID:
 			{
 				Uint32 percent = 100;
-				if(g_game.hasGameFeature(GAME_FEATURE_DETAILED_EXPERIENCE_BONUS))
+				if(g_game.hasGameFeature(GAME_FEATURE_EXPERIENCE_BONUS))
 				{
-					percent = SDL_static_cast(Uint32, g_game.getPlayerBaseXpGain());
-					percent += SDL_static_cast(Uint32, g_game.getPlayerVoucherXpGain());
-					percent += SDL_static_cast(Uint32, g_game.getPlayerGrindingXpGain());
-					percent += SDL_static_cast(Uint32, g_game.getPlayerStoreXpGain());
-					percent = percent*SDL_static_cast(Uint32, g_game.getPlayerHuntingXpGain())/100;
+					if(g_game.hasGameFeature(GAME_FEATURE_DETAILED_EXPERIENCE_BONUS))
+					{
+						percent = SDL_static_cast(Uint32, g_game.getPlayerBaseXpGain());
+						percent += SDL_static_cast(Uint32, g_game.getPlayerTournamentFactor());
+						percent += SDL_static_cast(Uint32, g_game.getPlayerVoucherXpGain());
+						percent += SDL_static_cast(Uint32, g_game.getPlayerGrindingXpGain());
+						percent += SDL_static_cast(Uint32, g_game.getPlayerStoreXpGain());
+						percent = percent*SDL_static_cast(Uint32, g_game.getPlayerHuntingXpGain())/100;
+					}
+					else
+					{
+						percent += SDL_static_cast(Uint32, g_game.getPlayerTournamentFactor());
+						percent += SDL_static_cast(Uint32, g_game.getPlayerExpBonus()*100.0);
+					}
 				}
-				else
-					percent += SDL_static_cast(Uint32, g_game.getPlayerExpBonus()*100.0);
 
 				std::string description;
 				Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Your current XP gain rate amounts to %u%%\nYour XP gain rate is calculated as fellows:", percent);
 				description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
 				len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- Base XP gain rate: %u%%", SDL_static_cast(Uint32, g_game.getPlayerBaseXpGain()));
 				description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
-				if(g_game.hasGameFeature(GAME_FEATURE_DETAILED_EXPERIENCE_BONUS))
+				if(g_game.hasGameFeature(GAME_FEATURE_EXPERIENCE_BONUS))
 				{
-					if(g_game.getPlayerGrindingXpGain() != 0)
+					Sint32 factor = g_game.getPlayerTournamentFactor();
+					if(factor != 0)
 					{
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- Low level bonus: +%u%% (until level 50)", SDL_static_cast(Uint32, g_game.getPlayerGrindingXpGain()));
+						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- Tournament Factor: %s%d%%", (factor > 0 ? "+" : ""), factor);
 						description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
 					}
-					if(g_game.getPlayerVoucherXpGain() != 0)
+					if(g_game.hasGameFeature(GAME_FEATURE_DETAILED_EXPERIENCE_BONUS))
 					{
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- XP voucher: +%u%%", SDL_static_cast(Uint32, g_game.getPlayerVoucherXpGain()));
-						description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
+						Uint16 xpGain = g_game.getPlayerGrindingXpGain();
+						if(xpGain != 0)
+						{
+							len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- Low level bonus: +%u%% (until level 50)", SDL_static_cast(Uint32, xpGain));
+							description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
+						}
+						xpGain = g_game.getPlayerVoucherXpGain();
+						if(xpGain != 0)
+						{
+							len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- XP voucher: +%u%%", SDL_static_cast(Uint32, xpGain));
+							description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
+						}
+						xpGain = g_game.getPlayerStoreXpGain();
+						if(xpGain != 0)
+						{
+							len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- XP store: +%u%%", SDL_static_cast(Uint32, xpGain));
+							description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
+						}
+						xpGain = g_game.getPlayerHuntingXpGain();
+						if(xpGain != 100)
+						{
+							len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- Stamina bonus: x%f", xpGain/100.0);
+							description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
+						}
 					}
-					if(g_game.getPlayerStoreXpGain() != 0)
+					else
 					{
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- XP store: +%u%%", SDL_static_cast(Uint32, g_game.getPlayerStoreXpGain()));
-						description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
-					}
-					if(g_game.getPlayerHuntingXpGain() != 100)
-					{
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- Stamina bonus: x%f", g_game.getPlayerHuntingXpGain()/100.0);
-						description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
-					}
-				}
-				else
-				{
-					if(g_game.getPlayerExpBonus() != 0.0)
-					{
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- XP bonus: +%u%%", SDL_static_cast(Uint32, g_game.getPlayerExpBonus()*100.0));
-						description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
+						double xpGain = g_game.getPlayerExpBonus();
+						if(xpGain != 0.0)
+						{
+							len = SDL_snprintf(g_buffer, sizeof(g_buffer), "\n- XP bonus: +%u%%", SDL_static_cast(Uint32, xpGain*100.0));
+							description.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
+						}
 					}
 				}
 				g_engine.showDescription(x, y, description);

@@ -92,7 +92,7 @@ class Game
 		void processSpellDelay(Uint8 spellId, Uint32 delay);
 		void processSpellGroupDelay(Uint8 groupId, Uint32 delay);
 		void processMultiUseDelay(Uint32 delay);
-		void processPlayerModes(Uint8 fightMode, Uint8 chaseMode, bool safeMode, Uint8 pvpMode);
+		void processPlayerModes(Uint8 fightMode, Uint8 chaseMode, Uint8 safeMode, Uint8 pvpMode);
 		void processTalk(const std::string& name, Uint32 statementId, Uint16 playerLevel, MessageMode mode, std::string& text, Uint32 channelId, const Position& position);
 		void processChannelList(std::vector<ChannelDetail>& channels);
 		void processOpenChannel(Uint16 channelId, const std::string& channelName);
@@ -120,6 +120,7 @@ class Game
 		void sendAttackModes();
 		void sendAttack(Creature* creature);
 		void sendFollow(Creature* creature);
+		void sendCancelAttackAndFollow();
 		void sendJoinAggression(Uint32 creatureId);
 		void sendInviteToParty(Uint32 creatureId);
 		void sendJoinToParty(Uint32 creatureId);
@@ -145,7 +146,10 @@ class Game
 		void sendSeekInContainer(Uint8 containerId, Uint16 index);
 		void sendBrowseField(const Position& position);
 		void sendOpenParentContainer(const Position& position);
+		void sendTextWindow(Uint32 windowId, const std::string& text);
+		void sendHouseWindow(Uint32 windowId, Uint8 doorId, const std::string& text);
 
+		void stopActions();
 		void startAutoWalk(const Position& toPosition);
 		void stopAutoWalk();
 		void checkServerMovement(Direction dir);
@@ -220,7 +224,6 @@ class Game
 		SDL_FORCE_INLINE Uint8 getPlayerLevelPercent() {return m_playerLevelPercent;}
 
 		void setPlayerMagicLevel(Uint16 level, Uint16 baseLevel, Uint8 levelPercent);
-		void setPlayerBaseMagicLevel(Uint16 level);
 		SDL_FORCE_INLINE Uint16 getPlayerMagicLevel() {return m_playerMagicLevel;}
 		SDL_FORCE_INLINE Uint16 getPlayerBaseMagicLevel() {return m_playerBaseMagicLevel;}
 		SDL_FORCE_INLINE Uint8 getPlayerMagicLevelPercent() {return m_playerMagicLevelPercent;}
@@ -241,14 +244,16 @@ class Game
 		SDL_FORCE_INLINE Uint16 getPlayerOfflineTraining() {return m_playerOfflineTraining;}
 
 		void setPlayerExpBonus(double expBonus);
+		void setPlayerTournamentFactor(Sint32 factor) {m_playerTournamentFactor = factor;}
 		void setPlayerExpBonus(Uint16 baseXp, Uint16 voucherXp, Uint16 grindingXp, Uint16 storeXp, Uint16 huntingXp);
 		SDL_FORCE_INLINE double getPlayerExpBonus() {return m_playerExpBonus;}
 		SDL_FORCE_INLINE Uint16 getPlayerBaseXpGain() {return m_playerBaseXpGain;}
+		SDL_FORCE_INLINE Sint32 getPlayerTournamentFactor() {return m_playerTournamentFactor;}
 		SDL_FORCE_INLINE Uint16 getPlayerVoucherXpGain() {return m_playerVoucherXpGain;}
 		SDL_FORCE_INLINE Uint16 getPlayerGrindingXpGain() {return m_playerGrindingXpGain;}
 		SDL_FORCE_INLINE Uint16 getPlayerStoreXpGain() {return m_playerStoreXpGain;}
 		SDL_FORCE_INLINE Uint16 getPlayerHuntingXpGain() {return m_playerHuntingXpGain;}
-
+		
 		void setPlayerSkill(Skills skill, Uint16 level, Uint16 baseLevel, Uint8 levelPercent);
 		SDL_FORCE_INLINE Uint16 getPlayerSkillLevel(Skills skill) {return m_playerSkillsLevel[skill];}
 		SDL_FORCE_INLINE Uint16 getPlayerSkillBaseLevel(Skills skill) {return m_playerSkillsBaseLevel[skill];}
@@ -268,9 +273,26 @@ class Game
 		SDL_INLINE void setCanReportBugs(bool canReportBugs) {m_canReportBugs = canReportBugs;}
 		SDL_FORCE_INLINE bool getCanReportBugs() {return m_canReportBugs;}
 
+		SDL_INLINE void setExpertPvpMode(bool expertPvpMode) {m_expertPvpMode = expertPvpMode;}
+		SDL_FORCE_INLINE bool getExpertPvpMode() {return m_expertPvpMode;}
+		SDL_INLINE void setCanChangePvpFrames(bool canChangePvpFrames) {m_canChangePvpFrames = canChangePvpFrames;}
+		SDL_FORCE_INLINE bool getCanChangePvpFrames() {return m_canChangePvpFrames;}
+		SDL_INLINE void setHaveExivaRestrictions(bool haveExivaRestrictions) {m_haveExivaRestrictions = haveExivaRestrictions;}
+		SDL_FORCE_INLINE bool getHaveExivaRestrictions() {return m_haveExivaRestrictions;}
+		SDL_INLINE void setTournamentEnabled(bool tournamentEnabled) {m_tournamentEnabled = tournamentEnabled;}
+		SDL_FORCE_INLINE bool getTournamentEnabled() {return m_tournamentEnabled;}
+		
+		SDL_INLINE void setStoreUrl(std::string storeUrl) {m_storeUrl = std::move(storeUrl);}
+		SDL_FORCE_INLINE std::string& getStoreUrl() {return m_storeUrl;}
+		SDL_INLINE void setStorePackages(Uint16 storePackages) {m_storePackages = storePackages;}
+		SDL_FORCE_INLINE Uint16 getStorePackages() {return m_storePackages;}
+		
 	protected:
+		std::bitset<GAME_FEATURE_LAST> m_gameFeatures;
 		std::vector<Direction> m_autoWalkDirections;
 		std::vector<std::pair<Uint32, Uint64>> m_expTable;
+		std::string m_storeUrl;
+
 		ItemUI* m_inventoryItem[SLOT_LAST];
 		Container* m_containers[GAME_MAX_CONTAINERS];
 
@@ -292,6 +314,8 @@ class Game
 		Uint32 m_icons;
 		Uint32 m_cancelWalkCounter;
 
+		Sint32 m_playerTournamentFactor;
+
 		Position m_autoWalkDestination;
 		Position m_limitWalkDestination;
 		Position m_lastCancelWalkPos;
@@ -311,6 +335,7 @@ class Game
 		Uint16 m_playerSkillsLevel[Skills_LastAdditionalSkill];
 		Uint16 m_playerSkillsBaseLevel[Skills_LastAdditionalSkill];
 		Uint16 m_serverBeat;
+		Uint16 m_storePackages;
 		Uint16 m_cached_stats;
 		Uint16 m_cached_skills;
 
@@ -325,8 +350,11 @@ class Game
 		Uint8 m_playerCurrentDir;
 		Uint8 m_playerLastDir;
 
-		std::bitset<GAME_FEATURE_LAST> m_gameFeatures;
 		bool m_canReportBugs;
+		bool m_expertPvpMode;
+		bool m_canChangePvpFrames;
+		bool m_haveExivaRestrictions;
+		bool m_tournamentEnabled;
 };
 
 #endif /* __FILE_GAME_h_ */

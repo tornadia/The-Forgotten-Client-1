@@ -198,9 +198,6 @@
     <ClCompile Include="..\..\GUI\CharacterList.cpp">
       <Filter>Source Files\TODO</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\GUI\TutorialHint.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\GUI\TradeWindow.cpp">
       <Filter>Source Files\TODO</Filter>
     </ClCompile>
@@ -216,16 +213,7 @@
     <ClCompile Include="..\..\GUI\BattleWindow.cpp">
       <Filter>Source Files\TODO</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\GUI\ItemMove.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\GUI\Minimap.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\ReadWrite.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\SkillsWindow.cpp">
       <Filter>Source Files\TODO</Filter>
     </ClCompile>
     <ClCompile Include="..\..\GUI\ExitWarning.cpp">
@@ -356,6 +344,27 @@
     </ClCompile>
     <ClCompile Include="..\..\GUI\SpellsWindow.cpp">
       <Filter>Source Files\TODO</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\SkillsWindow.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\ItemMove.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\TutorialHint.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\Help.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\RuleViolations.cpp">
+      <Filter>Source Files\TODO</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI_Elements\GUI_Content.cpp">
+      <Filter>Source Files\GUI_Elements</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\ReadWrite.cpp">
+      <Filter>Source Files\GUI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -631,6 +640,15 @@
     </ClInclude>
     <ClInclude Include="..\..\gui_const.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\GUI\ItemMove.h">
+      <Filter>Header Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\GUI_Elements\GUI_Content.h">
+      <Filter>Header Files\GUI_Elements</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\GUI\ReadWrite.h">
+      <Filter>Header Files\GUI</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

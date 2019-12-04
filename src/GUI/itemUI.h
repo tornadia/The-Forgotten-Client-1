@@ -31,7 +31,9 @@ class ItemUI
 	public:
 		ItemUI(ThingType* type);
 
+		static ItemUI* createItemUI(Uint16 itemId, Uint16 count, Sint32 phase = AnimationPhase_Automatic);
 		static ItemUI* createItemUI(ThingType* type, Uint16 count, Sint32 phase = AnimationPhase_Automatic);
+		void setSubtype(Uint16 count, bool showCount);
 
 		SDL_FORCE_INLINE Uint16 getItemCount() {return m_count;}
 		SDL_FORCE_INLINE Uint8 getItemSubtype() {return m_subtype;}

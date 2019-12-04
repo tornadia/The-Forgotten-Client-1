@@ -54,7 +54,7 @@ class GUI_RadioButton : public GUI_Button
 	public:
 		GUI_RadioButton(iRect boxRect, const std::string labelName, Uint32 internalID = 0, const std::string description = "");
 
-		void setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description);
+		void setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description = "");
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 

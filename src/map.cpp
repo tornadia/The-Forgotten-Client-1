@@ -43,7 +43,6 @@ AStarNodes::AStarNodes(const Position& startPos)
 {
 	openNodes.reserve(MAX_NODES_COMPLEXITY);
 	openNodeTotalCost.reserve(MAX_NODES_COMPLEXITY);
-	//nodesSearch.reserve(MAX_NODES_COMPLEXITY);
 	nodesTable.reserve(MAX_NODES_COMPLEXITY);
 	nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode)*MAX_NODES_COMPLEXITY));
 
@@ -56,10 +55,8 @@ AStarNodes::AStarNodes(const Position& startPos)
 	startNode.f = 0;
 	startNode.g = 0;
 	nodesTable[(startPos.x << 16) | startPos.y] = 0;
-	//calculatedNodes[0] = 0;
 	openNodes.emplace_back(0);
 	openNodeTotalCost.emplace_back(0);
-	//nodesSearch.push_back(&startNode);
 }
 
 AStarNodes::~AStarNodes()
@@ -83,10 +80,8 @@ bool AStarNodes::createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 S
 	node.f = f;
 	node.g = ((Dx - Sx) << 3) + ((Dy - Sy) << 3) + (((Dx > Dy) ? Dx : Dy) << 3);
 	nodesTable[xy] = retNode;
-	//calculatedNodes[retNode] = f + node.g;
 	openNodes.emplace_back(retNode);
 	openNodeTotalCost.emplace_back(f + node.g);
-	//nodesSearch.push_back(&node);
 	return true;
 }
 
@@ -217,7 +212,7 @@ AStarNode* AStarNodes::getBestNode()
 		else
 		#endif
 		{
-			//Nothing here because we use standard code part for non-sse code
+			//Nothing here because we use standard code part for non-simd code
 		}
 	}
 
@@ -343,6 +338,21 @@ Tile* Map::getTile(const Position& position)
 	return m_tiles[position.z][posY][posX];
 }
 
+Tile* Map::getTileOrCreate(const Position& position)
+{
+	Sint16 offset = Position::getOffsetZ(m_centerPosition, position);
+	Sint32 posX = Position::getOffsetX(position, m_centerPosition)+(MAP_WIDTH_OFFSET-1)-offset;
+	Sint32 posY = Position::getOffsetY(position, m_centerPosition)+(MAP_HEIGHT_OFFSET-1)-offset;
+	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
+		return NULL;
+
+	Tile*& tile = m_tiles[position.z][posY][posX];
+	if(!tile)
+		tile = new Tile(position);
+
+	return tile;
+}
+
 Tile* Map::resetTile(const Position& position, Sint32 offset)
 {
 	Sint32 posX = Position::getOffsetX(position, m_centerPosition)+(MAP_WIDTH_OFFSET-1)-offset;
@@ -431,7 +441,7 @@ void Map::render()
 								{
 									tile = m_tiles[z][indexY][indexX];
 									if(tile)
-										tile->rerenderTile(posX-x2*32, posY-y2*32, (m_cachedFirstFullGrounds[indexY][indexX] >= z));
+										tile->render(posX-x2*32, posY-y2*32, (m_cachedFirstFullGrounds[indexY][indexX] >= z));
 								}
 							}
 						}
@@ -693,24 +703,27 @@ void Map::addOnscreenText(OnscreenMessages position, MessageMode mode, const std
 
 void Map::addAnimatedText(const Position& position, Uint8 color, const std::string& text)
 {
-	Sint32 additionalOffset = 0;
-	for(std::vector<AnimatedText*>::iterator it = m_animatedTexts.begin(), end = m_animatedTexts.end(); it != end; ++it)
+	if(g_engine.hasShowTextualEffects())
 	{
-		AnimatedText* animatedText = (*it);
-		if(animatedText->getPosition() == position)
+		Sint32 additionalOffset = 0;
+		for(std::vector<AnimatedText*>::iterator it = m_animatedTexts.begin(), end = m_animatedTexts.end(); it != end; ++it)
 		{
-			if(animatedText->merge(color, text))
-				return;
-			else
+			AnimatedText* animatedText = (*it);
+			if(animatedText->getPosition() == position)
 			{
-				if(animatedText->needAdditionalOffset())
-					additionalOffset += 10;
+				if(animatedText->merge(color, text))
+					return;
+				else
+				{
+					if(animatedText->needAdditionalOffset())
+						additionalOffset += 10;
+				}
 			}
 		}
-	}
 
-	AnimatedText* newAnimatedText = new AnimatedText(position, color, additionalOffset, text);
-	m_animatedTexts.push_back(newAnimatedText);
+		AnimatedText* newAnimatedText = new AnimatedText(position, color, additionalOffset, text);
+		m_animatedTexts.push_back(newAnimatedText);
+	}
 }
 
 void Map::addStaticText(const Position& position, const std::string& name, MessageMode mode, const std::string& text)
@@ -728,15 +741,6 @@ void Map::addStaticText(const Position& position, const std::string& name, Messa
 	StaticText* newStaticText = new StaticText(position);
 	newStaticText->addMessage(name, mode, text);
 	m_staticTexts.push_back(newStaticText);
-}
-
-void Map::removeDistanceEffects(Uint8 posZ)
-{
-	std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[posZ];
-	for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(), end = distanceEffects.end(); it != end; ++it)
-		delete (*it);
-
-	distanceEffects.clear();
 }
 
 void Map::changeMap(Direction direction)
@@ -920,6 +924,36 @@ void Map::addDistanceEffect(DistanceEffect* distanceEffect, Uint8 posZ)
 	m_distanceEffects[posZ].push_back(distanceEffect);
 }
 
+void Map::removeDistanceEffects(Uint8 posZ)
+{
+	std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[posZ];
+	for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(), end = distanceEffects.end(); it != end; ++it)
+		delete (*it);
+
+	distanceEffects.clear();
+}
+
+void Map::removeMagicEffects(const Position& position, Uint16 effectId)
+{
+	//QT Client have a bug that it doesn't register properly first created magic effect so it is registered with id 0
+	//that's why in some cases this function might produce different results but I don't want to reproduce this bug
+	Tile* tile = getTile(position);
+	if(tile)
+		tile->removeMagicEffects(effectId);
+
+	std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[position.z];
+	for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(); it != distanceEffects.end();)
+	{
+		if((*it)->getFromPos() == position && (*it)->getID() == effectId)
+		{
+			delete (*it);
+			it = distanceEffects.erase(it);
+		}
+		else
+			++it;
+	}
+}
+
 PathFind Map::findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos)
 {
 	directions.clear();
@@ -1028,6 +1062,7 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 				neighbors = *dirNeighbors[DIRECTION_SOUTHWEST];
 			else
 				neighbors = *dirNeighbors[DIRECTION_SOUTHEAST];
+
 			dirCount = 5;
 		}
 		else
@@ -1039,24 +1074,22 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 		const Sint32 f = n->f;
 		for(Uint32 i = 0; i < dirCount; ++i)
 		{
-			Sint32 tmpX = x + *neighbors++;
-			Sint32 tmpY = y + *neighbors++;
-			Sint32 posX = tmpX-startX;
-			Sint32 posY = tmpY-startY;
-			if(SDL_static_cast(Uint32, posX) > 254 || SDL_static_cast(Uint32, posY) > 254)
+			Sint32 posX = x + *neighbors++;
+			Sint32 posY = y + *neighbors++;
+			if(SDL_static_cast(Uint32, posX-startX) > 254 || SDL_static_cast(Uint32, posY-startY) > 254)
 				continue;
 
-			pos.x = SDL_static_cast(Uint16, tmpX);
-			pos.y = SDL_static_cast(Uint16, tmpY);
+			pos.x = SDL_static_cast(Uint16, posX);
+			pos.y = SDL_static_cast(Uint16, posY);
 
 			Sint32 speed = 100;
 			endTile = getTile(pos);
 			if(endTile)
 			{
-				if(endTile->getTopCreature() || !endTile->isWalkable() || !endTile->isPathable())
+				if(((pos.x != endPos.x || pos.y != endPos.y) && (endTile->getTopCreature() || !endTile->isPathable())) || !endTile->isWalkable())
 					continue;
 
-				speed = endTile->getGroundSpeed();
+				speed = SDL_static_cast(Sint32, endTile->getGroundSpeed());
 			}
 			else
 			{

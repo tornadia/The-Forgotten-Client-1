@@ -34,12 +34,23 @@ GUI_HScrollBar::GUI_HScrollBar(iRect boxRect, Sint32 sSize, Sint32 sPos, Uint32 
 	m_lastUpdate = g_frameTime;
 	m_mouseClickX = m_scrollPosSize = m_scrollPos[0] = m_scrollPos[1] = m_scrollSize = 0;
 	m_buttonDown = 0;
+	m_haveHandle = false;
 	m_internalID = internalID;
 	if(sSize != 0)
 		setScrollSize(sSize);
 
 	if(sPos != 0)
 		setScrollPos(sPos);
+}
+
+void GUI_HScrollBar::setRect(iRect& NewRect)
+{
+	if(m_tRect == NewRect)
+		return;
+
+	m_tRect = NewRect;
+	setScrollSize(m_scrollSize);
+	setScrollPos(m_scrollPos[1]);
 }
 
 void GUI_HScrollBar::setBarEventCallback(void(*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent)
@@ -61,20 +72,33 @@ void GUI_HScrollBar::setScrollSize(Sint32 sSize)
 
 	m_scrollSize = sSize;
 	m_scrollPosSize = m_tRect.x2-36;
-	m_scrollScale = SDL_static_cast(float, m_scrollPosSize)/sSize;
-	m_scrollInvScale = SDL_static_cast(float, sSize)/m_scrollPosSize;
+	if(m_scrollSize > m_scrollPosSize)
+	{
+		m_haveHandle = false;
+		m_scrollScale = SDL_static_cast(float, m_scrollPosSize)/sSize;
+		m_scrollInvScale = SDL_static_cast(float, sSize)/m_scrollPosSize;
+	}
+	else
+		m_haveHandle = true;
 }
 
 void GUI_HScrollBar::setScrollPos(Sint32 sPos)
 {
 	sPos = UTIL_max<Sint32>(0, UTIL_min<Sint32>(m_scrollSize, sPos));
-	if(m_scrollPos[1] != sPos)
+
+	bool needEvent = (m_scrollPos[1] != sPos);
+	if(m_haveHandle)
+	{
+		m_scrollPos[0] = m_scrollPosSize-m_scrollSize;
+		m_scrollPos[1] = sPos;
+	}
+	else
 	{
 		m_scrollPos[0] = UTIL_max<Sint32>(0, UTIL_min<Sint32>(m_scrollPosSize, SDL_static_cast(Sint32, sPos*m_scrollScale)));
 		m_scrollPos[1] = sPos;
-		if(m_eventHandlerFunction)
-			UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, sPos);
 	}
+	if(needEvent && m_eventHandlerFunction)
+		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, sPos);
 }
 
 void GUI_HScrollBar::onLMouseDown(Sint32 x, Sint32 y)
@@ -97,13 +121,28 @@ void GUI_HScrollBar::onLMouseDown(Sint32 x, Sint32 y)
 		return;
 	}
 
-	Sint32 xX = m_tRect.x1+12+m_scrollPos[0];
-	rect = iRect(xX, m_tRect.y1, 12, 12);
-	if(rect.isPointInside(x, y))
+	Sint32 xX;
+	if(m_haveHandle)
 	{
-		m_buttonDown = 3;
-		m_mouseClickX = x-xX;
-		return;
+		xX = m_tRect.x1+12+m_scrollPos[1];
+		rect = iRect(xX, m_tRect.y1, m_scrollPos[0]+12, 12);
+		if(rect.isPointInside(x, y))
+		{
+			m_buttonDown = 3;
+			m_mouseClickX = x-xX;
+			return;
+		}
+	}
+	else
+	{
+		xX = m_tRect.x1+12+m_scrollPos[0];
+		rect = iRect(xX, m_tRect.y1, 12, 12);
+		if(rect.isPointInside(x, y))
+		{
+			m_buttonDown = 3;
+			m_mouseClickX = x-xX;
+			return;
+		}
 	}
 
 	if(x <= xX)
@@ -130,7 +169,12 @@ void GUI_HScrollBar::onLMouseUp(Sint32, Sint32)
 void GUI_HScrollBar::onMouseMove(Sint32 x, Sint32, bool)
 {
 	if(m_buttonDown == 3)
-		setScrollPos(SDL_static_cast(Sint32, (x-(m_tRect.x1+12+m_mouseClickX))*m_scrollInvScale));
+	{
+		if(m_haveHandle)
+			setScrollPos(SDL_static_cast(Sint32, x-(m_tRect.x1+12+m_mouseClickX)));
+		else
+			setScrollPos(SDL_static_cast(Sint32, (x-(m_tRect.x1+12+m_mouseClickX))*m_scrollInvScale));
+	}
 }
 
 void GUI_HScrollBar::onWheel(Sint32, Sint32, bool wheelUP)
@@ -173,27 +217,34 @@ void GUI_HScrollBar::render()
 		{
 			m_lastUpdate = g_frameTime;
 			setScrollPos(m_scrollPos[1]-10);
-			if(m_tRect.x1+12+m_scrollPos[0] <= m_mouseClickX)
+			if(m_tRect.x1+12+m_scrollPos[(m_haveHandle ? 1 : 0)] <= m_mouseClickX)
 			{
 				m_buttonDown = 3;
-				m_mouseClickX -= m_tRect.x1+12+m_scrollPos[0];
+				m_mouseClickX -= m_tRect.x1+12+m_scrollPos[(m_haveHandle ? 1 : 0)];
 			}
 		}
 		else if(m_buttonDown == 5 && g_frameTime-m_lastUpdate >= 200)
 		{
 			m_lastUpdate = g_frameTime;
 			setScrollPos(m_scrollPos[1]+10);
-			if(m_tRect.x1+12+m_scrollPos[0] >= m_mouseClickX)
+			if(m_tRect.x1+12+m_scrollPos[(m_haveHandle ? 1 : 0)] >= m_mouseClickX)
 			{
 				m_buttonDown = 3;
-				m_mouseClickX -= m_tRect.x1+12+m_scrollPos[0];
+				m_mouseClickX -= m_tRect.x1+12+m_scrollPos[(m_haveHandle ? 1 : 0)];
 			}
 		}
 	}
 	if(!m_scrollSize)
 		return;
 
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1+12+m_scrollPos[0], m_tRect.y1, GUI_UI_ICON_SCROLLBAR_HANDLE_W, GUI_UI_ICON_SCROLLBAR_HANDLE_H);
+	if(m_haveHandle)
+	{
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1+12+m_scrollPos[1], m_tRect.y1, 6, GUI_UI_ICON_SCROLLBAR_HANDLE_H);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X+6, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1+12+m_scrollPos[1]+m_scrollPos[0]+6, m_tRect.y1, 6, GUI_UI_ICON_SCROLLBAR_HANDLE_H);
+		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_HORIZONTAL_X, GUI_UI_ICON_SCROLLBAR_HANDLE_HORIZONTAL_Y, GUI_UI_ICON_SCROLLBAR_HANDLE_HORIZONTAL_W, GUI_UI_ICON_SCROLLBAR_HANDLE_HORIZONTAL_H, m_tRect.x1+12+m_scrollPos[1]+6, m_tRect.y1, m_scrollPos[0], GUI_UI_ICON_SCROLLBAR_HANDLE_HORIZONTAL_H);
+	}
+	else
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1+12+m_scrollPos[0], m_tRect.y1, GUI_UI_ICON_SCROLLBAR_HANDLE_W, GUI_UI_ICON_SCROLLBAR_HANDLE_H);
 }
 
 GUI_VScrollBar::GUI_VScrollBar(iRect boxRect, Sint32 sSize, Sint32 sPos, Uint32 internalID)
@@ -205,12 +256,23 @@ GUI_VScrollBar::GUI_VScrollBar(iRect boxRect, Sint32 sSize, Sint32 sPos, Uint32 
 	m_lastUpdate = g_frameTime;
 	m_mouseClickY = m_scrollPosSize = m_scrollPos[0] = m_scrollPos[1] = m_scrollSize = 0;
 	m_buttonDown = 0;
+	m_haveHandle = false;
 	m_internalID = internalID;
 	if(sSize != 0)
 		setScrollSize(sSize);
 
 	if(sPos != 0)
 		setScrollPos(sPos);
+}
+
+void GUI_VScrollBar::setRect(iRect& NewRect)
+{
+	if(m_tRect == NewRect)
+		return;
+
+	m_tRect = NewRect;
+	setScrollSize(m_scrollSize);
+	setScrollPos(m_scrollPos[1]);
 }
 
 void GUI_VScrollBar::setBarEventCallback(void(*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent)
@@ -232,20 +294,33 @@ void GUI_VScrollBar::setScrollSize(Sint32 sSize)
 
 	m_scrollSize = sSize;
 	m_scrollPosSize = m_tRect.y2-36;
-	m_scrollScale = SDL_static_cast(float, m_scrollPosSize)/sSize;
-	m_scrollInvScale = SDL_static_cast(float, sSize)/ m_scrollPosSize;
+	if(m_scrollSize > m_scrollPosSize)
+	{
+		m_haveHandle = false;
+		m_scrollScale = SDL_static_cast(float, m_scrollPosSize)/sSize;
+		m_scrollInvScale = SDL_static_cast(float, sSize)/ m_scrollPosSize;
+	}
+	else
+		m_haveHandle = true;
 }
 
 void GUI_VScrollBar::setScrollPos(Sint32 sPos)
 {
 	sPos = UTIL_max<Sint32>(0, UTIL_min<Sint32>(m_scrollSize, sPos));
-	if(m_scrollPos[1] != sPos)
+
+	bool needEvent = (m_scrollPos[1] != sPos);
+	if(m_haveHandle)
+	{
+		m_scrollPos[0] = m_scrollPosSize-m_scrollSize;
+		m_scrollPos[1] = sPos;
+	}
+	else
 	{
 		m_scrollPos[0] = UTIL_max<Sint32>(0, UTIL_min<Sint32>(m_scrollPosSize, SDL_static_cast(Sint32, sPos*m_scrollScale)));
 		m_scrollPos[1] = sPos;
-		if(m_eventHandlerFunction)
-			UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, sPos);
 	}
+	if(needEvent && m_eventHandlerFunction)
+		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, sPos);
 }
 
 void GUI_VScrollBar::onLMouseDown(Sint32 x, Sint32 y)
@@ -268,13 +343,28 @@ void GUI_VScrollBar::onLMouseDown(Sint32 x, Sint32 y)
 		return;
 	}
 
-	Sint32 yY = m_tRect.y1+12+m_scrollPos[0];
-	rect = iRect(m_tRect.x1, yY, 12, 12);
-	if(rect.isPointInside(x, y))
+	Sint32 yY;
+	if(m_haveHandle)
 	{
-		m_buttonDown = 3;
-		m_mouseClickY = y-yY;
-		return;
+		yY = m_tRect.y1+12+m_scrollPos[1];
+		rect = iRect(m_tRect.x1, yY, 12, m_scrollPos[0]+12);
+		if(rect.isPointInside(x, y))
+		{
+			m_buttonDown = 3;
+			m_mouseClickY = y-yY;
+			return;
+		}
+	}
+	else
+	{
+		yY = m_tRect.y1+12+m_scrollPos[0];
+		rect = iRect(m_tRect.x1, yY, 12, 12);
+		if(rect.isPointInside(x, y))
+		{
+			m_buttonDown = 3;
+			m_mouseClickY = y-yY;
+			return;
+		}
 	}
 
 	if(y <= yY)
@@ -301,7 +391,12 @@ void GUI_VScrollBar::onLMouseUp(Sint32, Sint32)
 void GUI_VScrollBar::onMouseMove(Sint32, Sint32 y, bool)
 {
 	if(m_buttonDown == 3)
-		setScrollPos(SDL_static_cast(Sint32, (y-(m_tRect.y1+12+m_mouseClickY))*m_scrollInvScale));
+	{
+		if(m_haveHandle)
+			setScrollPos(SDL_static_cast(Sint32, y-(m_tRect.y1+12+m_mouseClickY)));
+		else
+			setScrollPos(SDL_static_cast(Sint32, (y-(m_tRect.y1+12+m_mouseClickY))*m_scrollInvScale));
+	}
 }
 
 void GUI_VScrollBar::onWheel(Sint32, Sint32, bool wheelUP)
@@ -347,22 +442,29 @@ void GUI_VScrollBar::render()
 			if(m_tRect.y1+12+m_scrollPos[0] <= m_mouseClickY)
 			{
 				m_buttonDown = 3;
-				m_mouseClickY -= m_tRect.y1+12+m_scrollPos[0];
+				m_mouseClickY -= m_tRect.y1+12+m_scrollPos[(m_haveHandle ? 1 : 0)];
 			}
 		}
 		else if(m_buttonDown == 5 && g_frameTime-m_lastUpdate >= 200)
 		{
 			m_lastUpdate = g_frameTime;
 			setScrollPos(m_scrollPos[1]+10);
-			if(m_tRect.y1+12+m_scrollPos[0] >= m_mouseClickY)
+			if(m_tRect.y1+12+m_scrollPos[(m_haveHandle ? 1 : 0)] >= m_mouseClickY)
 			{
 				m_buttonDown = 3;
-				m_mouseClickY -= m_tRect.y1+12+m_scrollPos[0];
+				m_mouseClickY -= m_tRect.y1+12+m_scrollPos[(m_haveHandle ? 1 : 0)];
 			}
 		}
 	}
 	if(!m_scrollSize)
 		return;
 
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1, m_tRect.y1+12+m_scrollPos[0], GUI_UI_ICON_SCROLLBAR_HANDLE_W, GUI_UI_ICON_SCROLLBAR_HANDLE_H);
+	if(m_haveHandle)
+	{
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1, m_tRect.y1+12+m_scrollPos[1], GUI_UI_ICON_SCROLLBAR_HANDLE_W, 6);
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y+6, m_tRect.x1, m_tRect.y1+12+m_scrollPos[1]+m_scrollPos[0]+6, GUI_UI_ICON_SCROLLBAR_HANDLE_W, 6);
+		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_VERTICAL_X, GUI_UI_ICON_SCROLLBAR_HANDLE_VERTICAL_Y, GUI_UI_ICON_SCROLLBAR_HANDLE_VERTICAL_W, GUI_UI_ICON_SCROLLBAR_HANDLE_VERTICAL_H, m_tRect.x1, m_tRect.y1+12+m_scrollPos[1]+6, GUI_UI_ICON_SCROLLBAR_HANDLE_VERTICAL_W, m_scrollPos[0]);
+	}
+	else
+		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HANDLE_X, GUI_UI_ICON_SCROLLBAR_HANDLE_Y, m_tRect.x1, m_tRect.y1+12+m_scrollPos[0], GUI_UI_ICON_SCROLLBAR_HANDLE_W, GUI_UI_ICON_SCROLLBAR_HANDLE_H);
 }

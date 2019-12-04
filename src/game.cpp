@@ -70,11 +70,13 @@ Game::Game()
 	m_playerRegeneration = 0;
 	m_playerOfflineTraining = 0;
 	m_playerBaseXpGain = 100;
+	m_playerTournamentFactor = 0;
 	m_playerVoucherXpGain = 0;
 	m_playerGrindingXpGain = 0;
 	m_playerStoreXpGain = 0;
 	m_playerHuntingXpGain = 100;
 	m_serverBeat = 50;
+	m_storePackages = 25;
 	m_icons = 0;
 	m_cached_stats = 0;
 	m_cached_skills = 0;
@@ -98,6 +100,10 @@ Game::Game()
 		m_containers[i] = NULL;
 
 	m_canReportBugs = false;
+	m_expertPvpMode = false;
+	m_canChangePvpFrames = true;
+	m_haveExivaRestrictions = false;
+	m_tournamentEnabled = false;
 }
 
 Game::~Game()
@@ -112,6 +118,13 @@ void Game::reset()
 	m_lastCancelWalkPos = Position(0xFFFF, 0xFFFF, 0xFF);
 	m_cancelWalkCounter = 0;
 	m_autoWalkDirections.clear();
+
+	m_playerBaseXpGain = 100;
+	m_playerTournamentFactor = 0;
+	m_playerVoucherXpGain = 0;
+	m_playerGrindingXpGain = 0;
+	m_playerStoreXpGain = 0;
+	m_playerHuntingXpGain = 100;
 
 	m_playerMovement = DIRECTION_INVALID;
 	m_playerCurrentDir = DIRECTION_INVALID;
@@ -414,19 +427,12 @@ void Game::processTradeClose()
 
 void Game::processEditTextWindow(Uint32 windowId, ItemUI* item, Uint16 maxLen, const std::string& text, const std::string& writer, const std::string& date)
 {
-	(void)windowId;
-	(void)item;
-	(void)maxLen;
-	(void)text;
-	(void)writer;
-	(void)date;
+	UTIL_createReadWriteWindow(windowId, SDL_reinterpret_cast(void*, item), maxLen, text, writer, date);
 }
 
 void Game::processEditHouseWindow(Uint8 doorId, Uint32 windowId, const std::string& text)
 {
-	(void)doorId;
-	(void)windowId;
-	(void)text;
+	UTIL_createReadWriteWindow(doorId, windowId, text);
 }
 
 void Game::processTextMessage(MessageMode mode, const std::string& text, Uint32 channelId)
@@ -522,7 +528,7 @@ void Game::processTextMessage(MessageMode mode, const std::string& text, Uint32 
 		case MessageHealOthers:
 		case MessageExpOthers:
 		{
-			if(g_engine.hasShowStatusMessages())//Others
+			if(g_engine.hasShowStatusOthersMessages())
 				g_chat.addChannelMessage(CHANNEL_ID_SERVERLOG, mode, 0, "", 0, text, time(NULL));
 		}
 		break;
@@ -555,7 +561,7 @@ void Game::processWalkCancel(Direction direction)
 	if(m_autoWalkDestination.x != 0xFFFF)
 	{
 		Position& pos = g_map.getCentralPosition();
-		if(pos != m_lastCancelWalkPos)
+		if(pos == m_lastCancelWalkPos)
 		{
 			++m_cancelWalkCounter;
 			if(m_cancelWalkCounter >= MAX_CANCEL_WALK_BEFORE_STOP_AUTOWALK)
@@ -570,6 +576,7 @@ void Game::processWalkCancel(Direction direction)
 		{
 			m_lastCancelWalkPos = pos;
 			m_cancelWalkCounter = 0;
+			startAutoWalk(m_autoWalkDestination);
 		}
 	}
 }
@@ -610,7 +617,7 @@ void Game::processMultiUseDelay(Uint32 delay)
 	(void)delay;
 }
 
-void Game::processPlayerModes(Uint8 fightMode, Uint8 chaseMode, bool safeMode, Uint8 pvpMode)
+void Game::processPlayerModes(Uint8 fightMode, Uint8 chaseMode, Uint8 safeMode, Uint8 pvpMode)
 {
 	(void)fightMode;
 	(void)chaseMode;
@@ -663,7 +670,9 @@ void Game::processTalk(const std::string& name, Uint32 statementId, Uint16 playe
 			break;
 		case MessagePrivateFrom:
 		{
-			g_map.addOnscreenText(ONSCREEN_MESSAGE_TOP, mode, name + ":\n" + text);
+			if(g_engine.hasShowPrivateMessages())
+				g_map.addOnscreenText(ONSCREEN_MESSAGE_TOP, mode, name + ":\n" + text);
+
 			Channel* privateChannel = g_chat.getPrivateChannel(name);
 			if(privateChannel)
 				g_chat.addChannelMessage(privateChannel->channelId, mode, statementId, name, playerLevel, text, time(NULL));
@@ -948,6 +957,16 @@ void Game::sendFollow(Creature* creature)
 	m_attackId = 0;
 }
 
+void Game::sendCancelAttackAndFollow()
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendCancelAttackAndFollow();
+	}
+}
+
 void Game::sendJoinAggression(Uint32 creatureId)
 {
 	if(g_engine.isIngame())
@@ -1198,6 +1217,38 @@ void Game::sendOpenParentContainer(const Position& position)
 	}
 }
 
+void Game::sendTextWindow(Uint32 windowId, const std::string& text)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendTextWindow(windowId, text);
+	}
+}
+
+void Game::sendHouseWindow(Uint32 windowId, Uint8 doorId, const std::string& text)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendHouseWindow(windowId, doorId, text);
+	}
+}
+
+void Game::stopActions()
+{
+	bool stopAttackAndFollow = (getAttackID() != 0 || getFollowID() != 0);
+	stopAutoWalk();
+	if(stopAttackAndFollow)
+	{
+		setAttackID(0);
+		setFollowID(0);
+		sendCancelAttackAndFollow();
+	}
+}
+
 void Game::startAutoWalk(const Position& toPosition)
 {
 	Position& pos = g_map.getCentralPosition();
@@ -1228,6 +1279,12 @@ void Game::startAutoWalk(const Position& toPosition)
 		}
 		m_autoWalkDestination.x = 0xFFFF;
 		return;
+	}
+
+	if(getAttackID() != 0 && g_engine.getChaseMode() == CHASEMODE_FOLLOW && g_engine.hasAutoChaseOff())
+	{
+		g_engine.setChaseMode(CHASEMODE_STAND);
+		sendAttackModes();
 	}
 
 	if(m_autoWalkDirections.size() == 1)
@@ -1397,6 +1454,7 @@ void Game::checkLocalCreatureMovement()
 		if(walkDir != DIRECTION_INVALID)
 		{
 			topos = pos.translatedToDirection(walkDir);
+			m_playerCurrentDir = DIRECTION_INVALID;
 
 			Tile* toTile = g_map.getTile(topos);
 			if(toTile && toTile->isWalkable())
@@ -1457,6 +1515,12 @@ void Game::checkMovement(Direction dir)
 {
 	if(m_autoWalkDestination.x != 0xFFFF)
 		stopAutoWalk();
+
+	if(getAttackID() != 0 && g_engine.getChaseMode() == CHASEMODE_FOLLOW && g_engine.hasAutoChaseOff())
+	{
+		g_engine.setChaseMode(CHASEMODE_STAND);
+		sendAttackModes();
+	}
 
 	m_playerCurrentDir = dir;
 	m_playerMovement = dir;

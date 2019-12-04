@@ -44,6 +44,7 @@
     <ClCompile Include="..\..\GUI\GeneralOptions.cpp" />
     <ClCompile Include="..\..\GUI\GraphicsOptions.cpp" />
     <ClCompile Include="..\..\GUI\Health.cpp" />
+    <ClCompile Include="..\..\GUI\Help.cpp" />
     <ClCompile Include="..\..\GUI\Hotkeys.cpp" />
     <ClCompile Include="..\..\GUI\Info.cpp" />
     <ClCompile Include="..\..\GUI\Inventory.cpp" />
@@ -58,6 +59,7 @@
     <ClCompile Include="..\..\GUI\ProtocolOptions.cpp" />
     <ClCompile Include="..\..\GUI\Quests.cpp" />
     <ClCompile Include="..\..\GUI\ReadWrite.cpp" />
+    <ClCompile Include="..\..\GUI\RuleViolations.cpp" />
     <ClCompile Include="..\..\GUI\ShopWindow.cpp" />
     <ClCompile Include="..\..\GUI\SkillsWindow.cpp" />
     <ClCompile Include="..\..\GUI\SpellsWindow.cpp" />
@@ -69,6 +71,7 @@
     <ClCompile Include="..\..\GUI_Elements\GUI_CheckBox.cpp" />
     <ClCompile Include="..\..\GUI_Elements\GUI_Console.cpp" />
     <ClCompile Include="..\..\GUI_Elements\GUI_Container.cpp" />
+    <ClCompile Include="..\..\GUI_Elements\GUI_Content.cpp" />
     <ClCompile Include="..\..\GUI_Elements\GUI_ContextMenu.cpp" />
     <ClCompile Include="..\..\GUI_Elements\GUI_Element.cpp" />
     <ClCompile Include="..\..\GUI_Elements\GUI_Flash.cpp" />
@@ -148,9 +151,11 @@
     <ClInclude Include="..\..\GUI\GUI_UTIL.h" />
     <ClInclude Include="..\..\GUI\Health.h" />
     <ClInclude Include="..\..\GUI\Inventory.h" />
+    <ClInclude Include="..\..\GUI\ItemMove.h" />
     <ClInclude Include="..\..\GUI\itemUI.h" />
     <ClInclude Include="..\..\GUI\Minimap.h" />
     <ClInclude Include="..\..\GUI\Outfits.h" />
+    <ClInclude Include="..\..\GUI\ReadWrite.h" />
     <ClInclude Include="..\..\GUI\SkillsWindow.h" />
     <ClInclude Include="..\..\gui_const.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_Button.h" />
@@ -158,6 +163,7 @@
     <ClInclude Include="..\..\GUI_Elements\GUI_CheckBox.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_Console.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_Container.h" />
+    <ClInclude Include="..\..\GUI_Elements\GUI_Content.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_ContextMenu.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_Element.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_Flash.h" />

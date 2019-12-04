@@ -143,6 +143,7 @@ Engine::Engine()
 	m_showInfoMessages = true;
 	m_showEventMessages = true;
 	m_showStatusMessages = true;
+	m_showStatusOthersMessages = true;
 	m_showTimestamps = true;
 	m_showLevels = true;
 	m_showPrivateMessages = true;
@@ -280,6 +281,8 @@ void Engine::loadCFG()
 		m_showEventMessages = (data == "yes" ? true : false);
 		data = cfg.fetchKey("StatusMessages");
 		m_showStatusMessages = (data == "yes" ? true : false);
+		data = cfg.fetchKey("StatusMsgOfOthers");
+		m_showStatusOthersMessages = (data == "yes" ? true : false);
 		data = cfg.fetchKey("TimeStamps");
 		m_showTimestamps = (data == "yes" ? true : false);
 		data = cfg.fetchKey("Levels");
@@ -288,13 +291,17 @@ void Engine::loadCFG()
 		m_showPrivateMessages = (data == "yes" ? true : false);
 
 		data = cfg.fetchKey("AttackMode");
-		m_attackMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
+		m_attackMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10))+1;
+		if(m_attackMode > ATTACKMODE_DEFENSE) m_attackMode = ATTACKMODE_BALANCED;
 		data = cfg.fetchKey("ChaseMode");
 		m_chaseMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
+		if(m_chaseMode > CHASEMODE_FOLLOW) m_chaseMode = CHASEMODE_STAND;
 		data = cfg.fetchKey("SecureMode");
 		m_secureMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
+		if(m_secureMode > SECUREMODE_UNSECURE) m_secureMode = SECUREMODE_SECURE;
 		data = cfg.fetchKey("PvpMode");
 		m_pvpMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
+		if(m_pvpMode > PVPMODE_RED_FIST) m_secureMode = PVPMODE_DOVE;
 
 		data = cfg.fetchKey("LastMotD");
 		m_motdNumber = SDL_static_cast(Uint32, SDL_strtoul(data.c_str(), NULL, 10));
@@ -442,6 +449,8 @@ void Engine::saveCFG()
 		cfg.insertKey("EventMessages", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_showStatusMessages ? "yes" : "no"));
 		cfg.insertKey("StatusMessages", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_showStatusOthersMessages ? "yes" : "no"));
+		cfg.insertKey("StatusMsgOfOthers", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_showTimestamps ? "yes" : "no"));
 		cfg.insertKey("TimeStamps", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_showLevels ? "yes" : "no"));
@@ -449,7 +458,7 @@ void Engine::saveCFG()
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_showPrivateMessages ? "yes" : "no"));
 		cfg.insertKey("PrivateMessages", std::string(g_buffer, SDL_static_cast(size_t, len)));
 
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_attackMode));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_attackMode-1));
 		cfg.insertKey("AttackMode", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_chaseMode));
 		cfg.insertKey("ChaseMode", std::string(g_buffer, SDL_static_cast(size_t, len)));
@@ -620,9 +629,9 @@ void Engine::run()
 	//createwindow don't generate resize event so send one ourselves
 	UTIL_ResizeEvent(m_windowId, m_windowW, m_windowH);
 
-	initFont(CLIENT_FONT_NONOUTLINED, 256, 128, 32, 7, 8, 16);
-	initFont(CLIENT_FONT_OUTLINED, 512, 128, 32, 7, 16, 16);
-	initFont(CLIENT_FONT_SMALL, 256, 64, 32, 7, 8, 8);
+	initFont(CLIENT_FONT_NONOUTLINED, 256, 128, 32, 7, 8, 16, 14);
+	initFont(CLIENT_FONT_OUTLINED, 512, 128, 32, 7, 16, 16, 16);
+	initFont(CLIENT_FONT_SMALL, 256, 64, 32, 7, 8, 8, 8);
 
 	UTIL_createMainWindow();
 	resetToDefaultHotkeys(false);
@@ -845,7 +854,7 @@ bool Engine::init()
 	return true;
 }
 
-void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Sint32 vchars, Sint32 maxchw, Sint32 maxchh)
+void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Sint32 vchars, Sint32 maxchw, Sint32 maxchh, Sint32 spaceh)
 {
 	Uint16 picture = 0;
 	switch(font)
@@ -911,7 +920,7 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 
 	SDL_free(pixels);
 	m_charw[font][0] = maxchw;
-	m_charh[font][0] = maxchh;
+	m_charh[font][0] = spaceh;
 	switch(font)
 	{
 		case CLIENT_FONT_NONOUTLINED:
@@ -1198,7 +1207,7 @@ void Engine::onKeyDown(SDL_Event event)
 				case CLIENT_HOTKEY_MOVEMENT_STOPACTIONS:
 				{
 					if(event.key.repeat == 0)
-						g_game.stopAutoWalk();
+						g_game.stopActions();
 				}
 				break;
 				case CLIENT_HOTKEY_DIALOGS_OPENBUGREPORTS:
@@ -1381,8 +1390,8 @@ void Engine::onKeyDown(SDL_Event event)
 				break;
 				case CLIENT_HOTKEY_MISC_LENSHELP:
 				{
-					/*if(event.key.repeat == 0)
-						setAction(CLIENT_ACTION_LENSHELP);*/
+					if(event.key.repeat == 0)
+						setAction(CLIENT_ACTION_LENSHELP);
 				}
 				break;
 				case CLIENT_HOTKEY_MISC_CHANGECHARACTER:
@@ -1525,8 +1534,8 @@ void Engine::onMouseMove(Sint32 x, Sint32 y)
 		g_chat.onMouseMove(m_chatWindowRect, x, y);
 		if(m_actionData == CLIENT_ACTION_MOVEITEM || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_TRADE || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
 			g_actualCursor = CLIENT_CURSOR_CROSSHAIR;
-		//else if(m_actionData == CLIENT_ACTION_LENSHELP)
-			//g_actualCursor = CLIENT_CURSOR_LENSHELP;
+		else if(m_actionData == CLIENT_ACTION_LENSHELP)
+			g_actualCursor = CLIENT_CURSOR_LENSHELP;
 		else if(m_actionData == CLIENT_ACTION_LEFTMOUSE && m_moveItemX != SDL_MIN_SINT32 && m_moveItemY != SDL_MIN_SINT32)
 		{
 			Sint32 distanceX = std::abs(m_moveItemX - x);
@@ -1632,7 +1641,7 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 {
 	if(m_actionData != CLIENT_ACTION_NONE)
 	{
-		if(!m_ingame || m_contextMenu || m_description || m_showLogger || m_actWindow)
+		if(!m_ingame || m_contextMenu || m_description || m_showLogger || m_actWindow || m_actionData == CLIENT_ACTION_LENSHELP)
 		{
 			setAction(CLIENT_ACTION_NONE);
 			return;
@@ -2041,7 +2050,7 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 {
 	if(m_actionData != CLIENT_ACTION_NONE)
 	{
-		if(!m_ingame || m_contextMenu || m_description || m_showLogger || m_actWindow || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_TRADE || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
+		if(!m_ingame || m_contextMenu || m_description || m_showLogger || m_actWindow || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_TRADE || m_actionData == CLIENT_ACTION_LENSHELP || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
 		{
 			setAction(CLIENT_ACTION_NONE);
 			return;
@@ -3166,7 +3175,7 @@ void Engine::initMove(Uint16 posX, Uint16 posY, Uint8 posZ)
 		else
 		{
 			setActionData(CLIENT_ACTION_SECOND, 0, itemCount, posX, posY, posZ, 0);
-			//Init item move window
+			UTIL_createItemMove();
 		}
 	}
 }
@@ -3660,8 +3669,8 @@ void Engine::setAction(ClientActions action)
 	m_actionData = action;
 	if(m_actionData == CLIENT_ACTION_MOVEITEM || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_TRADE || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
 		setCursor(CLIENT_CURSOR_CROSSHAIR);
-	//else if(m_actionData == CLIENT_ACTION_LENSHELP)
-		//setCursor(CLIENT_CURSOR_LENSHELP);
+	else if(m_actionData == CLIENT_ACTION_LENSHELP)
+		setCursor(CLIENT_CURSOR_LENSHELP);
 	else
 		setCursor(CLIENT_CURSOR_ARROW);
 }

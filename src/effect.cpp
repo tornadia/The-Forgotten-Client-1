@@ -39,6 +39,7 @@ Effect::Effect(const Position& pos, ThingType* type)
 	m_startTime = g_frameTime;
 	m_currentAnim = m_animCount = 0;
 	m_xPattern = m_yPattern = m_zPattern = 0;
+	m_topEffect = false;
 	++effectCount;
 }
 
@@ -112,12 +113,21 @@ Effect* Effect::createEffect(const Position& pos, Uint16 type)
 		newEffect->m_xPattern = xPattern;
 		newEffect->m_yPattern = yPattern;
 		newEffect->m_zPattern = zPattern;
+		newEffect->m_topEffect = ttype->hasFlag(ThingAttribute_TopEffect);
 		if(newEffect->m_animator)
 			newEffect->m_animator->resetAnimation(newEffect->m_animation);
 	}
 	else
 		newEffect = new EffectNULL(pos, ttype);
 	return newEffect;
+}
+
+Uint16 Effect::getID()
+{
+	if(m_thingType)
+		return m_thingType->m_id;
+
+	return 0;
 }
 
 bool Effect::canBeDeleted()

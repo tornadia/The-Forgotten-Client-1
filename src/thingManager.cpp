@@ -51,8 +51,6 @@ show_as_object_id:
 restrict_to_profession: The Vocation restriction of the object: Any, Knight, Paladin, Sorcerer, Druid, Promoted.
 minimum_level: The required level to use the object.
 
-topeffect:
-
 npcsaledata: NPC Buy and Sell data as displayed in the Cyclopedia:
 name: Name of the NPC.
 location: Location of the NPC.
@@ -359,7 +357,7 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 	}
 	if(!loaded)
 		return false;
-
+	
 	bool needCopyToIdle = false;
 	bool hasFrameGroups = (category == ThingCategory_Creature && g_game.hasGameFeature(GAME_FEATURE_FRAMEGROUPS));
 	Uint8 groupCount = (hasFrameGroups ? SDL_ReadU8(rwops) : 1);
@@ -403,7 +401,7 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 		totalSprites *= SDL_static_cast(Sint32, frame.m_patternY);
 		totalSprites *= SDL_static_cast(Sint32, frame.m_patternZ);
 		totalSprites *= SDL_static_cast(Sint32, frame.m_animCount);
-		if(totalSprites > 4096)
+		if(totalSprites > 16384)
 			return false;
 
 		frame.m_sprites.resize(SDL_static_cast(size_t, totalSprites));

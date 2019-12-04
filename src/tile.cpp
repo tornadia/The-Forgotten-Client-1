@@ -124,38 +124,10 @@ void Tile::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		}
 	}
 
-	posX += m_tileElevation;
-	posY += m_tileElevation;
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
 		if((*it)->getTopOrder() == 3)
-			(*it)->render(posX, posY, visible_tile);
-	}
-}
-
-void Tile::rerenderTile(Sint32 posX, Sint32 posY, bool visible_tile)
-{
-	posX -= m_tileElevation;
-	posY -= m_tileElevation;
-	for(std::vector<Creature*>::reverse_iterator it = m_creatures.rbegin(), end = m_creatures.rend(); it != end; ++it)
-	{
-		if(!(*it)->isWalking())
-			(*it)->render(posX, posY, visible_tile);
-	}
-
-	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
-	{
-		if((*it)->isWalking())
-			(*it)->render(posX-(*it)->getWalkOffsetX(), posY-(*it)->getWalkOffsetY(), visible_tile);
-	}
-
-	for(std::vector<Effect*>::iterator it = m_effects.begin(), end = m_effects.end(); it != end; ++it)
-		(*it)->render(posX, posY, visible_tile);
-
-	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
-	{
-		if((*it)->getTopOrder() == 3)
-			(*it)->render(posX, posY, visible_tile);
+			(*it)->render(posX+m_tileElevation, posY+m_tileElevation, visible_tile);
 	}
 }
 
@@ -600,7 +572,24 @@ void Tile::checkMagicEffects()
 
 void Tile::addEffect(Effect* effect)
 {
-	m_effects.push_back(effect);
+	if(effect->isTopEffect())
+		m_effects.insert(m_effects.begin(), effect);
+	else
+		m_effects.push_back(effect);
+}
+
+void Tile::removeMagicEffects(Uint16 effectId)
+{
+	for(std::vector<Effect*>::iterator it = m_effects.begin(); it != m_effects.end();)
+	{
+		if((*it)->getID() == effectId)
+		{
+			delete (*it);
+			it = m_effects.erase(it);
+		}
+		else
+			++it;
+	}
 }
 
 bool Tile::isLookingPossible()

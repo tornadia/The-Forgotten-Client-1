@@ -352,7 +352,7 @@ Uint64 SDL_ReadProtobufVariant(SDL_RWops* src)
 	if(read32 < 128)
 		return SDL_static_cast(Uint64, res32);
 
-	Uint64 res64 = res32;
+	Uint64 res64 = SDL_static_cast(Uint64, res32);
 	for(Uint32 i = 2; i < 10; ++i)
 	{
 		Uint64 read64 = SDL_static_cast(Uint64, SDL_ReadU8(src));

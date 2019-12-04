@@ -41,6 +41,9 @@ void UTIL_advancedGraphicsOptions();
 void UTIL_consoleOptions();
 void UTIL_hotkeyOptions();
 
+//Help window
+void UTIL_help();
+
 //Info window
 void UTIL_info();
 
@@ -63,11 +66,18 @@ void UTIL_createQuestine(Uint16 questId, std::vector<QuestLineDetail>& questLine
 //Death window
 void UTIL_deathWindow(Uint8 deathType, Uint8 penalty);
 
+//Read Write window
+void UTIL_createReadWriteWindow(Uint32 windowId, void* item, Uint16 maxLen, const std::string& text, const std::string& writer, const std::string& date);
+void UTIL_createReadWriteWindow(Uint8 doorId, Uint32 windowId, const std::string& text);
+
 //Chat Channels window
 void UTIL_createChannels(std::vector<ChannelDetail>& channels);
 
 //Outfit window
 void UTIL_createOutfitWindow(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Uint8 lookLegs, Uint8 lookFeet, Uint8 lookAddons, Uint16 lookMount, std::vector<OutfitDetail>& outfits, std::vector<MountDetail>& mounts);
+
+//Item Move window
+void UTIL_createItemMove();
 
 //Tutorial Hint window
 void UTIL_createTutorialHint(Uint32 hintId);
@@ -82,6 +92,7 @@ void UTIL_flashHealthPanel();
 
 //Inventory widget
 void UTIL_createInventoryPanel();
+void UTIL_updateInventoryPanel();
 void UTIL_flashQuestsButton();
 void UTIL_flashFollowButton();
 
