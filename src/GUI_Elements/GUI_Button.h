@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,7 +29,7 @@ class GUI_Button : public GUI_Element
 	public:
 		GUI_Button(iRect boxRect, const std::string labelName, Uint32 internalID = 0, const std::string description = "");
 
-		void setRect(iRect& NewRect);
+		void cacheUI();
 		void setButtonEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent);
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);

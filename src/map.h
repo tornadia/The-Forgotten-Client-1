@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,10 +24,11 @@
 
 #include "position.h"
 
-#define MAP_WIDTH_OFFSET (GAME_MAP_WIDTH/2)
-#define MAP_HEIGHT_OFFSET (GAME_MAP_HEIGHT/2)
+#define MAP_WIDTH_OFFSET (GAME_MAP_WIDTH / 2)
+#define MAP_HEIGHT_OFFSET (GAME_MAP_HEIGHT / 2)
 
 class Tile;
+class Effect;
 class DistanceEffect;
 class AnimatedText;
 class StaticText;
@@ -81,6 +82,7 @@ class Map
 		Tile* resetTile(const Position& position, Sint32 offset);
 		void cleanTile(const Position& position, Sint32 offset);
 
+		void update();
 		void render();
 		void renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float scale, Sint32 scaledSize);
 
@@ -92,11 +94,13 @@ class Map
 		void checkMagicEffects();
 		void checkDistanceEffects();
 		void addDistanceEffect(DistanceEffect* distanceEffect, Uint8 posZ);
-		void removeDistanceEffects(Uint8 posZ);
+		void removeMagicEffects(Uint8 posZ);
 		void removeMagicEffects(const Position& position, Uint16 effectId);
 
+		bool checkSightLine(const Position& fromPos, const Position& toPos);
+		bool isSightClear(const Position& fromPos, const Position& toPos);
 		PathFind findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos);
-		Tile* findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature* &topCreature, bool multifloor);
+		Tile* findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature*& topCreature, bool multifloor);
 
 		Creature* getLocalCreature() {return m_localCreature;}
 		void setLocalCreature(Creature* creature) {m_localCreature = creature;}
@@ -114,10 +118,10 @@ class Map
 
 	protected:
 		knownCreatures m_knownCreatures;
-		std::vector<DistanceEffect*> m_distanceEffects[GAME_MAP_FLOORS+1];
+		std::vector<DistanceEffect*> m_distanceEffects[GAME_MAP_FLOORS + 1];
 		std::vector<AnimatedText*> m_animatedTexts;
 		std::vector<StaticText*> m_staticTexts;
-		Tile* m_tiles[GAME_MAP_FLOORS+1][GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
+		Tile* m_tiles[GAME_MAP_FLOORS + 1][GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
 		ScreenText* m_onscreenMessages[ONSCREEN_MESSAGE_LAST];
 
 		Creature* m_localCreature;
@@ -127,6 +131,7 @@ class Map
 		Uint32 m_distanceEffectsTime;
 
 		Sint32 m_cachedFirstVisibleGround[GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
+		Sint32 m_cachedFirstGrounds[GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
 		Sint32 m_cachedFirstFullGrounds[GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
 		Sint32 m_cachedLastVisibleFloor;
 		Sint32 m_cachedFirstVisibleFloor;

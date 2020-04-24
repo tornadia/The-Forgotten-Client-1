@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -89,7 +89,7 @@ bool AnimatedText::merge(Uint8 color, const std::string& text)
 		newDmg *= -1;
 	if(currentDmgNegative)
 		currentDmg *= -1;
-	Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%d", currentDmg+newDmg);
+	Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%d", currentDmg + newDmg);
 	setText(std::string(g_buffer, SDL_static_cast(size_t, len)));
 	return true;
 }
@@ -105,7 +105,7 @@ bool AnimatedText::needAdditionalOffset()
 void AnimatedText::setText(const std::string text)
 {
 	m_text = std::move(text);
-	m_cachedHalfTextSize = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text)/2;
+	m_cachedHalfTextSize = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text) / 2;
 }
 
 void AnimatedText::render(Sint32 posX, Sint32 posY, Sint32 boundLeft, Sint32 boundTop, Sint32 boundRight, Sint32 boundBottom)
@@ -115,14 +115,14 @@ void AnimatedText::render(Sint32 posX, Sint32 posY, Sint32 boundLeft, Sint32 bou
 	Uint32 t = (g_frameTime - m_startTime);
 	posY -= (-8 + (48 * t) / tf);
 	posY += m_additionalOffset;
-	if(posX-SDL_static_cast(Sint32, m_cachedHalfTextSize+1) <= boundLeft)
-		posX = boundLeft+m_cachedHalfTextSize+1;
+	if(posX - SDL_static_cast(Sint32, m_cachedHalfTextSize + 1) <= boundLeft)
+		posX = boundLeft + m_cachedHalfTextSize + 1;
 	if(posY <= boundTop)
-		posY = boundTop+1;
-	if(posX+SDL_static_cast(Sint32, m_cachedHalfTextSize+1) >= boundRight)
-		posX = boundRight-m_cachedHalfTextSize-1;
-	if(posY+14 >= boundBottom)
-		posY = boundBottom-15;
+		posY = boundTop + 1;
+	if(posX + SDL_static_cast(Sint32, m_cachedHalfTextSize + 1) >= boundRight)
+		posX = boundRight - m_cachedHalfTextSize - 1;
+	if(posY + 14 >= boundBottom)
+		posY = boundBottom - 15;
 
-	g_engine.drawFont(CLIENT_FONT_OUTLINED, posX-m_cachedHalfTextSize, posY, m_text, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT);
+	g_engine.drawFont(CLIENT_FONT_OUTLINED, posX - m_cachedHalfTextSize, posY, m_text, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT);
 }

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,7 +33,7 @@ GUI_Description::GUI_Description()
 void GUI_Description::setDisplay(Sint32 mouseX, Sint32 mouseY, const std::string description, Uint32 delay)
 {
 	m_description = std::move(description);
-	m_startDisplay = g_frameTime+delay;
+	m_startDisplay = g_frameTime + delay;
 
 	Uint32 cacheMSGsizeX = 0, cacheMSGsizeY = 8;
 	StringVector messages = UTIL_explodeString(m_description, "\n");
@@ -44,17 +44,17 @@ void GUI_Description::setDisplay(Sint32 mouseX, Sint32 mouseY, const std::string
 			cacheMSGsizeX = cachedMSGsize;
 		cacheMSGsizeY += 16;
 	}
-	m_tRect.x2 = cacheMSGsizeX+8;
-	m_tRect.y2 = cacheMSGsizeY-6;
+	m_tRect.x2 = cacheMSGsizeX + 8;
+	m_tRect.y2 = cacheMSGsizeY - 6;
 	m_tRect.x1 = mouseX;
-	m_tRect.y1 = mouseY-m_tRect.y2;
+	m_tRect.y1 = mouseY - m_tRect.y2;
 
 	Sint32 maxX = g_engine.getWindowWidth();
 	Sint32 maxY = g_engine.getWindowHeight();
-	if(m_tRect.x1+m_tRect.x2 > maxX)
-		m_tRect.x1 = maxX-m_tRect.x2;
-	if(m_tRect.y1+m_tRect.y2 > maxY)
-		m_tRect.y1 = maxY-m_tRect.y2;
+	if(m_tRect.x1 + m_tRect.x2 > maxX)
+		m_tRect.x1 = maxX - m_tRect.x2;
+	if(m_tRect.y1 + m_tRect.y2 > maxY)
+		m_tRect.y1 = maxY - m_tRect.y2;
 	if(m_tRect.x1 < 0)
 		m_tRect.x1 = 0;
 	if(m_tRect.y1 < 0)
@@ -68,6 +68,6 @@ void GUI_Description::render()
 
 	Surface* renderer = g_engine.getRender();
 	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 0, 0, 0, 255);
-	renderer->fillRectangle(m_tRect.x1+1, m_tRect.y1+1, m_tRect.x2-2, m_tRect.y2-2, 192, 192, 192, 255);
-	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1+4, m_tRect.y1+4, m_description, 63, 63, 63, CLIENT_FONT_ALIGN_LEFT);
+	renderer->fillRectangle(m_tRect.x1 + 1, m_tRect.y1 + 1, m_tRect.x2 - 2, m_tRect.y2 - 2, 192, 192, 192, 255);
+	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1 + 4, m_tRect.y1 + 4, m_description, 63, 63, 63, CLIENT_FONT_ALIGN_LEFT);
 }

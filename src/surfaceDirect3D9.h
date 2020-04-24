@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -49,8 +49,18 @@ struct Direct3D9Texture
 	bool m_linearSample;
 };
 
+struct Direct3D9SpriteData
+{
+	Direct3D9SpriteData() : m_xOffset(0), m_yOffset(0), m_surface(0), m_lastUsage(0) {}
+
+	Uint32 m_xOffset;
+	Uint32 m_yOffset;
+	Uint32 m_surface;
+	Uint32 m_lastUsage;
+};
+
 typedef std::unordered_map<Uint32, Direct3D9Texture*> U32BD3D9Textures;
-typedef std::unordered_map<Uint64, Direct3D9Texture*> U64BD3D9Textures;
+typedef std::unordered_map<Uint64, Direct3D9SpriteData> U64BD3D9Textures;
 
 typedef struct IDirect3D9 IDirect3D9;
 typedef struct IDirect3D9Ex IDirect3D9Ex;
@@ -80,18 +90,22 @@ class SurfaceDirect3D9 : public Surface
 		virtual const char* getHardware() {return m_hardware;}
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
-		virtual void renderTargetsRecreate();
+		void generateSpriteAtlases();
+		void checkScheduledSprites();
+
+		void renderTargetsRecreate();
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
 		virtual void spriteManagerReset();
-		virtual void releaseTextures();
+		void releaseTextures();
 		virtual unsigned char* getScreenPixels(Sint32& width, Sint32& height, bool& bgra);
 
 		virtual void beginScene();
 		virtual void endScene();
 
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
-		virtual void drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void beginGameScene();
 		virtual void endGameScene();
@@ -107,9 +121,10 @@ class SurfaceDirect3D9 : public Surface
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
-		Direct3D9Texture* loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor);
-		virtual void drawSprite(Uint32, Sint32, Sint32) {;}
-		virtual void drawSprite(Uint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32) {;}
+		bool loadSprite(Uint32 spriteId, Direct3D9Texture* texture, Uint32 xoff, Uint32 yoff);
+		bool loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, Direct3D9Texture* texture, Uint32 xoff, Uint32 yoff);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor);
 
@@ -118,11 +133,14 @@ class SurfaceDirect3D9 : public Surface
 		virtual void drawAutomapTile(Uint32 m_currentArea, bool& m_recreate, Uint8 m_color[256][256], Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 
 	protected:
+		std::vector<VertexD3D9> m_vertices;
+		std::vector<Direct3D9Texture*> m_spritesAtlas;
 		U32BD3D9Textures m_automapTiles;
-		U64BD3D9Textures m_spriteMasks;
+		U64BD3D9Textures m_sprites;
 		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesMaskIds;
+		std::circular_buffer<Uint64> m_spritesIds;
 
+		Direct3D9Texture* m_spriteAtlas;
 		Direct3D9Texture** m_pictures;
 		char* m_software;
 		char* m_hardware;
@@ -152,73 +170,22 @@ class SurfaceDirect3D9 : public Surface
 		Uint32 m_viewPortH;
 
 		Uint32 m_totalVRAM;
-		Uint32 m_spritesCache;
-
-		bool m_usingLinearSample;
-		bool m_useAlphaBlending;
-		bool m_needReset;
-		bool m_haveSharpening;
-};
-
-class SurfaceDirect3D9Comp : public SurfaceDirect3D9
-{
-	public:
-		SurfaceDirect3D9Comp();
-		virtual ~SurfaceDirect3D9Comp();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-		virtual void releaseTextures();
-
-		Direct3D9Texture* loadSprite(Uint32 spriteId);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-
-	protected:
-		Direct3D9Texture** m_sprites;
-};
-
-class SurfaceDirect3D9Perf : public SurfaceDirect3D9
-{
-	public:
-		SurfaceDirect3D9Perf();
-		virtual ~SurfaceDirect3D9Perf();
-
-		void generateSpriteAtlases();
-		void checkScheduledSprites();
-
-		virtual void renderTargetsRecreate();
-		virtual void init();
-		virtual void spriteManagerReset();
-		virtual void releaseTextures();
-
-		virtual void beginScene();
-		virtual void beginGameScene();
-		virtual void endGameScene();
-
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-		bool loadSprite(Uint32 spriteId, Direct3D9Texture* texture, Uint32 xoff, Uint32 yoff);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
-
-	protected:
-		std::vector<VertexD3D9> m_gameWindowVertices;
-		std::vector<Direct3D9Texture*> m_spritesAtlas;
-
-		Direct3D9Texture* m_spriteAtlas;
+		Uint32 m_spriteChecker;
+		Uint32 m_currentFrame;
 
 		Uint32 m_spriteAtlases;
 		Uint32 m_spritesPerAtlas;
 		Uint32 m_spritesPerModulo;
 
-		bool* m_sprites;
+		bool m_usingLinearSample;
+		bool m_useAlphaBlending;
+		bool m_needReset;
+		bool m_haveSharpening;
 		bool m_scheduleSpriteDraw;
 };
 
-static const DWORD D3D9_sharpen[] = {
+static const DWORD D3D9_sharpen[] =
+{
 	0xffff0200, 0x002ffffe, 0x42415443, 0x0000001c, 0x0000008f, 0xffff0200,
 	0x00000002, 0x0000001c, 0x00008100, 0x00000088, 0x00000044, 0x00000002,
 	0x00020001, 0x00000050, 0x00000000, 0x00000060, 0x00000003, 0x00000001,

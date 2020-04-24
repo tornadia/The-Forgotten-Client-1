@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -66,21 +66,23 @@ void Tile::render(Sint32 posX, Sint32 posY, bool visible_tile)
 	{
 		if(visible_tile)
 			m_ground->render(posX, posY, visible_tile);
+
 		if(m_ground->hasElevation() && m_tileElevation < ITEM_MAX_ELEVATION)
 		{
-			m_tileElevation = UTIL_min<Sint32>(ITEM_MAX_ELEVATION, m_tileElevation+m_ground->getElevation());
+			m_tileElevation = UTIL_min<Sint32>(ITEM_MAX_ELEVATION, m_tileElevation + m_ground->getElevation());
 			visible_tile = true; //Make sure we get drawing everything
 		}
 	}
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getTopOrder() != 3)
+		Item* item = (*it);
+		if(item->getTopOrder() != 3)
 		{
-			(*it)->render(posX-m_tileElevation, posY-m_tileElevation, visible_tile);
-			if((*it)->hasElevation() && displacedItems < ITEM_MAX_ELEVATION)
+			item->render(posX - m_tileElevation, posY - m_tileElevation, visible_tile);
+			if(item->hasElevation() && displacedItems < ITEM_MAX_ELEVATION)
 			{
-				m_tileElevation = UTIL_min<Sint32>(ITEM_MAX_ELEVATION, m_tileElevation+(*it)->getElevation());
+				m_tileElevation = UTIL_min<Sint32>(ITEM_MAX_ELEVATION, m_tileElevation + item->getElevation());
 				visible_tile = true; //Make sure we get drawing everything
 			}
 		}
@@ -88,10 +90,11 @@ void Tile::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	for(std::vector<Item*>::reverse_iterator it = m_downItems.rbegin(), end = m_downItems.rend(); it != end; ++it)
 	{
-		(*it)->render(posX-m_tileElevation, posY-m_tileElevation, visible_tile);
-		if((*it)->hasElevation() && displacedItems < ITEM_MAX_ELEVATION)
+		Item* item = (*it);
+		item->render(posX - m_tileElevation, posY - m_tileElevation, visible_tile);
+		if(item->hasElevation() && displacedItems < ITEM_MAX_ELEVATION)
 		{
-			m_tileElevation = UTIL_min<Sint32>(ITEM_MAX_ELEVATION, m_tileElevation+(*it)->getElevation());
+			m_tileElevation = UTIL_min<Sint32>(ITEM_MAX_ELEVATION, m_tileElevation + item->getElevation());
 			visible_tile = true; //Make sure we get drawing everything
 		}
 	}
@@ -100,18 +103,26 @@ void Tile::render(Sint32 posX, Sint32 posY, bool visible_tile)
 	posY -= m_tileElevation;
 	for(std::vector<Creature*>::reverse_iterator it = m_creatures.rbegin(), end = m_creatures.rend(); it != end; ++it)
 	{
-		if(!(*it)->isWalking())
-			(*it)->render(posX, posY, visible_tile);
+		Creature* creature = (*it);
+		if(!creature->isWalking())
+			creature->render(posX, posY, visible_tile);
 	}
 
 	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
 	{
-		if((*it)->isWalking())
-			(*it)->render(posX-(*it)->getWalkOffsetX(), posY-(*it)->getWalkOffsetY(), visible_tile);
+		Creature* creature = (*it);
+		if(creature->isWalking())
+			creature->render(posX - creature->getWalkOffsetX(), posY - creature->getWalkOffsetY(), visible_tile);
 	}
 
 	for(std::vector<Effect*>::iterator it = m_effects.begin(); it != m_effects.end();)
 	{
+		if((*it)->isDelayed())
+		{
+			++it;
+			continue;
+		}
+
 		if((*it)->canBeDeleted())
 		{
 			delete (*it);
@@ -126,8 +137,9 @@ void Tile::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getTopOrder() == 3)
-			(*it)->render(posX+m_tileElevation, posY+m_tileElevation, visible_tile);
+		Item* item = (*it);
+		if(item->getTopOrder() == 3)
+			item->render(posX + m_tileElevation, posY + m_tileElevation, visible_tile);
 	}
 }
 
@@ -137,14 +149,16 @@ void Tile::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 dra
 	drawY -= m_tileElevation;
 	for(std::vector<Creature*>::reverse_iterator it = m_creatures.rbegin(), end = m_creatures.rend(); it != end; ++it)
 	{
-		if(!(*it)->isWalking())
-			(*it)->renderInformations(posX, posY, drawX, drawY, scale, visible);
+		Creature* creature = (*it);
+		if(!creature->isWalking())
+			creature->renderInformations(posX, posY, drawX, drawY, scale, visible);
 	}
 
 	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
 	{
-		if((*it)->isWalking())
-			(*it)->renderInformations(posX, posY, drawX-(*it)->getWalkOffsetX(), drawY-(*it)->getWalkOffsetY(), scale, visible);
+		Creature* creature = (*it);
+		if(creature->isWalking())
+			creature->renderInformations(posX, posY, drawX - creature->getWalkOffsetX(), drawY - creature->getWalkOffsetY(), scale, visible);
 	}
 }
 
@@ -219,27 +233,29 @@ Creature* Tile::getTopCreature(Sint32 x, Sint32 y, iRect& rect, float scale)
 {
 	for(std::vector<Creature*>::reverse_iterator it = m_walkCreatures.rbegin(), end = m_walkCreatures.rend(); it != end; ++it)
 	{
-		if((*it)->isWalking())
+		Creature* creature = (*it);
+		if(creature->isWalking())
 		{
-			std::pair<Sint32, Sint32> displacement = (*it)->getDisplacement();
-			Sint32 xOffset = SDL_static_cast(Sint32, scale*((*it)->getOffsetX()-(*it)->getWalkOffsetX()-displacement.first));
-			Sint32 yOffset = SDL_static_cast(Sint32, scale*((*it)->getOffsetY()-(*it)->getWalkOffsetY()-displacement.second));
-			iRect irect = iRect(rect.x1+xOffset, rect.y1+yOffset, rect.x2, rect.y2);
+			std::pair<Sint32, Sint32> displacement = creature->getDisplacement();
+			Sint32 xOffset = SDL_static_cast(Sint32, scale * (creature->getOffsetX() - creature->getWalkOffsetX() - displacement.first));
+			Sint32 yOffset = SDL_static_cast(Sint32, scale * (creature->getOffsetY() - creature->getWalkOffsetY() - displacement.second));
+			iRect irect = iRect(rect.x1 + xOffset, rect.y1 + yOffset, rect.x2, rect.y2);
 			if(irect.isPointInside(x, y))
-				return (*it);
+				return creature;
 		}
 	}
 
 	for(std::vector<Creature*>::iterator it = m_creatures.begin(), end = m_creatures.end(); it != end; ++it)
 	{
-		if(!(*it)->isWalking())
+		Creature* creature = (*it);
+		if(!creature->isWalking())
 		{
-			std::pair<Sint32, Sint32> displacement = (*it)->getDisplacement();
-			Sint32 xOffset = SDL_static_cast(Sint32, scale*displacement.first);
-			Sint32 yOffset = SDL_static_cast(Sint32, scale*displacement.second);
-			iRect irect = iRect(rect.x1-xOffset, rect.y1-yOffset, rect.x2, rect.y2);
+			std::pair<Sint32, Sint32> displacement = creature->getDisplacement();
+			Sint32 xOffset = SDL_static_cast(Sint32, scale * displacement.first);
+			Sint32 yOffset = SDL_static_cast(Sint32, scale * displacement.second);
+			iRect irect = iRect(rect.x1 - xOffset, rect.y1 - yOffset, rect.x2, rect.y2);
 			if(irect.isPointInside(x, y))
-				return (*it);
+				return creature;
 		}
 	}
 	return NULL;
@@ -257,14 +273,16 @@ Thing* Tile::getTopLookThing()
 {
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if(!(*it)->getThingType() || !(*it)->getThingType()->hasFlag(ThingAttribute_LookThrough))
-			return (*it);
+		Item* item = (*it);
+		if(!item->getThingType() || !item->getThingType()->hasFlag(ThingAttribute_LookThrough))
+			return item;
 	}
 
 	for(std::vector<Item*>::reverse_iterator it = m_topItems.rbegin(), end = m_topItems.rend(); it != end; ++it)
 	{
-		if(!(*it)->getThingType() || !(*it)->getThingType()->hasFlag(ThingAttribute_LookThrough))
-			return (*it);
+		Item* item = (*it);
+		if(!item->getThingType() || !item->getThingType()->hasFlag(ThingAttribute_LookThrough))
+			return item;
 	}
 	return m_ground;
 }
@@ -276,8 +294,9 @@ Thing* Tile::getTopUseThing()
 
 	for(std::vector<Item*>::reverse_iterator it = m_topItems.rbegin(), end = m_topItems.rend(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_ForceUse))
-			return (*it);
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_ForceUse))
+			return item;
 	}
 
 	if(!m_downItems.empty())
@@ -293,8 +312,9 @@ Thing* Tile::getTopMoveThing()
 {
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && !(*it)->getThingType()->hasFlag(ThingAttribute_NotMoveable))
-			return (*it);
+		Item* item = (*it);
+		if(item->getThingType() && !item->getThingType()->hasFlag(ThingAttribute_NotMoveable))
+			return item;
 	}
 
 	Creature* topCreature = getTopCreature();
@@ -303,30 +323,32 @@ Thing* Tile::getTopMoveThing()
 
 	for(std::vector<Item*>::reverse_iterator it = m_topItems.rbegin(), end = m_topItems.rend(); it != end; ++it)
 	{
-		if((*it)->getThingType() && !(*it)->getThingType()->hasFlag(ThingAttribute_NotMoveable))
-			return (*it);
+		Item* item = (*it);
+		if(item->getThingType() && !item->getThingType()->hasFlag(ThingAttribute_NotMoveable))
+			return item;
 	}
-
 	return m_ground;
 }
 
 bool Tile::addThing(Thing* thing, bool insertThing, bool moveCreature)
 {
-	if(thing == NULL)
+	if(!thing)
 		return false;
 
-	if(thing->getCreature())
+	if(thing->isCreature())
 	{
 		Creature* creature = thing->getCreature();
 		if(insertThing)
 			m_creatures.insert(m_creatures.begin(), creature);
 		else
 			m_creatures.push_back(creature);
+
 		if(!moveCreature)
 			creature->stopMove();
+
 		creature->setCurrentPosition(m_position);
 	}
-	else if(thing->getItem())
+	else if(thing->isItem())
 	{
 		Item* item = thing->getItem();
 		if(!item->getThingType())
@@ -346,12 +368,7 @@ bool Tile::addThing(Thing* thing, bool insertThing, bool moveCreature)
 		}
 
 		if(item->getThingType()->hasFlag(ThingAttribute_Ground))
-		{
-			if(m_ground)
-				delete m_ground;
-
 			m_ground = item;
-		}
 		else
 		{
 			Sint32 order = item->getTopOrder();
@@ -364,8 +381,8 @@ bool Tile::addThing(Thing* thing, bool insertThing, bool moveCreature)
 			}
 			else
 			{
-				std::vector<Item*>::iterator it, end;
-				for(it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
+				std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end();
+				for(; it != end; ++it)
 				{
 					Sint32 itOrder = (*it)->getTopOrder();
 					if(insertThing)
@@ -382,15 +399,13 @@ bool Tile::addThing(Thing* thing, bool insertThing, bool moveCreature)
 				m_topItems.insert(it, item);
 			}
 		}
-	}
-	if(thing->getItem())
-	{
-		Item* item = thing->getItem();
+
 		ThingType* tType = item->getThingType();
 		if(tType)
 		{
 			if(tType->hasFlag(ThingAttribute_LyingCorpse))
 				m_lyingCorpses = true;
+
 			if(tType->hasFlag(ThingAttribute_Translucent))
 				m_hasTranslucentLight = true;
 		}
@@ -406,24 +421,32 @@ bool Tile::addThing(Thing* thing, bool insertThing, bool moveCreature)
 
 bool Tile::insertThing(Thing* thing, Uint32 stackpos)
 {
-	if(thing == NULL)
+	if(!thing)
 		return false;
 
-	if(thing->getCreature())
+	if(thing->isCreature())
 	{
 		Creature* creature = thing->getCreature();
 		stackpos -= SDL_static_cast(Uint32, m_topItems.size()) + (m_ground ? 1 : 0);
-		m_creatures.insert(m_creatures.begin()+stackpos, creature);
+		if(stackpos >= SDL_static_cast(Uint32, m_creatures.size()))
+			m_creatures.push_back(creature);
+		else
+			m_creatures.insert(m_creatures.begin() + stackpos, creature);
+
 		creature->stopMove();
 		creature->setCurrentPosition(m_position);
 	}
-	else if(thing->getItem())
+	else if(thing->isItem())
 	{
 		Item* item = thing->getItem();
 		if(!item->getThingType())
 		{
 			stackpos -= SDL_static_cast(Uint32, m_topItems.size()) + SDL_static_cast(Uint32, m_creatures.size()) + (m_ground ? 1 : 0);
-			m_downItems.insert(m_downItems.begin()+stackpos, item);
+			if(stackpos >= SDL_static_cast(Uint32, m_downItems.size()))
+				m_downItems.push_back(item);
+			else
+				m_downItems.insert(m_downItems.begin() + stackpos, item);
+
 			if(getThingCount() > 10)
 			{
 				Thing* excessThing = getThingByStackPos(10);
@@ -438,12 +461,7 @@ bool Tile::insertThing(Thing* thing, Uint32 stackpos)
 			if(stackpos != 0)
 				return false;
 			else
-			{
-				if(m_ground)
-					delete m_ground;
-
 				m_ground = item;
-			}
 		}
 		else
 		{
@@ -451,23 +469,27 @@ bool Tile::insertThing(Thing* thing, Uint32 stackpos)
 			if(order == 0)
 			{
 				stackpos -= SDL_static_cast(Uint32, m_topItems.size()) + SDL_static_cast(Uint32, m_creatures.size()) + (m_ground ? 1 : 0);
-				m_downItems.insert(m_downItems.begin()+stackpos, item);
+				if(stackpos >= SDL_static_cast(Uint32, m_downItems.size()))
+					m_downItems.push_back(item);
+				else
+					m_downItems.insert(m_downItems.begin() + stackpos, item);
 			}
 			else
 			{
 				stackpos -= (m_ground ? 1 : 0);
-				m_topItems.insert(m_topItems.begin()+stackpos, item);
+				if(stackpos >= SDL_static_cast(Uint32, m_topItems.size()))
+					m_topItems.push_back(item);
+				else
+					m_topItems.insert(m_topItems.begin() + stackpos, item);
 			}
 		}
-	}
-	if(thing->getItem())
-	{
-		Item* item = thing->getItem();
+
 		ThingType* tType = item->getThingType();
 		if(tType)
 		{
 			if(tType->hasFlag(ThingAttribute_LyingCorpse))
 				m_lyingCorpses = true;
+
 			if(tType->hasFlag(ThingAttribute_Translucent))
 				m_hasTranslucentLight = true;
 		}
@@ -483,10 +505,10 @@ bool Tile::insertThing(Thing* thing, Uint32 stackpos)
 
 bool Tile::removeThing(Thing* thing, bool moveCreature)
 {
-	if(thing == NULL)
+	if(!thing)
 		return false;
 
-	if(thing->getCreature())
+	if(thing->isCreature())
 	{
 		Creature* creature = thing->getCreature();
 		std::vector<Creature*>::iterator it = std::find(m_creatures.begin(), m_creatures.end(), creature);
@@ -494,11 +516,12 @@ bool Tile::removeThing(Thing* thing, bool moveCreature)
 		{
 			if(!moveCreature)
 				creature->removeFromDrawnTile();
+
 			m_creatures.erase(it);
 			return true;
 		}
 	}
-	else if(thing->getItem())
+	else if(thing->isItem())
 	{
 		bool removed = false;
 		Item* item = thing->getItem();
@@ -533,12 +556,14 @@ bool Tile::removeThing(Thing* thing, bool moveCreature)
 		{
 			if(tType->hasFlag(ThingAttribute_LyingCorpse))
 				recacheLyingCorpses();
+
 			if(tType->hasFlag(ThingAttribute_Translucent))
 				recacheTranslucentLight();
 		}
 
 		if(removed)
 			delete thing;
+
 		return removed;
 	}
 	return false;
@@ -560,7 +585,7 @@ void Tile::checkMagicEffects()
 {
 	for(std::vector<Effect*>::iterator it = m_effects.begin(); it != m_effects.end();)
 	{
-		if((*it)->canBeDeleted())
+		if(!(*it)->isDelayed() && (*it)->canBeDeleted())
 		{
 			delete (*it);
 			it = m_effects.erase(it);
@@ -599,16 +624,17 @@ bool Tile::isLookingPossible()
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if(!(*it)->getThingType() || !(*it)->getThingType()->hasFlag(ThingAttribute_LookThrough))
+		Item* item = (*it);
+		if(!item->getThingType() || !item->getThingType()->hasFlag(ThingAttribute_LookThrough))
 			return true;
 	}
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if(!(*it)->getThingType() || !(*it)->getThingType()->hasFlag(ThingAttribute_LookThrough))
+		Item* item = (*it);
+		if(!item->getThingType() || !item->getThingType()->hasFlag(ThingAttribute_LookThrough))
 			return true;
 	}
-
 	return false;
 }
 
@@ -619,19 +645,22 @@ bool Tile::isWalkable()
 
 	for(std::vector<Creature*>::iterator it = m_creatures.begin(), end = m_creatures.end(); it != end; ++it)
 	{
-		if((*it)->isUnpassable())
+		Creature* creature = (*it);
+		if(creature->isUnpassable())
 			return false;
 	}
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_NotWalkable))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_NotWalkable))
 			return false;
 	}
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if ((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_NotWalkable))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_NotWalkable))
 			return false;
 	}
 	return true;
@@ -644,13 +673,15 @@ bool Tile::isPathable()
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_NotPathable))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_NotPathable))
 			return false;
 	}
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if ((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_NotPathable))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_NotPathable))
 			return false;
 	}
 	return true;
@@ -663,13 +694,15 @@ bool Tile::mustHookEast()
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_HookEast))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_HookEast))
 			return true;
 	}
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_HookEast))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_HookEast))
 			return true;
 	}
 	return false;
@@ -682,13 +715,15 @@ bool Tile::mustHookSouth()
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_HookSouth))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_HookSouth))
 			return true;
 	}
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_HookSouth))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_HookSouth))
 			return true;
 	}
 	return false;
@@ -708,7 +743,8 @@ void Tile::recacheTranslucentLight()
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_Translucent))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_Translucent))
 		{
 			m_hasTranslucentLight = true;
 			return;
@@ -717,7 +753,8 @@ void Tile::recacheTranslucentLight()
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_Translucent))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_Translucent))
 		{
 			m_hasTranslucentLight = true;
 			return;
@@ -730,7 +767,8 @@ void Tile::recacheLyingCorpses()
 	m_lyingCorpses = false;
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_LyingCorpse))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_LyingCorpse))
 		{
 			m_lyingCorpses = true;
 			return;
@@ -739,7 +777,8 @@ void Tile::recacheLyingCorpses()
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_LyingCorpse))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_LyingCorpse))
 		{
 			m_lyingCorpses = true;
 			return;
@@ -754,7 +793,7 @@ size_t Tile::getThingCount()
 
 Uint16 Tile::getGroundSpeed()
 {
-	return (m_ground ? m_ground->getThingType()->m_groundSpeed : 100);
+	return (m_ground && m_ground->getThingType() ? m_ground->getThingType()->m_groundSpeed : 150);
 }
 
 Uint16 Tile::getMinimapSpeed()
@@ -762,7 +801,7 @@ Uint16 Tile::getMinimapSpeed()
 	if(!isWalkable())
 		return 0;
 
-	return (m_ground ? m_ground->getThingType()->m_groundSpeed : 100);
+	return getGroundSpeed();
 }
 
 Uint16 Tile::getMinimapColor()
@@ -773,22 +812,33 @@ Uint16 Tile::getMinimapColor()
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getTopOrder() != 3 && (*it)->getThingType()->m_minimapColor)
-			color = (*it)->getThingType()->m_minimapColor;
+		Item* item = (*it);
+		if(item->getThingType() && item->getTopOrder() != 3 && item->getThingType()->m_minimapColor)
+			color = item->getThingType()->m_minimapColor;
 	}
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->m_minimapColor)
-			color = (*it)->getThingType()->m_minimapColor;
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->m_minimapColor)
+			color = item->getThingType()->m_minimapColor;
 	}
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getTopOrder() == 3 && (*it)->getThingType()->m_minimapColor)
-			color = (*it)->getThingType()->m_minimapColor;
+		Item* item = (*it);
+		if(item->getThingType() && item->getTopOrder() == 3 && item->getThingType()->m_minimapColor)
+			color = item->getThingType()->m_minimapColor;
 	}
 	return color;
+}
+
+bool Tile::hasground()
+{
+	if(m_ground)
+		return true;
+
+	return false;
 }
 
 bool Tile::isFullground()
@@ -806,13 +856,15 @@ bool Tile::isLookPossible()
 
 	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_BlockProjectile))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_BlockProjectile))
 			return false;
 	}
 
 	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
 	{
-		if((*it)->getThingType() && (*it)->getThingType()->hasFlag(ThingAttribute_BlockProjectile))
+		Item* item = (*it);
+		if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_BlockProjectile))
 			return false;
 	}
 	return true;

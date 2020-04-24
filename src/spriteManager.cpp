@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -107,27 +107,27 @@ void SpriteManager::manageSprites(std::vector<Uint32>& fromSprites, std::vector<
 			{
 				case 0:
 				{
-					toSprites.push_back(currentOffset.spriteIndex);
+					toSprites.emplace_back(currentOffset.spriteIndex);
 				}
 				break;
 				case 1:
 				{
-					toSprites.push_back(currentOffset.spriteIndex + 0);
-					toSprites.push_back(currentOffset.spriteIndex + 1);
+					toSprites.emplace_back(currentOffset.spriteIndex + 0);
+					toSprites.emplace_back(currentOffset.spriteIndex + 1);
 				}
 				break;
 				case 2:
 				{
-					toSprites.push_back(currentOffset.spriteIndex + 0);
-					toSprites.push_back(currentOffset.spriteIndex + 1);
+					toSprites.emplace_back(currentOffset.spriteIndex + 0);
+					toSprites.emplace_back(currentOffset.spriteIndex + 1);
 				}
 				break;
 				case 3:
 				{
-					toSprites.push_back(currentOffset.spriteIndex + 0);
-					toSprites.push_back(currentOffset.spriteIndex + 1);
-					toSprites.push_back(currentOffset.spriteIndex + 2);
-					toSprites.push_back(currentOffset.spriteIndex + 3);
+					toSprites.emplace_back(currentOffset.spriteIndex + 0);
+					toSprites.emplace_back(currentOffset.spriteIndex + 1);
+					toSprites.emplace_back(currentOffset.spriteIndex + 2);
+					toSprites.emplace_back(currentOffset.spriteIndex + 3);
 				}
 				break;
 			}
@@ -196,7 +196,7 @@ unsigned char* SpriteManager::SplitSpriteSheet(SDL_Surface* sheet, Sint32 x, Sin
 	unsigned char* destData = SDL_reinterpret_cast(unsigned char*, SDL_malloc(4096));
 	if(destData)
 	{
-		Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, sheet->pixels) + (y*sheet->w + x) * 4);
+		Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, sheet->pixels) + (y * sheet->w + x) * 4);
 		Sint32 dgap = (sheet->pitch / 4);
 		for(Sint32 h = 0; h < 32; h += 4)
 		{
@@ -239,7 +239,7 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 			}
 
 			Uint32 currentSprite = spriteSheet.firstSpriteId;
-			Uint32 spriteCount = currentSprite+(spriteSheet.lastSpriteId-spriteSheet.firstSpriteId);
+			Uint32 spriteCount = currentSprite + (spriteSheet.lastSpriteId - spriteSheet.firstSpriteId);
 			switch(spriteSheet.spriteType)
 			{
 				case 0://1x1
@@ -252,7 +252,7 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 								goto Exit_Nest_Loop;
 
 							SpriteData newSpriteData0;
-							newSpriteData0.data = SplitSpriteSheet(bmpSurface, x*32, y*32);
+							newSpriteData0.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData0.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData0;
 						}
@@ -269,10 +269,10 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 								goto Exit_Nest_Loop;
 
 							SpriteData newSpriteData0, newSpriteData1;
-							newSpriteData0.data = SplitSpriteSheet(bmpSurface, x*32, (y+1)*32);
+							newSpriteData0.data = SplitSpriteSheet(bmpSurface, x * 32, (y + 1) * 32);
 							newSpriteData0.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData0;
-							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x*32, y*32);
+							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData1.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData1;
 						}
@@ -289,10 +289,10 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 								goto Exit_Nest_Loop;
 
 							SpriteData newSpriteData0, newSpriteData1;
-							newSpriteData0.data = SplitSpriteSheet(bmpSurface, (x+1)*32, y*32);
+							newSpriteData0.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, y * 32);
 							newSpriteData0.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData0;
-							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x*32, y*32);
+							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData1.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData1;
 						}
@@ -309,16 +309,16 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 								goto Exit_Nest_Loop;
 
 							SpriteData newSpriteData0, newSpriteData1, newSpriteData2, newSpriteData3;
-							newSpriteData0.data = SplitSpriteSheet(bmpSurface, (x+1)*32, (y+1)*32);
+							newSpriteData0.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, (y + 1) * 32);
 							newSpriteData0.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData0;
-							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x*32, (y+1)*32);
+							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, (y + 1) * 32);
 							newSpriteData1.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData1;
-							newSpriteData2.data = SplitSpriteSheet(bmpSurface, (x+1)*32, y*32);
+							newSpriteData2.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, y * 32);
 							newSpriteData2.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData2;
-							newSpriteData3.data = SplitSpriteSheet(bmpSurface, x*32, y*32);
+							newSpriteData3.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData3.bgra = bgra;
 							m_spriteData[currentSprite++] = newSpriteData3;
 						}
@@ -352,17 +352,10 @@ unsigned char* SpriteManager::LoadSprite_NEW(Uint32 spriteId, bool bgra)
 	{
 		for(Sint32 i = 0; i < 4096; i += 4)
 		{
-			#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-			unsigned char temp1 = spriteData.data[1];
-			unsigned char temp2 = spriteData.data[3];
-			spriteData.data[1] = temp2;
-			spriteData.data[3] = temp1;
-			#else
-			unsigned char temp1 = spriteData.data[0];
-			unsigned char temp2 = spriteData.data[2];
-			spriteData.data[0] = temp2;
-			spriteData.data[2] = temp1;
-			#endif
+			unsigned char temp1 = spriteData.data[i + 0];
+			unsigned char temp2 = spriteData.data[i + 2];
+			spriteData.data[i + 0] = temp2;
+			spriteData.data[i + 2] = temp1;
 		}
 		spriteData.bgra = bgra;
 	}
@@ -381,14 +374,12 @@ unsigned char* SpriteManager::LoadSprite_RGBA(Uint32 spriteId)
 	if(!sprites)
 		return LoadSprite_NEW(spriteId, false);
 
-	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(4096));
+	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_calloc(4096, sizeof(unsigned char)));
 	if(!pixels)
 		return NULL;
 
-	memset(pixels, 0x00, 4096);
-
 	Sint64 offset = (g_game.hasGameFeature(GAME_FEATURE_EXTENDED_SPRITES) ? 8 : 6);
-	SDL_RWseek(sprites, (spriteId-1)*4+offset, RW_SEEK_SET);
+	SDL_RWseek(sprites, (spriteId - 1) * 4 + offset, RW_SEEK_SET);
 
 	Uint32 sprLoc = SDL_ReadLE32(sprites);
 	SDL_RWseek(sprites, sprLoc, RW_SEEK_SET);
@@ -400,33 +391,25 @@ unsigned char* SpriteManager::LoadSprite_RGBA(Uint32 spriteId)
 
 	Uint32 writeData = 0, readData = 0;
 	Uint16 numPix;
-	bool state = false;
 	while(readData < sprSize)
 	{
 		numPix = SDL_ReadLE16(sprites);
-		readData += 2;
-		if(state)
+		writeData += numPix * 4;
+		numPix = SDL_ReadLE16(sprites);
+		readData += 4;
+		for(Uint16 i = 0; i < numPix && writeData <= 4092; ++i)
 		{
-			for(Uint16 i = 0; i < numPix && writeData <= 4092; ++i)
-			{
-				pixels[writeData] = SDL_ReadU8(sprites);
-				pixels[writeData+1] = SDL_ReadU8(sprites);
-				pixels[writeData+2] = SDL_ReadU8(sprites);
-				#if defined(__ALPHA_SPRITES__)
-				pixels[writeData+3] = SDL_ReadU8(sprites);
-				readData += 4;
-				#else
-				pixels[writeData+3] = SDL_ALPHA_OPAQUE;
-				readData += 3;
-				#endif
-				writeData += 4;
-			}
-			state = false;
-		}
-		else
-		{
-			writeData += numPix*4;
-			state = true;
+			pixels[writeData] = SDL_ReadU8(sprites);
+			pixels[writeData + 1] = SDL_ReadU8(sprites);
+			pixels[writeData + 2] = SDL_ReadU8(sprites);
+			#if defined(__ALPHA_SPRITES__)
+			pixels[writeData + 3] = SDL_ReadU8(sprites);
+			readData += 4;
+			#else
+			pixels[writeData + 3] = SDL_ALPHA_OPAQUE;
+			readData += 3;
+			#endif
+			writeData += 4;
 		}
 	}
 	return pixels;
@@ -438,14 +421,12 @@ unsigned char* SpriteManager::LoadSprite_BGRA(Uint32 spriteId)
 	if(!sprites)
 		return LoadSprite_NEW(spriteId, true);
 
-	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(4096));
+	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_calloc(4096, sizeof(unsigned char)));
 	if(!pixels)
 		return NULL;
 
-	memset(pixels, 0x00, 4096);
-
 	Sint64 offset = (g_game.hasGameFeature(GAME_FEATURE_EXTENDED_SPRITES) ? 8 : 6);
-	SDL_RWseek(sprites, (spriteId-1)*4+offset, RW_SEEK_SET);
+	SDL_RWseek(sprites, (spriteId - 1) * 4 + offset, RW_SEEK_SET);
 
 	Uint32 sprLoc = SDL_ReadLE32(sprites);
 	SDL_RWseek(sprites, sprLoc, RW_SEEK_SET);
@@ -457,33 +438,25 @@ unsigned char* SpriteManager::LoadSprite_BGRA(Uint32 spriteId)
 
 	Uint32 writeData = 0, readData = 0;
 	Uint16 numPix;
-	bool state = false;
 	while(readData < sprSize)
 	{
 		numPix = SDL_ReadLE16(sprites);
-		readData += 2;
-		if(state)
+		writeData += numPix * 4;
+		numPix = SDL_ReadLE16(sprites);
+		readData += 4;
+		for(Uint16 i = 0; i < numPix && writeData <= 4092; ++i)
 		{
-			for(Uint16 i = 0; i < numPix && writeData <= 4092; ++i)
-			{
-				pixels[writeData+2] = SDL_ReadU8(sprites);
-				pixels[writeData+1] = SDL_ReadU8(sprites);
-				pixels[writeData] = SDL_ReadU8(sprites);
-				#if defined(__ALPHA_SPRITES__)
-				pixels[writeData+3] = SDL_ReadU8(sprites);
-				readData += 4;
-				#else
-				pixels[writeData+3] = SDL_ALPHA_OPAQUE;
-				readData += 3;
-				#endif
-				writeData += 4;
-			}
-			state = false;
-		}
-		else
-		{
-			writeData += numPix*4;
-			state = true;
+			pixels[writeData + 2] = SDL_ReadU8(sprites);
+			pixels[writeData + 1] = SDL_ReadU8(sprites);
+			pixels[writeData] = SDL_ReadU8(sprites);
+			#if defined(__ALPHA_SPRITES__)
+			pixels[writeData + 3] = SDL_ReadU8(sprites);
+			readData += 4;
+			#else
+			pixels[writeData + 3] = SDL_ALPHA_OPAQUE;
+			readData += 3;
+			#endif
+			writeData += 4;
 		}
 	}
 	return pixels;
@@ -534,16 +507,13 @@ bool SpriteManager::loadCatalog(const char* filename)
 	if(sizeData == 0)
 		return false;
 
-	char* msgData = SDL_reinterpret_cast(char*, SDL_malloc(sizeData));
-	if(!msgData)
-		return false;
-
+	std::vector<char> msgData(sizeData);
 	SDL_RWseek(fp, 0, RW_SEEK_SET);
-	SDL_RWread(fp, msgData, 1, sizeData);
+	SDL_RWread(fp, &msgData[0], 1, sizeData);
 	SDL_RWclose(fp);
 
-	JSON_VALUE* catalogJson = JSON_VALUE::decode(msgData);
-	SDL_free(msgData);
+	std::unique_ptr<JSON_VALUE> dataJson(JSON_VALUE::decode(&msgData[0]));
+	JSON_VALUE* catalogJson = dataJson.get();
 	if(catalogJson && catalogJson->IsArray())
 	{
 		size_t catalogSize = catalogJson->size();
@@ -586,7 +556,7 @@ bool SpriteManager::loadCatalog(const char* filename)
 							Uint32 spriteType = SDL_static_cast(Uint32, spriteTypeJson->AsNumber());
 							Uint32 firstSpriteId = SDL_static_cast(Uint32, firstSpriteIdJson->AsNumber());
 							Uint32 lastSpriteId = SDL_static_cast(Uint32, lastSpriteIdJson->AsNumber());
-							for(Uint32 j = 0; j <= (lastSpriteId-firstSpriteId); ++j)
+							for(Uint32 j = 0; j <= (lastSpriteId - firstSpriteId); ++j)
 							{
 								Uint32 spriteOffset = firstSpriteId + j;
 								if(spriteOffset >= m_spriteOffsets.size())

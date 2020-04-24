@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -44,6 +44,35 @@ class GUI_Label : public GUI_Element
 		Uint8 m_red;
 		Uint8 m_green;
 		Uint8 m_blue;
+};
+
+class GUI_DynamicLabel : public GUI_Element
+{
+	public:
+		GUI_DynamicLabel(iRect boxRect, const std::string labelName, Uint32 internalID = 0, Uint8 red = 180, Uint8 green = 180, Uint8 blue = 180);
+
+		std::string& getName() {return m_Label;}
+		bool isFullDisplay() {return m_fullDisplay;}
+
+		void setRect(iRect& NewRect);
+		void setName(const std::string labelName);
+		void setColor(Uint8 red, Uint8 green, Uint8 blue) {m_red = red; m_green = green; m_blue = blue;}
+		void setAlign(Uint8 align) {m_align = align;}
+		void setFont(Uint8 font);
+
+		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
+
+		void render();
+
+	protected:
+		std::string m_displayLabel;
+		std::string m_Label;
+		Sint32 m_align;
+		Uint8 m_font;
+		Uint8 m_red;
+		Uint8 m_green;
+		Uint8 m_blue;
+		bool m_fullDisplay;
 };
 
 #endif /* __FILE_GUI_LABEL_h_ */

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -62,7 +62,7 @@ void UTIL_createMotd()
 		cacheMSGsize2 += 14;
 	}
 
-	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, cacheMSGsize+36, cacheMSGsize2), MOTD_TITLE, GUI_WINDOW_MOTD);
+	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, cacheMSGsize + 36, cacheMSGsize2), MOTD_TITLE, GUI_WINDOW_MOTD);
 	GUI_Label* newLabel;
 	Sint32 labelY = 34;
 	for(size_t i = 0, end = messages.size(); i < end; ++i)
@@ -71,15 +71,15 @@ void UTIL_createMotd()
 		newWindow->addChild(newLabel);
 		labelY += 14;
 	}
-	GUI_Button* newButton = new GUI_Button(iRect(cacheMSGsize-20, cacheMSGsize2-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(cacheMSGsize - 20, cacheMSGsize2 - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&motd_Events, MOTD_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(cacheMSGsize-20, cacheMSGsize2-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(cacheMSGsize - 20, cacheMSGsize2 - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&motd_Events, MOTD_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, cacheMSGsize2-40, cacheMSGsize+10, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, cacheMSGsize2 - 40, cacheMSGsize + 10, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow, true);
 }

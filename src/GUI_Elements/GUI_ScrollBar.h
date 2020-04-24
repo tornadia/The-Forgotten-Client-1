@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -67,7 +67,7 @@ class GUI_VScrollBar : public GUI_Element
 		SDL_FORCE_INLINE Sint32 getScrollPos() {return m_scrollPos[1];}
 
 		void setRect(iRect& NewRect);
-		void setBarEventCallback(void(*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);
+		void setBarEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);
 
 		void setScrollSize(Sint32 sSize);
 		void setScrollPos(Sint32 sPos);

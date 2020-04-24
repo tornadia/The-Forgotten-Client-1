@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -58,8 +58,18 @@ struct Direct3D11Texture
 	bool m_linearSample;
 };
 
+struct Direct3D11SpriteData
+{
+	Direct3D11SpriteData() : m_xOffset(0), m_yOffset(0), m_surface(0), m_lastUsage(0) {}
+
+	Uint32 m_xOffset;
+	Uint32 m_yOffset;
+	Uint32 m_surface;
+	Uint32 m_lastUsage;
+};
+
 typedef std::unordered_map<Uint32, Direct3D11Texture*> U32BD3D11Textures;
-typedef std::unordered_map<Uint64, Direct3D11Texture*> U64BD3D11Textures;
+typedef std::unordered_map<Uint64, Direct3D11SpriteData> U64BD3D11Textures;
 
 class SurfaceDirect3D11 : public Surface
 {
@@ -87,6 +97,9 @@ class SurfaceDirect3D11 : public Surface
 		virtual const char* getHardware() {return m_hardware;}
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
+		void generateSpriteAtlases();
+		void checkScheduledSprites();
+
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
 		virtual void spriteManagerReset();
@@ -96,7 +109,8 @@ class SurfaceDirect3D11 : public Surface
 		virtual void endScene();
 
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
-		virtual void drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void beginGameScene();
 		virtual void endGameScene();
@@ -112,9 +126,10 @@ class SurfaceDirect3D11 : public Surface
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
-		Direct3D11Texture* loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor);
-		virtual void drawSprite(Uint32, Sint32, Sint32) {;}
-		virtual void drawSprite(Uint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32) {;}
+		bool loadSprite(Uint32 spriteId, Direct3D11Texture* texture, Uint32 xoff, Uint32 yoff);
+		bool loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, Direct3D11Texture* texture, Uint32 xoff, Uint32 yoff);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor);
 
@@ -123,11 +138,14 @@ class SurfaceDirect3D11 : public Surface
 		virtual void drawAutomapTile(Uint32 m_currentArea, bool& m_recreate, Uint8 m_color[256][256], Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 
 	protected:
+		std::vector<VertexD3D11> m_vertices;
+		std::vector<Direct3D11Texture*> m_spritesAtlas;
 		U32BD3D11Textures m_automapTiles;
-		U64BD3D11Textures m_spriteMasks;
+		U64BD3D11Textures m_sprites;
 		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesMaskIds;
+		std::circular_buffer<Uint64> m_spritesIds;
 
+		Direct3D11Texture* m_spriteAtlas;
 		Direct3D11Texture** m_pictures;
 		char* m_software;
 		char* m_hardware;
@@ -172,7 +190,12 @@ class SurfaceDirect3D11 : public Surface
 		Sint32 m_integer_scaling_height;
 
 		Uint32 m_totalVRAM;
-		Uint32 m_spritesCache;
+		Uint32 m_spriteChecker;
+		Uint32 m_currentFrame;
+
+		Uint32 m_spriteAtlases;
+		Uint32 m_spritesPerAtlas;
+		Uint32 m_spritesPerModulo;
 
 		Sint32 m_viewPortX;
 		Sint32 m_viewPortY;
@@ -183,60 +206,6 @@ class SurfaceDirect3D11 : public Surface
 		bool m_needReset;
 		bool m_haveSharpening;
 		bool m_useOldDXGIinterface;
-};
-
-class SurfaceDirect3D11Comp : public SurfaceDirect3D11
-{
-	public:
-		SurfaceDirect3D11Comp();
-		virtual ~SurfaceDirect3D11Comp();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-
-		Direct3D11Texture* loadSprite(Uint32 spriteId);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-
-	protected:
-		Direct3D11Texture** m_sprites;
-};
-
-class SurfaceDirect3D11Perf : public SurfaceDirect3D11
-{
-	public:
-		SurfaceDirect3D11Perf();
-		virtual ~SurfaceDirect3D11Perf();
-
-		void generateSpriteAtlases();
-		void checkScheduledSprites();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-
-		virtual void beginScene();
-		virtual void beginGameScene();
-		virtual void endGameScene();
-
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-		bool loadSprite(Uint32 spriteId, Direct3D11Texture* texture, Uint32 xoff, Uint32 yoff);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
-
-	protected:
-		std::vector<VertexD3D11> m_gameWindowVertices;
-		std::vector<Direct3D11Texture*> m_spritesAtlas;
-
-		Direct3D11Texture* m_spriteAtlas;
-
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
-
-		bool* m_sprites;
 		bool m_scheduleSpriteDraw;
 };
 
@@ -247,7 +216,8 @@ class SurfaceDirect3D11Perf : public SurfaceDirect3D11
 #endif
 
 #if defined(D3D11_USE_SHADER_MODEL_4_0_level_9_1)
-static const DWORD D3D11_PixelShader_Solid[] = {
+static const DWORD D3D11_PixelShader_Solid[] =
+{
 	0x43425844, 0x038e1346, 0x2a7641d2, 0x5e280537, 0xff0ed997, 0x00000001,
 	0x00000234, 0x00000006, 0x00000038, 0x00000084, 0x000000c4, 0x00000140,
 	0x0000018c, 0x00000200, 0x396e6f41, 0x00000044, 0x00000044, 0xffff0200,
@@ -274,7 +244,8 @@ static const DWORD D3D11_PixelShader_Solid[] = {
 	0x545f5653, 0x45475241, 0xabab0054
 };
 #elif defined(D3D11_USE_SHADER_MODEL_4_0_level_9_3)
-static const DWORD D3D11_PixelShader_Solid[] = {
+static const DWORD D3D11_PixelShader_Solid[] =
+{
 	0x43425844, 0x22b2535f, 0xb7f15161, 0x7f1392af, 0xcfcdb805, 0x00000001,
 	0x00000234, 0x00000006, 0x00000038, 0x00000084, 0x000000c4, 0x00000140,
 	0x0000018c, 0x00000200, 0x396e6f41, 0x00000044, 0x00000044, 0xffff0200,
@@ -303,7 +274,8 @@ static const DWORD D3D11_PixelShader_Solid[] = {
 #endif
 
 #if defined(D3D11_USE_SHADER_MODEL_4_0_level_9_1)
-static const DWORD D3D11_PixelShader_Texture[] = {
+static const DWORD D3D11_PixelShader_Texture[] =
+{
 	0x43425844, 0xc8dc4c50, 0xb34f60b3, 0xd53e0085, 0x8ba2efa0, 0x00000001,
 	0x00000324, 0x00000006, 0x00000038, 0x000000c0, 0x0000015c, 0x000001d8,
 	0x0000027c, 0x000002f0, 0x396e6f41, 0x00000080, 0x00000080, 0xffff0200,
@@ -340,7 +312,8 @@ static const DWORD D3D11_PixelShader_Texture[] = {
 	0x545f5653, 0x45475241, 0xabab0054
 };
 #elif defined(D3D11_USE_SHADER_MODEL_4_0_level_9_3)
-static const DWORD D3D11_PixelShader_Texture[] = {
+static const DWORD D3D11_PixelShader_Texture[] =
+{
 	0x43425844, 0xa719d097, 0x4724c930, 0xa7bc20fb, 0x5a2d4c05, 0x00000001,
 	0x00000324, 0x00000006, 0x00000038, 0x000000c0, 0x0000015c, 0x000001d8,
 	0x0000027c, 0x000002f0, 0x396e6f41, 0x00000080, 0x00000080, 0xffff0200,
@@ -379,7 +352,8 @@ static const DWORD D3D11_PixelShader_Texture[] = {
 #endif
 
 #if defined(D3D11_USE_SHADER_MODEL_4_0_level_9_1)
-static const DWORD D3D11_VertexShader[] = {
+static const DWORD D3D11_VertexShader[] =
+{
 	0x43425844, 0xec10259f, 0x4bd441b4, 0xba922dc3, 0x4e6fb5d2, 0x00000001,
 	0x00000458, 0x00000006, 0x00000038, 0x00000118, 0x00000220, 0x0000029c,
 	0x00000374, 0x000003e4, 0x396e6f41, 0x000000d8, 0x000000d8, 0xfffe0200,
@@ -429,7 +403,8 @@ static const DWORD D3D11_VertexShader[] = {
 	0x4c4f4300, 0xab00524f
 };
 #elif defined(D3D11_USE_SHADER_MODEL_4_0_level_9_3)
-static const DWORD D3D11_VertexShader[] = {
+static const DWORD D3D11_VertexShader[] =
+{
 	0x43425844, 0xcc3199ab, 0x7d284d01, 0x54752bb4, 0x8d7843d8, 0x00000001,
 	0x00000458, 0x00000006, 0x00000038, 0x00000118, 0x00000220, 0x0000029c,
 	0x00000374, 0x000003e4, 0x396e6f41, 0x000000d8, 0x000000d8, 0xfffe0200,
@@ -481,7 +456,8 @@ static const DWORD D3D11_VertexShader[] = {
 #endif
 
 #if defined(D3D11_USE_SHADER_MODEL_4_0_level_9_1)
-static const DWORD D3D11_sharpen[] = {
+static const DWORD D3D11_sharpen[] =
+{
 	0x43425844, 0x6a141d80, 0x90296ed4, 0xc284f2f4, 0x2851745b, 0x00000001,
 	0x0000073c, 0x00000006, 0x00000038, 0x00000218, 0x000004f4, 0x00000570,
 	0x00000694, 0x00000708, 0x396e6f41, 0x000001d8, 0x000001d8, 0xffff0200,
@@ -562,7 +538,8 @@ static const DWORD D3D11_sharpen[] = {
 	0xabab0054
 };
 #elif defined(D3D11_USE_SHADER_MODEL_4_0_level_9_3)
-static const DWORD D3D11_sharpen[] = {
+static const DWORD D3D11_sharpen[] =
+{
 	0x43425844, 0x2165a61b, 0x8ec35f75, 0x6cf5aef7, 0xbdae7ba0, 0x00000001,
 	0x00000740, 0x00000006, 0x00000038, 0x0000021c, 0x000004f8, 0x00000574,
 	0x00000698, 0x0000070c, 0x396e6f41, 0x000001dc, 0x000001dc, 0xffff0200,

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -112,7 +112,7 @@ void graphics_options_Events(Uint32 event, Sint32)
 							if(reportBits == 24)
 							{
 								//Check if we want to report it as 32 Bits instead of 24 Bits
-								reportBits = SDL_BYTESPERPIXEL(displayMode.format)*8;
+								reportBits = SDL_BYTESPERPIXEL(displayMode.format) * 8;
 							}
 							SDL_snprintf(g_buffer, sizeof(g_buffer), "%d*%d, %d Bits, %d Hz", displayMode.w, displayMode.h, reportBits, displayMode.refresh_rate);
 						}
@@ -155,15 +155,15 @@ void UTIL_graphicsOptions()
 	newCheckBox->setBoxEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_CHECKBOX_FSCREEN_EVENTID);
 	newCheckBox->startEvents();
 	newWindow->addChild(newCheckBox);
-	GUI_Button* newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-56, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH - 56, GRAPHICS_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-109, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH - 109, GRAPHICS_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-162, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
+	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH - 162, GRAPHICS_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
 	newButton->setButtonEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_HELP_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
@@ -171,7 +171,7 @@ void UTIL_graphicsOptions()
 	newButton->setButtonEventCallback(&graphics_options_Events, GRAPHICS_OPTIONS_BUTTON_ADVANCED_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, GRAPHICS_OPTIONS_HEIGHT-40, GRAPHICS_OPTIONS_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, GRAPHICS_OPTIONS_HEIGHT - 40, GRAPHICS_OPTIONS_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	GUI_Label* newLabel = new GUI_Label(iRect(GRAPHICS_OPTIONS_LABEL_RESOLUTIONS_X, GRAPHICS_OPTIONS_LABEL_RESOLUTIONS_Y, 0, 0), GRAPHICS_OPTIONS_LABEL_RESOLUTIONS_TITLE);
 	newWindow->addChild(newLabel);
@@ -198,7 +198,7 @@ void UTIL_graphicsOptions()
 			if(reportBits == 24)
 			{
 				//Check if we want to report it as 32 Bits instead of 24 Bits
-				reportBits = SDL_BYTESPERPIXEL(displayMode.format)*8;
+				reportBits = SDL_BYTESPERPIXEL(displayMode.format) * 8;
 			}
 			SDL_snprintf(g_buffer, sizeof(g_buffer), "%d*%d, %d Bits, %d Hz", displayMode.w, displayMode.h, reportBits, displayMode.refresh_rate);
 		}

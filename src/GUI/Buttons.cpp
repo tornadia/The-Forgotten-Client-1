@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -104,7 +104,7 @@ void buttons_Events(Uint32 event, Sint32)
 		case BUTTONS_SKILLS_EVENTID: UTIL_toggleSkillsWindow(); break;
 		case BUTTONS_BATTLE_EVENTID: UTIL_toggleBattleWindow(); break;
 		case BUTTONS_VIP_EVENTID: UTIL_toggleVipWindow(); break;
-		case BUTTONS_LOGOUT_EVENTID: break;
+		case BUTTONS_LOGOUT_EVENTID: UTIL_logout(); break;
 		case BUTTONS_QUESTLOG_EVENTID: g_game.sendOpenQuestLog(); break;
 		case BUTTONS_OPTIONS_EVENTID: UTIL_options(); break;
 		case BUTTONS_HELP_EVENTID: UTIL_help(); break;
@@ -124,476 +124,477 @@ void buttons_Events(Uint32 event, Sint32)
 
 void UTIL_createButtonsPanel()
 {
+	bool newWindow;
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_BUTTONS);
 	if(pPanel)
-		g_engine.removePanelWindow(pPanel);
+	{
+		newWindow = false;
+		pPanel->clearChilds();
+	}
+	else
+	{
+		newWindow = true;
+		if(g_clientVersion >= 1215)
+			pPanel = new GUI_PanelWindow(iRect(0, 0, GAME_PANEL_FIXED_WIDTH - 4, 70), false, GUI_PANEL_WINDOW_BUTTONS);
+		else if(g_clientVersion >= 1102)
+			pPanel = new GUI_PanelWindow(iRect(0, 0, GAME_PANEL_FIXED_WIDTH - 4, 48), false, GUI_PANEL_WINDOW_BUTTONS);
+		else
+			pPanel = new GUI_PanelWindow(iRect(0, 0, GAME_PANEL_FIXED_WIDTH - 4, 26), false, GUI_PANEL_WINDOW_BUTTONS);
+	}
 
 	if(g_clientVersion >= 1220)
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 70), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(8, 3, GUI_UI_ICON_SKILLS_UP_W, GUI_UI_ICON_SKILLS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLS_UP_X, GUI_UI_ICON_SKILLS_UP_Y, GUI_UI_ICON_SKILLS_DOWN_X, GUI_UI_ICON_SKILLS_DOWN_Y, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(30, 3, GUI_UI_ICON_BATTLE_UP_W, GUI_UI_ICON_BATTLE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLE_UP_X, GUI_UI_ICON_BATTLE_UP_Y, GUI_UI_ICON_BATTLE_DOWN_X, GUI_UI_ICON_BATTLE_DOWN_Y, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(74, 3, GUI_UI_ICON_VIP_UP_W, GUI_UI_ICON_VIP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_VIP_UP_X, GUI_UI_ICON_VIP_UP_Y, GUI_UI_ICON_VIP_DOWN_X, GUI_UI_ICON_VIP_DOWN_Y, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(30, 25, GUI_UI_ICON_UNJUSTIFIED_UP_W, GUI_UI_ICON_UNJUSTIFIED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_UNJUSTIFIED_UP_X, GUI_UI_ICON_UNJUSTIFIED_UP_Y, GUI_UI_ICON_UNJUSTIFIED_DOWN_X, GUI_UI_ICON_UNJUSTIFIED_DOWN_Y, 0, BUTTONS_UNJUSTIFIED_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckUnjustifiedWindowOpen, BUTTONS_UNJUSTIFIED_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_UNJUSTIFIED_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 25, GUI_UI_ICON_PREYWIDGET_UP_W, GUI_UI_ICON_PREYWIDGET_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PREYWIDGET_UP_X, GUI_UI_ICON_PREYWIDGET_UP_Y, GUI_UI_ICON_PREYWIDGET_DOWN_X, GUI_UI_ICON_PREYWIDGET_DOWN_Y, 0, BUTTONS_PREY_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPreyWindowOpen, BUTTONS_PREY_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_PREY_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(8, 25, GUI_UI_ICON_SPELLIST_UP_W, GUI_UI_ICON_SPELLIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SPELLIST_UP_X, GUI_UI_ICON_SPELLIST_UP_Y, GUI_UI_ICON_SPELLIST_DOWN_X, GUI_UI_ICON_SPELLIST_DOWN_Y, 0, BUTTONS_SPELLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSpellsWindowOpen, BUTTONS_SPELLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SPELLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(74, 25, GUI_UI_ICON_ANALYTICS_UP_W, GUI_UI_ICON_ANALYTICS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_ANALYTICS_UP_X, GUI_UI_ICON_ANALYTICS_UP_Y, GUI_UI_ICON_ANALYTICS_DOWN_X, GUI_UI_ICON_ANALYTICS_DOWN_Y, 0, BUTTONS_ANALYTICS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckAnalyticsWindowOpen, BUTTONS_ANALYTICS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_ANALYTICS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		if(g_game.getTournamentEnabled())
 		{
 			newRadioIcon = new GUI_RadioIcon(iRect(96, 25, GUI_UI_ICON_LEADERBOARD_UP_W, GUI_UI_ICON_LEADERBOARD_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LEADERBOARD_UP_X, GUI_UI_ICON_LEADERBOARD_UP_Y, GUI_UI_ICON_LEADERBOARD_DOWN_X, GUI_UI_ICON_LEADERBOARD_DOWN_Y, 0, BUTTONS_LEADERBOARD_DESCRIPTION1);
 			newRadioIcon->setRadioEventCallback(&CheckLeaderboardWindowOpen, BUTTONS_LEADERBOARD_DESCRIPTION2);
 			newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LEADERBOARD_EVENTID);
 			newRadioIcon->startEvents();
-			newWindow->addChild(newRadioIcon);
+			pPanel->addChild(newRadioIcon);
 		}
 		else
 		{
 			GUI_StaticImage* newImage = new GUI_StaticImage(iRect(96, 25, GUI_UI_ICON_LEADERBOARD_DISABLED_W, GUI_UI_ICON_LEADERBOARD_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_LEADERBOARD_DISABLED_X, GUI_UI_ICON_LEADERBOARD_DISABLED_Y, 0, BUTTONS_LEADERBOARD_DESCRIPTION3);
 			newImage->startEvents();
-			newWindow->addChild(newImage);
+			pPanel->addChild(newImage);
 		}
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 3, GUI_UI_ICON_PARTYLIST_UP_W, GUI_UI_ICON_PARTYLIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PARTYLIST_UP_X, GUI_UI_ICON_PARTYLIST_UP_Y, GUI_UI_ICON_PARTYLIST_DOWN_X, GUI_UI_ICON_PARTYLIST_DOWN_Y, 0, BUTTONS_PARTY_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPartyWindowOpen, BUTTONS_PARTY_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_PARTY_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		GUI_Icon* newIcon = new GUI_Icon(iRect(96, 3, GUI_UI_ICON_QUESTLOG_UP_W, GUI_UI_ICON_QUESTLOG_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_QUESTLOG_UP_X, GUI_UI_ICON_QUESTLOG_UP_Y, GUI_UI_ICON_QUESTLOG_DOWN_X, GUI_UI_ICON_QUESTLOG_DOWN_Y, 0, BUTTONS_QUESTLOG_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_QUESTLOG_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(8, 47, GUI_UI_ICON_REWARDWALL_UP_W, GUI_UI_ICON_REWARDWALL_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_REWARDWALL_UP_X, GUI_UI_ICON_REWARDWALL_UP_Y, GUI_UI_ICON_REWARDWALL_DOWN_X, GUI_UI_ICON_REWARDWALL_DOWN_Y, 0, BUTTONS_REWARDWALL_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_REWARDWALL_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(30, 47, GUI_UI_ICON_COMPENDIUM_UP_W, GUI_UI_ICON_COMPENDIUM_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMPENDIUM_UP_X, GUI_UI_ICON_COMPENDIUM_UP_Y, GUI_UI_ICON_COMPENDIUM_DOWN_X, GUI_UI_ICON_COMPENDIUM_DOWN_Y, 0, BUTTONS_COMPENDIUM_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_COMPENDIUM_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(52, 47, GUI_UI_ICON_CYCLOPEDIA_UP_W, GUI_UI_ICON_CYCLOPEDIA_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CYCLOPEDIA_UP_X, GUI_UI_ICON_CYCLOPEDIA_UP_Y, GUI_UI_ICON_CYCLOPEDIA_DOWN_X, GUI_UI_ICON_CYCLOPEDIA_DOWN_Y, 0, BUTTONS_CYCLOPEDIA_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_CYCLOPEDIA_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(74, 47, GUI_UI_ICON_TOURNAMENT_UP_W, GUI_UI_ICON_TOURNAMENT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_TOURNAMENT_UP_X, GUI_UI_ICON_TOURNAMENT_UP_Y, GUI_UI_ICON_TOURNAMENT_DOWN_X, GUI_UI_ICON_TOURNAMENT_DOWN_Y, 0, BUTTONS_TOURNAMENT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_TOURNAMENT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(96, 47, GUI_UI_ICON_FRIENDS_UP_W, GUI_UI_ICON_FRIENDS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_FRIENDS_UP_X, GUI_UI_ICON_FRIENDS_UP_Y, GUI_UI_ICON_FRIENDS_DOWN_X, GUI_UI_ICON_FRIENDS_DOWN_Y, 0, BUTTONS_FRIENDS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_FRIENDS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(124, 3, GUI_UI_ICON_OPTIONS_UP_W, GUI_UI_ICON_OPTIONS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_UP_X, GUI_UI_ICON_OPTIONS_UP_Y, GUI_UI_ICON_OPTIONS_DOWN_X, GUI_UI_ICON_OPTIONS_DOWN_Y, 0, BUTTONS_OPTIONS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_OPTIONS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(146, 3, GUI_UI_ICON_LOGOUT_UP_W, GUI_UI_ICON_LOGOUT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LOGOUT_UP_X, GUI_UI_ICON_LOGOUT_UP_Y, GUI_UI_ICON_LOGOUT_DOWN_X, GUI_UI_ICON_LOGOUT_DOWN_Y, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newIcon);
 	}
 	else if(g_clientVersion >= 1215)
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 70), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(8, 3, GUI_UI_ICON_SKILLS_UP_W, GUI_UI_ICON_SKILLS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLS_UP_X, GUI_UI_ICON_SKILLS_UP_Y, GUI_UI_ICON_SKILLS_DOWN_X, GUI_UI_ICON_SKILLS_DOWN_Y, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(30, 3, GUI_UI_ICON_BATTLE_UP_W, GUI_UI_ICON_BATTLE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLE_UP_X, GUI_UI_ICON_BATTLE_UP_Y, GUI_UI_ICON_BATTLE_DOWN_X, GUI_UI_ICON_BATTLE_DOWN_Y, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 3, GUI_UI_ICON_VIP_UP_W, GUI_UI_ICON_VIP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_VIP_UP_X, GUI_UI_ICON_VIP_UP_Y, GUI_UI_ICON_VIP_DOWN_X, GUI_UI_ICON_VIP_DOWN_Y, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(30, 25, GUI_UI_ICON_UNJUSTIFIED_UP_W, GUI_UI_ICON_UNJUSTIFIED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_UNJUSTIFIED_UP_X, GUI_UI_ICON_UNJUSTIFIED_UP_Y, GUI_UI_ICON_UNJUSTIFIED_DOWN_X, GUI_UI_ICON_UNJUSTIFIED_DOWN_Y, 0, BUTTONS_UNJUSTIFIED_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckUnjustifiedWindowOpen, BUTTONS_UNJUSTIFIED_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_UNJUSTIFIED_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 25, GUI_UI_ICON_PREYWIDGET_UP_W, GUI_UI_ICON_PREYWIDGET_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PREYWIDGET_UP_X, GUI_UI_ICON_PREYWIDGET_UP_Y, GUI_UI_ICON_PREYWIDGET_DOWN_X, GUI_UI_ICON_PREYWIDGET_DOWN_Y, 0, BUTTONS_PREY_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPreyWindowOpen, BUTTONS_PREY_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_PREY_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(8, 25, GUI_UI_ICON_SPELLIST_UP_W, GUI_UI_ICON_SPELLIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SPELLIST_UP_X, GUI_UI_ICON_SPELLIST_UP_Y, GUI_UI_ICON_SPELLIST_DOWN_X, GUI_UI_ICON_SPELLIST_DOWN_Y, 0, BUTTONS_SPELLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSpellsWindowOpen, BUTTONS_SPELLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SPELLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(8, 47, GUI_UI_ICON_ANALYTICS_UP_W, GUI_UI_ICON_ANALYTICS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_ANALYTICS_UP_X, GUI_UI_ICON_ANALYTICS_UP_Y, GUI_UI_ICON_ANALYTICS_DOWN_X, GUI_UI_ICON_ANALYTICS_DOWN_Y, 0, BUTTONS_ANALYTICS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckAnalyticsWindowOpen, BUTTONS_ANALYTICS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_ANALYTICS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 47, GUI_UI_ICON_LEADERBOARD_UP_W, GUI_UI_ICON_LEADERBOARD_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LEADERBOARD_UP_X, GUI_UI_ICON_LEADERBOARD_UP_Y, GUI_UI_ICON_LEADERBOARD_DOWN_X, GUI_UI_ICON_LEADERBOARD_DOWN_Y, 0, BUTTONS_LEADERBOARD_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckLeaderboardWindowOpen, BUTTONS_LEADERBOARD_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LEADERBOARD_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		GUI_Icon* newIcon = new GUI_Icon(iRect(74, 3, GUI_UI_ICON_QUESTLOG_UP_W, GUI_UI_ICON_QUESTLOG_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_QUESTLOG_UP_X, GUI_UI_ICON_QUESTLOG_UP_Y, GUI_UI_ICON_QUESTLOG_DOWN_X, GUI_UI_ICON_QUESTLOG_DOWN_Y, 0, BUTTONS_QUESTLOG_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_QUESTLOG_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(96, 3, GUI_UI_ICON_REWARDWALL_UP_W, GUI_UI_ICON_REWARDWALL_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_REWARDWALL_UP_X, GUI_UI_ICON_REWARDWALL_UP_Y, GUI_UI_ICON_REWARDWALL_DOWN_X, GUI_UI_ICON_REWARDWALL_DOWN_Y, 0, BUTTONS_REWARDWALL_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_REWARDWALL_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(74, 25, GUI_UI_ICON_COMPENDIUM_UP_W, GUI_UI_ICON_COMPENDIUM_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMPENDIUM_UP_X, GUI_UI_ICON_COMPENDIUM_UP_Y, GUI_UI_ICON_COMPENDIUM_DOWN_X, GUI_UI_ICON_COMPENDIUM_DOWN_Y, 0, BUTTONS_COMPENDIUM_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_COMPENDIUM_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(96, 25, GUI_UI_ICON_CYCLOPEDIA_UP_W, GUI_UI_ICON_CYCLOPEDIA_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CYCLOPEDIA_UP_X, GUI_UI_ICON_CYCLOPEDIA_UP_Y, GUI_UI_ICON_CYCLOPEDIA_DOWN_X, GUI_UI_ICON_CYCLOPEDIA_DOWN_Y, 0, BUTTONS_CYCLOPEDIA_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_CYCLOPEDIA_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(30, 47, GUI_UI_ICON_TOURNAMENT_UP_W, GUI_UI_ICON_TOURNAMENT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_TOURNAMENT_UP_X, GUI_UI_ICON_TOURNAMENT_UP_Y, GUI_UI_ICON_TOURNAMENT_DOWN_X, GUI_UI_ICON_TOURNAMENT_DOWN_Y, 0, BUTTONS_TOURNAMENT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_TOURNAMENT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(124, 3, GUI_UI_ICON_OPTIONS_UP_W, GUI_UI_ICON_OPTIONS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_UP_X, GUI_UI_ICON_OPTIONS_UP_Y, GUI_UI_ICON_OPTIONS_DOWN_X, GUI_UI_ICON_OPTIONS_DOWN_Y, 0, BUTTONS_OPTIONS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_OPTIONS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(146, 3, GUI_UI_ICON_LOGOUT_UP_W, GUI_UI_ICON_LOGOUT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LOGOUT_UP_X, GUI_UI_ICON_LOGOUT_UP_Y, GUI_UI_ICON_LOGOUT_DOWN_X, GUI_UI_ICON_LOGOUT_DOWN_Y, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newIcon);
 	}
 	else if(g_clientVersion >= 1140)
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 48), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(8, 3, GUI_UI_ICON_SKILLS_UP_W, GUI_UI_ICON_SKILLS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLS_UP_X, GUI_UI_ICON_SKILLS_UP_Y, GUI_UI_ICON_SKILLS_DOWN_X, GUI_UI_ICON_SKILLS_DOWN_Y, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(30, 3, GUI_UI_ICON_BATTLE_UP_W, GUI_UI_ICON_BATTLE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLE_UP_X, GUI_UI_ICON_BATTLE_UP_Y, GUI_UI_ICON_BATTLE_DOWN_X, GUI_UI_ICON_BATTLE_DOWN_Y, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 3, GUI_UI_ICON_VIP_UP_W, GUI_UI_ICON_VIP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_VIP_UP_X, GUI_UI_ICON_VIP_UP_Y, GUI_UI_ICON_VIP_DOWN_X, GUI_UI_ICON_VIP_DOWN_Y, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(30, 25, GUI_UI_ICON_UNJUSTIFIED_UP_W, GUI_UI_ICON_UNJUSTIFIED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_UNJUSTIFIED_UP_X, GUI_UI_ICON_UNJUSTIFIED_UP_Y, GUI_UI_ICON_UNJUSTIFIED_DOWN_X, GUI_UI_ICON_UNJUSTIFIED_DOWN_Y, 0, BUTTONS_UNJUSTIFIED_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckUnjustifiedWindowOpen, BUTTONS_UNJUSTIFIED_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_UNJUSTIFIED_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 25, GUI_UI_ICON_PREYWIDGET_UP_W, GUI_UI_ICON_PREYWIDGET_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PREYWIDGET_UP_X, GUI_UI_ICON_PREYWIDGET_UP_Y, GUI_UI_ICON_PREYWIDGET_DOWN_X, GUI_UI_ICON_PREYWIDGET_DOWN_Y, 0, BUTTONS_PREY_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPreyWindowOpen, BUTTONS_PREY_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_PREY_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(8, 25, GUI_UI_ICON_SPELLIST_UP_W, GUI_UI_ICON_SPELLIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SPELLIST_UP_X, GUI_UI_ICON_SPELLIST_UP_Y, GUI_UI_ICON_SPELLIST_DOWN_X, GUI_UI_ICON_SPELLIST_DOWN_Y, 0, BUTTONS_SPELLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSpellsWindowOpen, BUTTONS_SPELLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SPELLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(124, 25, GUI_UI_ICON_ANALYTICS_UP_W, GUI_UI_ICON_ANALYTICS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_ANALYTICS_UP_X, GUI_UI_ICON_ANALYTICS_UP_Y, GUI_UI_ICON_ANALYTICS_DOWN_X, GUI_UI_ICON_ANALYTICS_DOWN_Y, 0, BUTTONS_ANALYTICS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckAnalyticsWindowOpen, BUTTONS_ANALYTICS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_ANALYTICS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		GUI_Icon* newIcon = new GUI_Icon(iRect(74, 3, GUI_UI_ICON_QUESTLOG_UP_W, GUI_UI_ICON_QUESTLOG_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_QUESTLOG_UP_X, GUI_UI_ICON_QUESTLOG_UP_Y, GUI_UI_ICON_QUESTLOG_DOWN_X, GUI_UI_ICON_QUESTLOG_DOWN_Y, 0, BUTTONS_QUESTLOG_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_QUESTLOG_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(96, 3, GUI_UI_ICON_REWARDWALL_UP_W, GUI_UI_ICON_REWARDWALL_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_REWARDWALL_UP_X, GUI_UI_ICON_REWARDWALL_UP_Y, GUI_UI_ICON_REWARDWALL_DOWN_X, GUI_UI_ICON_REWARDWALL_DOWN_Y, 0, BUTTONS_REWARDWALL_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_REWARDWALL_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(74, 25, GUI_UI_ICON_COMPENDIUM_UP_W, GUI_UI_ICON_COMPENDIUM_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMPENDIUM_UP_X, GUI_UI_ICON_COMPENDIUM_UP_Y, GUI_UI_ICON_COMPENDIUM_DOWN_X, GUI_UI_ICON_COMPENDIUM_DOWN_Y, 0, BUTTONS_COMPENDIUM_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_COMPENDIUM_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(96, 25, GUI_UI_ICON_CYCLOPEDIA_UP_W, GUI_UI_ICON_CYCLOPEDIA_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CYCLOPEDIA_UP_X, GUI_UI_ICON_CYCLOPEDIA_UP_Y, GUI_UI_ICON_CYCLOPEDIA_DOWN_X, GUI_UI_ICON_CYCLOPEDIA_DOWN_Y, 0, BUTTONS_CYCLOPEDIA_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_CYCLOPEDIA_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(124, 3, GUI_UI_ICON_OPTIONS_LEGACY_UP_W, GUI_UI_ICON_OPTIONS_LEGACY_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_LEGACY_UP_X, GUI_UI_ICON_OPTIONS_LEGACY_UP_Y, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_X, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_Y, 0, BUTTONS_OPTIONS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_OPTIONS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(146, 3, GUI_UI_ICON_LOGOUT_UP_W, GUI_UI_ICON_LOGOUT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LOGOUT_UP_X, GUI_UI_ICON_LOGOUT_UP_Y, GUI_UI_ICON_LOGOUT_DOWN_X, GUI_UI_ICON_LOGOUT_DOWN_Y, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newIcon);
 	}
 	else if(g_clientVersion >= 1132)
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 48), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(19, 3, GUI_UI_ICON_SKILLS_UP_W, GUI_UI_ICON_SKILLS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLS_UP_X, GUI_UI_ICON_SKILLS_UP_Y, GUI_UI_ICON_SKILLS_DOWN_X, GUI_UI_ICON_SKILLS_DOWN_Y, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(41, 3, GUI_UI_ICON_BATTLE_UP_W, GUI_UI_ICON_BATTLE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLE_UP_X, GUI_UI_ICON_BATTLE_UP_Y, GUI_UI_ICON_BATTLE_DOWN_X, GUI_UI_ICON_BATTLE_DOWN_Y, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(63, 3, GUI_UI_ICON_VIP_UP_W, GUI_UI_ICON_VIP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_VIP_UP_X, GUI_UI_ICON_VIP_UP_Y, GUI_UI_ICON_VIP_DOWN_X, GUI_UI_ICON_VIP_DOWN_Y, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(63, 25, GUI_UI_ICON_UNJUSTIFIED_UP_W, GUI_UI_ICON_UNJUSTIFIED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_UNJUSTIFIED_UP_X, GUI_UI_ICON_UNJUSTIFIED_UP_Y, GUI_UI_ICON_UNJUSTIFIED_DOWN_X, GUI_UI_ICON_UNJUSTIFIED_DOWN_Y, 0, BUTTONS_UNJUSTIFIED_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckUnjustifiedWindowOpen, BUTTONS_UNJUSTIFIED_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_UNJUSTIFIED_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(41, 25, GUI_UI_ICON_PREYWIDGET_UP_W, GUI_UI_ICON_PREYWIDGET_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PREYWIDGET_UP_X, GUI_UI_ICON_PREYWIDGET_UP_Y, GUI_UI_ICON_PREYWIDGET_DOWN_X, GUI_UI_ICON_PREYWIDGET_DOWN_Y, 0, BUTTONS_PREY_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPreyWindowOpen, BUTTONS_PREY_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_PREY_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(85, 3, GUI_UI_ICON_SPELLIST_UP_W, GUI_UI_ICON_SPELLIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SPELLIST_UP_X, GUI_UI_ICON_SPELLIST_UP_Y, GUI_UI_ICON_SPELLIST_DOWN_X, GUI_UI_ICON_SPELLIST_DOWN_Y, 0, BUTTONS_SPELLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSpellsWindowOpen, BUTTONS_SPELLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SPELLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		GUI_Icon* newIcon = new GUI_Icon(iRect(19, 25, GUI_UI_ICON_QUESTLOG_UP_W, GUI_UI_ICON_QUESTLOG_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_QUESTLOG_UP_X, GUI_UI_ICON_QUESTLOG_UP_Y, GUI_UI_ICON_QUESTLOG_DOWN_X, GUI_UI_ICON_QUESTLOG_DOWN_Y, 0, BUTTONS_QUESTLOG_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_QUESTLOG_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(85, 25, GUI_UI_ICON_COMPENDIUM_UP_W, GUI_UI_ICON_COMPENDIUM_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMPENDIUM_UP_X, GUI_UI_ICON_COMPENDIUM_UP_Y, GUI_UI_ICON_COMPENDIUM_DOWN_X, GUI_UI_ICON_COMPENDIUM_DOWN_Y, 0, BUTTONS_COMPENDIUM_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_COMPENDIUM_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(124, 3, GUI_UI_ICON_OPTIONS_LEGACY_UP_W, GUI_UI_ICON_OPTIONS_LEGACY_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_LEGACY_UP_X, GUI_UI_ICON_OPTIONS_LEGACY_UP_Y, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_X, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_Y, 0, BUTTONS_OPTIONS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_OPTIONS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(146, 3, GUI_UI_ICON_LOGOUT_UP_W, GUI_UI_ICON_LOGOUT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LOGOUT_UP_X, GUI_UI_ICON_LOGOUT_UP_Y, GUI_UI_ICON_LOGOUT_DOWN_X, GUI_UI_ICON_LOGOUT_DOWN_Y, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newIcon);
 	}
 	else if(g_clientVersion >= 1130)
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 48), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(19, 3, GUI_UI_ICON_SKILLS_UP_W, GUI_UI_ICON_SKILLS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLS_UP_X, GUI_UI_ICON_SKILLS_UP_Y, GUI_UI_ICON_SKILLS_DOWN_X, GUI_UI_ICON_SKILLS_DOWN_Y, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(41, 3, GUI_UI_ICON_BATTLE_UP_W, GUI_UI_ICON_BATTLE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLE_UP_X, GUI_UI_ICON_BATTLE_UP_Y, GUI_UI_ICON_BATTLE_DOWN_X, GUI_UI_ICON_BATTLE_DOWN_Y, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(63, 3, GUI_UI_ICON_VIP_UP_W, GUI_UI_ICON_VIP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_VIP_UP_X, GUI_UI_ICON_VIP_UP_Y, GUI_UI_ICON_VIP_DOWN_X, GUI_UI_ICON_VIP_DOWN_Y, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(63, 25, GUI_UI_ICON_UNJUSTIFIED_UP_W, GUI_UI_ICON_UNJUSTIFIED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_UNJUSTIFIED_UP_X, GUI_UI_ICON_UNJUSTIFIED_UP_Y, GUI_UI_ICON_UNJUSTIFIED_DOWN_X, GUI_UI_ICON_UNJUSTIFIED_DOWN_Y, 0, BUTTONS_UNJUSTIFIED_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckUnjustifiedWindowOpen, BUTTONS_UNJUSTIFIED_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_UNJUSTIFIED_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(41, 25, GUI_UI_ICON_PREYWIDGET_UP_W, GUI_UI_ICON_PREYWIDGET_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PREYWIDGET_UP_X, GUI_UI_ICON_PREYWIDGET_UP_Y, GUI_UI_ICON_PREYWIDGET_DOWN_X, GUI_UI_ICON_PREYWIDGET_DOWN_Y, 0, BUTTONS_PREY_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPreyWindowOpen, BUTTONS_PREY_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_PREY_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(85, 3, GUI_UI_ICON_SPELLIST_UP_W, GUI_UI_ICON_SPELLIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SPELLIST_UP_X, GUI_UI_ICON_SPELLIST_UP_Y, GUI_UI_ICON_SPELLIST_DOWN_X, GUI_UI_ICON_SPELLIST_DOWN_Y, 0, BUTTONS_SPELLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSpellsWindowOpen, BUTTONS_SPELLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SPELLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		GUI_Icon* newIcon = new GUI_Icon(iRect(19, 25, GUI_UI_ICON_QUESTLOG_UP_W, GUI_UI_ICON_QUESTLOG_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_QUESTLOG_UP_X, GUI_UI_ICON_QUESTLOG_UP_Y, GUI_UI_ICON_QUESTLOG_DOWN_X, GUI_UI_ICON_QUESTLOG_DOWN_Y, 0, BUTTONS_QUESTLOG_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_QUESTLOG_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(124, 3, GUI_UI_ICON_OPTIONS_LEGACY_UP_W, GUI_UI_ICON_OPTIONS_LEGACY_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_LEGACY_UP_X, GUI_UI_ICON_OPTIONS_LEGACY_UP_Y, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_X, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_Y, 0, BUTTONS_OPTIONS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_OPTIONS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(146, 3, GUI_UI_ICON_LOGOUT_UP_W, GUI_UI_ICON_LOGOUT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LOGOUT_UP_X, GUI_UI_ICON_LOGOUT_UP_Y, GUI_UI_ICON_LOGOUT_DOWN_X, GUI_UI_ICON_LOGOUT_DOWN_Y, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newIcon);
 
 	}
 	else if(g_clientVersion >= 1102)
 	{
 		//I think this should be actually 11.01, every website says the prey system was introduced in 11.02
 		//but I reversed the 11.01 client and there's prey system already implemented on it
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 48), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(30, 3, GUI_UI_ICON_SKILLS_UP_W, GUI_UI_ICON_SKILLS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLS_UP_X, GUI_UI_ICON_SKILLS_UP_Y, GUI_UI_ICON_SKILLS_DOWN_X, GUI_UI_ICON_SKILLS_DOWN_Y, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 3, GUI_UI_ICON_BATTLE_UP_W, GUI_UI_ICON_BATTLE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLE_UP_X, GUI_UI_ICON_BATTLE_UP_Y, GUI_UI_ICON_BATTLE_DOWN_X, GUI_UI_ICON_BATTLE_DOWN_Y, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(74, 3, GUI_UI_ICON_VIP_UP_W, GUI_UI_ICON_VIP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_VIP_UP_X, GUI_UI_ICON_VIP_UP_Y, GUI_UI_ICON_VIP_DOWN_X, GUI_UI_ICON_VIP_DOWN_Y, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 25, GUI_UI_ICON_UNJUSTIFIED_UP_W, GUI_UI_ICON_UNJUSTIFIED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_UNJUSTIFIED_UP_X, GUI_UI_ICON_UNJUSTIFIED_UP_Y, GUI_UI_ICON_UNJUSTIFIED_DOWN_X, GUI_UI_ICON_UNJUSTIFIED_DOWN_Y, 0, BUTTONS_UNJUSTIFIED_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckUnjustifiedWindowOpen, BUTTONS_UNJUSTIFIED_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_UNJUSTIFIED_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(74, 25, GUI_UI_ICON_PREYWIDGET_UP_W, GUI_UI_ICON_PREYWIDGET_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_PREYWIDGET_UP_X, GUI_UI_ICON_PREYWIDGET_UP_Y, GUI_UI_ICON_PREYWIDGET_DOWN_X, GUI_UI_ICON_PREYWIDGET_DOWN_Y, 0, BUTTONS_PREY_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPreyWindowOpen, BUTTONS_PREY_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_PREY_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		GUI_Icon* newIcon = new GUI_Icon(iRect(30, 25, GUI_UI_ICON_QUESTLOG_UP_W, GUI_UI_ICON_QUESTLOG_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_QUESTLOG_UP_X, GUI_UI_ICON_QUESTLOG_UP_Y, GUI_UI_ICON_QUESTLOG_DOWN_X, GUI_UI_ICON_QUESTLOG_DOWN_Y, 0, BUTTONS_QUESTLOG_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_QUESTLOG_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(124, 3, GUI_UI_ICON_OPTIONS_LEGACY_UP_W, GUI_UI_ICON_OPTIONS_LEGACY_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_LEGACY_UP_X, GUI_UI_ICON_OPTIONS_LEGACY_UP_Y, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_X, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_Y, 0, BUTTONS_OPTIONS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_OPTIONS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(146, 3, GUI_UI_ICON_LOGOUT_UP_W, GUI_UI_ICON_LOGOUT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LOGOUT_UP_X, GUI_UI_ICON_LOGOUT_UP_Y, GUI_UI_ICON_LOGOUT_DOWN_X, GUI_UI_ICON_LOGOUT_DOWN_Y, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newIcon);
 	}
 	else if(g_clientVersion >= 1053)
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 26), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(8, 3, GUI_UI_ICON_SKILLS_UP_W, GUI_UI_ICON_SKILLS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLS_UP_X, GUI_UI_ICON_SKILLS_UP_Y, GUI_UI_ICON_SKILLS_DOWN_X, GUI_UI_ICON_SKILLS_DOWN_Y, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(30, 3, GUI_UI_ICON_BATTLE_UP_W, GUI_UI_ICON_BATTLE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLE_UP_X, GUI_UI_ICON_BATTLE_UP_Y, GUI_UI_ICON_BATTLE_DOWN_X, GUI_UI_ICON_BATTLE_DOWN_Y, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 3, GUI_UI_ICON_VIP_UP_W, GUI_UI_ICON_VIP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_VIP_UP_X, GUI_UI_ICON_VIP_UP_Y, GUI_UI_ICON_VIP_DOWN_X, GUI_UI_ICON_VIP_DOWN_Y, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(96, 3, GUI_UI_ICON_UNJUSTIFIED_UP_W, GUI_UI_ICON_UNJUSTIFIED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_UNJUSTIFIED_UP_X, GUI_UI_ICON_UNJUSTIFIED_UP_Y, GUI_UI_ICON_UNJUSTIFIED_DOWN_X, GUI_UI_ICON_UNJUSTIFIED_DOWN_Y, 0, BUTTONS_UNJUSTIFIED_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckUnjustifiedWindowOpen, BUTTONS_UNJUSTIFIED_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_UNJUSTIFIED_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		GUI_Icon* newIcon = new GUI_Icon(iRect(74, 3, GUI_UI_ICON_QUESTLOG_UP_W, GUI_UI_ICON_QUESTLOG_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_QUESTLOG_UP_X, GUI_UI_ICON_QUESTLOG_UP_Y, GUI_UI_ICON_QUESTLOG_DOWN_X, GUI_UI_ICON_QUESTLOG_DOWN_Y, 0, BUTTONS_QUESTLOG_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_QUESTLOG_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(124, 3, GUI_UI_ICON_OPTIONS_LEGACY_UP_W, GUI_UI_ICON_OPTIONS_LEGACY_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_LEGACY_UP_X, GUI_UI_ICON_OPTIONS_LEGACY_UP_Y, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_X, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_Y, 0, BUTTONS_OPTIONS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_OPTIONS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(146, 3, GUI_UI_ICON_LOGOUT_UP_W, GUI_UI_ICON_LOGOUT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LOGOUT_UP_X, GUI_UI_ICON_LOGOUT_UP_Y, GUI_UI_ICON_LOGOUT_DOWN_X, GUI_UI_ICON_LOGOUT_DOWN_Y, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newIcon);
 	}
 	else if(g_clientVersion >= 1000)
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 26), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(8, 3, GUI_UI_ICON_SKILLS_UP_W, GUI_UI_ICON_SKILLS_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_SKILLS_UP_X, GUI_UI_ICON_SKILLS_UP_Y, GUI_UI_ICON_SKILLS_DOWN_X, GUI_UI_ICON_SKILLS_DOWN_Y, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(30, 3, GUI_UI_ICON_BATTLE_UP_W, GUI_UI_ICON_BATTLE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_BATTLE_UP_X, GUI_UI_ICON_BATTLE_UP_Y, GUI_UI_ICON_BATTLE_DOWN_X, GUI_UI_ICON_BATTLE_DOWN_Y, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(52, 3, GUI_UI_ICON_VIP_UP_W, GUI_UI_ICON_VIP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_VIP_UP_X, GUI_UI_ICON_VIP_UP_Y, GUI_UI_ICON_VIP_DOWN_X, GUI_UI_ICON_VIP_DOWN_Y, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		GUI_Icon* newIcon = new GUI_Icon(iRect(74, 3, GUI_UI_ICON_QUESTLOG_UP_W, GUI_UI_ICON_QUESTLOG_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_QUESTLOG_UP_X, GUI_UI_ICON_QUESTLOG_UP_Y, GUI_UI_ICON_QUESTLOG_DOWN_X, GUI_UI_ICON_QUESTLOG_DOWN_Y, 0, BUTTONS_QUESTLOG_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_QUESTLOG_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(102, 3, GUI_UI_ICON_OPTIONS_LEGACY_UP_W, GUI_UI_ICON_OPTIONS_LEGACY_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_LEGACY_UP_X, GUI_UI_ICON_OPTIONS_LEGACY_UP_Y, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_X, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_Y, 0, BUTTONS_OPTIONS_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_OPTIONS_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(124, 3, GUI_UI_ICON_HELP_UP_W, GUI_UI_ICON_HELP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_HELP_UP_X, GUI_UI_ICON_HELP_UP_Y, GUI_UI_ICON_HELP_DOWN_X, GUI_UI_ICON_HELP_DOWN_Y, 0, BUTTONS_HELP_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_HELP_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
+		pPanel->addChild(newIcon);
 		newIcon = new GUI_Icon(iRect(146, 3, GUI_UI_ICON_LOGOUT_UP_W, GUI_UI_ICON_LOGOUT_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_LOGOUT_UP_X, GUI_UI_ICON_LOGOUT_UP_Y, GUI_UI_ICON_LOGOUT_DOWN_X, GUI_UI_ICON_LOGOUT_DOWN_Y, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newIcon->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newIcon->startEvents();
-		newWindow->addChild(newIcon);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newIcon);
 	}
 	else
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 26), false, GUI_PANEL_WINDOW_BUTTONS);
 		GUI_RadioButton* newRadioButton = new GUI_RadioButton(iRect(8, 3, GUI_UI_BUTTON_34PX_GRAY_UP_W, GUI_UI_BUTTON_34PX_GRAY_UP_H), BUTTONS_SKILLS_TITLE, 0, BUTTONS_SKILLS_DESCRIPTION1);
 		newRadioButton->setRadioEventCallback(&CheckSkillsWindowOpen, BUTTONS_SKILLS_DESCRIPTION2);
 		newRadioButton->setButtonEventCallback(&buttons_Events, BUTTONS_SKILLS_EVENTID);
 		newRadioButton->startEvents();
-		newWindow->addChild(newRadioButton);
+		pPanel->addChild(newRadioButton);
 		newRadioButton = new GUI_RadioButton(iRect(45, 3, GUI_UI_BUTTON_34PX_GRAY_UP_W, GUI_UI_BUTTON_34PX_GRAY_UP_H), BUTTONS_BATTLE_TITLE, 0, BUTTONS_BATTLE_DESCRIPTION1);
 		newRadioButton->setRadioEventCallback(&CheckBattleWindowOpen, BUTTONS_BATTLE_DESCRIPTION2);
 		newRadioButton->setButtonEventCallback(&buttons_Events, BUTTONS_BATTLE_EVENTID);
 		newRadioButton->startEvents();
-		newWindow->addChild(newRadioButton);
+		pPanel->addChild(newRadioButton);
 		newRadioButton = new GUI_RadioButton(iRect(82, 3, GUI_UI_BUTTON_34PX_GRAY_UP_W, GUI_UI_BUTTON_34PX_GRAY_UP_H), BUTTONS_VIP_TITLE, 0, BUTTONS_VIP_DESCRIPTION1);
 		newRadioButton->setRadioEventCallback(&CheckVIPWindowOpen, BUTTONS_VIP_DESCRIPTION2);
 		newRadioButton->setButtonEventCallback(&buttons_Events, BUTTONS_VIP_EVENTID);
 		newRadioButton->startEvents();
-		newWindow->addChild(newRadioButton);
+		pPanel->addChild(newRadioButton);
 		GUI_Button* newButton = new GUI_Button(iRect(124, 3, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), BUTTONS_LOGOUT_TITLE, 0, BUTTONS_LOGOUT_DESCRIPTION);
 		newButton->setButtonEventCallback(&buttons_Events, BUTTONS_LOGOUT_EVENTID);
 		newButton->startEvents();
-		newWindow->addChild(newButton);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newButton);
 	}
+	
+	if(newWindow)
+		g_engine.addToPanel(pPanel, GUI_PANEL_MAIN);
+	else
+		pPanel->checkPanels();
 }

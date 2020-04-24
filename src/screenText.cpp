@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -52,7 +52,7 @@ void ScreenText::addMessage(MessageMode mode, std::string text)
 
 	ScreenTextMessage newMessage;
 	newMessage.m_message = std::move(text);
-	newMessage.m_endTime = extraTime+UTIL_max<Uint32>(STATICTEXT_PER_CHAR_STAY_DURATION * SDL_static_cast(Uint32, text.length()), STATICTEXT_MINIMUM_STAY_DURATION);
+	newMessage.m_endTime = extraTime + UTIL_max<Uint32>(STATICTEXT_PER_CHAR_STAY_DURATION * SDL_static_cast(Uint32, text.length()), STATICTEXT_MINIMUM_STAY_DURATION);
 	newMessage.m_mode = mode;
 	m_messages.push_back(newMessage);
 }
@@ -110,68 +110,20 @@ void ScreenText::composeText()
 	}
 
 	m_textWidth = 0;
-	size_t goodPos = 0;
-	size_t start = 0;
-	size_t i = 0;
-	size_t strLen = m_text.length();
-	while(i < strLen)
+	UTIL_parseSizedText(m_text, 0, CLIENT_FONT_OUTLINED, m_allowedWidth, reinterpret_cast<void*>(this), [](void* __THIS, bool skipLine, size_t start, size_t length) -> size_t
 	{
-		ScreenTextMessageLine newLine;
-		if(m_text[i] == '\n')
-		{
-			newLine.lineStart = start;
-			newLine.lineLength = i-start+1;
-			newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, newLine.lineStart, newLine.lineLength)/2;
-			m_textWidth = UTIL_max<Uint32>(m_textWidth, newLine.lineWidth);
-			m_messagesLine.push_back(newLine);
-			start = i+1;
-			i = start;
-			goodPos = 0;
-			continue;
-		}
+		ScreenText* _THIS = reinterpret_cast<ScreenText*>(__THIS);
+		if(skipLine)
+			_THIS->m_text.insert(start + length - 1, 1, '-');
 
-		Uint32 width = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, start, i-start+1);
-		if(width >= m_allowedWidth)
-		{
-			if(goodPos != 0)
-			{
-				newLine.lineStart = start;
-				newLine.lineLength = goodPos-start+1;
-				newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, newLine.lineStart, newLine.lineLength)/2;
-				m_textWidth = UTIL_max<Uint32>(m_textWidth, newLine.lineWidth);
-				m_messagesLine.push_back(newLine);
-				start = goodPos+1;
-				goodPos = 0;
-				continue;
-			}
-			else
-			{
-				m_text.insert(i-1, 1, '-');
-				++strLen;
-				newLine.lineStart = start;
-				newLine.lineLength = i-start;
-				newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, newLine.lineStart, newLine.lineLength)/2;
-				m_textWidth = UTIL_max<Uint32>(m_textWidth, newLine.lineWidth);
-				m_messagesLine.push_back(newLine);
-				start = i;
-			}
-		}
-		else
-		{
-			if(m_text[i] == ' ')
-				goodPos = i;
-		}
-		++i;
-	}
-	if(i > start)
-	{
 		ScreenTextMessageLine newLine;
 		newLine.lineStart = start;
-		newLine.lineLength = i-start+1;
-		newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, newLine.lineStart, newLine.lineLength)/2;
-		m_textWidth = UTIL_max<Uint32>(m_textWidth, newLine.lineWidth);
-		m_messagesLine.push_back(newLine);
-	}
+		newLine.lineLength = length;
+		newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, _THIS->m_text, newLine.lineStart, newLine.lineLength) / 2;
+		_THIS->m_textWidth = UTIL_max<Uint32>(_THIS->m_textWidth, newLine.lineWidth);
+		_THIS->m_messagesLine.push_back(newLine);
+		return (skipLine ? 1 : 0);
+	});
 }
 
 bool ScreenText::update()
@@ -198,7 +150,7 @@ void ScreenText::render(Sint32 boundLeft, Sint32 boundTop, Sint32 boundRight, Si
 
 	if(m_screenPosition == ONSCREEN_MESSAGE_BOTTOM)
 	{
-		Uint32 width = SDL_static_cast(Uint32, boundRight-boundLeft);
+		Uint32 width = SDL_static_cast(Uint32, boundRight - boundLeft);
 		if(m_allowedWidth != width)
 		{
 			m_allowedWidth = width;
@@ -213,48 +165,48 @@ void ScreenText::render(Sint32 boundLeft, Sint32 boundTop, Sint32 boundRight, Si
 	{
 		case ONSCREEN_MESSAGE_BOTTOM:
 		{
-			posX = boundLeft+(boundRight-boundLeft)/2;
-			posY = boundBottom-(SDL_static_cast(Sint32, m_messagesLine.size())*14);
+			posX = boundLeft + (boundRight - boundLeft) / 2;
+			posY = boundBottom - (SDL_static_cast(Sint32, m_messagesLine.size()) * 14);
 		}
 		break;
 		case ONSCREEN_MESSAGE_CENTER_LOW:
 		{
-			Sint32 height = SDL_static_cast(Sint32, m_messagesLine.size())*14;
-			posX = boundLeft+(boundRight-boundLeft)/2;
-			posY = (boundTop+(boundBottom-boundTop)/2)+height+14;
+			Sint32 height = SDL_static_cast(Sint32, m_messagesLine.size()) * 14;
+			posX = boundLeft + (boundRight - boundLeft) / 2;
+			posY = (boundTop + (boundBottom - boundTop) / 2) + height + 14;
 			if(posY <= boundTop)
-				posY = boundTop+1;
-			if(posY+height >= boundBottom)
-				posY = boundBottom-height-1;
+				posY = boundTop + 1;
+			if(posY + height >= boundBottom)
+				posY = boundBottom - height - 1;
 		}
 		break;
 		case ONSCREEN_MESSAGE_CENTER_HIGH:
 		{
-			Sint32 height = SDL_static_cast(Sint32, m_messagesLine.size())*14;
-			posX = boundLeft+(boundRight-boundLeft)/2;
-			posY = (boundTop+(boundBottom-boundTop)/2)-height-14;
+			Sint32 height = SDL_static_cast(Sint32, m_messagesLine.size()) * 14;
+			posX = boundLeft + (boundRight - boundLeft) / 2;
+			posY = (boundTop + (boundBottom - boundTop) / 2) - height - 14;
 			if(posY <= boundTop)
-				posY = boundTop+1;
-			if(posY+height >= boundBottom)
-				posY = boundBottom-height-1;
+				posY = boundTop + 1;
+			if(posY + height >= boundBottom)
+				posY = boundBottom - height - 1;
 		}
 		break;
 		default:
 		{
-			Sint32 height = SDL_static_cast(Sint32, m_messagesLine.size())*14;
-			posX = boundLeft+(boundRight-boundLeft)/2;
-			posY = boundTop+(SDL_static_cast(Sint32, (boundBottom-boundTop)*0.25f))+height;
+			Sint32 height = SDL_static_cast(Sint32, m_messagesLine.size()) * 14;
+			posX = boundLeft + (boundRight - boundLeft) / 2;
+			posY = boundTop + (SDL_static_cast(Sint32, (boundBottom - boundTop) * 0.25f)) + height;
 			if(posY <= boundTop)
-				posY = boundTop+1;
-			if(posY+height >= boundBottom)
-				posY = boundBottom-height-1;
+				posY = boundTop + 1;
+			if(posY + height >= boundBottom)
+				posY = boundBottom - height - 1;
 		}
 		break;
 	}
 	for(size_t i = 0; i < m_messagesLine.size(); ++i)
 	{
 		ScreenTextMessageLine& currentLine = m_messagesLine[i];
-		g_engine.drawFont(CLIENT_FONT_OUTLINED, posX-currentLine.lineWidth, posY, m_text, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT, currentLine.lineStart, currentLine.lineLength);
+		g_engine.drawFont(CLIENT_FONT_OUTLINED, posX - currentLine.lineWidth, posY, m_text, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT, currentLine.lineStart, currentLine.lineLength);
 		posY += 14;
 	}
 }

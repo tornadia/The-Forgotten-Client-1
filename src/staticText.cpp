@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,6 +21,8 @@
 
 #include "staticText.h"
 #include "engine.h"
+
+#define STATIC_TEXT_MAXIMUM_WIDTH 275
 
 extern Engine g_engine;
 extern Uint32 g_frameTime;
@@ -53,7 +55,7 @@ void StaticText::addMessage(const std::string& name, MessageMode mode, std::stri
 
 	StaticTextMessage newMessage;
 	newMessage.m_message = std::move(text);
-	newMessage.m_endTime = g_frameTime+time;
+	newMessage.m_endTime = g_frameTime + time;
 	m_messages.push_back(newMessage);
 	composeText();
 }
@@ -111,7 +113,7 @@ void StaticText::composeText()
 		}
 		break;
 		case MessageNpcFrom:
-		case MessageNpcFromStartBlock:
+		case MessageNpcFromBlock:
 		{
 			m_text.append(m_name);
 			m_text.append(":\n");
@@ -133,69 +135,20 @@ void StaticText::composeText()
 	}
 
 	m_textWidth = 0;
-	Uint32 allowWidth = 275;
-	size_t goodPos = 0;
-	size_t start = 0;
-	size_t i = 0;
-	size_t strLen = m_text.length();
-	while(i < strLen)
+	UTIL_parseSizedText(m_text, 0, CLIENT_FONT_OUTLINED, STATIC_TEXT_MAXIMUM_WIDTH, reinterpret_cast<void*>(this), [](void* __THIS, bool skipLine, size_t start, size_t length) -> size_t
 	{
-		StaticTextMessageLine newLine;
-		if(m_text[i] == '\n')
-		{
-			newLine.lineStart = start;
-			newLine.lineLength = i-start+1;
-			newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, newLine.lineStart, newLine.lineLength)/2;
-			m_textWidth = UTIL_max<Uint32>(m_textWidth, newLine.lineWidth);
-			m_messagesLine.push_back(newLine);
-			start = i+1;
-			i = start;
-			goodPos = 0;
-			continue;
-		}
+		StaticText* _THIS = reinterpret_cast<StaticText*>(__THIS);
+		if(skipLine)
+			_THIS->m_text.insert(start + length - 1, 1, '-');
 
-		Uint32 width = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, start, i-start+1);
-		if(width >= allowWidth)
-		{
-			if(goodPos != 0)
-			{
-				newLine.lineStart = start;
-				newLine.lineLength = goodPos-start+1;
-				newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, newLine.lineStart, newLine.lineLength)/2;
-				m_textWidth = UTIL_max<Uint32>(m_textWidth, newLine.lineWidth);
-				m_messagesLine.push_back(newLine);
-				start = goodPos+1;
-				goodPos = 0;
-				continue;
-			}
-			else
-			{
-				m_text.insert(i-1, 1, '-');
-				++strLen;
-				newLine.lineStart = start;
-				newLine.lineLength = i-start;
-				newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, newLine.lineStart, newLine.lineLength)/2;
-				m_textWidth = UTIL_max<Uint32>(m_textWidth, newLine.lineWidth);
-				m_messagesLine.push_back(newLine);
-				start = i;
-			}
-		}
-		else
-		{
-			if(m_text[i] == ' ')
-				goodPos = i;
-		}
-		++i;
-	}
-	if(i > start)
-	{
 		StaticTextMessageLine newLine;
 		newLine.lineStart = start;
-		newLine.lineLength = i-start+1;
-		newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_text, newLine.lineStart, newLine.lineLength)/2;
-		m_textWidth = UTIL_max<Uint32>(m_textWidth, newLine.lineWidth);
-		m_messagesLine.push_back(newLine);
-	}
+		newLine.lineLength = length;
+		newLine.lineWidth = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, _THIS->m_text, newLine.lineStart, newLine.lineLength) / 2;
+		_THIS->m_textWidth = UTIL_max<Uint32>(_THIS->m_textWidth, newLine.lineWidth);
+		_THIS->m_messagesLine.push_back(newLine);
+		return (skipLine ? 1 : 0);
+	});
 }
 
 void StaticText::update()
@@ -224,21 +177,21 @@ void StaticText::render(Sint32 posX, Sint32 posY, Sint32 boundLeft, Sint32 bound
 		return;
 
 	Sint32 lines = UTIL_min<Sint32>(10, SDL_static_cast(Sint32, m_messagesLine.size()));
-	Sint32 lineHeight = (lines-1)*14;
+	Sint32 lineHeight = (lines - 1) * 14;
 	posY -= lineHeight;
-	if(posX-SDL_static_cast(Sint32, m_textWidth+1) <= boundLeft)
-		posX = boundLeft+m_textWidth+1;
+	if(posX - SDL_static_cast(Sint32, m_textWidth + 1) <= boundLeft)
+		posX = boundLeft + m_textWidth + 1;
 	if(posY <= boundTop)
-		posY = boundTop+1;
-	if(posX+SDL_static_cast(Sint32, m_textWidth+1) >= boundRight)
-		posX = boundRight-m_textWidth-1;
-	if(posY+lineHeight+14 >= boundBottom)
-		posY = boundBottom-lineHeight-15;
+		posY = boundTop + 1;
+	if(posX + SDL_static_cast(Sint32, m_textWidth + 1) >= boundRight)
+		posX = boundRight - m_textWidth - 1;
+	if(posY + lineHeight + 14 >= boundBottom)
+		posY = boundBottom - lineHeight - 15;
 
 	for(Sint32 i = 0; i < lines; ++i)
 	{
 		StaticTextMessageLine& currentLine = m_messagesLine[i];
-		g_engine.drawFont(CLIENT_FONT_OUTLINED, posX-currentLine.lineWidth, posY, m_text, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT, currentLine.lineStart, currentLine.lineLength);
+		g_engine.drawFont(CLIENT_FONT_OUTLINED, posX - currentLine.lineWidth, posY, m_text, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT, currentLine.lineStart, currentLine.lineLength);
 		posY += 14;
 	}
 }

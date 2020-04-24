@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -126,7 +126,7 @@ void OutputMessage::addPaddingBytes(Uint16 bytes, Uint8 byte)
 
 bool OutputMessage::canWrite(Uint32 bytes)
 {
-	if(m_writePos + bytes >= OUTPUTMESSAGE_SIZE-8)
+	if(m_writePos + bytes >= OUTPUTMESSAGE_SIZE - 8)
 		return false;
 
 	return true;

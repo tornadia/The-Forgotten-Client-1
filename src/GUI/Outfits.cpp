@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -531,8 +531,8 @@ void UTIL_createOutfitWindow(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Ui
 		outfits.push_back(newOutfit);
 	}
 
-	g_outfits = outfits;
-	g_mounts = mounts;
+	g_outfits = std::move(outfits);
+	g_mounts = std::move(mounts);
 	g_outfitLookType = lookType;
 	g_outfitMount = lookMount;
 	g_outfitColors[0] = lookHead;
@@ -641,15 +641,15 @@ void UTIL_createOutfitWindow(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Ui
 	newLabel = new GUI_Label(iRect(OUTFITS_LABEL_MOUNT_X, OUTFITS_LABEL_MOUNT_Y, 0, 0), mountName, OUTFITS_LABEL_MOUNT_EVENTID);
 	newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
 	newWindow->addChild(newLabel);
-	GUI_Button* newButton = new GUI_Button(iRect(OUTFITS_WIDTH-56, OUTFITS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(OUTFITS_WIDTH - 56, OUTFITS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&outfits_Events, OUTFITS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(OUTFITS_WIDTH-109, OUTFITS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(OUTFITS_WIDTH - 109, OUTFITS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&outfits_Events, OUTFITS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, OUTFITS_HEIGHT-40, OUTFITS_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, OUTFITS_HEIGHT - 40, OUTFITS_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
 }
@@ -664,11 +664,13 @@ GUI_Outfit_View::GUI_Outfit_View(iRect boxRect, Uint32 internalID)
 	m_walkStartTime = 0;
 	m_walkedPixels = 0;
 	m_direction = DIRECTION_SOUTH;
-	m_currentAnim = 0;
+	m_outfitAnim = 0;
+	m_mountAnim = 0;
 	m_currentFrame = ThingFrameGroup_Idle;
 	m_showOutfit = true;
 	m_showMount = true;
 	m_walking = false;
+	resetAnimation();
 }
 
 void GUI_Outfit_View::previousDirection()
@@ -703,52 +705,96 @@ void GUI_Outfit_View::refresh()
 		if(pCheckBox)
 			m_showMount = pCheckBox->isChecked();
 	}
+
+	resetAnimation();
 }
 
 void GUI_Outfit_View::startMovement()
 {
 	m_walking = true;
-	m_currentAnim = 0;
-	if(m_outfit->hasFlag(ThingAttribute_NoMoveAnimation))
+	m_outfitAnim = 0;
+	m_mountAnim = 0;
+	if(m_outfit && m_outfit->hasFlag(ThingAttribute_NoMoveAnimation))
 		m_currentFrame = ThingFrameGroup_Idle;
 	else
 		m_currentFrame = ThingFrameGroup_Moving;
+
 	m_walkStartTime = g_frameTime;
+	resetAnimation();
 }
 
 void GUI_Outfit_View::stopMovement()
 {
 	m_walking = false;
-	m_currentAnim = 0;
+	m_outfitAnim = 0;
+	m_mountAnim = 0;
 	m_currentFrame = ThingFrameGroup_Idle;
+	resetAnimation();
+}
+
+void GUI_Outfit_View::resetAnimation()
+{
+	if(m_outfit && m_outfit->m_frameGroup[m_currentFrame].m_animator)
+		m_outfit->m_frameGroup[m_currentFrame].m_animator->resetAnimation(m_outfitAnimation[m_currentFrame]);
+	
+	if(m_mount && m_mount->m_frameGroup[m_currentFrame].m_animator)
+		m_mount->m_frameGroup[m_currentFrame].m_animator->resetAnimation(m_mountAnimation[m_currentFrame]);
 }
 
 void GUI_Outfit_View::updateMovement()
 {
+	static const Uint32 walkTime = 500;//500ms per tile
 	if(m_walking)
 	{
-		float ticks = 500.f;
-		float walkTicks = (ticks*0.03125f);
+		float walkTicks = (walkTime * 0.03125f);
 		m_walkedPixels = SDL_static_cast(Sint32, (g_frameTime - m_walkStartTime) / walkTicks);
-		if(m_currentFrame == ThingFrameGroup_Idle)//We probably don't have framegroups
+	}
+	if(m_outfit)
+	{
+		if(m_outfit->m_frameGroup[m_currentFrame].m_animator)
 		{
-			Uint8 animCount;
-			if(m_mount)
-				animCount = UTIL_max<Uint8>(0, (m_mount->m_frameGroup[m_currentFrame].m_animCount-1));
-			else
-				animCount = UTIL_max<Uint8>(0, (m_outfit->m_frameGroup[m_currentFrame].m_animCount-1));
-			float footTicks = ticks/SDL_static_cast(float, animCount);
-			m_currentAnim = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime - m_walkStartTime) / footTicks), animCount)+1;
+			//Calculate with new animation
+			m_outfitAnim = SDL_static_cast(Uint8, m_outfit->m_frameGroup[m_currentFrame].m_animator->getPhase(m_outfitAnimation[m_currentFrame], (m_currentFrame == ThingFrameGroup_Idle ? 0 : walkTime)));
 		}
 		else
 		{
-			Uint8 animCount;
-			if(m_mount)
-				animCount = UTIL_max<Uint8>(0, m_mount->m_frameGroup[m_currentFrame].m_animCount);
+			//Calculate with old animation
+			if(m_outfit->hasFlag(ThingAttribute_AnimateAlways))
+				m_outfitAnim = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / CREATURE_TICKS_PER_FRAME)), m_outfit->m_frameGroup[m_currentFrame].m_animCount);
+			else if(m_walking)
+			{
+				Uint8 animCount = m_outfit->m_frameGroup[m_currentFrame].m_animCount;
+				if(animCount > 1)
+					m_outfitAnim = (SDL_static_cast(Uint8, (m_walkedPixels % 32) / 8) % (animCount - 1)) + 1;
+				else
+					m_outfitAnim = 0;
+			}
 			else
-				animCount = UTIL_max<Uint8>(0, m_outfit->m_frameGroup[m_currentFrame].m_animCount);
-			float footTicks = ticks/SDL_static_cast(float, animCount);
-			m_currentAnim = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime - m_walkStartTime) / footTicks), animCount);
+				m_outfitAnim = 0;
+		}
+	}
+	if(m_mount)
+	{
+		if(m_mount->m_frameGroup[m_currentFrame].m_animator)
+		{
+			//Calculate with new animation
+			m_mountAnim = SDL_static_cast(Uint8, m_mount->m_frameGroup[m_currentFrame].m_animator->getPhase(m_mountAnimation[m_currentFrame], (m_currentFrame == ThingFrameGroup_Idle ? 0 : walkTime)));
+		}
+		else
+		{
+			//Calculate with old animation
+			if(m_mount->hasFlag(ThingAttribute_AnimateAlways))
+				m_mountAnim = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / CREATURE_TICKS_PER_FRAME)), m_mount->m_frameGroup[m_currentFrame].m_animCount);
+			else if(m_walking)
+			{
+				Uint8 animCount = m_mount->m_frameGroup[m_currentFrame].m_animCount;
+				if(animCount > 1)
+					m_mountAnim = (SDL_static_cast(Uint8, (m_walkedPixels % 32) / 8) % (animCount - 1)) + 1;
+				else
+					m_mountAnim = 0;
+			}
+			else
+				m_mountAnim = 0;
 		}
 	}
 }
@@ -761,11 +807,11 @@ Sint32 GUI_Outfit_View::getOffsetX()
 		case DIRECTION_NORTH:
 			return 0;
 		case DIRECTION_EAST:
-			return (m_walkedPixels%32);
+			return (m_walkedPixels % 32);
 		case DIRECTION_SOUTH:
 			return 0;
 		case DIRECTION_WEST:
-			return -(m_walkedPixels%32);
+			return -(m_walkedPixels % 32);
 	}
 	return 0;
 }
@@ -776,11 +822,11 @@ Sint32 GUI_Outfit_View::getOffsetY()
 	switch(m_direction)
 	{
 		case DIRECTION_NORTH:
-			return -(m_walkedPixels%32);
+			return -(m_walkedPixels % 32);
 		case DIRECTION_EAST:
 			return 0;
 		case DIRECTION_SOUTH:
-			return (m_walkedPixels%32);
+			return (m_walkedPixels % 32);
 		case DIRECTION_WEST:
 			return 0;
 	}
@@ -797,69 +843,59 @@ void GUI_Outfit_View::render()
 	Sint32 startX = -getOffsetX();
 	Sint32 startY = -getOffsetY();
 	Sint32 posXc;
-	Sint32 posYc = -32+startY;
+	Sint32 posYc = -32 + startY;
 	for(Uint8 y = 0; y < 5; ++y)
 	{
-		posXc = -32+startX;
+		posXc = -32 + startX;
 		for(Uint8 x = 0; x < 7; ++x)
 		{
-			Uint8 pDiff = SDL_static_cast(Uint8, (m_walkedPixels/32));
-			Uint8 xPattern = UTIL_safeMod<Uint8>((m_direction == DIRECTION_EAST ? (x+pDiff) : m_direction == DIRECTION_WEST ? (x-pDiff) : x), m_ground->m_frameGroup[ThingFrameGroup_Default].m_patternX);
-			Uint8 yPattern = UTIL_safeMod<Uint8>((m_direction == DIRECTION_SOUTH ? (y+pDiff) : m_direction == DIRECTION_NORTH ? (y-pDiff) : y), m_ground->m_frameGroup[ThingFrameGroup_Default].m_patternY);
+			Uint8 pDiff = SDL_static_cast(Uint8, (m_walkedPixels / 32));
+			Uint8 xPattern = UTIL_safeMod<Uint8>((m_direction == DIRECTION_EAST ? (x + pDiff) : m_direction == DIRECTION_WEST ? (x - pDiff) : x), m_ground->m_frameGroup[ThingFrameGroup_Default].m_patternX);
+			Uint8 yPattern = UTIL_safeMod<Uint8>((m_direction == DIRECTION_SOUTH ? (y + pDiff) : m_direction == DIRECTION_NORTH ? (y - pDiff) : y), m_ground->m_frameGroup[ThingFrameGroup_Default].m_patternY);
 			Uint32 sprite = m_ground->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, 0, 0);
 			if(sprite != 0)
 				renderer->drawSprite(sprite, posXc, posYc);
+
 			posXc += 32;
 		}
 		posYc += 32;
 	}
+
 	Uint8 zPattern = 0;
-	Sint32 xDiff = (!m_showOutfit ? 0 : (m_outfit->m_frameGroup[m_currentFrame].m_realSize-32)/2);
-	startX = 64+xDiff;
+	startX = 64;
 	startY = 32;
-	if(m_showOutfit)
+	if(m_mount && m_showMount)
+	{
+		startX -= m_mount->m_displacement[0];
+		startY -= m_mount->m_displacement[1];
+	}
+	else if(m_outfit && m_showOutfit)
 	{
 		startX -= m_outfit->m_displacement[0];
 		startY -= m_outfit->m_displacement[1];
 	}
+
 	if(m_mount && m_showMount)
 	{
-		Uint8 animationFrame;
-		if((false && m_currentFrame == ThingFrameGroup_Idle) || m_mount->hasFlag(ThingAttribute_AnimateAlways))
-		{
-			Sint32 ticks = (1000 / m_mount->m_frameGroup[m_currentFrame].m_animCount);
-			animationFrame = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ticks)), m_mount->m_frameGroup[m_currentFrame].m_animCount);
-		}
-		else
-			animationFrame = m_currentAnim;
-
-		startX -= m_mount->m_displacement[0];
-		startY -= m_mount->m_displacement[1];
 		posYc = startY;
 		for(Uint8 cy = 0; cy < m_mount->m_frameGroup[m_currentFrame].m_height; ++cy)
 		{
 			posXc = startX;
 			for(Uint8 cx = 0; cx < m_mount->m_frameGroup[m_currentFrame].m_width; ++cx)
 			{
-				Uint32 sprite = m_mount->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 0, 0, animationFrame);
+				Uint32 sprite = m_mount->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 0, 0, m_mountAnim);
 				if(sprite != 0)
 					renderer->drawSprite(sprite, posXc, posYc);
+
 				posXc -= 32;
 			}
 			posYc -= 32;
 		}
-		zPattern = UTIL_min<Uint8>(1, m_outfit->m_frameGroup[m_currentFrame].m_patternZ-1);
+		if(m_outfit)
+			zPattern = UTIL_min<Uint8>(1, m_outfit->m_frameGroup[m_currentFrame].m_patternZ - 1);
 	}
-	if(m_showOutfit)
+	if(m_outfit && m_showOutfit)
 	{
-		Uint8 animationFrame;
-		if((false && m_currentFrame == ThingFrameGroup_Idle) || m_outfit->hasFlag(ThingAttribute_AnimateAlways))
-		{
-			Sint32 ticks = (1000 / m_outfit->m_frameGroup[m_currentFrame].m_animCount);
-			animationFrame = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ticks)), m_outfit->m_frameGroup[m_currentFrame].m_animCount);
-		}
-		else
-			animationFrame = m_currentAnim;
 		if(m_outfit->m_frameGroup[m_currentFrame].m_layers > 1)
 		{
 			posYc = startY;
@@ -868,8 +904,8 @@ void GUI_Outfit_View::render()
 				posXc = startX;
 				for(Uint8 cx = 0; cx < m_outfit->m_frameGroup[m_currentFrame].m_width; ++cx)
 				{
-					Uint32 sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 0, zPattern, animationFrame);
-					Uint32 spriteMask = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 1, m_direction, 0, zPattern, animationFrame);
+					Uint32 sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 0, zPattern, m_outfitAnim);
+					Uint32 spriteMask = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 1, m_direction, 0, zPattern, m_outfitAnim);
 					if(sprite != 0)
 					{
 						if(spriteMask != 0)
@@ -881,8 +917,8 @@ void GUI_Outfit_View::render()
 					{
 						if(g_outfitAddons & 1)//First addon
 						{
-							sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 1, zPattern, animationFrame);
-							spriteMask = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 1, m_direction, 1, zPattern, animationFrame);
+							sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 1, zPattern, m_outfitAnim);
+							spriteMask = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 1, m_direction, 1, zPattern, m_outfitAnim);
 							if(sprite != 0)
 							{
 								if(spriteMask != 0)
@@ -893,8 +929,8 @@ void GUI_Outfit_View::render()
 						}
 						if(g_outfitAddons & 2)//Second addon
 						{
-							sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 2, zPattern, animationFrame);
-							spriteMask = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 1, m_direction, 2, zPattern, animationFrame);
+							sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 2, zPattern, m_outfitAnim);
+							spriteMask = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 1, m_direction, 2, zPattern, m_outfitAnim);
 							if(sprite != 0)
 							{
 								if(spriteMask != 0)
@@ -917,20 +953,21 @@ void GUI_Outfit_View::render()
 				posXc = startX;
 				for(Uint8 cx = 0; cx < m_outfit->m_frameGroup[m_currentFrame].m_width; ++cx)
 				{
-					Uint32 sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 0, zPattern, animationFrame);
+					Uint32 sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 0, zPattern, m_outfitAnim);
 					if(sprite != 0)
 						renderer->drawSprite(sprite, posXc, posYc);
+
 					if(m_outfit->m_frameGroup[m_currentFrame].m_patternY > 1)
 					{
 						if(g_outfitAddons & 1)//First addon
 						{
-							sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 1, zPattern, animationFrame);
+							sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 1, zPattern, m_outfitAnim);
 							if(sprite != 0)
 								renderer->drawSprite(sprite, posXc, posYc);
 						}
 						if(g_outfitAddons & 2)//Second addon
 						{
-							sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 2, zPattern, animationFrame);
+							sprite = m_outfit->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), cx, cy, 0, m_direction, 2, zPattern, m_outfitAnim);
 							if(sprite != 0)
 								renderer->drawSprite(sprite, posXc, posYc);
 						}
@@ -959,12 +996,12 @@ void GUI_Outfit_Colors::onMouseMove(Sint32 x, Sint32 y, bool)
 	if(!m_Pressed)
 		return;
 
-	iRect rect = iRect(m_tRect.x1+4, m_tRect.y1+20, 247, 91);
+	iRect rect = iRect(m_tRect.x1 + 4, m_tRect.y1 + 20, 247, 91);
 	if(rect.isPointInside(x, y))
 	{
-		Sint32 xFactor = (x-m_tRect.x1-4)/13;
-		Sint32 yFactor = (y-m_tRect.y1-20)/13;
-		Sint32 cFactor = yFactor*19+xFactor;
+		Sint32 xFactor = (x - m_tRect.x1 - 4) / 13;
+		Sint32 yFactor = (y - m_tRect.y1 - 20) / 13;
+		Sint32 cFactor = yFactor * 19 + xFactor;
 		if(m_hoverColor[1] == cFactor)
 			m_hoverColor[0] = cFactor;
 		else
@@ -977,12 +1014,12 @@ void GUI_Outfit_Colors::onLMouseDown(Sint32 x, Sint32 y)
 {
 	m_Pressed = true;
 
-	iRect rect = iRect(m_tRect.x1+4, m_tRect.y1+20, 247, 91);
+	iRect rect = iRect(m_tRect.x1 + 4, m_tRect.y1 + 20, 247, 91);
 	if(rect.isPointInside(x, y))
 	{
-		Sint32 xFactor = (x-m_tRect.x1-4)/13;
-		Sint32 yFactor = (y-m_tRect.y1-20)/13;
-		Sint32 cFactor = yFactor*19+xFactor;
+		Sint32 xFactor = (x - m_tRect.x1 - 4) / 13;
+		Sint32 yFactor = (y - m_tRect.y1 - 20) / 13;
+		Sint32 cFactor = yFactor * 19 + xFactor;
 		m_hoverColor[0] = m_hoverColor[1] = cFactor;
 		return;
 	}
@@ -992,19 +1029,19 @@ void GUI_Outfit_Colors::onLMouseDown(Sint32 x, Sint32 y)
 		m_selected = 0;
 		return;
 	}
-	rect = iRect(m_tRect.x1+63, m_tRect.y1, 63, 18);
+	rect = iRect(m_tRect.x1 + 63, m_tRect.y1, 63, 18);
 	if(rect.isPointInside(x, y))
 	{
 		m_selected = 1;
 		return;
 	}
-	rect = iRect(m_tRect.x1+126, m_tRect.y1, 63, 18);
+	rect = iRect(m_tRect.x1 + 126, m_tRect.y1, 63, 18);
 	if(rect.isPointInside(x, y))
 	{
 		m_selected = 2;
 		return;
 	}
-	rect = iRect(m_tRect.x1+189, m_tRect.y1, 64, 18);
+	rect = iRect(m_tRect.x1 + 189, m_tRect.y1, 64, 18);
 	if(rect.isPointInside(x, y))
 	{
 		m_selected = 3;
@@ -1018,12 +1055,12 @@ void GUI_Outfit_Colors::onLMouseUp(Sint32 x, Sint32 y)
 		return;
 	m_Pressed = false;
 
-	iRect rect = iRect(m_tRect.x1+4, m_tRect.y1+20, 247, 91);
+	iRect rect = iRect(m_tRect.x1 + 4, m_tRect.y1 + 20, 247, 91);
 	if(rect.isPointInside(x, y))
 	{
-		Sint32 xFactor = (x-m_tRect.x1-4)/13;
-		Sint32 yFactor = (y-m_tRect.y1-20)/13;
-		Sint32 cFactor = yFactor*19+xFactor;
+		Sint32 xFactor = (x - m_tRect.x1 - 4) / 13;
+		Sint32 yFactor = (y - m_tRect.y1 - 20) / 13;
+		Sint32 cFactor = yFactor * 19 + xFactor;
 		if(m_hoverColor[0] == cFactor)
 			g_outfitColors[m_selected] = SDL_static_cast(Uint8, cFactor);
 	}
@@ -1033,71 +1070,72 @@ void GUI_Outfit_Colors::onLMouseUp(Sint32 x, Sint32 y)
 void GUI_Outfit_Colors::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+16, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1+16, m_tRect.x2-2, 2);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1+18, 2, m_tRect.y2-20);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-2, m_tRect.x2-2, 2);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+18, 2, m_tRect.y2-20);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1 + m_tRect.x2 - 2, m_tRect.y1 + 16, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1, m_tRect.y1 + m_tRect.y2 - 2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1 + 16, m_tRect.x2 - 2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1 + 18, 2, m_tRect.y2 - 20);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1 + 2, m_tRect.y1 + m_tRect.y2 - 2, m_tRect.x2 - 2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1 + m_tRect.x2 - 2, m_tRect.y1 + 18, 2, m_tRect.y2 - 20);
 
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1, m_tRect.y1, 62, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+GUI_UI_ICON_UNACTIVE_CHANNEL_W-2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+62, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+64, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+GUI_UI_ICON_UNACTIVE_CHANNEL_W-2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+125, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+127, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+GUI_UI_ICON_UNACTIVE_CHANNEL_W-2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+188, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+190, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X+GUI_UI_ICON_UNACTIVE_CHANNEL_W-2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1+251, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X + GUI_UI_ICON_UNACTIVE_CHANNEL_W - 2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1 + 62, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X + 1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1 + 64, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X + GUI_UI_ICON_UNACTIVE_CHANNEL_W - 2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1 + 125, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X + 1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1 + 127, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X + GUI_UI_ICON_UNACTIVE_CHANNEL_W - 2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1 + 188, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X + 1, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1 + 190, m_tRect.y1, 61, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_UNACTIVE_CHANNEL_X + GUI_UI_ICON_UNACTIVE_CHANNEL_W - 2, GUI_UI_ICON_UNACTIVE_CHANNEL_Y, m_tRect.x1 + 251, m_tRect.y1, 2, GUI_UI_ICON_UNACTIVE_CHANNEL_H);
 	switch(m_selected)
 	{
 		case 1:
 		{
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+63, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X+GUI_UI_ICON_ACTIVE_CHANNEL_W-2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+125, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1 + 63, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X + GUI_UI_ICON_ACTIVE_CHANNEL_W - 2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1 + 125, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 		}
 		break;
 		case 2:
 		{
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+126, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X+GUI_UI_ICON_ACTIVE_CHANNEL_W-2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+188, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1 + 126, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X + GUI_UI_ICON_ACTIVE_CHANNEL_W - 2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1 + 188, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 		}
 		break;
 		case 3:
 		{
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+189, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X+GUI_UI_ICON_ACTIVE_CHANNEL_W-2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+251, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1 + 189, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X + GUI_UI_ICON_ACTIVE_CHANNEL_W - 2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1 + 251, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 		}
 		break;
 		default:
 		{
 			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1, m_tRect.y1, 62, GUI_UI_ICON_ACTIVE_CHANNEL_H);
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X+GUI_UI_ICON_ACTIVE_CHANNEL_W-2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1+62, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_ACTIVE_CHANNEL_X + GUI_UI_ICON_ACTIVE_CHANNEL_W - 2, GUI_UI_ICON_ACTIVE_CHANNEL_Y, m_tRect.x1 + 62, m_tRect.y1, 2, GUI_UI_ICON_ACTIVE_CHANNEL_H);
 		}
 		break;
 	}
-	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+22, m_tRect.y1+5, "Head", 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
-	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+78, m_tRect.y1+5, "Primary", 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
-	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+136, m_tRect.y1+5, "Secondary", 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
-	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+208, m_tRect.y1+5, "Detail", 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
+	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1 + 22, m_tRect.y1 + 5, "Head", 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
+	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1 + 78, m_tRect.y1 + 5, "Primary", 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
+	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1 + 136, m_tRect.y1 + 5, "Secondary", 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
+	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1 + 208, m_tRect.y1 + 5, "Detail", 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
 
 	Uint8 hoverC = SDL_static_cast(Uint8, m_hoverColor[0]);
 	Uint8 c = 0;
-	Sint32 posY = m_tRect.y1+20;
+	Sint32 posY = m_tRect.y1 + 20;
 	for(Sint32 i = 0; i < 7; ++i)
 	{
-		Sint32 posX = m_tRect.x1+4;
+		Sint32 posX = m_tRect.x1 + 4;
 		for(Sint32 j = 0; j < 19; ++j)
 		{
 			Uint8 red, green, blue;
 			getOutfitColorRGB(c, red, green, blue);
-			renderer->fillRectangle(posX+2, posY+2, 8, 8, red, green, blue, 255);
+			renderer->fillRectangle(posX + 2, posY + 2, 8, 8, red, green, blue, 255);
 			if(g_outfitColors[m_selected] == c)
 			{
 				renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_COLOR_BOX_DOWN_X, GUI_UI_ICON_COLOR_BOX_DOWN_Y, posX, posY, GUI_UI_ICON_COLOR_BOX_DOWN_W, GUI_UI_ICON_COLOR_BOX_DOWN_H);
-				renderer->drawRectangle(posX-1, posY-1, 14, 14, 255, 255, 255, 255);
+				renderer->drawRectangle(posX - 1, posY - 1, 14, 14, 255, 255, 255, 255);
 			}
 			else
 				renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_COLOR_BOX_UP_X, (hoverC == c ? GUI_UI_ICON_COLOR_BOX_DOWN_Y : GUI_UI_ICON_COLOR_BOX_UP_Y), posX, posY, GUI_UI_ICON_COLOR_BOX_UP_W, GUI_UI_ICON_COLOR_BOX_UP_H);
+			
 			++c;
 			posX += 13;
 		}

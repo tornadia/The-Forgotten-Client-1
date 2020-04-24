@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -27,35 +27,35 @@
 enum GUIPanelWindowID
 {
 	GUI_PANEL_WINDOW_UNKNOWN,
-	GUI_PANEL_WINDOW_INVENTORY,
-	GUI_PANEL_WINDOW_INVENTORY_HIDDEN,
-	GUI_PANEL_WINDOW_MINIMAP,
-	GUI_PANEL_WINDOW_HEALTH,
-	GUI_PANEL_WINDOW_BUTTONS,
-	GUI_PANEL_WINDOW_SKILLS,
-	GUI_PANEL_WINDOW_BATTLE,
-	GUI_PANEL_WINDOW_TRADE,
-	GUI_PANEL_WINDOW_VIP,
-	GUI_PANEL_WINDOW_NPC_TRADE,
-	GUI_PANEL_WINDOW_SPELL_LIST,
-	GUI_PANEL_WINDOW_PREMIUM_FEATURES,
-	GUI_PANEL_WINDOW_UNJUSTIFIED_POINTS,
-	GUI_PANEL_WINDOW_PREY_WIDGET,
-	GUI_PANEL_WINDOW_PARTY,
-	GUI_PANEL_WINDOW_TOURNAMENT_WIDGET,
-	GUI_PANEL_WINDOW_ANALYTICS_SELECTOR,
-	GUI_PANEL_WINDOW_ANALYTICS_HUNTING,
-	GUI_PANEL_WINDOW_ANALYTICS_LOOT,
-	GUI_PANEL_WINDOW_ANALYTICS_SUPPLY,
-	GUI_PANEL_WINDOW_ANALYTICS_IMPACT,
-	GUI_PANEL_WINDOW_ANALYTICS_XP,
-	GUI_PANEL_WINDOW_ANALYTICS_DROP,
-	GUI_PANEL_WINDOW_ANALYTICS_QUEST,
-	GUI_PANEL_WINDOW_DEPOT_SEARCH,
+	GUI_PANEL_WINDOW_INVENTORY, // Done
+	GUI_PANEL_WINDOW_INVENTORY_MINIMIZED, // Done
+	GUI_PANEL_WINDOW_MINIMAP, // Done
+	GUI_PANEL_WINDOW_HEALTH, // Done
+	GUI_PANEL_WINDOW_BUTTONS, // Partially done - need to add options settings
+	GUI_PANEL_WINDOW_SKILLS, // Done
+	GUI_PANEL_WINDOW_BATTLE, // Done - need to add configuration
+	GUI_PANEL_WINDOW_TRADE, // Done
+	GUI_PANEL_WINDOW_VIP, // Done
+	GUI_PANEL_WINDOW_SHOP, // Done
+	GUI_PANEL_WINDOW_SPELL_LIST, // TODO
+	GUI_PANEL_WINDOW_PREMIUM_FEATURES, // TODO
+	GUI_PANEL_WINDOW_UNJUSTIFIED_POINTS, // TODO
+	GUI_PANEL_WINDOW_PREY_WIDGET, // TODO
+	GUI_PANEL_WINDOW_PARTY, // Done - need to add configuration
+	GUI_PANEL_WINDOW_TOURNAMENT_WIDGET, // TODO
+	GUI_PANEL_WINDOW_ANALYTICS_SELECTOR, // TODO
+	GUI_PANEL_WINDOW_ANALYTICS_HUNTING, // TODO
+	GUI_PANEL_WINDOW_ANALYTICS_LOOT, // TODO
+	GUI_PANEL_WINDOW_ANALYTICS_SUPPLY, // TODO
+	GUI_PANEL_WINDOW_ANALYTICS_IMPACT, // TODO
+	GUI_PANEL_WINDOW_ANALYTICS_XP, // TODO
+	GUI_PANEL_WINDOW_ANALYTICS_DROP, // TODO
+	GUI_PANEL_WINDOW_ANALYTICS_QUEST, // TODO
+	GUI_PANEL_WINDOW_DEPOT_SEARCH, // TODO
 
 	//Reserved ids for containers
-	GUI_PANEL_WINDOW_CONTAINERS_START = 1000,
-	GUI_PANEL_WINDOW_CONTAINERS_END = 1100
+	GUI_PANEL_WINDOW_CONTAINERS_START = 64, // Done
+	GUI_PANEL_WINDOW_CONTAINERS_END = 100 // Done
 };
 
 class GUI_Panel;
@@ -65,7 +65,7 @@ class GUI_PanelWindow
 		GUI_PanelWindow(iRect boxRect, bool windowed, Uint32 internalID = 0, bool parentChangeable = false);
 		~GUI_PanelWindow();
 
-		void setEventCallback(void(*eventHandlerFunction)(Uint32, Sint32), Uint32 widthEvent, Uint32 heightEvent, Uint32 exitEvent);
+		void setEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 widthEvent, Uint32 heightEvent, Uint32 exitEvent);
 
 		void setRect(iRect& NewRect, bool NewPos = false);
 		void setSize(Sint32 width, Sint32 height);
@@ -73,6 +73,7 @@ class GUI_PanelWindow
 		iRect& getRect() {return m_tRect;}
 		bool isInsideRect(Sint32 x, Sint32 y) {return m_tRect.isPointInside(x, y);}
 
+		void checkPanels();
 		void clearChilds();
 		void addChild(GUI_Element* pChild);
 		void removeChild(GUI_Element* pChild);

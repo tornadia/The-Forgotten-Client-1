@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -138,7 +138,7 @@ enum GameOpcodes : Uint8
 	GameAddVipOpcode = 0xDC,
 	GameRemoveVipOpcode = 0xDD,
 	GameEditVipOpcode = 0xDE,
-	GameAddVipGroupOpcode = 0xDF,
+	GameVipGroupActionOpcode = 0xDF,
 	GameMarkGameNewsAsReadOpcode = 0xE0,
 	GameOpenMonsterCyclopediaOpcode = 0xE1,
 	GameOpenMonsterCyclopediaMonstersOpcode = 0xE2,
@@ -192,6 +192,7 @@ enum GameOpcodes : Uint8
 	RecvStashOpcode = 0x29,
 	RecvSpecialContainersAvailableOpcode = 0x2A,
 	RecvPartyHuntAnalyserOpcode = 0x2B,
+	RecvOtclientOpcode = 0x32,
 	RecvClientCheckOpcode = 0x63,
 	RecvMapDescriptionOpcode = 0x64,
 	RecvMapNorthOpcode = 0x65,
@@ -352,146 +353,146 @@ enum GameOpcodes : Uint8
 	msg+0x2C - addBool()
 	
 	QT Client(12.30.9287) Gameclient payload functions
-	{0x0A, "tibia.protobuf.protocol.GameclientMessageLogin"},								base+2646B6
-	{0x0B, "tibia.protobuf.protocol.GameclientMessageSecondaryLogin"},						base+2648DB
-	{0x0F, "tibia.protobuf.protocol.GameclientMessageEnterWorld"},							no payload
-	{0x14, "tibia.protobuf.protocol.GameclientMessageQuitGame"},							no payload
-	{0x1C, "tibia.protobuf.protocol.GameclientMessageConnectionPingBack"},					no payload
-	{0x1D, "tibia.protobuf.protocol.GameclientMessagePing"},								no payload
-	{0x1E, "tibia.protobuf.protocol.GameclientMessagePingBack"},							no payload
-	{0x1F, "tibia.protobuf.protocol.GameclientMessage"},									placeholder
-	{0x28, "tibia.protobuf.protocol.GameclientMessageStashAction"},							base+266B00
-	{0x29, "tibia.protobuf.protocol.GameclientMessageDepotSearchRetrieve"},					base+266D05
-	{0x2A, "tibia.protobuf.protocol.GameclientMessageTrackBestiaryRace"},					base+264A94
-	{0x2B, "tibia.protobuf.protocol.GameclientMessagePartyHuntAnalyser"},					base+266E08
-	{0x63, "tibia.protobuf.protocol.GameclientMessageClientCheck"},							base+264ABE
-	{0x64, "tibia.protobuf.protocol.GameclientMessageGoPath"},								base+264A51
-	{0x65, "tibia.protobuf.protocol.GameclientMessageGoNorth"},								no payload
-	{0x66, "tibia.protobuf.protocol.GameclientMessageGoEast"},								no payload
-	{0x67, "tibia.protobuf.protocol.GameclientMessageGoSouth"},								no payload
-	{0x68, "tibia.protobuf.protocol.GameclientMessageGoWest"},								no payload
-	{0x69, "tibia.protobuf.protocol.GameclientMessageStop"},								no payload
-	{0x6A, "tibia.protobuf.protocol.GameclientMessageGoNorthEast"},							no payload
-	{0x6B, "tibia.protobuf.protocol.GameclientMessageGoSouthEast"},							no payload
-	{0x6C, "tibia.protobuf.protocol.GameclientMessageGoSouthWest"},							no payload
-	{0x6D, "tibia.protobuf.protocol.GameclientMessageGoNorthWest"},							no payload
-	{0x6F, "tibia.protobuf.protocol.GameclientMessageRotateNorth"},							no payload
-	{0x70, "tibia.protobuf.protocol.GameclientMessageRotateEast"},							no payload
-	{0x71, "tibia.protobuf.protocol.GameclientMessageRotateSouth"},							no payload
-	{0x72, "tibia.protobuf.protocol.GameclientMessageRotateWest"},							no payload
-	{0x73, "tibia.protobuf.protocol.GameclientMessageTeleport"},							base+266332
-	{0x77, "tibia.protobuf.protocol.GameclientMessageEquipObject"},							base+264B0D
-	{0x78, "tibia.protobuf.protocol.GameclientMessageMoveObject"},							base+264B55
-	{0x79, "tibia.protobuf.protocol.GameclientMessageLookNPCTrade"},						base+266726
-	{0x7A, "tibia.protobuf.protocol.GameclientMessageBuyObject"},							base+26676E
-	{0x7B, "tibia.protobuf.protocol.GameclientMessageSellObject"},							base+2667DD
-	{0x7C, "tibia.protobuf.protocol.GameclientMessageCloseNPCTrade"},						no payload
-	{0x7D, "tibia.protobuf.protocol.GameclientMessageTradeObject"},							base+2658CF
-	{0x7E, "tibia.protobuf.protocol.GameclientMessageLookTrade"},							base+265960
-	{0x7F, "tibia.protobuf.protocol.GameclientMessageAcceptTrade"},							no payload
-	{0x80, "tibia.protobuf.protocol.GameclientMessageRejectTrade"},							no payload
-	{0x81, "tibia.protobuf.protocol.GameclientMessageFriendSystemAction"},					base+26598A
-	{0x82, "tibia.protobuf.protocol.GameclientMessageUseObject"},							base+264E11
-	{0x83, "tibia.protobuf.protocol.GameclientMessageUseTwoObjects"},						base+264EB2
-	{0x84, "tibia.protobuf.protocol.GameclientMessageUseOnCreature"},						base+264FA9
-	{0x85, "tibia.protobuf.protocol.GameclientMessageTurnObject"},							base+264D91
-	{0x87, "tibia.protobuf.protocol.GameclientMessageCloseContainer"},						base+2651C4
-	{0x88, "tibia.protobuf.protocol.GameclientMessageUpContainer"},							base+2651C4
-	{0x89, "tibia.protobuf.protocol.GameclientMessageEditText"},							base+265C14
-	{0x8A, "tibia.protobuf.protocol.GameclientMessageEditList"},							base+265C5F
-	{0x8B, "tibia.protobuf.protocol.GameclientMessageToggleWrapState"},						base+264D11
-	{0x8C, "tibia.protobuf.protocol.GameclientMessageLook"},								base+26503A
-	{0x8D, "tibia.protobuf.protocol.GameclientMessageLookAtCreature"},						base+2650BA
-	{0x8E, "tibia.protobuf.protocol.GameclientMessageJoinAggression"},						base+2650BA
-	{0x8F, "tibia.protobuf.protocol.GameclientMessageQuickLoot"},							base+266491
-	{0x90, "tibia.protobuf.protocol.GameclientMessageLootContainer"},						base+266574
-	{0x91, "tibia.protobuf.protocol.GameclientMessageQuickLootBlackWhitelist"},				base+266511
-	{0x92, "tibia.protobuf.protocol.GameclientMessageOpenDepotSearch"},						no payload
-	{0x93, "tibia.protobuf.protocol.GameclientMessageCloseDepotSearch"},					no payload
-	{0x94, "tibia.protobuf.protocol.GameclientMessageDepotSearchType"},						base+26532C
-	{0x95, "tibia.protobuf.protocol.GameclientMessageOpenParentContainer"},					base+266CCC
-	{0x96, "tibia.protobuf.protocol.GameclientMessageTalk"},								base+26528E
-	{0x97, "tibia.protobuf.protocol.GameclientMessageGetChannels"},							no payload
-	{0x98, "tibia.protobuf.protocol.GameclientMessageJoinChannel"},							base+26532C
-	{0x99, "tibia.protobuf.protocol.GameclientMessageLeaveChannel"},						base+26532C
-	{0x9A, "tibia.protobuf.protocol.GameclientMessagePrivateChannel"},						base+265369
-	{0x9B, "tibia.protobuf.protocol.GameclientMessageGuildMessage"},						no payload
-	{0x9C, "tibia.protobuf.protocol.GameclientMessageEditGuildMessage"},					base+265369
-	{0x9E, "tibia.protobuf.protocol.GameclientMessageCloseNPCChannel"},						no payload
-	{0xA0, "tibia.protobuf.protocol.GameclientMessageSetTactics"},							base+265205
-	{0xA1, "tibia.protobuf.protocol.GameclientMessageAttack"},								base+265343
-	{0xA2, "tibia.protobuf.protocol.GameclientMessageFollow"},								base+265343
-	{0xA3, "tibia.protobuf.protocol.GameclientMessageInviteToParty"},						base+2650BA
-	{0xA4, "tibia.protobuf.protocol.GameclientMessageJoinParty"},							base+2650BA
-	{0xA5, "tibia.protobuf.protocol.GameclientMessageRevokeInvitation"},					base+2650BA
-	{0xA6, "tibia.protobuf.protocol.GameclientMessagePassLeadership"},						base+2650BA
-	{0xA7, "tibia.protobuf.protocol.GameclientMessageLeaveParty"},							no payload
-	{0xA8, "tibia.protobuf.protocol.GameclientMessageShareExperience"},						base+2653F8
-	{0xA9, "tibia.protobuf.protocol.GameclientMessage"},									placeholder
-	{0xAA, "tibia.protobuf.protocol.GameclientMessageOpenChannel"},							no payload
-	{0xAB, "tibia.protobuf.protocol.GameclientMessageInviteToChannel"},						base+2653A7
-	{0xAC, "tibia.protobuf.protocol.GameclientMessageExcludeFromChannel"},					base+2653A7
-	{0xAD, "tibia.protobuf.protocol.GameclientMessageCyclopediaHouseAction"},				base+266D3E
-	{0xBA, "tibia.protobuf.protocol.GameclientMessagePreyHuntingTaskAction"},				base+266E9C
-	{0xBE, "tibia.protobuf.protocol.GameclientMessageCancel"},								no payload
-	{0xC4, "tibia.protobuf.protocol.GameclientMessageTournamentInformation"},				no payload
-	{0xC6, "tibia.protobuf.protocol.GameclientMessageSubscribeToUpdates"},					base+264C14
-	{0xC7, "tibia.protobuf.protocol.GameclientMessageTournamentLeaderboard"},				base+264C3E
-	{0xC8, "tibia.protobuf.protocol.GameclientMessageTournamentTicketAction"},				base+266C48
-	{0xC9, "tibia.protobuf.protocol.GameclientMessageGetTransactionDetails"},				base+2650BA
-	{0xCA, "tibia.protobuf.protocol.GameclientMessageUpdateExivaOptions"},					base+26683F
-	{0xCB, "tibia.protobuf.protocol.GameclientMessageBrowseField"},							base+265249
-	{0xCC, "tibia.protobuf.protocol.GameclientMessageSeekInContainer"},						base+2651DB
-	{0xCD, "tibia.protobuf.protocol.GameclientMessageInspectObject"},						base+265113
-	{0xCE, "tibia.protobuf.protocol.GameclientMessageInspectPlayer"},						base+2650CF
-	{0xCF, "tibia.protobuf.protocol.GameclientMessageBlessingsDialog"},						no payload
-	{0xD0, "tibia.protobuf.protocol.GameclientMessageTrackQuestflags"},						base+2663FF
-	{0xD1, "tibia.protobuf.protocol.GameclientMessageMarketStatistics"},					no payload
-	{0xD2, "tibia.protobuf.protocol.GameclientMessageGetOutfit"},							base+26540F
-	{0xD3, "tibia.protobuf.protocol.GameclientMessageSetOutfit"},							base+265458
-	{0xD4, "tibia.protobuf.protocol.GameclientMessageMount"},								base+2653F8
-	{0xD5, "tibia.protobuf.protocol.GameclientMessageApplyImbuement"},						base+2661D8
-	{0xD6, "tibia.protobuf.protocol.GameclientMessageApplyClearingCharm"},					base+2651C4
-	{0xD7, "tibia.protobuf.protocol.GameclientMessageCloseImbuingDialog"},					no payload
-	{0xD8, "tibia.protobuf.protocol.GameclientMessageOpenRewardWall"},						no payload
-	{0xD9, "tibia.protobuf.protocol.GameclientMessageDailyRewardHistory"},					no payload
-	{0xDA, "tibia.protobuf.protocol.GameclientMessageCollectDailyReward"},					base+266377
-	{0xDB, "tibia.protobuf.protocol.GameclientMessageCyclopediaMapAction"},					base+266BEE
-	{0xDC, "tibia.protobuf.protocol.GameclientMessageAddBuddy"},							base+265369
-	{0xDD, "tibia.protobuf.protocol.GameclientMessageRemoveBuddy"},							base+2650BA
-	{0xDE, "tibia.protobuf.protocol.GameclientMessageEditBuddy"},							base+2655B5
-	{0xDF, "tibia.protobuf.protocol.GameclientMessageBuddyGroup"},							base+2656AE
-	{0xE0, "tibia.protobuf.protocol.GameclientMessageMarkGameNewsAsRead"},					base+26577E
-	{0xE1, "tibia.protobuf.protocol.GameclientMessageOpenMonsterCyclopedia"},				no payload
-	{0xE2, "tibia.protobuf.protocol.GameclientMessageOpenMonsterCyclopediaMonsters"},		base+2657A6
-	{0xE3, "tibia.protobuf.protocol.GameclientMessageOpenMonsterCyclopediaRace"},			base+26532C
-	{0xE4, "tibia.protobuf.protocol.GameclientMessageMonsterBonusEffectAction"},			base+265844
-	{0xE5, "tibia.protobuf.protocol.GameclientMessageOpenCyclopediaCharacterInfo"},			base+265881
-	{0xE6, "tibia.protobuf.protocol.GameclientMessageBugReport"},							base+266037
-	{0xE7, "tibia.protobuf.protocol.GameclientMessageThankYou"},							base+2650BA
-	{0xE8, "tibia.protobuf.protocol.GameclientMessageGetOfferDescription"},					base+2650BA
-	{0xE9, "tibia.protobuf.protocol.GameclientMessageStoreEvent"},							base+26612F
-	{0xEA, "tibia.protobuf.protocol.GameclientMessageFeatureEvent"},						base+266456
-	{0xEB, "tibia.protobuf.protocol.GameclientMessagePreyAction"},							base+26620D
-	{0xEC, "tibia.protobuf.protocol.GameclientMessageSetHirelingName"},						base+26555B
-	{0xED, "tibia.protobuf.protocol.GameclientMessageRequestResourceBalance"},				base+2651C4
-	{0xEE, "tibia.protobuf.protocol.GameclientMessageGreet"},								base+2650BA
-	{0xEF, "tibia.protobuf.protocol.GameclientMessageTransferCurrency"},					base+265FE8
-	{0xF0, "tibia.protobuf.protocol.GameclientMessageGetQuestLog"},							no payload
-	{0xF1, "tibia.protobuf.protocol.GameclientMessageGetQuestLine"},						base+26532C
-	{0xF2, "tibia.protobuf.protocol.GameclientMessageRuleViolationReport"},					base+265B09
-	{0xF3, "tibia.protobuf.protocol.GameclientMessageGetObjectInfo"},						base+26626D
-	{0xF4, "tibia.protobuf.protocol.GameclientMessageMarketLeave"},							no payload
-	{0xF5, "tibia.protobuf.protocol.GameclientMessageMarketBrowse"},						base+26532C
-	{0xF6, "tibia.protobuf.protocol.GameclientMessageMarketCreate"},						base+2666D7
-	{0xF7, "tibia.protobuf.protocol.GameclientMessageMarketCancel"},						base+26663E
-	{0xF8, "tibia.protobuf.protocol.GameclientMessageMarketAccept"},						base+266684
-	{0xF9, "tibia.protobuf.protocol.GameclientMessageAnswerModalDialog"},					base+265AD4
-	{0xFA, "tibia.protobuf.protocol.GameclientMessageRequestStoreCategories"},				no payload
-	{0xFB, "tibia.protobuf.protocol.GameclientMessageRequestStoreOffers"},					base+265CB5
-	{0xFC, "tibia.protobuf.protocol.GameclientMessageBuyStoreOffer"},						base+265E73
-	{0xFD, "tibia.protobuf.protocol.GameclientMessageOpenTransactionHistory"},				base+2651C4
-	{0xFE, "tibia.protobuf.protocol.GameclientMessageGetTransactionHistory"},				base+265FC0
+	{0x0A, "protobuf.protocol.GameclientMessageLogin"},									base+2646B6
+	{0x0B, "protobuf.protocol.GameclientMessageSecondaryLogin"},						base+2648DB
+	{0x0F, "protobuf.protocol.GameclientMessageEnterWorld"},							no payload
+	{0x14, "protobuf.protocol.GameclientMessageQuitGame"},								no payload
+	{0x1C, "protobuf.protocol.GameclientMessageConnectionPingBack"},					no payload
+	{0x1D, "protobuf.protocol.GameclientMessagePing"},									no payload
+	{0x1E, "protobuf.protocol.GameclientMessagePingBack"},								no payload
+	{0x1F, "protobuf.protocol.GameclientMessage"},										placeholder
+	{0x28, "protobuf.protocol.GameclientMessageStashAction"},							base+266B00
+	{0x29, "protobuf.protocol.GameclientMessageDepotSearchRetrieve"},					base+266D05
+	{0x2A, "protobuf.protocol.GameclientMessageTrackBestiaryRace"},						base+264A94
+	{0x2B, "protobuf.protocol.GameclientMessagePartyHuntAnalyser"},						base+266E08
+	{0x63, "protobuf.protocol.GameclientMessageClientCheck"},							base+264ABE
+	{0x64, "protobuf.protocol.GameclientMessageGoPath"},								base+264A51
+	{0x65, "protobuf.protocol.GameclientMessageGoNorth"},								no payload
+	{0x66, "protobuf.protocol.GameclientMessageGoEast"},								no payload
+	{0x67, "protobuf.protocol.GameclientMessageGoSouth"},								no payload
+	{0x68, "protobuf.protocol.GameclientMessageGoWest"},								no payload
+	{0x69, "protobuf.protocol.GameclientMessageStop"},									no payload
+	{0x6A, "protobuf.protocol.GameclientMessageGoNorthEast"},							no payload
+	{0x6B, "protobuf.protocol.GameclientMessageGoSouthEast"},							no payload
+	{0x6C, "protobuf.protocol.GameclientMessageGoSouthWest"},							no payload
+	{0x6D, "protobuf.protocol.GameclientMessageGoNorthWest"},							no payload
+	{0x6F, "protobuf.protocol.GameclientMessageRotateNorth"},							no payload
+	{0x70, "protobuf.protocol.GameclientMessageRotateEast"},							no payload
+	{0x71, "protobuf.protocol.GameclientMessageRotateSouth"},							no payload
+	{0x72, "protobuf.protocol.GameclientMessageRotateWest"},							no payload
+	{0x73, "protobuf.protocol.GameclientMessageTeleport"},								base+266332
+	{0x77, "protobuf.protocol.GameclientMessageEquipObject"},							base+264B0D
+	{0x78, "protobuf.protocol.GameclientMessageMoveObject"},							base+264B55
+	{0x79, "protobuf.protocol.GameclientMessageLookNPCTrade"},							base+266726
+	{0x7A, "protobuf.protocol.GameclientMessageBuyObject"},								base+26676E
+	{0x7B, "protobuf.protocol.GameclientMessageSellObject"},							base+2667DD
+	{0x7C, "protobuf.protocol.GameclientMessageCloseNPCTrade"},							no payload
+	{0x7D, "protobuf.protocol.GameclientMessageTradeObject"},							base+2658CF
+	{0x7E, "protobuf.protocol.GameclientMessageLookTrade"},								base+265960
+	{0x7F, "protobuf.protocol.GameclientMessageAcceptTrade"},							no payload
+	{0x80, "protobuf.protocol.GameclientMessageRejectTrade"},							no payload
+	{0x81, "protobuf.protocol.GameclientMessageFriendSystemAction"},					base+26598A
+	{0x82, "protobuf.protocol.GameclientMessageUseObject"},								base+264E11
+	{0x83, "protobuf.protocol.GameclientMessageUseTwoObjects"},							base+264EB2
+	{0x84, "protobuf.protocol.GameclientMessageUseOnCreature"},							base+264FA9
+	{0x85, "protobuf.protocol.GameclientMessageTurnObject"},							base+264D91
+	{0x87, "protobuf.protocol.GameclientMessageCloseContainer"},						base+2651C4
+	{0x88, "protobuf.protocol.GameclientMessageUpContainer"},							base+2651C4
+	{0x89, "protobuf.protocol.GameclientMessageEditText"},								base+265C14
+	{0x8A, "protobuf.protocol.GameclientMessageEditList"},								base+265C5F
+	{0x8B, "protobuf.protocol.GameclientMessageToggleWrapState"},						base+264D11
+	{0x8C, "protobuf.protocol.GameclientMessageLook"},									base+26503A
+	{0x8D, "protobuf.protocol.GameclientMessageLookAtCreature"},						base+2650BA
+	{0x8E, "protobuf.protocol.GameclientMessageJoinAggression"},						base+2650BA
+	{0x8F, "protobuf.protocol.GameclientMessageQuickLoot"},								base+266491
+	{0x90, "protobuf.protocol.GameclientMessageLootContainer"},							base+266574
+	{0x91, "protobuf.protocol.GameclientMessageQuickLootBlackWhitelist"},				base+266511
+	{0x92, "protobuf.protocol.GameclientMessageOpenDepotSearch"},						no payload
+	{0x93, "protobuf.protocol.GameclientMessageCloseDepotSearch"},						no payload
+	{0x94, "protobuf.protocol.GameclientMessageDepotSearchType"},						base+26532C
+	{0x95, "protobuf.protocol.GameclientMessageOpenParentContainer"},					base+266CCC
+	{0x96, "protobuf.protocol.GameclientMessageTalk"},									base+26528E
+	{0x97, "protobuf.protocol.GameclientMessageGetChannels"},							no payload
+	{0x98, "protobuf.protocol.GameclientMessageJoinChannel"},							base+26532C
+	{0x99, "protobuf.protocol.GameclientMessageLeaveChannel"},							base+26532C
+	{0x9A, "protobuf.protocol.GameclientMessagePrivateChannel"},						base+265369
+	{0x9B, "protobuf.protocol.GameclientMessageGuildMessage"},							no payload
+	{0x9C, "protobuf.protocol.GameclientMessageEditGuildMessage"},						base+265369
+	{0x9E, "protobuf.protocol.GameclientMessageCloseNPCChannel"},						no payload
+	{0xA0, "protobuf.protocol.GameclientMessageSetTactics"},							base+265205
+	{0xA1, "protobuf.protocol.GameclientMessageAttack"},								base+265343
+	{0xA2, "protobuf.protocol.GameclientMessageFollow"},								base+265343
+	{0xA3, "protobuf.protocol.GameclientMessageInviteToParty"},							base+2650BA
+	{0xA4, "protobuf.protocol.GameclientMessageJoinParty"},								base+2650BA
+	{0xA5, "protobuf.protocol.GameclientMessageRevokeInvitation"},						base+2650BA
+	{0xA6, "protobuf.protocol.GameclientMessagePassLeadership"},						base+2650BA
+	{0xA7, "protobuf.protocol.GameclientMessageLeaveParty"},							no payload
+	{0xA8, "protobuf.protocol.GameclientMessageShareExperience"},						base+2653F8
+	{0xA9, "protobuf.protocol.GameclientMessage"},										placeholder
+	{0xAA, "protobuf.protocol.GameclientMessageOpenChannel"},							no payload
+	{0xAB, "protobuf.protocol.GameclientMessageInviteToChannel"},						base+2653A7
+	{0xAC, "protobuf.protocol.GameclientMessageExcludeFromChannel"},					base+2653A7
+	{0xAD, "protobuf.protocol.GameclientMessageCyclopediaHouseAction"},					base+266D3E
+	{0xBA, "protobuf.protocol.GameclientMessagePreyHuntingTaskAction"},					base+266E9C
+	{0xBE, "protobuf.protocol.GameclientMessageCancel"},								no payload
+	{0xC4, "protobuf.protocol.GameclientMessageTournamentInformation"},					no payload
+	{0xC6, "protobuf.protocol.GameclientMessageSubscribeToUpdates"},					base+264C14
+	{0xC7, "protobuf.protocol.GameclientMessageTournamentLeaderboard"},					base+264C3E
+	{0xC8, "protobuf.protocol.GameclientMessageTournamentTicketAction"},				base+266C48
+	{0xC9, "protobuf.protocol.GameclientMessageGetTransactionDetails"},					base+2650BA
+	{0xCA, "protobuf.protocol.GameclientMessageUpdateExivaOptions"},					base+26683F
+	{0xCB, "protobuf.protocol.GameclientMessageBrowseField"},							base+265249
+	{0xCC, "protobuf.protocol.GameclientMessageSeekInContainer"},						base+2651DB
+	{0xCD, "protobuf.protocol.GameclientMessageInspectObject"},							base+265113
+	{0xCE, "protobuf.protocol.GameclientMessageInspectPlayer"},							base+2650CF
+	{0xCF, "protobuf.protocol.GameclientMessageBlessingsDialog"},						no payload
+	{0xD0, "protobuf.protocol.GameclientMessageTrackQuestflags"},						base+2663FF
+	{0xD1, "protobuf.protocol.GameclientMessageMarketStatistics"},						no payload
+	{0xD2, "protobuf.protocol.GameclientMessageGetOutfit"},								base+26540F
+	{0xD3, "protobuf.protocol.GameclientMessageSetOutfit"},								base+265458
+	{0xD4, "protobuf.protocol.GameclientMessageMount"},									base+2653F8
+	{0xD5, "protobuf.protocol.GameclientMessageApplyImbuement"},						base+2661D8
+	{0xD6, "protobuf.protocol.GameclientMessageApplyClearingCharm"},					base+2651C4
+	{0xD7, "protobuf.protocol.GameclientMessageCloseImbuingDialog"},					no payload
+	{0xD8, "protobuf.protocol.GameclientMessageOpenRewardWall"},						no payload
+	{0xD9, "protobuf.protocol.GameclientMessageDailyRewardHistory"},					no payload
+	{0xDA, "protobuf.protocol.GameclientMessageCollectDailyReward"},					base+266377
+	{0xDB, "protobuf.protocol.GameclientMessageCyclopediaMapAction"},					base+266BEE
+	{0xDC, "protobuf.protocol.GameclientMessageAddBuddy"},								base+265369
+	{0xDD, "protobuf.protocol.GameclientMessageRemoveBuddy"},							base+2650BA
+	{0xDE, "protobuf.protocol.GameclientMessageEditBuddy"},								base+2655B5
+	{0xDF, "protobuf.protocol.GameclientMessageBuddyGroup"},							base+2656AE
+	{0xE0, "protobuf.protocol.GameclientMessageMarkGameNewsAsRead"},					base+26577E
+	{0xE1, "protobuf.protocol.GameclientMessageOpenMonsterCyclopedia"},					no payload
+	{0xE2, "protobuf.protocol.GameclientMessageOpenMonsterCyclopediaMonsters"},			base+2657A6
+	{0xE3, "protobuf.protocol.GameclientMessageOpenMonsterCyclopediaRace"},				base+26532C
+	{0xE4, "protobuf.protocol.GameclientMessageMonsterBonusEffectAction"},				base+265844
+	{0xE5, "protobuf.protocol.GameclientMessageOpenCyclopediaCharacterInfo"},			base+265881
+	{0xE6, "protobuf.protocol.GameclientMessageBugReport"},								base+266037
+	{0xE7, "protobuf.protocol.GameclientMessageThankYou"},								base+2650BA
+	{0xE8, "protobuf.protocol.GameclientMessageGetOfferDescription"},					base+2650BA
+	{0xE9, "protobuf.protocol.GameclientMessageStoreEvent"},							base+26612F
+	{0xEA, "protobuf.protocol.GameclientMessageFeatureEvent"},							base+266456
+	{0xEB, "protobuf.protocol.GameclientMessagePreyAction"},							base+26620D
+	{0xEC, "protobuf.protocol.GameclientMessageSetHirelingName"},						base+26555B
+	{0xED, "protobuf.protocol.GameclientMessageRequestResourceBalance"},				base+2651C4
+	{0xEE, "protobuf.protocol.GameclientMessageGreet"},									base+2650BA
+	{0xEF, "protobuf.protocol.GameclientMessageTransferCurrency"},						base+265FE8
+	{0xF0, "protobuf.protocol.GameclientMessageGetQuestLog"},							no payload
+	{0xF1, "protobuf.protocol.GameclientMessageGetQuestLine"},							base+26532C
+	{0xF2, "protobuf.protocol.GameclientMessageRuleViolationReport"},					base+265B09
+	{0xF3, "protobuf.protocol.GameclientMessageGetObjectInfo"},							base+26626D
+	{0xF4, "protobuf.protocol.GameclientMessageMarketLeave"},							no payload
+	{0xF5, "protobuf.protocol.GameclientMessageMarketBrowse"},							base+26532C
+	{0xF6, "protobuf.protocol.GameclientMessageMarketCreate"},							base+2666D7
+	{0xF7, "protobuf.protocol.GameclientMessageMarketCancel"},							base+26663E
+	{0xF8, "protobuf.protocol.GameclientMessageMarketAccept"},							base+266684
+	{0xF9, "protobuf.protocol.GameclientMessageAnswerModalDialog"},						base+265AD4
+	{0xFA, "protobuf.protocol.GameclientMessageRequestStoreCategories"},				no payload
+	{0xFB, "protobuf.protocol.GameclientMessageRequestStoreOffers"},					base+265CB5
+	{0xFC, "protobuf.protocol.GameclientMessageBuyStoreOffer"},							base+265E73
+	{0xFD, "protobuf.protocol.GameclientMessageOpenTransactionHistory"},				base+2651C4
+	{0xFE, "protobuf.protocol.GameclientMessageGetTransactionHistory"},					base+265FC0
 */
 
 /*
@@ -510,163 +511,163 @@ enum GameOpcodes : Uint8
 	msg+0x44 - getDouble()
 	
 	QT Client(12.30.9287) Gameserver payload functions
-	{0x03, "tibia.protobuf.protocol.GameserverMessageCreatureData"},						base+25A1C7
-	{0x0A, "tibia.protobuf.protocol.GameserverMessagePendingStateEntered"},					no payload
-	{0x0B, "tibia.protobuf.protocol.GameserverMessageReadyForSecondaryConnection"},			base+25F2DA
-	{0x0F, "tibia.protobuf.protocol.GameserverMessageWorldEntered"},						no payload
-	{0x14, "tibia.protobuf.protocol.GameserverMessageLoginError"},							base+25A217
-	{0x15, "tibia.protobuf.protocol.GameserverMessageLoginAdvice"},							base+25A217
-	{0x16, "tibia.protobuf.protocol.GameserverMessageLoginWait"},							base+25AF21
-	{0x17, "tibia.protobuf.protocol.GameserverMessageLoginSuccess"},						base+259C16
-	{0x19, "tibia.protobuf.protocol.GameserverMessageStoreButtonIndicators"},				base+25AF89
-	{0x1D, "tibia.protobuf.protocol.GameserverMessagePing"},								no payload
-	{0x1E, "tibia.protobuf.protocol.GameserverMessagePingBack"},							no payload
-	{0x1F, "tibia.protobuf.protocol.GameserverMessageLoginChallenge"},						base+25A1E6
-	{0x28, "tibia.protobuf.protocol.GameserverMessageDead"},								base+25AFB7
-	{0x29, "tibia.protobuf.protocol.GameserverMessageStash"},								base+26102B
-	{0x2A, "tibia.protobuf.protocol.GameserverMessageSpecialContainersAvailable"},			base+25AF89
-	{0x2B, "tibia.protobuf.protocol.GameserverMessagePartyHuntAnalyser"},					base+261EEF
-	{0x63, "tibia.protobuf.protocol.GameserverMessageClientCheck"},							base+256932
-	{0x64, "tibia.protobuf.protocol.GameserverMessageFullMap"},								base+257340
-	{0x65, "tibia.protobuf.protocol.GameserverMessageTopRow"},								base+257431
-	{0x66, "tibia.protobuf.protocol.GameserverMessageRightColumn"},							base+2573F1
-	{0x67, "tibia.protobuf.protocol.GameserverMessageBottomRow"},							base+25746B
-	{0x68, "tibia.protobuf.protocol.GameserverMessageLeftColumn"},							base+2573B1
-	{0x69, "tibia.protobuf.protocol.GameserverMessageFieldData"},							base+2574A5
-	{0x6A, "tibia.protobuf.protocol.GameserverMessageCreateOnMap"},							base+259622
-	{0x6B, "tibia.protobuf.protocol.GameserverMessageChangeOnMap"},							base+259726
-	{0x6C, "tibia.protobuf.protocol.GameserverMessageDeleteOnMap"},							base+2597DD
-	{0x6D, "tibia.protobuf.protocol.GameserverMessageMoveCreature"},						base+25987E
-	{0x6E, "tibia.protobuf.protocol.GameserverMessageContainer"},							base+25AFFE
-	{0x6F, "tibia.protobuf.protocol.GameserverMessageCloseContainer"},						base+25A5AB
-	{0x70, "tibia.protobuf.protocol.GameserverMessageCreateInContainer"},					base+25B118
-	{0x71, "tibia.protobuf.protocol.GameserverMessageChangeInContainer"},					base+25A659
-	{0x72, "tibia.protobuf.protocol.GameserverMessageDeleteInContainer"},					base+25B118
-	{0x74, "tibia.protobuf.protocol.GameserverMessageFriendSystemData"},					base+26070E
-	{0x75, "tibia.protobuf.protocol.GameserverMessageScreenshotEvent"},						base+25A5AB
-	{0x76, "tibia.protobuf.protocol.GameserverMessageInspectionList"},						base+25A298
-	{0x77, "tibia.protobuf.protocol.GameserverMessageInspectionState"},						base+25A56D
-	{0x78, "tibia.protobuf.protocol.GameserverMessageSetInventory"},						base+25A267
-	{0x79, "tibia.protobuf.protocol.GameserverMessageDeleteInventory"},						base+25A5AB
-	{0x7A, "tibia.protobuf.protocol.GameserverMessageNPCOffer"},							base+25B16E
-	{0x7B, "tibia.protobuf.protocol.GameserverMessagePlayerGoods"},							base+25B31A
-	{0x7C, "tibia.protobuf.protocol.GameserverMessageCloseNPCTrade"},						no payload
-	{0x7D, "tibia.protobuf.protocol.GameserverMessageOwnOffer"},							base+25B37E
-	{0x7E, "tibia.protobuf.protocol.GameserverMessageCounterOffer"},						base+25B37E
-	{0x7F, "tibia.protobuf.protocol.GameserverMessageCloseTrade"},							no payload
-	{0x82, "tibia.protobuf.protocol.GameserverMessageAmbientLight"},						base+2592F9
-	{0x83, "tibia.protobuf.protocol.GameserverMessageGraphicalEffects"},					base+25932D
-	{0x84, "tibia.protobuf.protocol.GameserverMessageRemoveGraphicalEffect"},				base+259549
-	{0x8B, "tibia.protobuf.protocol.GameserverMessageCreatureUpdate"},						base+259D86
-	{0x8C, "tibia.protobuf.protocol.GameserverMessageCreatureHealth"},						base+259E68
-	{0x8D, "tibia.protobuf.protocol.GameserverMessageCreatureLight"},						base+25A6A0
-	{0x8E, "tibia.protobuf.protocol.GameserverMessageCreatureOutfit"},						base+259EA3
-	{0x8F, "tibia.protobuf.protocol.GameserverMessageCreatureSpeed"},						base+259EF2
-	{0x90, "tibia.protobuf.protocol.GameserverMessageCreatureSkull"},						base+259F49
-	{0x91, "tibia.protobuf.protocol.GameserverMessageCreatureParty"},						base+259F87
-	{0x92, "tibia.protobuf.protocol.GameserverMessageCreatureUnpass"},						base+259FC5
-	{0x93, "tibia.protobuf.protocol.GameserverMessageCreatureMarks"},						base+25A000
-	{0x94, "tibia.protobuf.protocol.GameserverMessageDepotSearchResult"},					base+261966
-	{0x95, "tibia.protobuf.protocol.GameserverMessageCreatureType"},						base+25B3FA
-	{0x96, "tibia.protobuf.protocol.GameserverMessageEditText"},							base+25B43F
-	{0x97, "tibia.protobuf.protocol.GameserverMessageEditList"},							base+25B541
-	{0x98, "tibia.protobuf.protocol.GameserverMessageShowGameNews"},						base+25B5B4
-	{0x99, "tibia.protobuf.protocol.GameserverMessageDepotSearchDetailList"},				base+2619C7
-	{0x9A, "tibia.protobuf.protocol.GameserverMessageCloseDepotSearch"},					no payload
-	{0x9B, "tibia.protobuf.protocol.GameserverMessageBlessingsDialog"},						base+25A6F3
-	{0x9C, "tibia.protobuf.protocol.GameserverMessageBlessings"},							base+25A8F3
-	{0x9D, "tibia.protobuf.protocol.GameserverMessageSwitchPreset"},						base+25B5E2
-	{0x9E, "tibia.protobuf.protocol.GameserverMessagePremiumTrigger"},						base+25A9B7
-	{0x9F, "tibia.protobuf.protocol.GameserverMessagePlayerDataBasic"},						base+25A5C7
-	{0xA0, "tibia.protobuf.protocol.GameserverMessagePlayerDataCurrent"},					base+25A043
-	{0xA1, "tibia.protobuf.protocol.GameserverMessagePlayerSkills"},						base+25AC9F
-	{0xA2, "tibia.protobuf.protocol.GameserverMessagePlayerState"},							base+25AA14
-	{0xA3, "tibia.protobuf.protocol.GameserverMessageClearTarget"},							base+25B5E2
-	{0xA4, "tibia.protobuf.protocol.GameserverMessageSpellDelay"},							base+25B5FB
-	{0xA5, "tibia.protobuf.protocol.GameserverMessageSpellGroupDelay"},						base+25B5FB
-	{0xA6, "tibia.protobuf.protocol.GameserverMessageMultiUseDelay"},						base+25B5E2
-	{0xA7, "tibia.protobuf.protocol.GameserverMessageSetTactics"},							base+25B62C
-	{0xA8, "tibia.protobuf.protocol.GameserverMessageSetStoreButtonDeeplink"},				base+25A9F7
-	{0xA9, "tibia.protobuf.protocol.GameserverMessageRestingAreaState"},					base+25EDF1
-	{0xAA, "tibia.protobuf.protocol.GameserverMessageTalk"},								base+259921
-	{0xAB, "tibia.protobuf.protocol.GameserverMessageChannels"},							base+25B67E
-	{0xAC, "tibia.protobuf.protocol.GameserverMessageOpenChannel"},							base+25AADB
-	{0xAD, "tibia.protobuf.protocol.GameserverMessagePrivateChannel"},						base+25A217
-	{0xAE, "tibia.protobuf.protocol.GameserverMessageEditGuildMessage"},					base+25A217
-	{0xB2, "tibia.protobuf.protocol.GameserverMessageOpenOwnChannel"},						base+25AADB
-	{0xB3, "tibia.protobuf.protocol.GameserverMessageCloseChannel"},						base+25B70C
-	{0xB4, "tibia.protobuf.protocol.GameserverMessageMessage"},								base+259A88
-	{0xB5, "tibia.protobuf.protocol.GameserverMessageSnapBack"},							base+25A5AB
-	{0xB6, "tibia.protobuf.protocol.GameserverMessageWait"},								base+25B70C
-	{0xB7, "tibia.protobuf.protocol.GameserverMessageUnjustifiedPoints"},					base+25AC45
-	{0xB8, "tibia.protobuf.protocol.GameserverMessagePvpSituations"},						base+25A5AB
-	{0xB9, "tibia.protobuf.protocol.GameserverMessageBestiaryTracker"},						base+25AE81
-	{0xBA, "tibia.protobuf.protocol.GameserverMessagePreyHuntingTaskBaseData"},				base+262048
-	{0xBB, "tibia.protobuf.protocol.GameserverMessagePreyHuntingTaskData"},					base+262163
-	{0xBE, "tibia.protobuf.protocol.GameserverMessageTopFloor"},							base+2595B4
-	{0xBF, "tibia.protobuf.protocol.GameserverMessageBottomFloor"},							base+2595EB
-	{0xC0, "tibia.protobuf.protocol.GameserverMessageUpdateLootContainers"},				base+25F488
-	{0xC1, "tibia.protobuf.protocol.GameserverMessagePlayerDataTournament"},				base+25B5E2
-	{0xC3, "tibia.protobuf.protocol.GameserverMessageCyclopediaHouseActionResult"},			base+261E93
-	{0xC4, "tibia.protobuf.protocol.GameserverMessageTournamentInformation"},				base+261339
-	{0xC5, "tibia.protobuf.protocol.GameserverMessageTournamentLeaderboard"},				base+2610A1
-	{0xC6, "tibia.protobuf.protocol.GameserverMessageCyclopediaStaticHouseData"},			base+261AAE
-	{0xC7, "tibia.protobuf.protocol.GameserverMessageCyclopediaCurrentHouseData"},			base+261B99
-	{0xC8, "tibia.protobuf.protocol.GameserverMessageOutfit"},								base+25B728
-	{0xC9, "tibia.protobuf.protocol.GameserverMessageExivaSuppressed"},						no payload
-	{0xCA, "tibia.protobuf.protocol.GameserverMessageUpdateExivaOptions"},					base+2604C0
-	{0xCB, "tibia.protobuf.protocol.GameserverMessageTransactionDetails"},					base+25BA26
-	{0xCC, "tibia.protobuf.protocol.GameserverMessageImpactTracking"},						base+25B5FB
-	{0xCD, "tibia.protobuf.protocol.GameserverMessageMarketStatistics"},					base+25BCC4
-	{0xCE, "tibia.protobuf.protocol.GameserverMessageItemWasted"},							base+25B70C
-	{0xCF, "tibia.protobuf.protocol.GameserverMessageItemLooted"},							base+25B979
-	{0xD0, "tibia.protobuf.protocol.GameserverMessageTrackQuestflags"},						base+25F344
-	{0xD1, "tibia.protobuf.protocol.GameserverMessageKillTracking"},						base+25B9DC
-	{0xD2, "tibia.protobuf.protocol.GameserverMessageBuddyData"},							base+25BD22
-	{0xD3, "tibia.protobuf.protocol.GameserverMessageBuddyStatusChange"},					base+25BE63
-	{0xD4, "tibia.protobuf.protocol.GameserverMessageBuddyGroupData"},						base+25BEA3
-	{0xD5, "tibia.protobuf.protocol.GameserverMessageMonsterCyclopedia"},					base+25BF5E
-	{0xD6, "tibia.protobuf.protocol.GameserverMessageMonsterCyclopediaMonsters"},			base+25BFFE
-	{0xD7, "tibia.protobuf.protocol.GameserverMessageMonsterCyclopediaRace"},				base+25C0B4
-	{0xD8, "tibia.protobuf.protocol.GameserverMessageMonsterCyclopediaBonusEffects"},		base+25C419
-	{0xD9, "tibia.protobuf.protocol.GameserverMessageMonsterCyclopediaNewDetails"},			base+25B70C
-	{0xDA, "tibia.protobuf.protocol.GameserverMessageCyclopediaCharacterInfo"},				base+25C5CB
-	{0xDB, "tibia.protobuf.protocol.GameserverMessageHirelingNameChange"},					base+25D97F
-	{0xDC, "tibia.protobuf.protocol.GameserverMessageTutorialHint"},						base+25A5AB
-	{0xDD, "tibia.protobuf.protocol.GameserverMessageCyclopediaMapData"},					base+25D9AD
-	{0xDE, "tibia.protobuf.protocol.GameserverMessageDailyRewardCollectionState"},			base+25F32B
-	{0xDF, "tibia.protobuf.protocol.GameserverMessageCreditBalance"},						base+260334
-	{0xE0, "tibia.protobuf.protocol.GameserverMessageStoreError"},							base+25ED48
-	{0xE1, "tibia.protobuf.protocol.GameserverMessageRequestPurchaseData"},					base+25FF54
-	{0xE2, "tibia.protobuf.protocol.GameserverMessageOpenRewardWall"},						base+25EE61
-	{0xE3, "tibia.protobuf.protocol.GameserverMessageCloseRewardWall"},						no payload
-	{0xE4, "tibia.protobuf.protocol.GameserverMessageDailyRewardBasic"},					base+25EF33
-	{0xE5, "tibia.protobuf.protocol.GameserverMessageDailyRewardHistory"},					base+25F2A2
-	{0xE6, "tibia.protobuf.protocol.GameserverMessagePreyFreeListRerollAvailability"},		base+25E700
-	{0xE7, "tibia.protobuf.protocol.GameserverMessagePreyTimeLeft"},						base+25E700
-	{0xE8, "tibia.protobuf.protocol.GameserverMessagePreyData"},							base+25E734
-	{0xE9, "tibia.protobuf.protocol.GameserverMessagePreyPrices"},							base+25E951
-	{0xEA, "tibia.protobuf.protocol.GameserverMessageOfferDescription"},					base+25E9D6
-	{0xEB, "tibia.protobuf.protocol.GameserverMessageImbuingDialogRefresh"},				base+25EA37
-	{0xEC, "tibia.protobuf.protocol.GameserverMessageCloseImbuingDialog"},					no payload
-	{0xED, "tibia.protobuf.protocol.GameserverMessageShowMessageDialog"},					base+25ED48
-	{0xEE, "tibia.protobuf.protocol.GameserverMessageResourceBalance"},						base+25EDAC
-	{0xEF, "tibia.protobuf.protocol.GameserverMessageTibiaTime"},							base+2592F9
-	{0xF0, "tibia.protobuf.protocol.GameserverMessageQuestLog"},							base+25DE71
-	{0xF1, "tibia.protobuf.protocol.GameserverMessageQuestLine"},							base+25DF0E
-	{0xF2, "tibia.protobuf.protocol.GameserverMessageUpdatingShopBalance"},					base+2603A1
-	{0xF3, "tibia.protobuf.protocol.GameserverMessageChannelEvent"},						base+25DFF6
-	{0xF4, "tibia.protobuf.protocol.GameserverMessageObjectInfo"},							base+25E070
-	{0xF5, "tibia.protobuf.protocol.GameserverMessagePlayerInventory"},						base+25E0FF
-	{0xF6, "tibia.protobuf.protocol.GameserverMessageMarketEnter"},							base+25E15D
-	{0xF7, "tibia.protobuf.protocol.GameserverMessageMarketLeave"},							no payload
-	{0xF8, "tibia.protobuf.protocol.GameserverMessageMarketDetail"},						base+25E1D1
-	{0xF9, "tibia.protobuf.protocol.GameserverMessageMarketBrowse"},						base+25F4F2
-	{0xFA, "tibia.protobuf.protocol.GameserverMessageShowModalDialog"},						base+25F73F
-	{0xFB, "tibia.protobuf.protocol.GameserverMessageStoreCategories"},						base+25F919
-	{0xFC, "tibia.protobuf.protocol.GameserverMessageStoreOffers"},							base+25FA67
-	{0xFD, "tibia.protobuf.protocol.GameserverMessageTransactionHistory"},					base+2603C0
-	{0xFE, "tibia.protobuf.protocol.GameserverMessageStoreSuccess"},						base+25ED48
+	{0x03, "protobuf.protocol.GameserverMessageCreatureData"},							base+25A1C7
+	{0x0A, "protobuf.protocol.GameserverMessagePendingStateEntered"},					no payload
+	{0x0B, "protobuf.protocol.GameserverMessageReadyForSecondaryConnection"},			base+25F2DA
+	{0x0F, "protobuf.protocol.GameserverMessageWorldEntered"},							no payload
+	{0x14, "protobuf.protocol.GameserverMessageLoginError"},							base+25A217
+	{0x15, "protobuf.protocol.GameserverMessageLoginAdvice"},							base+25A217
+	{0x16, "protobuf.protocol.GameserverMessageLoginWait"},								base+25AF21
+	{0x17, "protobuf.protocol.GameserverMessageLoginSuccess"},							base+259C16
+	{0x19, "protobuf.protocol.GameserverMessageStoreButtonIndicators"},					base+25AF89
+	{0x1D, "protobuf.protocol.GameserverMessagePing"},									no payload
+	{0x1E, "protobuf.protocol.GameserverMessagePingBack"},								no payload
+	{0x1F, "protobuf.protocol.GameserverMessageLoginChallenge"},						base+25A1E6
+	{0x28, "protobuf.protocol.GameserverMessageDead"},									base+25AFB7
+	{0x29, "protobuf.protocol.GameserverMessageStash"},									base+26102B
+	{0x2A, "protobuf.protocol.GameserverMessageSpecialContainersAvailable"},			base+25AF89
+	{0x2B, "protobuf.protocol.GameserverMessagePartyHuntAnalyser"},						base+261EEF
+	{0x63, "protobuf.protocol.GameserverMessageClientCheck"},							base+256932
+	{0x64, "protobuf.protocol.GameserverMessageFullMap"},								base+257340
+	{0x65, "protobuf.protocol.GameserverMessageTopRow"},								base+257431
+	{0x66, "protobuf.protocol.GameserverMessageRightColumn"},							base+2573F1
+	{0x67, "protobuf.protocol.GameserverMessageBottomRow"},								base+25746B
+	{0x68, "protobuf.protocol.GameserverMessageLeftColumn"},							base+2573B1
+	{0x69, "protobuf.protocol.GameserverMessageFieldData"},								base+2574A5
+	{0x6A, "protobuf.protocol.GameserverMessageCreateOnMap"},							base+259622
+	{0x6B, "protobuf.protocol.GameserverMessageChangeOnMap"},							base+259726
+	{0x6C, "protobuf.protocol.GameserverMessageDeleteOnMap"},							base+2597DD
+	{0x6D, "protobuf.protocol.GameserverMessageMoveCreature"},							base+25987E
+	{0x6E, "protobuf.protocol.GameserverMessageContainer"},								base+25AFFE
+	{0x6F, "protobuf.protocol.GameserverMessageCloseContainer"},						base+25A5AB
+	{0x70, "protobuf.protocol.GameserverMessageCreateInContainer"},						base+25B118
+	{0x71, "protobuf.protocol.GameserverMessageChangeInContainer"},						base+25A659
+	{0x72, "protobuf.protocol.GameserverMessageDeleteInContainer"},						base+25B118
+	{0x74, "protobuf.protocol.GameserverMessageFriendSystemData"},						base+26070E
+	{0x75, "protobuf.protocol.GameserverMessageScreenshotEvent"},						base+25A5AB
+	{0x76, "protobuf.protocol.GameserverMessageInspectionList"},						base+25A298
+	{0x77, "protobuf.protocol.GameserverMessageInspectionState"},						base+25A56D
+	{0x78, "protobuf.protocol.GameserverMessageSetInventory"},							base+25A267
+	{0x79, "protobuf.protocol.GameserverMessageDeleteInventory"},						base+25A5AB
+	{0x7A, "protobuf.protocol.GameserverMessageNPCOffer"},								base+25B16E
+	{0x7B, "protobuf.protocol.GameserverMessagePlayerGoods"},							base+25B31A
+	{0x7C, "protobuf.protocol.GameserverMessageCloseNPCTrade"},							no payload
+	{0x7D, "protobuf.protocol.GameserverMessageOwnOffer"},								base+25B37E
+	{0x7E, "protobuf.protocol.GameserverMessageCounterOffer"},							base+25B37E
+	{0x7F, "protobuf.protocol.GameserverMessageCloseTrade"},							no payload
+	{0x82, "protobuf.protocol.GameserverMessageAmbientLight"},							base+2592F9
+	{0x83, "protobuf.protocol.GameserverMessageGraphicalEffects"},						base+25932D
+	{0x84, "protobuf.protocol.GameserverMessageRemoveGraphicalEffect"},					base+259549
+	{0x8B, "protobuf.protocol.GameserverMessageCreatureUpdate"},						base+259D86
+	{0x8C, "protobuf.protocol.GameserverMessageCreatureHealth"},						base+259E68
+	{0x8D, "protobuf.protocol.GameserverMessageCreatureLight"},							base+25A6A0
+	{0x8E, "protobuf.protocol.GameserverMessageCreatureOutfit"},						base+259EA3
+	{0x8F, "protobuf.protocol.GameserverMessageCreatureSpeed"},							base+259EF2
+	{0x90, "protobuf.protocol.GameserverMessageCreatureSkull"},							base+259F49
+	{0x91, "protobuf.protocol.GameserverMessageCreatureParty"},							base+259F87
+	{0x92, "protobuf.protocol.GameserverMessageCreatureUnpass"},						base+259FC5
+	{0x93, "protobuf.protocol.GameserverMessageCreatureMarks"},							base+25A000
+	{0x94, "protobuf.protocol.GameserverMessageDepotSearchResult"},						base+261966
+	{0x95, "protobuf.protocol.GameserverMessageCreatureType"},							base+25B3FA
+	{0x96, "protobuf.protocol.GameserverMessageEditText"},								base+25B43F
+	{0x97, "protobuf.protocol.GameserverMessageEditList"},								base+25B541
+	{0x98, "protobuf.protocol.GameserverMessageShowGameNews"},							base+25B5B4
+	{0x99, "protobuf.protocol.GameserverMessageDepotSearchDetailList"},					base+2619C7
+	{0x9A, "protobuf.protocol.GameserverMessageCloseDepotSearch"},						no payload
+	{0x9B, "protobuf.protocol.GameserverMessageBlessingsDialog"},						base+25A6F3
+	{0x9C, "protobuf.protocol.GameserverMessageBlessings"},								base+25A8F3
+	{0x9D, "protobuf.protocol.GameserverMessageSwitchPreset"},							base+25B5E2
+	{0x9E, "protobuf.protocol.GameserverMessagePremiumTrigger"},						base+25A9B7
+	{0x9F, "protobuf.protocol.GameserverMessagePlayerDataBasic"},						base+25A5C7
+	{0xA0, "protobuf.protocol.GameserverMessagePlayerDataCurrent"},						base+25A043
+	{0xA1, "protobuf.protocol.GameserverMessagePlayerSkills"},							base+25AC9F
+	{0xA2, "protobuf.protocol.GameserverMessagePlayerState"},							base+25AA14
+	{0xA3, "protobuf.protocol.GameserverMessageClearTarget"},							base+25B5E2
+	{0xA4, "protobuf.protocol.GameserverMessageSpellDelay"},							base+25B5FB
+	{0xA5, "protobuf.protocol.GameserverMessageSpellGroupDelay"},						base+25B5FB
+	{0xA6, "protobuf.protocol.GameserverMessageMultiUseDelay"},							base+25B5E2
+	{0xA7, "protobuf.protocol.GameserverMessageSetTactics"},							base+25B62C
+	{0xA8, "protobuf.protocol.GameserverMessageSetStoreButtonDeeplink"},				base+25A9F7
+	{0xA9, "protobuf.protocol.GameserverMessageRestingAreaState"},						base+25EDF1
+	{0xAA, "protobuf.protocol.GameserverMessageTalk"},									base+259921
+	{0xAB, "protobuf.protocol.GameserverMessageChannels"},								base+25B67E
+	{0xAC, "protobuf.protocol.GameserverMessageOpenChannel"},							base+25AADB
+	{0xAD, "protobuf.protocol.GameserverMessagePrivateChannel"},						base+25A217
+	{0xAE, "protobuf.protocol.GameserverMessageEditGuildMessage"},						base+25A217
+	{0xB2, "protobuf.protocol.GameserverMessageOpenOwnChannel"},						base+25AADB
+	{0xB3, "protobuf.protocol.GameserverMessageCloseChannel"},							base+25B70C
+	{0xB4, "protobuf.protocol.GameserverMessageMessage"},								base+259A88
+	{0xB5, "protobuf.protocol.GameserverMessageSnapBack"},								base+25A5AB
+	{0xB6, "protobuf.protocol.GameserverMessageWait"},									base+25B70C
+	{0xB7, "protobuf.protocol.GameserverMessageUnjustifiedPoints"},						base+25AC45
+	{0xB8, "protobuf.protocol.GameserverMessagePvpSituations"},							base+25A5AB
+	{0xB9, "protobuf.protocol.GameserverMessageBestiaryTracker"},						base+25AE81
+	{0xBA, "protobuf.protocol.GameserverMessagePreyHuntingTaskBaseData"},				base+262048
+	{0xBB, "protobuf.protocol.GameserverMessagePreyHuntingTaskData"},					base+262163
+	{0xBE, "protobuf.protocol.GameserverMessageTopFloor"},								base+2595B4
+	{0xBF, "protobuf.protocol.GameserverMessageBottomFloor"},							base+2595EB
+	{0xC0, "protobuf.protocol.GameserverMessageUpdateLootContainers"},					base+25F488
+	{0xC1, "protobuf.protocol.GameserverMessagePlayerDataTournament"},					base+25B5E2
+	{0xC3, "protobuf.protocol.GameserverMessageCyclopediaHouseActionResult"},			base+261E93
+	{0xC4, "protobuf.protocol.GameserverMessageTournamentInformation"},					base+261339
+	{0xC5, "protobuf.protocol.GameserverMessageTournamentLeaderboard"},					base+2610A1
+	{0xC6, "protobuf.protocol.GameserverMessageCyclopediaStaticHouseData"},				base+261AAE
+	{0xC7, "protobuf.protocol.GameserverMessageCyclopediaCurrentHouseData"},			base+261B99
+	{0xC8, "protobuf.protocol.GameserverMessageOutfit"},								base+25B728
+	{0xC9, "protobuf.protocol.GameserverMessageExivaSuppressed"},						no payload
+	{0xCA, "protobuf.protocol.GameserverMessageUpdateExivaOptions"},					base+2604C0
+	{0xCB, "protobuf.protocol.GameserverMessageTransactionDetails"},					base+25BA26
+	{0xCC, "protobuf.protocol.GameserverMessageImpactTracking"},						base+25B5FB
+	{0xCD, "protobuf.protocol.GameserverMessageMarketStatistics"},						base+25BCC4
+	{0xCE, "protobuf.protocol.GameserverMessageItemWasted"},							base+25B70C
+	{0xCF, "protobuf.protocol.GameserverMessageItemLooted"},							base+25B979
+	{0xD0, "protobuf.protocol.GameserverMessageTrackQuestflags"},						base+25F344
+	{0xD1, "protobuf.protocol.GameserverMessageKillTracking"},							base+25B9DC
+	{0xD2, "protobuf.protocol.GameserverMessageBuddyData"},								base+25BD22
+	{0xD3, "protobuf.protocol.GameserverMessageBuddyStatusChange"},						base+25BE63
+	{0xD4, "protobuf.protocol.GameserverMessageBuddyGroupData"},						base+25BEA3
+	{0xD5, "protobuf.protocol.GameserverMessageMonsterCyclopedia"},						base+25BF5E
+	{0xD6, "protobuf.protocol.GameserverMessageMonsterCyclopediaMonsters"},				base+25BFFE
+	{0xD7, "protobuf.protocol.GameserverMessageMonsterCyclopediaRace"},					base+25C0B4
+	{0xD8, "protobuf.protocol.GameserverMessageMonsterCyclopediaBonusEffects"},			base+25C419
+	{0xD9, "protobuf.protocol.GameserverMessageMonsterCyclopediaNewDetails"},			base+25B70C
+	{0xDA, "protobuf.protocol.GameserverMessageCyclopediaCharacterInfo"},				base+25C5CB
+	{0xDB, "protobuf.protocol.GameserverMessageHirelingNameChange"},					base+25D97F
+	{0xDC, "protobuf.protocol.GameserverMessageTutorialHint"},							base+25A5AB
+	{0xDD, "protobuf.protocol.GameserverMessageCyclopediaMapData"},						base+25D9AD
+	{0xDE, "protobuf.protocol.GameserverMessageDailyRewardCollectionState"},			base+25F32B
+	{0xDF, "protobuf.protocol.GameserverMessageCreditBalance"},							base+260334
+	{0xE0, "protobuf.protocol.GameserverMessageStoreError"},							base+25ED48
+	{0xE1, "protobuf.protocol.GameserverMessageRequestPurchaseData"},					base+25FF54
+	{0xE2, "protobuf.protocol.GameserverMessageOpenRewardWall"},						base+25EE61
+	{0xE3, "protobuf.protocol.GameserverMessageCloseRewardWall"},						no payload
+	{0xE4, "protobuf.protocol.GameserverMessageDailyRewardBasic"},						base+25EF33
+	{0xE5, "protobuf.protocol.GameserverMessageDailyRewardHistory"},					base+25F2A2
+	{0xE6, "protobuf.protocol.GameserverMessagePreyFreeListRerollAvailability"},		base+25E700
+	{0xE7, "protobuf.protocol.GameserverMessagePreyTimeLeft"},							base+25E700
+	{0xE8, "protobuf.protocol.GameserverMessagePreyData"},								base+25E734
+	{0xE9, "protobuf.protocol.GameserverMessagePreyPrices"},							base+25E951
+	{0xEA, "protobuf.protocol.GameserverMessageOfferDescription"},						base+25E9D6
+	{0xEB, "protobuf.protocol.GameserverMessageImbuingDialogRefresh"},					base+25EA37
+	{0xEC, "protobuf.protocol.GameserverMessageCloseImbuingDialog"},					no payload
+	{0xED, "protobuf.protocol.GameserverMessageShowMessageDialog"},						base+25ED48
+	{0xEE, "protobuf.protocol.GameserverMessageResourceBalance"},						base+25EDAC
+	{0xEF, "protobuf.protocol.GameserverMessageTibiaTime"},								base+2592F9
+	{0xF0, "protobuf.protocol.GameserverMessageQuestLog"},								base+25DE71
+	{0xF1, "protobuf.protocol.GameserverMessageQuestLine"},								base+25DF0E
+	{0xF2, "protobuf.protocol.GameserverMessageUpdatingShopBalance"},					base+2603A1
+	{0xF3, "protobuf.protocol.GameserverMessageChannelEvent"},							base+25DFF6
+	{0xF4, "protobuf.protocol.GameserverMessageObjectInfo"},							base+25E070
+	{0xF5, "protobuf.protocol.GameserverMessagePlayerInventory"},						base+25E0FF
+	{0xF6, "protobuf.protocol.GameserverMessageMarketEnter"},							base+25E15D
+	{0xF7, "protobuf.protocol.GameserverMessageMarketLeave"},							no payload
+	{0xF8, "protobuf.protocol.GameserverMessageMarketDetail"},							base+25E1D1
+	{0xF9, "protobuf.protocol.GameserverMessageMarketBrowse"},							base+25F4F2
+	{0xFA, "protobuf.protocol.GameserverMessageShowModalDialog"},						base+25F73F
+	{0xFB, "protobuf.protocol.GameserverMessageStoreCategories"},						base+25F919
+	{0xFC, "protobuf.protocol.GameserverMessageStoreOffers"},							base+25FA67
+	{0xFD, "protobuf.protocol.GameserverMessageTransactionHistory"},					base+2603C0
+	{0xFE, "protobuf.protocol.GameserverMessageStoreSuccess"},							base+25ED48
 */
 
 class Thing;
@@ -698,6 +699,7 @@ class ProtocolGame : public Protocol
 		void sendPing();
 		void sendPingBack();
 		void sendConnectionPingBack();
+		void sendUpdateTile(const Position& position);
 
 		//Walking Events
 		void sendAutoWalk(const std::vector<Direction>& path);
@@ -718,7 +720,7 @@ class ProtocolGame : public Protocol
 		void sendNPCClose();
 
 		//Trade System
-		void sendRequestTrade(const Position& position, Uint16 thingId, Uint8 stackpos, Uint32 creatureId);
+		void sendRequestTrade(const Position& position, Uint16 itemId, Uint8 stackpos, Uint32 creatureId);
 		void sendLookInTrade(bool counterOffer, Uint8 index);
 		void sendAcceptTrade();
 		void sendCloseTrade();
@@ -795,7 +797,7 @@ class ProtocolGame : public Protocol
 		void sendAddVip(const std::string& name);
 		void sendRemoveVip(Uint32 playerGUID);
 		void sendEditVip(Uint32 playerGUID, const std::string& description, Uint32 iconId, bool notifyLogin, std::vector<Uint8>& groupIds);
-		void sendAddVipGroup(Uint8 groupType, const std::string& name);
+		void sendVipGroupAction(VipGroupActions groupAction, Uint8 groupId, const std::string& name);
 		void sendFriendSystemAction();
 
 		//Reports System
@@ -881,21 +883,20 @@ class ProtocolGame : public Protocol
 		//Some Ingame Stuff Sends
 		void sendThankYou(Uint32 statementId);
 		void sendGetOfferDescription(Uint32 offerId);
-		void sendRequestResourceBalance(Uint8 resource);
+		void sendRequestResourceBalance(ResourceBalanceTypes resource);
 		void sendGreet(Uint32 statementId);
 		void sendGuildMessage();
 		void sendEditGuildMessage(const std::string& message);
 		void sendBlessingsDialog();
-		void sendClientCheck();
+		void sendClientCheck(std::vector<Uint8>& data);
 		void sendTeleport(const Position& position);
 
 	private:
-		bool canSee(const Position& position);
-
 		MessageMode translateMessageModeFromServer(Uint8 mode);
 		Uint8 translateMessageModeToServer(MessageMode mode);
 
 		//Main Functions
+		void parseOtclient(InputMessage& msg);
 		void parseCreatureData(InputMessage& msg);
 		void parseLogin(InputMessage& msg);
 		void parseLoginOrPending(InputMessage& msg);

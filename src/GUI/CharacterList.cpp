@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -27,6 +27,7 @@
 #include "../GUI_Elements/GUI_ListBox.h"
 #include "../GUI_Elements/GUI_Label.h"
 #include "../GUI_Elements/GUI_CharacterView.h"
+#include "../game.h"
 
 #define CHARACTERLIST_TITLE "Select Character"
 #define CHARACTERLIST_WIDTH 236
@@ -34,9 +35,14 @@
 #define CHARACTERLIST_HEIGHT2 384
 #define CHARACTERLIST_CANCEL_EVENTID 1000
 #define CHARACTERLIST_OK_EVENTID 1001
-#define CHARACTERLIST_CHARACTERS_EVENTID 1002
+#define CHARACTERLIST_CHARACTERS_EVENTID 3000
 
 extern Engine g_engine;
+extern Game g_game;
+
+extern Uint32 g_frameTime;
+Uint32 g_reloginTimer = 0;
+bool g_reloginAvailable = false;
 
 void characterlist_Events(Uint32 event, Sint32)
 {
@@ -48,7 +54,8 @@ void characterlist_Events(Uint32 event, Sint32)
 			if(pWindow && pWindow->getInternalID() == GUI_WINDOW_CHARACTERLIST)
 			{
 				g_engine.removeWindow(pWindow);
-				g_engine.releaseConnection();
+				if(!g_engine.isIngame())
+					g_engine.releaseConnection();
 			}
 		}
 		break;
@@ -58,9 +65,19 @@ void characterlist_Events(Uint32 event, Sint32)
 			if(pWindow && pWindow->getInternalID() == GUI_WINDOW_CHARACTERLIST)
 			{
 				g_engine.removeWindow(pWindow);
-
-				UTIL_messageBox("Connecting", "Connecting to the game world. Please wait.");
-				g_engine.issueNewConnection(true);
+				if(g_engine.isIngame())
+				{
+					//Send logout + schedule relogin
+					g_game.sendLogout();
+					g_reloginAvailable = true;
+					g_reloginTimer = g_frameTime + 5000;
+				}
+				else
+				{
+					UTIL_messageBox("Connecting", "Connecting to the game world. Please wait.");
+					g_engine.issueNewConnection(true);
+					UTIL_createCharacterList();
+				}
 			}
 		}
 		break;
@@ -116,9 +133,9 @@ void UTIL_createCharacterList()
 		else
 		{
 			if(accountPremDays <= 5)
-				SDL_snprintf(g_buffer, sizeof(g_buffer), "Premium Account (\x0E\xF8\x60\x60%u day%s left\x0F)", accountPremDays, (accountPremDays > 1 ? "s" : ""));
+				SDL_snprintf(g_buffer, sizeof(g_buffer), "Premium Account (\x0E\xF8\x60\x60%u day%s left\x0F)", accountPremDays, (accountPremDays != 1 ? "s" : ""));
 			else
-				SDL_snprintf(g_buffer, sizeof(g_buffer), "Premium Account (%u day%s left)", accountPremDays, (accountPremDays > 1 ? "s" : ""));
+				SDL_snprintf(g_buffer, sizeof(g_buffer), "Premium Account (%u day%s left)", accountPremDays, (accountPremDays != 1 ? "s" : ""));
 
 			newLabel = new GUI_Label(iRect(18, (newCharacterList ? 312 : 222), 0, 0), g_buffer);
 			newWindow->addChild(newLabel);
@@ -156,4 +173,15 @@ void UTIL_createCharacterList()
 	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, (newCharacterList ? 345 : 255), 210, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
+	if(g_reloginAvailable)
+	{
+		g_reloginAvailable = false;
+		if(!g_engine.isIngame() && g_reloginTimer >= g_frameTime)
+		{
+			SDL_Event keyEvent;
+			keyEvent.key.keysym.sym = SDLK_RETURN;
+			keyEvent.key.keysym.mod = KMOD_NONE;
+			newWindow->onKeyDown(keyEvent);
+		}
+	}
 }

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,8 +29,8 @@ GUI_Panel::GUI_Panel(iRect boxRect, Sint32 internalId)
 {
 	setRect(boxRect);
 	m_actPanel = NULL;
-	m_lastPosY = m_tRect.y1+2;
-	m_freeHeight = m_tRect.y2-4;
+	m_lastPosY = m_tRect.y1 + 2;
+	m_freeHeight = m_tRect.y2 - 4;
 	m_internalID = internalId;
 }
 
@@ -41,9 +41,9 @@ GUI_Panel::~GUI_Panel()
 
 void GUI_Panel::setRect(iRect& NewRect)
 {
-	Sint32 posX = NewRect.x1+2;
-	m_lastPosY = NewRect.y1+2;
-	m_freeHeight = NewRect.y2-4;
+	Sint32 posX = NewRect.x1 + 2;
+	m_lastPosY = NewRect.y1 + 2;
+	m_freeHeight = NewRect.y2 - 4;
 	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 	{
 		GUI_PanelWindow* panel = (*it);
@@ -92,9 +92,9 @@ void GUI_Panel::resizePanel(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
 	Sint32 minHeight = pPanel->getMinHeight();
 	Sint32 maxHeight = pPanel->getMaxHeight();
 	if(maxHeight)
-		maxHeight = UTIL_min<Sint32>(height+m_freeHeight, maxHeight);
+		maxHeight = UTIL_min<Sint32>(height + m_freeHeight, maxHeight);
 	else
-		maxHeight = height+m_freeHeight;
+		maxHeight = height + m_freeHeight;
 	if(y < height)
 	{
 		if(height > minHeight)
@@ -103,36 +103,46 @@ void GUI_Panel::resizePanel(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
 			pPanel->setSize(x, newHeight);
 			if(it == m_panels.end())
 			{
-				Sint32 diff = height-newHeight;
+				Sint32 diff = height - newHeight;
 				m_lastPosY -= diff;
 				m_freeHeight += diff;
 			}
 			else
 			{
-				Sint32 diff = height-newHeight;
+				Sint32 diff = height - newHeight;
 				it = --m_panels.end();
 
 				iRect& pRect = (*it)->getOriginalRect();
 				Sint32 pHeight = pRect.y2;
-				(*it)->setSize(pRect.x2, UTIL_min<Sint32>(pHeight+diff, (*it)->getMaxHeight()));
+				if(pHeight > 19)
+				{
+					if((*it)->getMaxHeight())
+						(*it)->setSize(pRect.x2, UTIL_min<Sint32>(pHeight + diff, (*it)->getMaxHeight()));
+					else
+						(*it)->setSize(pRect.x2, pHeight + diff);
+				}
+
 				checkPanels();
 			}
 		}
 	}
-	else if(height < maxHeight)
+	else
 	{
 		if(it == m_panels.end())
 		{
-			Sint32 newHeight = UTIL_min<Sint32>(y, maxHeight);
-			pPanel->setSize(x, newHeight);
+			if(height < maxHeight)
+			{
+				Sint32 newHeight = UTIL_min<Sint32>(y, maxHeight);
+				pPanel->setSize(x, newHeight);
 
-			Sint32 diff = newHeight-height;
-			m_lastPosY += diff;
-			m_freeHeight -= diff;
+				Sint32 diff = newHeight - height;
+				m_lastPosY += diff;
+				m_freeHeight -= diff;
+			}
 		}
 		else
 		{
-			Sint32 expectDiff = y-height;
+			Sint32 expectDiff = (pPanel->getMaxHeight() ? UTIL_min<Sint32>(y, pPanel->getMaxHeight()) : y) - height;
 			if(m_freeHeight > 0)
 			{
 				Sint32 diff = UTIL_min<Sint32>(expectDiff, m_freeHeight);
@@ -152,8 +162,8 @@ void GUI_Panel::resizePanel(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
 						minHeight = (*it)->getMinHeight();
 						if(pHeight > minHeight)
 						{
-							Sint32 diff = UTIL_min<Sint32>(expectDiff, pHeight-minHeight);
-							(*rit)->setSize(pRect.x2, pHeight-diff);
+							Sint32 diff = UTIL_min<Sint32>(expectDiff, pHeight - minHeight);
+							(*rit)->setSize(pRect.x2, pHeight - diff);
 							expectDiff -= diff;
 							height += diff;
 						}
@@ -168,9 +178,9 @@ void GUI_Panel::resizePanel(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
 
 void GUI_Panel::checkPanels()
 {
-	Sint32 posX = m_tRect.x1+2;
-	m_lastPosY = m_tRect.y1+2;
-	m_freeHeight = m_tRect.y2-4;
+	Sint32 posX = m_tRect.x1 + 2;
+	m_lastPosY = m_tRect.y1 + 2;
+	m_freeHeight = m_tRect.y2 - 4;
 	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 	{
 		GUI_PanelWindow* panel = (*it);
@@ -203,7 +213,7 @@ void GUI_Panel::checkPanel(GUI_PanelWindow* pPanel, Sint32, Sint32 y)
 		if(panel != pPanel)
 		{
 			iRect& panelRect = panel->getOriginalRect();
-			Sint32 py = panelRect.y1+(panelRect.y2>>1);
+			Sint32 py = panelRect.y1 + (panelRect.y2 >> 1);
 			if(y < py)
 			{
 				nit = it;
@@ -221,28 +231,42 @@ bool GUI_Panel::tryFreeHeight(GUI_PanelWindow* pPanel)
 		return false;
 
 	iRect& panelRect = pPanel->getOriginalRect();
+	if(m_freeHeight >= pPanel->getMinHeight())
+	{
+		//We assume that the code already check if it can add "default" height so we check if the empty space can be assigned as height
+		pPanel->setSize(panelRect.x2, m_freeHeight);
+		return true;
+	}
+
 	Sint32 height = panelRect.y2;
 	Sint32 needFreeHeight = pPanel->getMinHeight();
 	if(height > needFreeHeight)
-	{
 		pPanel->setSize(panelRect.x2, needFreeHeight);
-		if(m_freeHeight >= needFreeHeight)
-			return true;
-	}
 	else
 		needFreeHeight = height;//Probably minimized
 
-	if(m_tRect.y2-4 < needFreeHeight)//In this case let's ignore this window at all
+	return tryFreeHeight(needFreeHeight);
+}
+
+bool GUI_Panel::tryFreeHeight(Sint32 needFreeHeight)
+{
+	if(m_tRect.y2 - 4 < needFreeHeight)//In this case we can't get enough room
 		return false;
+
+	if(m_freeHeight >= needFreeHeight)
+		return true;
+
+	//Cipbia minimizes inventory if necessary - so let's keep it as TODO
+	//Do things in order instead of checking if we can resize windows?
 
 	Sint32 resizableHeight = m_freeHeight;
 	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 	{
 		iRect& pRect = (*it)->getOriginalRect();
 		Sint32 minHeight = (*it)->getMinHeight();
-		height = pRect.y2;
+		Sint32 height = pRect.y2;
 		if(height > minHeight)
-			resizableHeight += (height-minHeight);
+			resizableHeight += (height - minHeight);
 	}
 	if(resizableHeight >= needFreeHeight)
 	{
@@ -251,16 +275,17 @@ bool GUI_Panel::tryFreeHeight(GUI_PanelWindow* pPanel)
 		{
 			iRect& pRect = (*it)->getOriginalRect();
 			Sint32 minHeight = (*it)->getMinHeight();
-			height = pRect.y2;
+			Sint32 height = pRect.y2;
 			if(height > minHeight)
 			{
-				Sint32 gainHeight = UTIL_min<Sint32>(needFreeHeight, height-minHeight);
-				resizePanel((*it), pRect.x2, height-gainHeight);
+				Sint32 gainHeight = UTIL_min<Sint32>(needFreeHeight, height - minHeight);
+				(*it)->setSize(pRect.x2, height - gainHeight);
 				needFreeHeight -= gainHeight;
 				if(needFreeHeight <= 0)
-					return true;
+					break;
 			}
 		}
+		checkPanels();
 	}
 	else
 	{
@@ -268,7 +293,7 @@ bool GUI_Panel::tryFreeHeight(GUI_PanelWindow* pPanel)
 		for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.end(); --it >= m_panels.begin();)
 		{
 			iRect& pRect = (*it)->getOriginalRect();
-			height = pRect.y2;
+			Sint32 height = pRect.y2;
 			needFreeHeight -= height;
 
 			delete (*it);
@@ -380,17 +405,17 @@ void GUI_Panel::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 		(*it)->onMouseMove(x, y, isInsideParent);
 }
 
-void GUI_Panel::render()
+GUI_PanelWindow* GUI_Panel::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1+m_tRect.x2-2, m_tRect.y1, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1, m_tRect.x2-2, 2);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1+2, 2, m_tRect.y2-4);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1+2, m_tRect.y1+m_tRect.y2-2, m_tRect.x2-2, 2);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1+m_tRect.x2-2, m_tRect.y1+2, 2, m_tRect.y2-4);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1 + m_tRect.x2 - 2, m_tRect.y1, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1 + m_tRect.x2 - 2, m_tRect.y1 + 2, 2, m_tRect.y2 - 4);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1, m_tRect.y1 + m_tRect.y2 - 2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1 + 2, 2, m_tRect.y2 - 4);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1, m_tRect.x2 - 2, 2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1 + 2, m_tRect.y1 + m_tRect.y2 - 2, m_tRect.x2 - 2, 2);
 	if(m_freeHeight > 0)
-		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1+2, m_lastPosY, m_tRect.x2-4, m_freeHeight);
+		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1 + 2, m_lastPosY, m_tRect.x2 - 4, m_freeHeight);
 
 	if(m_actPanel)
 	{
@@ -399,11 +424,12 @@ void GUI_Panel::render()
 			if(m_actPanel != (*it))
 				(*it)->render();
 		}
-		m_actPanel->render();
+		return m_actPanel;
 	}
 	else
 	{
 		for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 			(*it)->render();
 	}
+	return NULL;
 }

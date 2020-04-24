@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -108,6 +108,16 @@ struct OpenglES2Texture
 	float m_scaleH;
 };
 
+struct OpenglES2SpriteData
+{
+	OpenglES2SpriteData() : m_xOffset(0), m_yOffset(0), m_surface(0), m_lastUsage(0) {}
+
+	Uint32 m_xOffset;
+	Uint32 m_yOffset;
+	Uint32 m_surface;
+	Uint32 m_lastUsage;
+};
+
 typedef enum
 {
 	GLES_ATTRIBUTE_POSITION = 0,
@@ -121,7 +131,7 @@ typedef enum
 #endif
 
 typedef std::unordered_map<Uint32, OpenglES2Texture*> U32BGLES2Textures;
-typedef std::unordered_map<Uint64, OpenglES2Texture*> U64BGLES2Textures;
+typedef std::unordered_map<Uint64, OpenglES2SpriteData> U64BGLES2Textures;
 
 class SurfaceOpenglES2 : public Surface
 {
@@ -150,6 +160,9 @@ class SurfaceOpenglES2 : public Surface
 		virtual const char* getHardware() {return m_hardware;}
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
+		void generateSpriteAtlases();
+		void checkScheduledSprites();
+
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
 		virtual void spriteManagerReset();
@@ -159,7 +172,8 @@ class SurfaceOpenglES2 : public Surface
 		virtual void endScene();
 
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
-		virtual void drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void beginGameScene();
 		virtual void endGameScene();
@@ -175,9 +189,10 @@ class SurfaceOpenglES2 : public Surface
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
-		OpenglES2Texture* loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor);
-		virtual void drawSprite(Uint32, Sint32, Sint32) {;}
-		virtual void drawSprite(Uint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32) {;}
+		bool loadSprite(Uint32 spriteId, OpenglES2Texture* texture, Uint32 xoff, Uint32 yoff);
+		bool loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, OpenglES2Texture* texture, Uint32 xoff, Uint32 yoff);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor);
 
@@ -186,11 +201,15 @@ class SurfaceOpenglES2 : public Surface
 		virtual void drawAutomapTile(Uint32 m_currentArea, bool& m_recreate, Uint8 m_color[256][256], Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 
 	protected:
+		std::vector<float> m_vertices;
+		std::vector<float> m_texCoords;
+		std::vector<OpenglES2Texture*> m_spritesAtlas;
 		U32BGLES2Textures m_automapTiles;
-		U64BGLES2Textures m_spriteMasks;
+		U64BGLES2Textures m_sprites;
 		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesMaskIds;
+		std::circular_buffer<Uint64> m_spritesIds;
 
+		OpenglES2Texture* m_spriteAtlas;
 		OpenglES2Texture** m_pictures;
 		char* m_software;
 		char* m_hardware;
@@ -284,7 +303,12 @@ class SurfaceOpenglES2 : public Surface
 		#endif
 
 		Uint32 m_totalVRAM;
-		Uint32 m_spritesCache;
+		Uint32 m_spriteChecker;
+		Uint32 m_currentFrame;
+
+		Uint32 m_spriteAtlases;
+		Uint32 m_spritesPerAtlas;
+		Uint32 m_spritesPerModulo;
 
 		Sint32 m_viewPortX;
 		Sint32 m_viewPortY;
@@ -292,61 +316,6 @@ class SurfaceOpenglES2 : public Surface
 		Sint32 m_viewPortH;
 
 		bool m_haveSharpening;
-};
-
-class SurfaceOpenglES2Comp : public SurfaceOpenglES2
-{
-	public:
-		SurfaceOpenglES2Comp();
-		virtual ~SurfaceOpenglES2Comp();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-
-		OpenglES2Texture* loadSprite(Uint32 spriteId);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-
-	protected:
-		OpenglES2Texture** m_sprites;
-};
-
-class SurfaceOpenglES2Perf : public SurfaceOpenglES2
-{
-	public:
-		SurfaceOpenglES2Perf();
-		virtual ~SurfaceOpenglES2Perf();
-
-		void generateSpriteAtlases();
-		void checkScheduledSprites();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-
-		virtual void beginScene();
-		virtual void beginGameScene();
-		virtual void endGameScene();
-
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-		bool loadSprite(Uint32 spriteId, OpenglES2Texture* texture, Uint32 xoff, Uint32 yoff);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
-
-	protected:
-		std::vector<float> m_gameWindowVertices;
-		std::vector<float> m_gameWindowTexCoords;
-		std::vector<OpenglES2Texture*> m_spritesAtlas;
-
-		OpenglES2Texture* m_spriteAtlas;
-
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
-
-		bool* m_sprites;
 		bool m_scheduleSpriteDraw;
 };
 

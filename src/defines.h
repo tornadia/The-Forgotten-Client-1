@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -54,12 +54,12 @@ struct KeyRepeat
 #endif
 #define GET_SAFE_PROTOCOLGAME ((g_connection && g_connection->getProtocol()) ? g_connection->getProtocol()->getProtocolGame() : NULL)
 
-#if __cplusplus >= 201103L || (defined(_MSC_VER) && _MSC_VER >= 1900)
-#define HAVE_CXX11_SUPPORT 1
+#if __cplusplus >= 201300L || (defined(_MSC_VER) && _MSC_VER >= 1900)
+#define HAVE_CXX14_SUPPORT 1
 #endif
 
-#ifndef HAVE_CXX11_SUPPORT
-#error "Please use a compiler that support C++11 or enable it in project settings"
+#ifndef HAVE_CXX14_SUPPORT
+#error "Please use a compiler that support C++14 or enable it in project settings"
 #endif
 
 #if defined(_M_ARM) || defined(__arm__) || defined(_ARM) || defined(__arm)
@@ -79,6 +79,8 @@ struct KeyRepeat
 
 #if defined(__USE_SSE__)
 #include <xmmintrin.h>
+#include <immintrin.h>
+#include <ammintrin.h>
 #endif
 #if defined(__USE_SSE2__)
 #include <emmintrin.h>
@@ -120,13 +122,16 @@ struct KeyRepeat
 #include <time.h>
 #include <utility>
 #include <unordered_map>
+#include <unordered_set>
 #include <map>
 #include <list>
 #include <vector>
+#include <memory>
 #include <algorithm>
 #include <sstream>
 #include <string>
 #include <bitset>
+
 #include "const.h"
 #include "gui_const.h"
 #include "structures.h"

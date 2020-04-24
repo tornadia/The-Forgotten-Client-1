@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -61,7 +61,7 @@ class Animator
 		void loadAnimator(Sint32 animationPhases, SDL_RWops* rwops);
 
 		void setPhase(Animation& cAnim, Sint32 phase);
-		Sint32 getPhase(Animation& cAnim, Sint32 movementSpeed = 0);
+		Sint32 getPhase(Animation& cAnim, Uint32 movementSpeed = 0);
 
 		void setStartPhase(Sint32 startPhase) {m_startPhase = startPhase;}
 		Sint32 getStartPhase();
@@ -77,7 +77,7 @@ class Animator
 		void resetAnimation(Animation& cAnim, Sint32 phase = AnimationPhase_Automatic);
 
 	protected:
-		Sint32 getMovementDuration(Sint32 movementSpeed);
+		Sint32 getMovementDuration(Uint32 movementSpeed);
 		Sint32 getPhaseDuration(Sint32 phase);
 		Sint32 getPingPongPhase(Animation& cAnim);
 		Sint32 getLoopPhase(Animation& cAnim);

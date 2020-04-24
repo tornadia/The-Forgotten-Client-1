@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -43,7 +43,7 @@ void GUI_Flash::reset()
 	m_controlFlash = true;
 }
 
-void GUI_Flash::setEndEventCallback(void(*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent)
+void GUI_Flash::setEndEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent)
 {
 	m_evtParam = mEvent;
 	m_eventHandlerFunction = eventHandlerFunction;

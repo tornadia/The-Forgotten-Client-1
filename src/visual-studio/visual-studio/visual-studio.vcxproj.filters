@@ -195,27 +195,6 @@
     <ClCompile Include="..\..\GUI\MainWindow.cpp">
       <Filter>Source Files\GUI</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\GUI\CharacterList.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\TradeWindow.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\VipWindow.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\ShopWindow.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\Inventory.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\BattleWindow.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\Minimap.cpp">
-      <Filter>Source Files\TODO</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\GUI\ExitWarning.cpp">
       <Filter>Source Files\GUI</Filter>
     </ClCompile>
@@ -278,9 +257,6 @@
     </ClCompile>
     <ClCompile Include="..\..\GUI\Quests.cpp">
       <Filter>Source Files\GUI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\GUI\DeathNotification.cpp">
-      <Filter>Source Files\TODO</Filter>
     </ClCompile>
     <ClCompile Include="..\..\GUI_Elements\GUI_Console.cpp">
       <Filter>Source Files\GUI_Elements</Filter>
@@ -364,6 +340,39 @@
       <Filter>Source Files\GUI_Elements</Filter>
     </ClCompile>
     <ClCompile Include="..\..\GUI\ReadWrite.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\BattleWindow.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\Minimap.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\TradeWindow.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\ShopWindow.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\VipWindow.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\Inventory.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\ModalDialog.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\IgnoreList.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\DeathNotification.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\CharacterList.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\GUI\Logout.cpp">
       <Filter>Source Files\GUI</Filter>
     </ClCompile>
   </ItemGroup>
@@ -648,6 +657,15 @@
       <Filter>Header Files\GUI_Elements</Filter>
     </ClInclude>
     <ClInclude Include="..\..\GUI\ReadWrite.h">
+      <Filter>Header Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\GUI\TradeWindow.h">
+      <Filter>Header Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\GUI\ShopWindow.h">
+      <Filter>Header Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\GUI\VipWindow.h">
       <Filter>Header Files\GUI</Filter>
     </ClInclude>
   </ItemGroup>

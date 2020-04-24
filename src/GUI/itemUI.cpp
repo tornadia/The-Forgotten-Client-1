@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -65,7 +65,7 @@ ItemUI* ItemUI::createItemUI(ThingType* type, Uint16 count, Sint32 phase)
 			}
 			else if(count < 5)
 			{
-				newItem->m_xPattern = SDL_static_cast(Uint8, count-1);
+				newItem->m_xPattern = SDL_static_cast(Uint8, count - 1);
 				newItem->m_yPattern = 0;
 			}
 			else
@@ -179,7 +179,7 @@ void ItemUI::setSubtype(Uint16 count, bool showCount)
 			}
 			else if(count < 5)
 			{
-				m_xPattern = SDL_static_cast(Uint8, count-1);
+				m_xPattern = SDL_static_cast(Uint8, count - 1);
 				m_yPattern = 0;
 			}
 			else
@@ -284,12 +284,12 @@ void ItemUI::render(Sint32 posX, Sint32 posY, Sint32 scaled)
 		if(m_animator)
 			animation = SDL_static_cast(Uint8, m_animator->getPhase(m_animation));
 		else
-			animation = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), m_animCount);
+			animation = (SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)) % m_animCount);
 	}
 	else
 		animation = 0;
 
 	g_engine.drawItem(m_thingType, posX, posY, scaled, m_xPattern, m_yPattern, m_zPattern, animation);
 	if(m_displayCount)
-		g_engine.drawFont(CLIENT_FONT_OUTLINED, posX+scaled-1, posY+scaled-11, m_stringCount, 192, 192, 192, CLIENT_FONT_ALIGN_RIGHT);
+		g_engine.drawFont(CLIENT_FONT_OUTLINED, posX + scaled - 1, posY + scaled - 11, m_stringCount, 192, 192, 192, CLIENT_FONT_ALIGN_RIGHT);
 }

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -42,7 +42,7 @@ template <unsigned int BITS>
 class base_uint
 {
 	protected:
-		enum {WIDTH = BITS/32};
+		enum {WIDTH = BITS / 32};
 		Uint32 pn[WIDTH];
 
 	public:
@@ -137,7 +137,7 @@ class base_uint
 		base_uint& operator++()
 		{
 			Sint32 i = 0;
-			while(++pn[i] == 0 && i < WIDTH-1)
+			while(++pn[i] == 0 && i < WIDTH - 1)
 				++i;
 			return *this;
 		}
@@ -152,7 +152,7 @@ class base_uint
 		base_uint& operator--()
 		{
 			Sint32 i = 0;
-			while(--pn[i] == SDL_static_cast(Uint32, -1) && i < WIDTH-1)
+			while(--pn[i] == SDL_static_cast(Uint32, -1) && i < WIDTH - 1)
 				++i;
 			return *this;
 		}
@@ -171,10 +171,10 @@ class base_uint
 			for(Sint32 j = 0; j < WIDTH; ++j)
 			{
 				Uint64 carry = 0;
-				for(Sint32 i = 0; i+j < WIDTH; ++i)
+				for(Sint32 i = 0; i + j < WIDTH; ++i)
 				{
-					carry += pn[i+j] + SDL_static_cast(Uint64, a.pn[j]) * b.pn[i];
-					pn[i+j] = SDL_static_cast(Uint32, carry);
+					carry += pn[i + j] + SDL_static_cast(Uint64, a.pn[j]) * b.pn[i];
+					pn[i + j] = SDL_static_cast(Uint32, carry);
 					carry >>= 32;
 				}
 			}
@@ -190,14 +190,14 @@ class base_uint
 			Sint32 div_bits = div.bits();
 			if(div_bits == 0 || div_bits > num_bits)
 				return *this;
-			Sint32 shift = num_bits-div_bits;
+			Sint32 shift = num_bits - div_bits;
 			div <<= shift;
 			while(shift >= 0)
 			{
 				if(num >= div)
 				{
 					num -= div;
-					pn[shift/32] |= (1 << (shift & 31));
+					pn[shift / 32] |= (1 << (shift & 31));
 				}
 				div >>= 1;
 				--shift;
@@ -212,7 +212,7 @@ class base_uint
 			Sint32 div_bits = div.bits();
 			if(div_bits == 0 || div_bits > num_bits)
 				return *this;
-			Sint32 shift = num_bits-div_bits;
+			Sint32 shift = num_bits - div_bits;
 			div <<= shift;
 			while(shift >= 0)
 			{
@@ -232,10 +232,10 @@ class base_uint
 			shift = shift % 32;
 			for(Sint32 i = 0; i < WIDTH; ++i)
 			{
-				if(i+k+1 < WIDTH && shift != 0)
-					pn[i+k+1] |= (a.pn[i] >> (32 - shift));
-				if(i+k < WIDTH)
-					pn[i+k] |= (a.pn[i] << shift);
+				if(i + k + 1 < WIDTH && shift != 0)
+					pn[i + k + 1] |= (a.pn[i] >> (32 - shift));
+				if(i + k < WIDTH)
+					pn[i + k] |= (a.pn[i] << shift);
 			}
 			return *this;
 		}
@@ -248,10 +248,10 @@ class base_uint
 			shift = shift % 32;
 			for(Sint32 i = 0; i < WIDTH; ++i)
 			{
-				if(i-k-1 >= 0 && shift != 0)
-					pn[i-k-1] |= (a.pn[i] << (32 - shift));
-				if(i-k >= 0)
-					pn[i-k] |= (a.pn[i] >> shift);
+				if(i - k - 1 >= 0 && shift != 0)
+					pn[i - k - 1] |= (a.pn[i] << (32 - shift));
+				if(i - k >= 0)
+					pn[i - k] |= (a.pn[i] >> shift);
 			}
 			return *this;
 		}
@@ -313,7 +313,7 @@ class base_uint
 
 		Sint32 CompareTo(const base_uint& b) const
 		{
-			for(Sint32 i = WIDTH-1; i >= 0; --i)
+			for(Sint32 i = WIDTH - 1; i >= 0; --i)
 			{
 				if(pn[i] < b.pn[i])
 					return -1;
@@ -342,16 +342,16 @@ class base_uint
 
 		Sint32 bits() const
 		{
-			for(Sint32 pos = WIDTH-1; pos >= 0; --pos)
+			for(Sint32 pos = WIDTH - 1; pos >= 0; --pos)
 			{
 				if(pn[pos])
 				{
 					for(Sint32 bits = 31; bits > 0; --bits)
 					{
 						if(pn[pos] & (1 << bits))
-							return 32*pos+bits+1;
+							return 32 * pos + bits + 1;
 					}
-					return 32*pos+1;
+					return 32 * pos + 1;
 				}
 			}
 			return 0;
@@ -367,13 +367,14 @@ class base_uint
 			{
 				Sint32 v;
 				if(SDL_isdigit(*psz))
-					v = *psz-'0';
+					v = (*psz - '0');
 				else if(radix == 16 && SDL_isupperhex(*psz))
-					v = 10+(*psz-'A');
+					v = 10 + (*psz - 'A');
 				else if(radix == 16 && SDL_islowerhex(*psz))
-					v = 10+(*psz-'a');
+					v = 10 + (*psz - 'a');
 				else
 					break;
+
 				*this *= radix;
 				*this += base_uint(v);
 				++psz;
@@ -403,14 +404,14 @@ class base_uint
 				Uint32 index = i * 4;
 				Uint32 value = SDL_static_cast(Uint32, data[index + 3]) | (SDL_static_cast(Uint32, data[index + 2]) << 8)
 					| (SDL_static_cast(Uint32, data[index + 1]) << 16) | (SDL_static_cast(Uint32, data[index + 0]) << 24);
-				pn[WIDTH-1-i] = value;
+				pn[WIDTH - 1 - i] = value;
 			}
 		}
 		void exportData(Uint8* data)
 		{
 			for(Sint32 i = 0; i < WIDTH; ++i)
 			{
-				Uint32 index = (WIDTH-1-i) * 4;
+				Uint32 index = (WIDTH - 1 - i) * 4;
 				data[index + 3] = SDL_static_cast(Uint8, pn[i]);
 				data[index + 2] = SDL_static_cast(Uint8, pn[i] >> 8);
 				data[index + 1] = SDL_static_cast(Uint8, pn[i] >> 16);
@@ -430,9 +431,9 @@ class Uint1024 : public base_uint<1024>
 template <unsigned int BITS>
 const base_uint<BITS> base_uint_powm(base_uint<BITS> a, Uint32 e, base_uint<BITS> m)
 {
-	base_uint<BITS*2> x(1), y, tmp_m;
-	y.setData(a.getData(), BITS/8);
-	tmp_m.setData(m.getData(), BITS/8);
+	base_uint<BITS * 2> x(1), y, tmp_m;
+	y.setData(a.getData(), BITS / 8);
+	tmp_m.setData(m.getData(), BITS / 8);
 	while(e > 0)
 	{
 		if(e & 1)
@@ -441,7 +442,7 @@ const base_uint<BITS> base_uint_powm(base_uint<BITS> a, Uint32 e, base_uint<BITS
 		y = (y * y) % tmp_m;
 		e >>= 1;
 	}
-	a.setData(x.getData(), BITS/8);
+	a.setData(x.getData(), BITS / 8);
 	return a;
 }
 

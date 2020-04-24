@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -87,7 +87,7 @@ void Container::addItem(Uint16 slot, ItemUI* item)
 
 void Container::setItems(std::vector<ItemUI*>& items)
 {
-	m_items.swap(items);
+	m_items = std::move(items);
 	updatePositions();
 }
 
@@ -155,7 +155,7 @@ void Container::removeItem(Uint16 slot, ItemUI* lastItem)
 	m_items.erase(m_items.begin() + slot);
 	if(lastItem)
 	{
-		addItem(m_firstIndex+SDL_static_cast(Uint16, m_capacity)-1, lastItem);
+		addItem(m_firstIndex + SDL_static_cast(Uint16, m_capacity) - 1, lastItem);
 		--m_size;
 	}
 	--m_size;

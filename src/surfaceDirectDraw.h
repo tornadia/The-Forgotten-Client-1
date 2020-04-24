@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -49,8 +49,18 @@ struct DirectDrawTexture
 	bool m_linearSample;
 };
 
+struct DirectDrawSpriteData
+{
+	DirectDrawSpriteData() : m_xOffset(0), m_yOffset(0), m_surface(0), m_lastUsage(0) {}
+
+	Uint32 m_xOffset;
+	Uint32 m_yOffset;
+	Uint32 m_surface;
+	Uint32 m_lastUsage;
+};
+
 typedef std::unordered_map<Uint32, DirectDrawTexture*> U32BDDRAWTextures;
-typedef std::unordered_map<Uint64, DirectDrawTexture*> U64BDDRAWTextures;
+typedef std::unordered_map<Uint64, DirectDrawSpriteData> U64BDDRAWTextures;
 
 typedef struct IDirectDraw IDirectDraw;
 typedef struct IDirectDraw7 IDirectDraw7;
@@ -82,6 +92,9 @@ class SurfaceDirectDraw : public Surface
 		virtual const char* getHardware() {return m_hardware;}
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
+		void generateSpriteAtlases();
+		void checkScheduledSprites();
+
 		virtual void renderTargetsRecreate();
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
@@ -92,7 +105,8 @@ class SurfaceDirectDraw : public Surface
 		virtual void endScene();
 
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
-		virtual void drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void beginGameScene();
 		virtual void endGameScene();
@@ -108,9 +122,10 @@ class SurfaceDirectDraw : public Surface
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
-		DirectDrawTexture* loadSpriteMask(DirectDrawTexture* s, Uint64 tempPos, Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor);
-		virtual void drawSprite(Uint32, Sint32, Sint32) {;}
-		virtual void drawSprite(Uint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32) {;}
+		bool loadSprite(Uint32 spriteId, DirectDrawTexture* texture, Uint32 xoff, Uint32 yoff);
+		bool loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, DirectDrawTexture* texture, Uint32 xoff, Uint32 yoff);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor);
 
@@ -119,13 +134,15 @@ class SurfaceDirectDraw : public Surface
 		virtual void drawAutomapTile(Uint32 m_currentArea, bool& m_recreate, Uint8 m_color[256][256], Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 
 	protected:
+		std::vector<VertexDDRAW> m_vertices;
+		std::vector<DirectDrawTexture*> m_spritesAtlas;
 		U32BDDRAWTextures m_automapTiles;
-		U64BDDRAWTextures m_spriteMasks;
+		U64BDDRAWTextures m_sprites;
 		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesMaskIds;
+		std::circular_buffer<Uint64> m_spritesIds;
 
-		std::vector<DirectDrawTexture*> m_texturesToDelete;
-
+		DirectDrawTexture* m_stagging;
+		DirectDrawTexture* m_spriteAtlas;
 		DirectDrawTexture** m_pictures;
 		char* m_hardware;
 
@@ -154,7 +171,12 @@ class SurfaceDirectDraw : public Surface
 		Uint32 m_viewPortH;
 
 		Uint32 m_totalVRAM;
-		Uint32 m_spritesCache;
+		Uint32 m_spriteChecker;
+		Uint32 m_currentFrame;
+
+		Uint32 m_spriteAtlases;
+		Uint32 m_spritesPerAtlas;
+		Uint32 m_spritesPerModulo;
 
 		Sint32 m_px;
 		Sint32 m_py;
@@ -162,63 +184,7 @@ class SurfaceDirectDraw : public Surface
 		bool m_usingLinearSample;
 		bool m_needReset;
 		bool m_fullscreen;
-};
-
-class SurfaceDirectDrawComp : public SurfaceDirectDraw
-{
-	public:
-		SurfaceDirectDrawComp();
-		virtual ~SurfaceDirectDrawComp();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-
-		DirectDrawTexture* loadSprite(DirectDrawTexture* s, Uint32 spriteId);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-
-	protected:
-		DirectDrawTexture** m_sprites;
-};
-
-class SurfaceDirectDrawPerf : public SurfaceDirectDraw
-{
-	public:
-		SurfaceDirectDrawPerf();
-		virtual ~SurfaceDirectDrawPerf();
-
-		void generateSpriteAtlases();
-		void checkScheduledSprites();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-
-		virtual void beginScene();
-		virtual void beginGameScene();
-		virtual void endGameScene();
-
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-		bool loadSprite(Uint32 spriteId, DirectDrawTexture* texture, Uint32 xoff, Uint32 yoff);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
-
-	protected:
-		std::vector<VertexDDRAW> m_gameWindowVertices;
-		std::vector<DirectDrawTexture*> m_spritesAtlas;
-
-		DirectDrawTexture* m_stagging;
-		DirectDrawTexture* m_spriteAtlas;
-
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
-
-		bool* m_sprites;
 		bool m_scheduleSpriteDraw;
 };
-
 #endif
 #endif /* __FILE_SURFACE_DIRECTDRAW_h_ */

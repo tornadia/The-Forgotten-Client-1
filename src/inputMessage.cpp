@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,7 +34,8 @@ Uint16 InputMessage::getU16()
 	if(!canRead(2))
 		return 0;
 
-	Uint16 v = SDL_static_cast(Uint16, m_networkBuffer[m_readPos]) | SDL_static_cast(Uint16, m_networkBuffer[m_readPos + 1]) << 8;
+	Uint16 v = SDL_static_cast(Uint16, m_networkBuffer[m_readPos]);
+	v |= (SDL_static_cast(Uint16, m_networkBuffer[m_readPos + 1]) << 8);
 	m_readPos += 2;
 	return v;
 }
@@ -44,8 +45,10 @@ Uint32 InputMessage::getU32()
 	if(!canRead(4))
 		return 0;
 
-	Uint32 v = SDL_static_cast(Uint32, m_networkBuffer[m_readPos]) | (SDL_static_cast(Uint32, m_networkBuffer[m_readPos + 1]) << 8)
-		| (SDL_static_cast(Uint32, m_networkBuffer[m_readPos + 2]) << 16) | (SDL_static_cast(Uint32, m_networkBuffer[m_readPos + 3]) << 24);
+	Uint32 v = SDL_static_cast(Uint32, m_networkBuffer[m_readPos]);
+	v |= (SDL_static_cast(Uint32, m_networkBuffer[m_readPos + 1]) << 8);
+	v |= (SDL_static_cast(Uint32, m_networkBuffer[m_readPos + 2]) << 16);
+	v |= (SDL_static_cast(Uint32, m_networkBuffer[m_readPos + 3]) << 24);
 	m_readPos += 4;
 	return v;
 }
@@ -55,10 +58,14 @@ Uint64 InputMessage::getU64()
 	if(!canRead(8))
 		return 0;
 
-	Uint64 v = SDL_static_cast(Uint64, m_networkBuffer[m_readPos]) | (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 1]) << 8)
-		| (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 2]) << 16) | (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 3]) << 24)
-		| (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 4]) << 32) | (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 5]) << 40)
-		| (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 6]) << 48) | (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 7]) << 56);
+	Uint64 v = SDL_static_cast(Uint64, m_networkBuffer[m_readPos]);
+	v |= (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 1]) << 8);
+	v |= (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 2]) << 16);
+	v |= (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 3]) << 24);
+	v |= (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 4]) << 32);
+	v |= (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 5]) << 40);
+	v |= (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 6]) << 48);
+	v |= (SDL_static_cast(Uint64, m_networkBuffer[m_readPos + 7]) << 56);
 	m_readPos += 8;
 	return v;
 }

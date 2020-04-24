@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -51,9 +51,10 @@ void ProtocolLogin::parseMessage(InputMessage& msg)
 		case RecvTokenSuccessOpcode: parseTokenSuccess(msg); break;
 		case RecvTokenFailedOpcode: parseTokenFailed(msg); break;
 		case RecvMotdOpcode: parseMotd(msg); break;
+		case RecvSurveyInvitationOpcode:
 		case RecvUpdate1Opcode:
-		case RecvUpdate2Opcode:
-		case RecvUpdate3Opcode: parseUpdate(msg); break;
+		case RecvUpdate2Opcode: parseUpdate(msg); break;
+		case RecvUpdateBlockOpcode: parseUpdateBlock(msg); break;
 		case RecvSessionKeyOpcode: parseSessionKey(msg); break;
 		case RecvCharacterListOpcode: parseCharacterList(msg); break;
 		case RecvCharacterListNewOpcode: parseCharacterListNew(msg); break;
@@ -69,7 +70,7 @@ void ProtocolLogin::parseMessage(InputMessage& msg)
 
 void ProtocolLogin::parseError(InputMessage& msg)
 {
-	const std::string& message = msg.getString();
+	const std::string message = msg.getString();
 	UTIL_messageBox("Sorry", message);
 }
 
@@ -86,7 +87,7 @@ void ProtocolLogin::parseTokenFailed(InputMessage& msg)
 
 void ProtocolLogin::parseMotd(InputMessage& msg)
 {
-	const std::string& motdmsg = msg.getString();
+	const std::string motdmsg = msg.getString();
 	StringVector motd = UTIL_explodeString(motdmsg, "\n", 2);
 	if(motd.size() == 2)
 	{
@@ -104,35 +105,68 @@ void ProtocolLogin::parseMotd(InputMessage& msg)
 	}
 }
 
-void ProtocolLogin::parseUpdate(InputMessage&)
+void ProtocolLogin::parseSurveyInvitation(InputMessage& msg)
 {
-	//Updating(OTS don't support this so we don't need to bother)
+	Uint32 surveyID = msg.getU32();
+	const std::string surveyMessage = msg.getString();
+	const std::string surveyToken = msg.getString();
+	Uint32 surveyTimestamp = msg.getU32();
+	(void)surveyID;
+	(void)surveyMessage;
+	(void)surveyToken;
+	(void)surveyTimestamp;
+	//https://limesurvey.cipsoft.com/index.php/survey/index/sid/#%surveyID#/lang-en?token=#surveyToken#
+}
+
+void ProtocolLogin::parseUpdate(InputMessage& msg)
+{
+	Uint8 updateID = msg.getU8();
+	Uint32 fileSize = msg.getU32();
 	UTIL_messageBox("Error", "Client needs update.");
+	(void)updateID;
+	(void)fileSize;
+	/*switch(updateID)
+	{
+		case 0: UTIL_BeginDownloadApplication(fileSize);
+		case 1: UTIL_BeginDownloadDAT(fileSize);
+		case 2: UTIL_BeginDownloadSPR(fileSize);
+		case 3: UTIL_BeginDownloadPIC(fileSize);
+		case 4: UTIL_BeginDownloadPatcher(fileSize); //For some reason possible only on RecvUpdate2Opcode while these opcodes are basically the same
+		case 5: UTIL_BeginDownloadErrorDialog(fileSize); //Only linux
+	}*/
+}
+
+void ProtocolLogin::parseUpdateBlock(InputMessage& msg)
+{
+	Uint16 updateBlockSize = msg.peekU16();
+	const char* updateBlockData = msg.getRawString();
+	(void)updateBlockSize;
+	(void)updateBlockData;
+	//UTIL_UpdateDownloadFile(updateBlockSize, updateBlockData);
 }
 
 void ProtocolLogin::parseSessionKey(InputMessage& msg)
 {
-	const std::string& sessionKey = msg.getString();
+	const std::string sessionKey = msg.getString();
 	g_engine.setAccountSessionKey(sessionKey);
 }
 
 void ProtocolLogin::parseCharacterList(InputMessage& msg)
 {
 	std::vector<CharacterDetail> characters;
-	if(g_clientVersion > 1010)
+	if(g_clientVersion >= 1012)
 	{
 		std::map<Uint8, WorldDetail> worlds;
 
 		Uint8 worldCount = msg.getU8();
 		for(Uint8 i = 0; i < worldCount; ++i)
 		{
-			WorldDetail world;
 			Uint8 worldId = msg.getU8();
+			WorldDetail& world = worlds[worldId];
 			world.worldName = msg.getString();
 			world.worldIp = msg.getString();
 			world.worldPort = msg.getU16();
 			world.previewState = (msg.getU8() == 1);
-			worlds[worldId] = world;
 		}
 
 		Uint8 characterCount = msg.getU8();
@@ -143,12 +177,13 @@ void ProtocolLogin::parseCharacterList(InputMessage& msg)
 			std::map<Uint8, WorldDetail>::iterator it = worlds.find(worldId);
 			if(it != worlds.end())
 			{
+				WorldDetail& world = it->second;
 				CharacterDetail& character = characters[i];
 				character.name = msg.getString();
-				character.worldName.assign(it->second.worldName);
-				character.worldIp.assign(it->second.worldIp);
-				character.worldPort = it->second.worldPort;
-				character.previewState = it->second.previewState;
+				character.worldName.assign(world.worldName);
+				character.worldIp.assign(world.worldIp);
+				character.worldPort = world.worldPort;
+				character.previewState = world.previewState;
 				character.lookType = 0;
 			}
 			else
@@ -178,9 +213,13 @@ void ProtocolLogin::parseCharacterList(InputMessage& msg)
 	Uint8 accountStatus;
 	Uint8 accountSubStatus;
 	Uint32 accountPremDays;
-	if(g_clientVersion > 1077)
+	if(g_clientVersion >= 1080)
 	{
-		accountStatus = msg.getU8();
+		if(g_clientVersion >= 1082)
+			accountStatus = msg.getU8();
+		else
+			accountStatus = AccountStatus_Ok;
+
 		accountSubStatus = msg.getU8();
 		accountPremDays = msg.getU32();
 		if(accountPremDays != 0)
@@ -262,7 +301,8 @@ void ProtocolLogin::onConnect()
 
 	OutputMessage msg((checksumFeature ? 6 : 2));
 	msg.addU8(SendLoginOpcode);
-	msg.addU16(Protocol::getOS());
+	msg.addU8((g_game.hasGameFeature(GAME_FEATURE_PROTOCOLSEQUENCE) ? QT_CIPBIA_OS : LEGACY_CIPBIA_OS));
+	msg.addU8(Protocol::getOS());
 	msg.addU16(Protocol::getProtocolVersion());
 	if(g_game.hasGameFeature(GAME_FEATURE_CLIENT_VERSION))
 		msg.addU32(Protocol::getClientVersion());
@@ -298,8 +338,8 @@ void ProtocolLogin::onConnect()
 	msg.addString(g_engine.getAccountPassword());
 	if(rsa1024Feature)
 	{
-		msg.addPaddingBytes(128-(msg.getWritePos()-firstByte));
-		g_rsa.encrypt(msg.getBuffer()+firstByte);
+		msg.addPaddingBytes(128 - (msg.getWritePos() - firstByte), 0xFF);
+		g_rsa.encrypt(msg.getBuffer() + firstByte);
 	}
 
 	if(g_game.hasGameFeature(GAME_FEATURE_RENDER_INFORMATION))
@@ -319,8 +359,8 @@ void ProtocolLogin::onConnect()
 		if(g_game.hasGameFeature(GAME_FEATURE_SESSIONKEY))
 			msg.addU8(1);//Stay logged
 
-		msg.addPaddingBytes(128-(msg.getWritePos()-firstByte));
-		g_rsa.encrypt(msg.getBuffer()+firstByte);
+		msg.addPaddingBytes(128 - (msg.getWritePos() - firstByte), 0xFF);
+		g_rsa.encrypt(msg.getBuffer() + firstByte);
 	}
 
 	if(checksumFeature)
@@ -348,12 +388,6 @@ void ProtocolLogin::onDisconnect()
 		{
 			case CONNECTION_ERROR_RESOLVE_HOST:
 				UTIL_messageBox("Connection Failed", "Cannot connect to a login server.\n\nError: Cannot resolve host.");
-				break;
-			case CONNECTION_ERROR_CREATE_SOCKET:
-				UTIL_messageBox("Connection Failed", "Cannot connect to a login server.\n\nError: Could not create socket.");
-				break;
-			case CONNECTION_ERROR_SET_NONBLOCKING_SOCKET:
-				UTIL_messageBox("Connection Failed", "Cannot connect to a login server.\n\nError: Could not create a non-blocking socket.");
 				break;
 			case CONNECTION_ERROR_CANNOT_CONNECT:
 				UTIL_messageBox("Connection Failed", "Cannot connect to a login server.\n\nError: Cannot connect.");

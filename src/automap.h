@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -44,7 +44,9 @@ class AutomapArea
 		
 		MapMark* getMark(Sint32 zoom, Sint32 diff, Sint32 x, Sint32 y, Sint32 x1, Sint32 y1, Sint32 x2, Sint32 y2);
 		void render(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
+		static void renderMark(Uint8 type, Sint32 x, Sint32 y);
 		void renderMarks(Sint32 zoom, Sint32 diff, Sint32 x, Sint32 y, Sint32 x1, Sint32 y1, Sint32 x2, Sint32 y2);
+		void setMapMark(Uint16 x, Uint16 y, Uint8 type, const std::string& description, bool remove = false);
 		void setTileDetail(Uint16 x, Uint16 y, Uint8 color, Uint8 speed);
 
 		Position& getBasePosition() {return m_basepos;}
@@ -83,6 +85,7 @@ class Automap
 		Position& getPosition() {return m_position;}
 
 		Position getMapDetail(Sint32 x, Sint32 y, Sint32 w, Sint32 h, MapMark*& mark);
+		void setMapMark(Uint16 x, Uint16 y, Uint8 z, Uint8 type, const std::string& description, bool remove = false);
 		void setTileDetail(Uint16 x, Uint16 y, Uint8 z, Uint8 color, Uint8 speed);
 		void render(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 

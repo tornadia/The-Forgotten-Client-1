@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -58,6 +58,11 @@ void GUI_TextBox::setTextEventCallback(void (*eventHandlerFunction)(Uint32,Sint3
 	m_evtParam = mEvent;
 }
 
+void GUI_TextBox::selectAll()
+{
+	setSelection(0, SDL_static_cast(Uint32, m_sText.length()));
+}
+
 void GUI_TextBox::setSelection(Uint32 start, Uint32 end)
 {
 	if(start == m_selectionStart && end == m_selectionEnd)
@@ -78,7 +83,7 @@ void GUI_TextBox::clearSelection()
 
 void GUI_TextBox::deleteSelection()
 {
-	Sint32 n = SDL_static_cast(Sint32, m_selectionEnd-m_selectionStart);
+	Sint32 n = SDL_static_cast(Sint32, m_selectionEnd - m_selectionStart);
 	removeTextToTextBox(n, m_selectionStart);
 	if(m_cursorPosition != m_selectionStart)
 		moveCursor(-n);
@@ -96,7 +101,7 @@ void GUI_TextBox::onTextInput(const char* textInput)
 		moveCursor(n);
 }
 
-void GUI_TextBox::onKeyDown(SDL_Event event)
+void GUI_TextBox::onKeyDown(SDL_Event& event)
 {
 	switch(event.key.keysym.sym)
 	{
@@ -108,7 +113,7 @@ void GUI_TextBox::onKeyDown(SDL_Event event)
 					deleteSelection();
 				else if(m_cursorPosition != 0)
 				{
-					removeTextToTextBox(1, m_cursorPosition-1);
+					removeTextToTextBox(1, m_cursorPosition - 1);
 					moveCursor(-1);
 				}
 			}
@@ -205,7 +210,7 @@ void GUI_TextBox::onKeyDown(SDL_Event event)
 			{
 				m_selectionReference = 0;
 				setSelection(m_selectionReference, SDL_static_cast(Uint32, m_sText.length()));
-				moveCursor(SDL_static_cast(Sint32, SDL_static_cast(Uint32, m_sText.length())-m_cursorPosition));
+				moveCursor(SDL_static_cast(Sint32, SDL_static_cast(Uint32, m_sText.length()) - m_cursorPosition));
 			}
 		}
 		break;
@@ -215,7 +220,7 @@ void GUI_TextBox::onKeyDown(SDL_Event event)
 			{
 				if(hasSelection())
 				{
-					UTIL_SetClipboardTextLatin1(m_sText.substr(SDL_static_cast(size_t, m_selectionStart), SDL_static_cast(size_t, m_selectionEnd - m_selectionStart)).c_str());
+					UTIL_SetClipboardTextLatin1(UTIL_formatConsoleText(m_sText.substr(SDL_static_cast(size_t, m_selectionStart), SDL_static_cast(size_t, m_selectionEnd - m_selectionStart))).c_str());
 					deleteSelection();
 				}
 			}
@@ -226,7 +231,7 @@ void GUI_TextBox::onKeyDown(SDL_Event event)
 			if(event.key.keysym.mod == KMOD_CTRL)
 			{
 				if(hasSelection())
-					UTIL_SetClipboardTextLatin1(m_sText.substr(SDL_static_cast(size_t, m_selectionStart), SDL_static_cast(size_t, m_selectionEnd-m_selectionStart)).c_str());
+					UTIL_SetClipboardTextLatin1(UTIL_formatConsoleText(m_sText.substr(SDL_static_cast(size_t, m_selectionStart), SDL_static_cast(size_t, m_selectionEnd - m_selectionStart))).c_str());
 			}
 		}
 		break;
@@ -291,7 +296,7 @@ void GUI_TextBox::activate()
 	if(m_cursorPosition != SDL_static_cast(Uint32, m_sText.length()))
 	{
 		clearSelection();
-		moveCursor(SDL_static_cast(Sint32, SDL_static_cast(Uint32, m_sText.length())-m_cursorPosition));
+		moveCursor(SDL_static_cast(Sint32, SDL_static_cast(Uint32, m_sText.length()) - m_cursorPosition));
 	}
 }
 
@@ -306,7 +311,7 @@ void GUI_TextBox::deActivate()
 
 void GUI_TextBox::render()
 {
-	if(g_frameTime-m_cursorTimer >= 333)
+	if(g_frameTime - m_cursorTimer >= 333)
 	{
 		m_cursorTimer = g_frameTime;
 		m_bShowCursor = !m_bShowCursor;
@@ -316,28 +321,28 @@ void GUI_TextBox::render()
 	Uint32 numberOfLetters = getNumberOfLettersToShow();
 	renderer->fillRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 54, 54, 54, 255);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1+1, 1, m_tRect.y2-1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-1, m_tRect.x2-1, 1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1+m_tRect.x2-1, m_tRect.y1+1, 1, m_tRect.y2-2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1 + 1, 1, m_tRect.y2 - 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1 + 1, m_tRect.y1 + m_tRect.y2 - 1, m_tRect.x2 - 1, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1 + m_tRect.x2 - 1, m_tRect.y1 + 1, 1, m_tRect.y2 - 2);
 	if(hasSelection())
 	{
 		Uint32 selectionStart = UTIL_max<Uint32>(m_positionOfFirstShownLetter, m_selectionStart);
-		Uint32 selectionLen = UTIL_min<Uint32>(m_positionOfFirstShownLetter+numberOfLetters, m_selectionEnd)-selectionStart;
+		Uint32 selectionLen = UTIL_min<Uint32>(m_positionOfFirstShownLetter + numberOfLetters, m_selectionEnd) - selectionStart;
 		Uint32 selectionWidth = g_engine.calculateFontWidth(m_font, m_sVisibleText, selectionStart, selectionLen);
-		Uint32 positionOfSelection = m_textStartPosition + g_engine.calculateFontWidth(m_font, m_sVisibleText, m_positionOfFirstShownLetter, selectionStart-m_positionOfFirstShownLetter);
-		renderer->fillRectangle(m_tRect.x1+positionOfSelection, m_tRect.y1+2, selectionWidth, m_tRect.y2-4, 128, 128, 128, 255);
+		Uint32 positionOfSelection = m_textStartPosition + g_engine.calculateFontWidth(m_font, m_sVisibleText, m_positionOfFirstShownLetter, selectionStart - m_positionOfFirstShownLetter);
+		renderer->fillRectangle(m_tRect.x1 + positionOfSelection, m_tRect.y1 + 2, selectionWidth, m_tRect.y2 - 4, 128, 128, 128, 255);
 	}
-	g_engine.drawFont(m_font, m_tRect.x1+m_textStartPosition, m_tRect.y1+3, m_sVisibleText, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT, m_positionOfFirstShownLetter, numberOfLetters);
+	g_engine.drawFont(m_font, m_tRect.x1 + m_textStartPosition, m_tRect.y1 + 3, m_sVisibleText, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT, m_positionOfFirstShownLetter, numberOfLetters);
 	if(m_bActive && m_bShowCursor)
 	{
 		Uint32 positionOfCursor = m_textStartPosition + g_engine.calculateFontWidth(m_font, m_sVisibleText, m_positionOfFirstShownLetter, m_cursorRelativePosition);
-		renderer->fillRectangle(m_tRect.x1+positionOfCursor, m_tRect.y1+2, 1, m_tRect.y2-4, 255, 255, 255, 255);
+		renderer->fillRectangle(m_tRect.x1 + positionOfCursor, m_tRect.y1 + 2, 1, m_tRect.y2 - 4, 255, 255, 255, 255);
 	}
 }
 
 Sint32 GUI_TextBox::addTextToTextBox(std::string text, Uint32 position)
 {
-	Uint32 remainLen = m_maxLength-SDL_static_cast(Uint32, m_sText.length());
+	Uint32 remainLen = m_maxLength - SDL_static_cast(Uint32, m_sText.length());
 	if(remainLen == 0)
 		return 0;
 	else
@@ -434,15 +439,15 @@ void GUI_TextBox::setText(const std::string text, bool updateCursor)
 
 void GUI_TextBox::moveCursor(Sint32 position)
 {
-	if((m_cursorPosition+position >= 0) && (m_cursorPosition+position <= m_sText.length()))
+	if((m_cursorPosition + position >= 0) && (m_cursorPosition + position <= m_sText.length()))
 	{
 		m_cursorPosition += position;
-		if(m_cursorRelativePosition+position < 0)
+		if(m_cursorRelativePosition + position < 0)
 		{
 			if(m_sText.length() <= m_cursorPosition)
 			{
 				m_positionOfFirstShownLetter = getBestPositionOfFirstShownLetter(m_cursorPosition);
-				m_cursorRelativePosition = m_cursorPosition-m_positionOfFirstShownLetter;
+				m_cursorRelativePosition = m_cursorPosition - m_positionOfFirstShownLetter;
 			}
 			else
 			{
@@ -450,10 +455,10 @@ void GUI_TextBox::moveCursor(Sint32 position)
 				m_cursorRelativePosition = 0;
 			}
 		}
-		else if(m_cursorRelativePosition+position > getNumberOfLettersToShow())
+		else if(m_cursorRelativePosition + position > getNumberOfLettersToShow())
 		{
 			m_positionOfFirstShownLetter = getBestPositionOfFirstShownLetter(m_cursorPosition);
-			m_cursorRelativePosition = m_cursorPosition-m_positionOfFirstShownLetter;
+			m_cursorRelativePosition = m_cursorPosition - m_positionOfFirstShownLetter;
 		}
 		else
 			m_cursorRelativePosition += position;
@@ -465,13 +470,13 @@ void GUI_TextBox::moveCursor(Sint32 position)
 Uint32 GUI_TextBox::getNumberOfLettersToShow()
 {
 	Uint32 textLen = SDL_static_cast(Uint32, m_sText.length());
-	Uint32 allowedCheckLen = (textLen < m_positionOfFirstShownLetter ? 0 : textLen-m_positionOfFirstShownLetter);
-	Uint32 allowedTextWidth = m_tRect.x2-m_textStartPosition;
+	Uint32 allowedCheckLen = (textLen < m_positionOfFirstShownLetter ? 0 : textLen - m_positionOfFirstShownLetter);
+	Uint32 allowedTextWidth = m_tRect.x2 - m_textStartPosition;
 	for(Uint32 i = 1; i <= allowedCheckLen; ++i)
 	{
 		Uint32 loopTextWidth = g_engine.calculateFontWidth(m_font, m_sVisibleText, m_positionOfFirstShownLetter, i);
 		if(loopTextWidth >= allowedTextWidth)
-			return i-1;
+			return i - 1;
 	}
 	return allowedCheckLen;
 }
@@ -481,10 +486,10 @@ Uint32 GUI_TextBox::getBestPositionOfFirstShownLetter(Uint32 positionOfLetterToS
 	if(positionOfLetterToSee > SDL_static_cast(Uint32, m_sText.length()))
 		positionOfLetterToSee = SDL_static_cast(Uint32, m_sText.length());
 
-	Uint32 allowedTextWidth = m_tRect.x2-m_textStartPosition;
+	Uint32 allowedTextWidth = m_tRect.x2 - m_textStartPosition;
 	for(Uint32 i = 0; i <= positionOfLetterToSee; ++i)
 	{
-		Uint32 len = positionOfLetterToSee-i;
+		Uint32 len = positionOfLetterToSee - i;
 		Uint32 loopTextWidth = g_engine.calculateFontWidth(m_font, m_sVisibleText, i, len);
 		if(loopTextWidth < allowedTextWidth)
 			return i;
@@ -499,13 +504,13 @@ Uint32 GUI_TextBox::getNearestLetter(Sint32 x)
 	for(Uint32 i = 0; i <= letters; ++i)
 	{
 		Uint32 loopTextWidth = g_engine.calculateFontWidth(m_font, m_sVisibleText, m_positionOfFirstShownLetter, i);
-		Sint32 position = m_tRect.x1+m_textStartPosition+loopTextWidth;
-		if(x-position < 0)
+		Sint32 position = m_tRect.x1 + m_textStartPosition + loopTextWidth;
+		if(x - position < 0)
 		{
-			if(SDL_abs(x-position) < SDL_abs(x-lastPosition))
+			if(SDL_abs(x - position) < SDL_abs(x - lastPosition))
 				return i;
 			else
-				return i-1;
+				return i - 1;
 		}
 		lastPosition = position;
 	}

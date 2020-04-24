@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,16 +24,39 @@
 
 #include "../GUI_Elements/GUI_Element.h"
 
+class GUI_MinimapTime : public GUI_Element
+{
+	public:
+		GUI_MinimapTime(iRect boxRect, Uint32 internalID = 0);
+
+		void render();
+};
+
+class GUI_MinimapFlag : public GUI_Element
+{
+	public:
+		GUI_MinimapFlag(iRect boxRect, Uint8 type, Uint32 internalID = 0);
+
+		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
+		void onLMouseDown(Sint32 x, Sint32 y);
+		void onLMouseUp(Sint32 x, Sint32 y);
+
+		void render();
+
+	protected:
+		Uint8 m_pressed;
+		Uint8 m_type;
+};
+
 class GUI_Minimap : public GUI_Element
 {
 	public:
 		GUI_Minimap(iRect boxRect, Uint32 internalID = 0);
-		~GUI_Minimap() {;}
 
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
-		//void onRMouseDown(Sint32 x, Sint32 y);
-		//void onRMouseUp(Sint32 x, Sint32 y);
+		void onRMouseDown(Sint32 x, Sint32 y);
+		void onRMouseUp(Sint32 x, Sint32 y);
 		void onWheel(Sint32 x, Sint32 y, bool wheelUP);
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 
@@ -41,6 +64,7 @@ class GUI_Minimap : public GUI_Element
 
 	protected:
 		iRect m_mouseEvent;
+		bool m_haveRMouse;
 		bool m_bMouseDragging;
 		bool m_bMouseAutowalk;
 };

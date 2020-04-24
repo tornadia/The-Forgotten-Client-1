@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -27,7 +27,7 @@
 class ProtocolLogin11
 {
 	public:
-		ProtocolLogin11();
+		ProtocolLogin11() = default;
 
 		Uint32 getRequestId() {return m_requestId;}
 
@@ -36,7 +36,7 @@ class ProtocolLogin11
 		void closeConnection();
 		
 	private:
-		Uint32 m_requestId;
+		Uint32 m_requestId = 0;
 };
 
 #endif /* __FILE_PROTOCOL_LOGIN11_h_ */

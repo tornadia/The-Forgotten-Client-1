@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -152,7 +152,7 @@ void UTIL_createReadWriteWindow(Uint32 windowId, void* item, Uint16 maxLen, cons
 		description.insert(0, "\n");
 
 	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, TEXT_WINDOW_WIDTH, TEXT_WINDOW_HEIGHT), (writeAble ? TEXT_WINDOW_TITLE2 : TEXT_WINDOW_TITLE1), GUI_WINDOW_READWRITE);
-	GUI_Label* newLabel = new GUI_Label(iRect(TEXT_WINDOW_DESCRIPTION_X, TEXT_WINDOW_DESCRIPTION_Y, 0, 0), description);
+	GUI_Label* newLabel = new GUI_Label(iRect(TEXT_WINDOW_DESCRIPTION_X, TEXT_WINDOW_DESCRIPTION_Y, 0, 0), std::move(description));
 	newWindow->addChild(newLabel);
 	GUI_ReadWriteItem* newImage = new GUI_ReadWriteItem(iRect(TEXT_WINDOW_ITEM_X, TEXT_WINDOW_ITEM_Y, TEXT_WINDOW_ITEM_W, TEXT_WINDOW_ITEM_H), itemUI);
 	newWindow->addChild(newImage);
@@ -162,28 +162,28 @@ void UTIL_createReadWriteWindow(Uint32 windowId, void* item, Uint16 maxLen, cons
 	newWindow->addChild(newTextBox);
 	if(writeAble)
 	{
-		GUI_Button* newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH-56, TEXT_WINDOW_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+		GUI_Button* newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH - 56, TEXT_WINDOW_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 		newButton->setButtonEventCallback(&readwrite_Events, TEXT_WINDOW_CANCEL_EVENTID);
 		newButton->startEvents();
 		newWindow->addChild(newButton);
-		newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH-109, TEXT_WINDOW_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+		newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH - 109, TEXT_WINDOW_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok");
 		newButton->setButtonEventCallback(&readwrite_Events, TEXT_WINDOW_WRITE_EVENTID);
 		newButton->startEvents();
 		newWindow->addChild(newButton);
 	}
 	else
 	{
-		GUI_Button* newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH-56, TEXT_WINDOW_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
+		GUI_Button* newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH - 56, TEXT_WINDOW_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
 		newButton->setButtonEventCallback(&readwrite_Events, TEXT_WINDOW_CANCEL_EVENTID);
 		newButton->startEvents();
 		newWindow->addChild(newButton);
-		newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH-56, TEXT_WINDOW_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+		newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH - 56, TEXT_WINDOW_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 		newButton->setButtonEventCallback(&readwrite_Events, TEXT_WINDOW_CANCEL_EVENTID);
 		newButton->startEvents();
 		newWindow->addChild(newButton);
 		newTextBox->setColor(175, 175, 175);
 	}
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, TEXT_WINDOW_HEIGHT-40, TEXT_WINDOW_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, TEXT_WINDOW_HEIGHT - 40, TEXT_WINDOW_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
 }
@@ -198,7 +198,7 @@ void UTIL_createReadWriteWindow(Uint8 doorId, Uint32 windowId, const std::string
 	g_doorId = doorId;
 
 	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, TEXT_WINDOW_WIDTH, TEXT_WINDOW_HEIGHT), TEXT_WINDOW_TITLE3, GUI_WINDOW_READWRITE);
-	GUI_Label* newLabel = new GUI_Label(iRect(TEXT_WINDOW_DESCRIPTION_X, TEXT_WINDOW_DESCRIPTION_Y, 0, 0), "\n\nEnter one name per line.");
+	GUI_Label* newLabel = new GUI_Label(iRect(TEXT_WINDOW_DESCRIPTION_X, TEXT_WINDOW_DESCRIPTION_Y, 0, 0), "\n\n\nEnter one name per line.");
 	newWindow->addChild(newLabel);
 	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(TEXT_WINDOW_ITEM_X, TEXT_WINDOW_ITEM_Y, TEXT_WINDOW_ITEM_W, TEXT_WINDOW_ITEM_H), GUI_UI_IMAGE, GUI_UI_ICON_EDITLIST_X, GUI_UI_ICON_EDITLIST_Y);
 	newWindow->addChild(newImage);
@@ -206,15 +206,15 @@ void UTIL_createReadWriteWindow(Uint8 doorId, Uint32 windowId, const std::string
 	newTextBox->setMaxLength(8192);
 	newTextBox->startEvents();
 	newWindow->addChild(newTextBox);
-	GUI_Button* newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH-56, TEXT_WINDOW_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH - 56, TEXT_WINDOW_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&readwrite_Events, TEXT_WINDOW_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH-109, TEXT_WINDOW_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(TEXT_WINDOW_WIDTH - 109, TEXT_WINDOW_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok");
 	newButton->setButtonEventCallback(&readwrite_Events, TEXT_WINDOW_EDIT_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, TEXT_WINDOW_HEIGHT-40, TEXT_WINDOW_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, TEXT_WINDOW_HEIGHT - 40, TEXT_WINDOW_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
 }

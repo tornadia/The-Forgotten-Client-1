@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -167,10 +167,11 @@ HRESULT CompileShader(_In_ LPCWSTR srcFile, _In_ LPCSTR entryPoint, _In_ LPCSTR 
 }
 #endif
 
-SurfaceDirect3D11::SurfaceDirect3D11() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAPTILES), m_spritesMaskIds(HARDWARE_MAX_SPRITEMASKS)
+SurfaceDirect3D11::SurfaceDirect3D11() : m_automapTilesBuff(MAX_AUTOMAPTILES), m_spritesIds(MAX_SPRITES)
 {
 	g_engine.RecreateWindow(false);
 
+	m_spriteAtlas = NULL;
 	m_pictures = NULL;
 	m_software = "Direct3D";
 	m_hardware = NULL;
@@ -219,7 +220,12 @@ SurfaceDirect3D11::SurfaceDirect3D11() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAP
 	m_vertexBufferSize = 0;
 
 	m_totalVRAM = 0;
-	m_spritesCache = 0;
+	m_spriteChecker = 0;
+	m_currentFrame = 0;
+
+	m_spriteAtlases = 0;
+	m_spritesPerAtlas = 0;
+	m_spritesPerModulo = 0;
 
 	m_viewPortX = 0;
 	m_viewPortY = 0;
@@ -230,9 +236,12 @@ SurfaceDirect3D11::SurfaceDirect3D11() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAP
 	m_needReset = true;
 	m_haveSharpening = false;
 	m_useOldDXGIinterface = false;
+	m_scheduleSpriteDraw = false;
 
-	m_spriteMasks.reserve(HARDWARE_MAX_SPRITEMASKS);
-	m_automapTiles.reserve(HARDWARE_MAX_AUTOMAPTILES);
+	m_vertices.reserve(30720);
+
+	m_sprites.reserve(MAX_SPRITES);
+	m_automapTiles.reserve(MAX_AUTOMAPTILES);
 }
 
 SurfaceDirect3D11::~SurfaceDirect3D11()
@@ -253,12 +262,13 @@ SurfaceDirect3D11::~SurfaceDirect3D11()
 
 	for(U32BD3D11Textures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseDirect3DTexture(it->second);
+	
+	for(std::vector<Direct3D11Texture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+		releaseDirect3DTexture((*it));
 
-	for(U64BD3D11Textures::iterator it = m_spriteMasks.begin(), end = m_spriteMasks.end(); it != end; ++it)
-		releaseDirect3DTexture(it->second);
-
-	m_spriteMasks.clear();
-	m_spritesMaskIds.clear();
+	m_sprites.clear();
+	m_spritesAtlas.clear();
+	m_spritesIds.clear();
 	m_automapTilesBuff.clear();
 	m_automapTiles.clear();
 	ID3D11Buffer* vertexBuffer = SDL_reinterpret_cast(ID3D11Buffer*, m_vertexBuffer);
@@ -381,8 +391,8 @@ Direct3D11Texture* SurfaceDirect3D11::createDirect3DTexture(Uint32 width, Uint32
 	}
 	texture->m_width = width;
 	texture->m_height = height;
-	texture->m_scaleW = 1.0f/width;
-	texture->m_scaleH = 1.0f/height;
+	texture->m_scaleW = 1.0f / width;
+	texture->m_scaleH = 1.0f / height;
 	texture->m_linearSample = linearSampler;
 	return texture;
 }
@@ -412,9 +422,9 @@ bool SurfaceDirect3D11::updateTextureData(Direct3D11Texture* texture, unsigned c
 	}
 
 	unsigned char* dstData = SDL_reinterpret_cast(unsigned char*, textureMemory.pData);
-	UINT length = texture->m_width*4;
+	UINT length = texture->m_width * 4;
 	if(length == textureMemory.RowPitch)
-		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, data), length*texture->m_height);
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, data), length * texture->m_height);
 	else
 	{
 		if(length > textureMemory.RowPitch)
@@ -473,8 +483,8 @@ void SurfaceDirect3D11::drawTriangles(std::vector<VertexD3D11>& vertices)
 		ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		while(verticeIndex < verticesSize)
 		{
-			UINT drawSize = UTIL_min<UINT>(verticesSize-verticeIndex, 2046);
-			if(!updateVertexBuffer(SDL_reinterpret_cast(void*, &verticeData[verticeIndex]), sizeof(VertexD3D11)*drawSize))
+			UINT drawSize = UTIL_min<UINT>(verticesSize - verticeIndex, 2046);
+			if(!updateVertexBuffer(SDL_reinterpret_cast(void*, &verticeData[verticeIndex]), sizeof(VertexD3D11) * drawSize))
 				return;
 
 			ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), drawSize, 0);
@@ -483,7 +493,7 @@ void SurfaceDirect3D11::drawTriangles(std::vector<VertexD3D11>& vertices)
 	}
 	else if(verticesSize > 0)
 	{
-		if(!updateVertexBuffer(&vertices[0], sizeof(VertexD3D11)*verticesSize))
+		if(!updateVertexBuffer(&vertices[0], sizeof(VertexD3D11) * verticesSize))
 			return;
 
 		ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -794,7 +804,7 @@ void SurfaceDirect3D11::updateViewport()
 		break;
 		case DXGI_MODE_ROTATION_ROTATE270:
 		{
-			float r = SDL_static_cast(float, M_PI*0.5f);
+			float r = SDL_static_cast(float, M_PI * 0.5f);
 			float sinR = SDL_sinf(r);
 			float cosR = SDL_cosf(r);
 
@@ -824,7 +834,7 @@ void SurfaceDirect3D11::updateViewport()
 		break;
 		case DXGI_MODE_ROTATION_ROTATE90:
 		{
-			float r = SDL_static_cast(float, -M_PI*0.5f);
+			float r = SDL_static_cast(float, -M_PI * 0.5f);
 			float sinR = SDL_sinf(r);
 			float cosR = SDL_cosf(r);
 
@@ -845,8 +855,8 @@ void SurfaceDirect3D11::updateViewport()
 	float v_21, v_22, v_23, v_24;
 	float v_31, v_32, v_33, v_34;
 	float v_41, v_42, v_43, v_44;
-	v_11 = 2.0f/m_viewPortW; v_12 = 0.0f; v_13 = 0.0f; v_14 = 0.0f;
-	v_21 = 0.0f; v_22 = -2.0f/m_viewPortH; v_23 = 0.0f; v_24 = 0.0f;
+	v_11 = 2.0f / m_viewPortW; v_12 = 0.0f; v_13 = 0.0f; v_14 = 0.0f;
+	v_21 = 0.0f; v_22 = -2.0f / m_viewPortH; v_23 = 0.0f; v_24 = 0.0f;
 	v_31 = 0.0f; v_32 = 0.0f; v_33 = 1.0f; v_34 = 0.0f;
 	v_41 = -1.0f; v_42 = 1.0f; v_43 = 0.0f; v_44 = 1.0f;
 
@@ -1249,7 +1259,7 @@ bool SurfaceDirect3D11::isSupported()
 	ID3D11DeviceContext_VSSetConstantBuffers(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11Buffer**, &m_vertexShaderConstants));
 	
 	#ifdef _USE_D3D_SHADER_COMPILER_
-	ID3DBlob *vsBlob = nullptr;
+	ID3DBlob* vsBlob = nullptr;
 	HRESULT hr = CompileShader(L"DX11_vertex_shader_vs.hlsl", "main", "vs_4_0_level_9_3", &vsBlob);
 	if(SUCCEEDED(hr))
 	{
@@ -1303,8 +1313,20 @@ bool SurfaceDirect3D11::isSupported()
 	IDXGIAdapter_GetDesc(SDL_reinterpret_cast(IDXGIAdapter*, m_dxgiAdapter), &adapterDesc);
 	sprintf_s(g_buffer, "%ws", adapterDesc.Description);
 	m_hardware = SDL_strdup(g_buffer);
-	m_totalVRAM = UTIL_power_of_2(SDL_static_cast(Uint32, adapterDesc.DedicatedVideoMemory/1048576));
+	m_totalVRAM = UTIL_power_of_2(SDL_static_cast(Uint32, adapterDesc.DedicatedVideoMemory / 1048576));
 	return true;
+}
+
+void SurfaceDirect3D11::checkScheduledSprites()
+{
+	size_t vertices = m_vertices.size();
+	if(vertices > 0)
+	{
+		updateTextureScaling(m_spriteAtlas);
+		ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &m_spriteAtlas->m_resource));
+		drawTriangles(m_vertices);
+		m_vertices.clear();
+	}
 }
 
 void SurfaceDirect3D11::init()
@@ -1332,18 +1354,60 @@ void SurfaceDirect3D11::doResize(Sint32, Sint32)
 	m_needReset = true;
 }
 
+void SurfaceDirect3D11::generateSpriteAtlases()
+{
+	if(m_maxTextureSize >= 16384 && MAX_SPRITES > 65536)
+	{
+		m_spriteAtlases = (MAX_SPRITES + 262143) / 262144;
+		m_spritesPerAtlas = 262144;
+		m_spritesPerModulo = 16384;
+	}
+	else if(m_maxTextureSize >= 8192 && MAX_SPRITES > 16384)
+	{
+		m_spriteAtlases = (MAX_SPRITES + 65535) / 65536;
+		m_spritesPerAtlas = 65536;
+		m_spritesPerModulo = 8192;
+	}
+	else if(m_maxTextureSize >= 4096 && MAX_SPRITES > 4096)
+	{
+		m_spriteAtlases = (MAX_SPRITES + 16383) / 16384;
+		m_spritesPerAtlas = 16384;
+		m_spritesPerModulo = 4096;
+	}
+	else
+	{
+		m_spriteAtlases = (MAX_SPRITES + 4095) / 4096;
+		m_spritesPerAtlas = 4096;
+		m_spritesPerModulo = 2048;
+	}
+
+	for(Uint32 i = 0; i < m_spriteAtlases; ++i)
+	{
+		Direct3D11Texture* texture = createDirect3DTexture(m_spritesPerModulo, m_spritesPerModulo, false);
+		if(!texture)
+		{
+			UTIL_MessageBox(true, "Direct3D11: Out of video memory.");
+			exit(-1);
+			return;
+		}
+		m_spritesAtlas.push_back(texture);
+	}
+}
+
 void SurfaceDirect3D11::spriteManagerReset()
 {
 	for(U32BD3D11Textures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseDirect3DTexture(it->second);
+	
+	for(std::vector<Direct3D11Texture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+		releaseDirect3DTexture((*it));
 
-	for(U64BD3D11Textures::iterator it = m_spriteMasks.begin(), end = m_spriteMasks.end(); it != end; ++it)
-		releaseDirect3DTexture(it->second);
-
-	m_spriteMasks.clear();
-	m_spritesMaskIds.clear();
+	m_sprites.clear();
+	m_spritesAtlas.clear();
+	m_spritesIds.clear();
 	m_automapTilesBuff.clear();
 	m_automapTiles.clear();
+	generateSpriteAtlases();
 }
 
 unsigned char* SurfaceDirect3D11::getScreenPixels(Sint32& width, Sint32& height, bool& bgra)
@@ -1364,7 +1428,7 @@ unsigned char* SurfaceDirect3D11::getScreenPixels(Sint32& width, Sint32& height,
 	stagingTextureDesc.MiscFlags = 0;
 	stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 	stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
-	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(width*height*4));
+	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(width * height * 4));
 	if(!pixels)
 	{
 		SAFE_RELEASE(backBuffer);
@@ -1383,7 +1447,7 @@ unsigned char* SurfaceDirect3D11::getScreenPixels(Sint32& width, Sint32& height,
 	{
 		case DXGI_MODE_ROTATION_ROTATE90:
 		{
-			srcBox.left = m_viewPortH-height;
+			srcBox.left = m_viewPortH - height;
 			srcBox.right = m_viewPortH;
 			srcBox.top = 0;
 			srcBox.bottom = height;
@@ -1391,9 +1455,9 @@ unsigned char* SurfaceDirect3D11::getScreenPixels(Sint32& width, Sint32& height,
 		break;
 		case DXGI_MODE_ROTATION_ROTATE180:
 		{
-			srcBox.left = m_viewPortW-width;
+			srcBox.left = m_viewPortW - width;
 			srcBox.right = m_viewPortW;
-			srcBox.top = m_viewPortH-height;
+			srcBox.top = m_viewPortH - height;
 			srcBox.bottom = m_viewPortH;
 		}
 		break;
@@ -1401,16 +1465,16 @@ unsigned char* SurfaceDirect3D11::getScreenPixels(Sint32& width, Sint32& height,
 		{
 			srcBox.left = 0;
 			srcBox.right = height;
-			srcBox.top = m_viewPortW-width;
+			srcBox.top = m_viewPortW - width;
 			srcBox.bottom = m_viewPortW;
 		}
 		break;
 		default:
 		{
 			srcBox.left = m_viewPortX;
-			srcBox.right = m_viewPortX+width;
+			srcBox.right = m_viewPortX + width;
 			srcBox.top = m_viewPortY;
-			srcBox.bottom = m_viewPortY+height;
+			srcBox.bottom = m_viewPortY + height;
 		}
 		break;
 	}
@@ -1429,7 +1493,7 @@ unsigned char* SurfaceDirect3D11::getScreenPixels(Sint32& width, Sint32& height,
 	}
 	if(stagingTextureDesc.Format == DXGI_FORMAT_B8G8R8A8_UNORM || stagingTextureDesc.Format == DXGI_FORMAT_B8G8R8X8_UNORM)
 	{
-		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, pixels), SDL_reinterpret_cast(const Uint8*, textureMemory.pData), SDL_static_cast(size_t, width*height*4));
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, pixels), SDL_reinterpret_cast(const Uint8*, textureMemory.pData), SDL_static_cast(size_t, width * height * 4));
 		bgra = true;
 	}
 	else
@@ -1446,6 +1510,8 @@ unsigned char* SurfaceDirect3D11::getScreenPixels(Sint32& width, Sint32& height,
 
 void SurfaceDirect3D11::beginScene()
 {
+	m_spriteChecker = 0;
+	++m_currentFrame;
 	if(m_needReset)
 	{
 		m_currentRenderTargetView = NULL;
@@ -1471,6 +1537,7 @@ void SurfaceDirect3D11::beginScene()
 	ID3D11DeviceContext_PSSetShader(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11PixelShader*, m_pixelShaderTexture), NULL, 0);
 	ID3D11DeviceContext_PSSetSamplers(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, &sampler);
 	m_usingLinearSample = false;
+	m_scheduleSpriteDraw = false;
 }
 
 void SurfaceDirect3D11::endScene()
@@ -1519,7 +1586,7 @@ bool SurfaceDirect3D11::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	Sint32 width = RENDERTARGET_WIDTH;
 	Sint32 height = RENDERTARGET_HEIGHT;
 	UTIL_integer_scale(width, height, w, h, m_maxTextureSize, m_maxTextureSize);
-	if(m_integer_scaling_width != width || m_integer_scaling_height != height || !m_scaled_gameWindow)
+	if(m_integer_scaling_width < width || m_integer_scaling_height < height || !m_scaled_gameWindow)
 	{
 		if(m_scaled_gameWindow)
 		{
@@ -1548,10 +1615,10 @@ bool SurfaceDirect3D11::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	float miny = 0.0f;
 	float maxy = SDL_static_cast(float, height);
 
-	float minu = sx*m_gameWindow->m_scaleW;
-	float maxu = (sx+sw)*m_gameWindow->m_scaleW;
-	float minv = sy*m_gameWindow->m_scaleH;
-	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
+	float minu = sx * m_gameWindow->m_scaleW;
+	float maxu = (sx + sw) * m_gameWindow->m_scaleW;
+	float minv = sy * m_gameWindow->m_scaleH;
+	float maxv = (sy + sh) * m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
 	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
@@ -1572,14 +1639,14 @@ bool SurfaceDirect3D11::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	updateViewport();
 
 	minx = SDL_static_cast(float, x);
-	maxx = SDL_static_cast(float, x+w);
+	maxx = SDL_static_cast(float, x + w);
 	miny = SDL_static_cast(float, y);
-	maxy = SDL_static_cast(float, y+h);
+	maxy = SDL_static_cast(float, y + h);
 
 	minu = 0.0f;
-	maxu = m_scaled_gameWindow->m_width*m_scaled_gameWindow->m_scaleW;
+	maxu = width * m_scaled_gameWindow->m_scaleW;
 	minv = 0.0f;
-	maxv = m_scaled_gameWindow->m_height*m_scaled_gameWindow->m_scaleH;
+	maxv = height * m_scaled_gameWindow->m_scaleH;
 
 	vertices[0].x = minx;
 	vertices[0].y = miny;
@@ -1606,7 +1673,7 @@ bool SurfaceDirect3D11::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	updateTextureScaling(m_scaled_gameWindow);
 	if(g_engine.isSharpening() && m_haveSharpening)
 	{
-		float textureDimensions[2] = {1.0f / w, 1.0f / h};
+		float textureDimensions[2] = {1.0f / w * (sw * m_gameWindow->m_scaleW), 1.0f / h * (sh * m_gameWindow->m_scaleH)};
 		ID3D11DeviceContext_PSSetShader(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11PixelShader*, m_pixelShaderSharpen), NULL, 0);
 		ID3D11DeviceContext_PSSetConstantBuffers(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11Buffer**, &m_pixelShaderConstants));
 		ID3D11DeviceContext_UpdateSubresource(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, m_pixelShaderConstants), 0, NULL, &textureDimensions, 0, 0);
@@ -1638,14 +1705,14 @@ void SurfaceDirect3D11::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 		}
 	}
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*m_gameWindow->m_scaleW;
-	float maxu = (sx+sw)*m_gameWindow->m_scaleW;
-	float minv = sy*m_gameWindow->m_scaleH;
-	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
+	float minu = sx * m_gameWindow->m_scaleW;
+	float maxu = (sx + sw) * m_gameWindow->m_scaleW;
+	float minv = sy * m_gameWindow->m_scaleH;
+	float maxv = (sy + sh) * m_gameWindow->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
 	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
@@ -1656,7 +1723,7 @@ void SurfaceDirect3D11::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 	ID3D11DeviceContext_OMSetBlendState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), NULL, 0, 0xFFFFFFFF);
 	if(g_engine.isSharpening() && m_haveSharpening)
 	{
-		float textureDimensions[2] = {1.0f / w, 1.0f / h};
+		float textureDimensions[2] = {1.0f / w * (sw * m_gameWindow->m_scaleW), 1.0f / h * (sh * m_gameWindow->m_scaleH)};
 		ID3D11DeviceContext_PSSetShader(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11PixelShader*, m_pixelShaderSharpen), NULL, 0);
 		ID3D11DeviceContext_PSSetConstantBuffers(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11Buffer**, &m_pixelShaderConstants));
 		ID3D11DeviceContext_UpdateSubresource(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, m_pixelShaderConstants), 0, NULL, &textureDimensions, 0, 0);
@@ -1683,10 +1750,14 @@ void SurfaceDirect3D11::beginGameScene()
 	m_currentRenderTargetView = m_gameWindow->m_frameBuffer;
 	updateViewport();
 	fillRectangle(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, 0x00, 0x00, 0x00, 0xFF);
+	m_vertices.clear();
+	m_scheduleSpriteDraw = true;
 }
 
 void SurfaceDirect3D11::endGameScene()
 {
+	checkScheduledSprites();
+	m_scheduleSpriteDraw = false;
 	ID3D11DeviceContext_OMSetRenderTargets(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 1, SDL_reinterpret_cast(ID3D11RenderTargetView**, &m_mainRenderTargetView), NULL);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
@@ -1696,40 +1767,202 @@ void SurfaceDirect3D11::endGameScene()
 	updateViewport();
 }
 
-void SurfaceDirect3D11::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
+void SurfaceDirect3D11::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
-	std::vector<VertexD3D11> vertices;
-	vertices.reserve((width+1)*2);
+	m_vertices.clear();
 	ID3D11DeviceContext_OMSetBlendState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11BlendState*, m_blendMod), 0, 0xFFFFFFFF);
 
 	ID3D11ShaderResourceView* resources = NULL;
 	ID3D11DeviceContext_PSSetShader(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11PixelShader*, m_pixelShaderSolid), NULL, 0);
 	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 0, &resources);
-	Sint32 drawY = y-scale-(scale/2);
+
+	Sint32 drawY = y - scale - (scale / 2);
 	height -= 1;
 	for(Sint32 j = -1; j < height; ++j)
 	{
 		Sint32 offset1 = (j + 1) * width;
 		Sint32 offset2 = UTIL_max<Sint32>(j, 0) * width;
-		Sint32 drawX = x-scale-(scale/2), verticeCount = 0;
+		Sint32 drawX = x - scale - (scale / 2), verticeCount = 0;
 		for(Sint32 k = -1; k < width; ++k)
 		{
 			Sint32 offset = UTIL_max<Sint32>(k, 0);
-			vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY+scale), MAKE_RGBA_COLOR(lightmap[offset1 + offset].r, lightmap[offset1 + offset].g, lightmap[offset1 + offset].b, 255));
-			vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(lightmap[offset2 + offset].r, lightmap[offset2 + offset].g, lightmap[offset2 + offset].b, 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(lightmap[offset1 + offset].r, lightmap[offset1 + offset].g, lightmap[offset1 + offset].b, 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(lightmap[offset2 + offset].r, lightmap[offset2 + offset].g, lightmap[offset2 + offset].b, 255));
 			verticeCount += 2;
 			drawX += scale;
 		}
 
 		drawY += scale;
-		if(!updateVertexBuffer(&vertices[0], sizeof(VertexD3D11)*verticeCount))
+		if(!updateVertexBuffer(&m_vertices[0], sizeof(VertexD3D11) * verticeCount))
 			continue;
 
-		vertices.clear();
+		m_vertices.clear();
 		ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), verticeCount, 0);
 	}
 
+	ID3D11DeviceContext_OMSetBlendState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11BlendState*, m_blendBlend), 0, 0xFFFFFFFF);
+	ID3D11DeviceContext_PSSetShader(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11PixelShader*, m_pixelShaderTexture), NULL, 0);
+}
+
+void SurfaceDirect3D11::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
+{
+	static const float inv255f = (1.0f / 255.0f);
+	m_vertices.clear();
+	ID3D11DeviceContext_OMSetBlendState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11BlendState*, m_blendMod), 0, 0xFFFFFFFF);
+
+	ID3D11ShaderResourceView* resources = NULL;
+	ID3D11DeviceContext_PSSetShader(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11PixelShader*, m_pixelShaderSolid), NULL, 0);
+	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 0, &resources);
+
+	Sint32 halfScale = (scale / 2);
+	Sint32 drawY = y - scale - halfScale;
+	height -= 1;
+	for(Sint32 j = -1; j < height; ++j)
+	{
+		Sint32 offset1 = (j + 1) * width;
+		Sint32 offset2 = UTIL_max<Sint32>(j, 0) * width;
+		Sint32 drawX = x - scale - halfScale;
+		for(Sint32 k = -1; k < width; ++k)
+		{
+			Sint32 offset = UTIL_max<Sint32>(k, 0);
+
+			//Get the colors of tile corners
+			float topCenter[2][3], leftCenter[2][3], bottomCenter[2][3], rightCenter[2][3], center[2][3], topLeft[2][3], topRight[2][3], bottomLeft[2][3], bottomRight[2][3];
+			topLeft[0][0] = lightmap[offset2 + offset].r * inv255f;
+			topLeft[0][1] = lightmap[offset2 + offset].g * inv255f;
+			topLeft[0][2] = lightmap[offset2 + offset].b * inv255f;
+			topRight[0][0] = lightmap[offset2 + k + 1].r * inv255f;
+			topRight[0][1] = lightmap[offset2 + k + 1].g * inv255f;
+			topRight[0][2] = lightmap[offset2 + k + 1].b * inv255f;
+			bottomLeft[0][0] = lightmap[offset1 + offset].r * inv255f;
+			bottomLeft[0][1] = lightmap[offset1 + offset].g * inv255f;
+			bottomLeft[0][2] = lightmap[offset1 + offset].b * inv255f;
+			bottomRight[0][0] = lightmap[offset1 + k + 1].r * inv255f;
+			bottomRight[0][1] = lightmap[offset1 + k + 1].g * inv255f;
+			bottomRight[0][2] = lightmap[offset1 + k + 1].b * inv255f;
+
+			//Get the colors of first triangles
+			float v[3][2], p[2];
+			v[0][0] = SDL_static_cast(float, drawX);
+			v[0][1] = SDL_static_cast(float, drawY);
+			v[1][0] = SDL_static_cast(float, drawX + scale);
+			v[1][1] = SDL_static_cast(float, drawY);
+			v[2][0] = SDL_static_cast(float, drawX);
+			v[2][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, topRight[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, topCenter[0]);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, leftCenter[0]);
+			p[0] = SDL_static_cast(float, drawX + halfScale) - 0.5f;
+			p[1] = SDL_static_cast(float, drawY + halfScale) - 0.5f;
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, center[0]);
+			v[0][0] = SDL_static_cast(float, drawX + scale);
+			v[0][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, bottomLeft[1]);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, rightCenter[0]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, bottomCenter[0]);
+
+			//Get the colors of second triangles
+			v[0][0] = SDL_static_cast(float, drawX);
+			v[0][1] = SDL_static_cast(float, drawY + scale);
+			v[1][0] = SDL_static_cast(float, drawX);
+			v[1][1] = SDL_static_cast(float, drawY);
+			v[2][0] = SDL_static_cast(float, drawX + scale);
+			v[2][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, topLeft[1]);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, leftCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, bottomCenter[1]);
+			v[0][0] = SDL_static_cast(float, drawX + scale);
+			v[0][1] = SDL_static_cast(float, drawY);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, bottomRight[1]);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, rightCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, topCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale) + 0.5f;
+			p[1] = SDL_static_cast(float, drawY + halfScale) + 0.5f;
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, center[1]);
+
+			//Use brighter color from triangles for our squares
+			#define VEC_MAX(a)										\
+				do {												\
+					a[0][0] = UTIL_max<float>(a[0][0], a[1][0]);	\
+					a[0][1] = UTIL_max<float>(a[0][1], a[1][1]);	\
+					a[0][2] = UTIL_max<float>(a[0][2], a[1][2]);	\
+				} while(0)
+
+			VEC_MAX(topLeft);
+			VEC_MAX(topRight);
+			VEC_MAX(bottomLeft);
+			VEC_MAX(bottomRight);
+			VEC_MAX(leftCenter);
+			VEC_MAX(bottomCenter);
+			VEC_MAX(rightCenter);
+			VEC_MAX(topCenter);
+			VEC_MAX(center);
+			#undef VEC_MAX
+
+			//Draw Top-Left square
+			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, leftCenter[0][0] * 255.f), SDL_static_cast(Uint8, leftCenter[0][1] * 255.f), SDL_static_cast(Uint8, leftCenter[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topLeft[0][0] * 255.f), SDL_static_cast(Uint8, topLeft[0][1] * 255.f), SDL_static_cast(Uint8, topLeft[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topLeft[0][0] * 255.f), SDL_static_cast(Uint8, topLeft[0][1] * 255.f), SDL_static_cast(Uint8, topLeft[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+
+			//Draw Bottom-Left square
+			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, leftCenter[0][0] * 255.f), SDL_static_cast(Uint8, leftCenter[0][1] * 255.f), SDL_static_cast(Uint8, leftCenter[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomLeft[0][0] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][1] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomLeft[0][0] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][1] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+
+			//Draw Top-Right square
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topRight[0][0] * 255.f), SDL_static_cast(Uint8, topRight[0][1] * 255.f), SDL_static_cast(Uint8, topRight[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topRight[0][0] * 255.f), SDL_static_cast(Uint8, topRight[0][1] * 255.f), SDL_static_cast(Uint8, topRight[0][2] * 255.f), 255));
+
+			//Draw Bottom-Right square
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomRight[0][0] * 255.f), SDL_static_cast(Uint8, bottomRight[0][1] * 255.f), SDL_static_cast(Uint8, bottomRight[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomRight[0][0] * 255.f), SDL_static_cast(Uint8, bottomRight[0][1] * 255.f), SDL_static_cast(Uint8, bottomRight[0][2] * 255.f), 255));
+
+			drawX += scale;
+		}
+
+		drawY += scale;
+	}
+
+	drawTriangles(m_vertices);
 	ID3D11DeviceContext_OMSetBlendState(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11BlendState*, m_blendBlend), 0, 0xFFFFFFFF);
 	ID3D11DeviceContext_PSSetShader(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11PixelShader*, m_pixelShaderTexture), NULL, 0);
 }
@@ -1739,39 +1972,40 @@ void SurfaceDirect3D11::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 	DXGI_MODE_ROTATION rotation = DXGI_MODE_ROTATION_IDENTITY;
 	if(!m_currentRenderTargetView || m_currentRenderTargetView == m_mainRenderTargetView)
 		rotation = D3D11_GetCurrentRotation();
+
 	D3D11_RECT scissorRect;
 	switch(rotation)
 	{
 		case DXGI_MODE_ROTATION_ROTATE90:
 		{
-			scissorRect.left = m_viewPortH-y-h;
-			scissorRect.right = m_viewPortH-y;
+			scissorRect.left = m_viewPortH - y - h;
+			scissorRect.right = m_viewPortH - y;
 			scissorRect.top = x;
-			scissorRect.bottom = x+h;
+			scissorRect.bottom = x + h;
 		}
 		break;
 		case DXGI_MODE_ROTATION_ROTATE180:
 		{
-			scissorRect.left = m_viewPortW-x-w;
-			scissorRect.right = m_viewPortW-x;
-			scissorRect.top = m_viewPortH-y-h;
-			scissorRect.bottom = m_viewPortH-y;
+			scissorRect.left = m_viewPortW - x - w;
+			scissorRect.right = m_viewPortW - x;
+			scissorRect.top = m_viewPortH - y - h;
+			scissorRect.bottom = m_viewPortH - y;
 		}
 		break;
 		case DXGI_MODE_ROTATION_ROTATE270:
 		{
 			scissorRect.left = y;
-			scissorRect.right = y+h;
-			scissorRect.top = m_viewPortW-x-w;
-			scissorRect.bottom = m_viewPortW-x;
+			scissorRect.right = y + h;
+			scissorRect.top = m_viewPortW - x - w;
+			scissorRect.bottom = m_viewPortW - x;
 		}
 		break;
 		default:
 		{
-			scissorRect.left = m_viewPortX+x;
-			scissorRect.right = m_viewPortX+x+w;
-			scissorRect.top = m_viewPortY+y;
-			scissorRect.bottom = m_viewPortY+y+h;
+			scissorRect.left = m_viewPortX + x;
+			scissorRect.right = m_viewPortX + x + w;
+			scissorRect.top = m_viewPortY + y;
+			scissorRect.bottom = m_viewPortY + y + h;
 		}
 		break;
 	}
@@ -1787,10 +2021,13 @@ void SurfaceDirect3D11::disableClipRect()
 
 void SurfaceDirect3D11::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	float minx = SDL_static_cast(float, x)+0.5f;
-	float maxx = SDL_static_cast(float, x+w)-0.5f;
-	float miny = SDL_static_cast(float, y)+0.5f;
-	float maxy = SDL_static_cast(float, y+h)-0.5f;
+	if(m_scheduleSpriteDraw)
+		checkScheduledSprites();
+
+	float minx = SDL_static_cast(float, x) + 0.5f;
+	float maxx = SDL_static_cast(float, x + w) - 0.5f;
+	float miny = SDL_static_cast(float, y) + 0.5f;
+	float maxy = SDL_static_cast(float, y + h) - 0.5f;
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
 	VertexD3D11 vertices[5] = {{minx, miny, texColor},{maxx, miny, texColor},{maxx, maxy, texColor},{minx, maxy, texColor},{minx, miny, texColor}};
@@ -1809,10 +2046,13 @@ void SurfaceDirect3D11::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Ui
 
 void SurfaceDirect3D11::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
+	if(m_scheduleSpriteDraw)
+		checkScheduledSprites();
+
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
 	VertexD3D11 vertices[4] = {{minx, miny, texColor},{minx, maxy, texColor},{maxx, miny, texColor},{maxx, maxy, texColor}};
@@ -1858,11 +2098,9 @@ void SurfaceDirect3D11::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std
 		if(!tex)
 			return;//load failed
 	}
-
-	std::vector<VertexD3D11> vertices;
-	vertices.reserve(1536);
-
+	
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, 255);
+	m_vertices.clear();
 
 	Sint32 rx = x, ry = y;
 	Uint8 character;
@@ -1878,18 +2116,20 @@ void SurfaceDirect3D11::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std
 				rx = x; ry += cH[0];
 				break;
 			case 0x20://space - don't draw
-				rx += cW[character]+cX[0];
+				rx += cW[character] + cX[0];
 				break;
 			case 0x0E://Special case - change rendering color
 			{
-				if(i+4 < len)//First check if we have the color bytes
+				if(i + 4 < len)//First check if we have the color bytes
 				{
-					Uint8 red = SDL_static_cast(Uint8, text[i+1]);
-					Uint8 green = SDL_static_cast(Uint8, text[i+2]);
-					Uint8 blue = SDL_static_cast(Uint8, text[i+3]);
+					Uint8 red = SDL_static_cast(Uint8, text[i + 1]);
+					Uint8 green = SDL_static_cast(Uint8, text[i + 2]);
+					Uint8 blue = SDL_static_cast(Uint8, text[i + 3]);
 					texColor = MAKE_RGBA_COLOR(red, green, blue, 255);
 					i += 3;
 				}
+				else
+					i = len;
 			}
 			break;
 			case 0x0F://Special case - change back standard color
@@ -1898,24 +2138,24 @@ void SurfaceDirect3D11::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std
 			default:
 			{
 				float minx = SDL_static_cast(float, rx);
-				float maxx = SDL_static_cast(float, rx+cW[character]);
+				float maxx = SDL_static_cast(float, rx + cW[character]);
 				float miny = SDL_static_cast(float, ry);
-				float maxy = SDL_static_cast(float, ry+cH[character]);
+				float maxy = SDL_static_cast(float, ry + cH[character]);
 
-				float minu = cX[character]*tex->m_scaleW;
-				float maxu = (cX[character]+cW[character])*tex->m_scaleW;
-				float minv = cY[character]*tex->m_scaleH;
-				float maxv = (cY[character]+cH[character])*tex->m_scaleH;
+				float minu = cX[character] * tex->m_scaleW;
+				float maxu = (cX[character] + cW[character]) * tex->m_scaleW;
+				float minv = cY[character] * tex->m_scaleH;
+				float maxv = (cY[character] + cH[character]) * tex->m_scaleH;
 
-				vertices.emplace_back(minx, miny, minu, minv, texColor);
-				vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-				vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+				m_vertices.emplace_back(minx, miny, minu, minv, texColor);
+				m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+				m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-				vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-				vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-				vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+				m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+				m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+				m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
 
-				rx += cW[character]+cX[0];
+				rx += cW[character] + cX[0];
 			}
 			break;
 		}
@@ -1923,7 +2163,7 @@ void SurfaceDirect3D11::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std
 
 	updateTextureScaling(tex);
 	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
-	drawTriangles(vertices);
+	drawTriangles(m_vertices);
 }
 
 void SurfaceDirect3D11::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -1937,14 +2177,14 @@ void SurfaceDirect3D11::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, S
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + sw) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + sh) * tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
 	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
@@ -1969,10 +2209,8 @@ void SurfaceDirect3D11::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy
 			return;//load failed
 	}
 
-	std::vector<VertexD3D11> vertices;
-	vertices.reserve(1536);
-
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
+	m_vertices.clear();
 
 	Sint32 curW, curH, cx;
 	for(Sint32 j = h; j > 0; j -= sh)
@@ -1983,22 +2221,22 @@ void SurfaceDirect3D11::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy
 		{
 			curW = (k > sw ? sw : k);
 			float minx = SDL_static_cast(float, cx);
-			float maxx = SDL_static_cast(float, cx+curW);
+			float maxx = SDL_static_cast(float, cx + curW);
 			float miny = SDL_static_cast(float, y);
-			float maxy = SDL_static_cast(float, y+curH);
+			float maxy = SDL_static_cast(float, y + curH);
 
-			float minu = sx*tex->m_scaleW;
-			float maxu = (sx+curW)*tex->m_scaleW;
-			float minv = sy*tex->m_scaleH;
-			float maxv = (sy+curH)*tex->m_scaleH;
+			float minu = sx * tex->m_scaleW;
+			float maxu = (sx + curW) * tex->m_scaleW;
+			float minv = sy * tex->m_scaleH;
+			float maxv = (sy + curH) * tex->m_scaleH;
 
-			vertices.emplace_back(minx, miny, minu, minv, texColor);
-			vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-			vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+			m_vertices.emplace_back(minx, miny, minu, minv, texColor);
+			m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+			m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-			vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-			vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-			vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+			m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+			m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+			m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
 
 			cx += sw;
 		}
@@ -2007,7 +2245,7 @@ void SurfaceDirect3D11::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy
 
 	updateTextureScaling(tex);
 	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
-	drawTriangles(vertices);
+	drawTriangles(m_vertices);
 }
 
 void SurfaceDirect3D11::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -2021,14 +2259,14 @@ void SurfaceDirect3D11::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+w)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+h)*tex->m_scaleH;
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + w) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + h) * tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
 	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
@@ -2041,35 +2279,364 @@ void SurfaceDirect3D11::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint
 	ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
 }
 
-Direct3D11Texture* SurfaceDirect3D11::loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor)
+bool SurfaceDirect3D11::loadSprite(Uint32 spriteId, Direct3D11Texture* texture, Uint32 xoff, Uint32 yoff)
+{
+	unsigned char* pixels = g_engine.LoadSprite(spriteId, true);
+	if(!pixels)
+		return false;
+
+	ID3D11Texture2D* stagingTexture;
+	D3D11_TEXTURE2D_DESC stagingTextureDesc;
+	ID3D11Texture2D_GetDesc(SDL_reinterpret_cast(ID3D11Texture2D*, texture->m_texture), &stagingTextureDesc);
+	stagingTextureDesc.Width = 32;
+	stagingTextureDesc.Height = 32;
+	stagingTextureDesc.BindFlags = 0;
+	stagingTextureDesc.MiscFlags = 0;
+	stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
+
+	HRESULT result = ID3D11Device_CreateTexture2D(SDL_reinterpret_cast(ID3D11Device*, m_device), &stagingTextureDesc, NULL, SDL_reinterpret_cast(ID3D11Texture2D**, &stagingTexture));
+	if(FAILED(result))
+	{
+		SDL_free(pixels);
+		return false;
+	}
+
+	D3D11_MAPPED_SUBRESOURCE textureMemory;
+	result = ID3D11DeviceContext_Map(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0, D3D11_MAP_WRITE, 0, &textureMemory);
+	if(FAILED(result))
+	{
+		SAFE_RELEASE(stagingTexture);
+		SDL_free(pixels);
+		return false;
+	}
+
+	unsigned char* dstData = SDL_reinterpret_cast(unsigned char*, textureMemory.pData);
+	UINT length = 32 * 4;
+	if(length == textureMemory.RowPitch)
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, pixels), length * 32);
+	else
+	{
+		unsigned char* srcPixels = pixels;
+		if(length > textureMemory.RowPitch)
+			length = textureMemory.RowPitch;
+		for(Uint32 row = 0; row < texture->m_height; ++row)
+		{
+			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, srcPixels), length);
+			srcPixels += length;
+			dstData += textureMemory.RowPitch;
+		}
+	}
+	ID3D11DeviceContext_Unmap(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0);
+	ID3D11DeviceContext_CopySubresourceRegion(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, texture->m_texture), 0, xoff, yoff, 0, SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0, NULL);
+	SAFE_RELEASE(stagingTexture);
+	SDL_free(pixels);
+	return true;
+}
+
+bool SurfaceDirect3D11::loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, Direct3D11Texture* texture, Uint32 xoff, Uint32 yoff)
 {
 	unsigned char* pixels = g_engine.LoadSpriteMask(spriteId, maskSpriteId, outfitColor, true);
 	if(!pixels)
-		return NULL;
+		return false;
 
-	if(m_spriteMasks.size() >= HARDWARE_MAX_SPRITEMASKS)
-	{
-		U64BD3D11Textures::iterator it = m_spriteMasks.find(m_spritesMaskIds.front());
-		if(it == m_spriteMasks.end())//Something weird happen - let's erase the first one entry
-			it = m_spriteMasks.begin();
+	ID3D11Texture2D* stagingTexture;
+	D3D11_TEXTURE2D_DESC stagingTextureDesc;
+	ID3D11Texture2D_GetDesc(SDL_reinterpret_cast(ID3D11Texture2D*, texture->m_texture), &stagingTextureDesc);
+	stagingTextureDesc.Width = 32;
+	stagingTextureDesc.Height = 32;
+	stagingTextureDesc.BindFlags = 0;
+	stagingTextureDesc.MiscFlags = 0;
+	stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
 
-		releaseDirect3DTexture(it->second);
-		m_spriteMasks.erase(it);
-		m_spritesMaskIds.pop_front();
-	}
-	Direct3D11Texture* s = createDirect3DTexture(32, 32, false);
-	if(!s)
+	HRESULT result = ID3D11Device_CreateTexture2D(SDL_reinterpret_cast(ID3D11Device*, m_device), &stagingTextureDesc, NULL, SDL_reinterpret_cast(ID3D11Texture2D**, &stagingTexture));
+	if(FAILED(result))
 	{
 		SDL_free(pixels);
-		return NULL;
+		return false;
 	}
 
-	updateTextureData(s, pixels);
-	SDL_free(pixels);
+	D3D11_MAPPED_SUBRESOURCE textureMemory;
+	result = ID3D11DeviceContext_Map(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0, D3D11_MAP_WRITE, 0, &textureMemory);
+	if(FAILED(result))
+	{
+		SAFE_RELEASE(stagingTexture);
+		SDL_free(pixels);
+		return false;
+	}
 
-	m_spriteMasks[tempPos] = s;
-	m_spritesMaskIds.push_back(tempPos);
-	return s;
+	unsigned char* dstData = SDL_reinterpret_cast(unsigned char*, textureMemory.pData);
+	UINT length = 32 * 4;
+	if(length == textureMemory.RowPitch)
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, pixels), length * 32);
+	else
+	{
+		unsigned char* srcPixels = pixels;
+		if(length > textureMemory.RowPitch)
+			length = textureMemory.RowPitch;
+		for(Uint32 row = 0; row < texture->m_height; ++row)
+		{
+			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, srcPixels), length);
+			srcPixels += length;
+			dstData += textureMemory.RowPitch;
+		}
+	}
+	ID3D11DeviceContext_Unmap(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0);
+	ID3D11DeviceContext_CopySubresourceRegion(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, texture->m_texture), 0, xoff, yoff, 0, SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0, NULL);
+	SAFE_RELEASE(stagingTexture);
+	SDL_free(pixels);
+	return true;
+}
+
+void SurfaceDirect3D11::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
+{
+	if(spriteId > g_spriteCounts)
+		return;
+	
+	#if SIZEOF_VOIDP == 4
+	Uint64 tempPos;
+	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
+	u32p[0] = spriteId;
+	u32p[1] = 0;
+	#else
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
+	#endif
+	Uint32 xOffset;
+	Uint32 yOffset;
+	Direct3D11Texture* tex;
+	U64BD3D11Textures::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
+	{
+		if(m_sprites.size() >= MAX_SPRITES)
+		{
+			while(++m_spriteChecker < MAX_SPRITES)
+			{
+				Uint64 oldSpriteId = m_spritesIds.front();
+				it = m_sprites.find(oldSpriteId);
+				if(it == m_sprites.end())
+				{
+					UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+					exit(-1);
+				}
+
+				m_spritesIds.pop_front();
+				if(it->second.m_lastUsage == m_currentFrame)
+					m_spritesIds.push_back(oldSpriteId);
+				else
+					goto Skip_Search;
+			}
+
+			if(m_scheduleSpriteDraw)
+				checkScheduledSprites();
+
+			it = m_sprites.find(m_spritesIds.front());
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+				exit(-1);
+			}
+			m_spritesIds.pop_front();
+
+			Skip_Search:
+			Direct3D11SpriteData sprData = it->second;
+			sprData.m_lastUsage = m_currentFrame;
+			m_sprites.erase(it);
+			m_sprites[tempPos] = sprData;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		else
+		{
+			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
+			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
+			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
+			if(spriteAtlas >= m_spritesAtlas.size())
+				return;
+
+			Direct3D11SpriteData& sprData = m_sprites[tempPos];
+			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
+			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
+			sprData.m_surface = spriteAtlas;
+			sprData.m_lastUsage = m_currentFrame;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		if(!loadSprite(spriteId, tex, xOffset, yOffset))
+			return;//load failed
+	}
+	else
+	{
+		xOffset = it->second.m_xOffset;
+		yOffset = it->second.m_yOffset;
+		tex = m_spritesAtlas[it->second.m_surface];
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
+		{
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
+		}
+	}
+
+	float minx = SDL_static_cast(float, x);
+	float maxx = minx + 32.0f;
+	float miny = SDL_static_cast(float, y);
+	float maxy = miny + 32.0f;
+
+	float minu = xOffset * tex->m_scaleW;
+	float maxu = (xOffset + 32) * tex->m_scaleW;
+	float minv = yOffset * tex->m_scaleH;
+	float maxv = (yOffset + 32) * tex->m_scaleH;
+
+	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
+	if(m_scheduleSpriteDraw)
+	{
+		if(tex != m_spriteAtlas)
+		{
+			checkScheduledSprites();
+			m_spriteAtlas = tex;
+		}
+		m_vertices.emplace_back(minx, miny, minu, minv, texColor);
+		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+
+		m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+	}
+	else
+	{
+		VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+		if(!updateVertexBuffer(vertices, sizeof(vertices)))
+			return;
+
+		updateTextureScaling(tex);
+		ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
+		ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
+	}
+}
+
+void SurfaceDirect3D11::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
+{
+	if(spriteId > g_spriteCounts)
+		return;
+
+	#if SIZEOF_VOIDP == 4
+	Uint64 tempPos;
+	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
+	u32p[0] = spriteId;
+	u32p[1] = 0;
+	#else
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
+	#endif
+	Uint32 xOffset;
+	Uint32 yOffset;
+	Direct3D11Texture* tex;
+	U64BD3D11Textures::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
+	{
+		if(m_sprites.size() >= MAX_SPRITES)
+		{
+			while(++m_spriteChecker < MAX_SPRITES)
+			{
+				Uint64 oldSpriteId = m_spritesIds.front();
+				it = m_sprites.find(oldSpriteId);
+				if(it == m_sprites.end())
+				{
+					UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+					exit(-1);
+				}
+
+				m_spritesIds.pop_front();
+				if(it->second.m_lastUsage == m_currentFrame)
+					m_spritesIds.push_back(oldSpriteId);
+				else
+					goto Skip_Search;
+			}
+
+			it = m_sprites.find(m_spritesIds.front());
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+				exit(-1);
+			}
+			m_spritesIds.pop_front();
+
+			Skip_Search:
+			Direct3D11SpriteData sprData = it->second;
+			sprData.m_lastUsage = m_currentFrame;
+			m_sprites.erase(it);
+			m_sprites[tempPos] = sprData;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		else
+		{
+			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
+			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
+			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
+			if(spriteAtlas >= m_spritesAtlas.size())
+				return;
+
+			Direct3D11SpriteData& sprData = m_sprites[tempPos];
+			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
+			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
+			sprData.m_surface = spriteAtlas;
+			sprData.m_lastUsage = m_currentFrame;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		if(!loadSprite(spriteId, tex, xOffset, yOffset))
+			return;//load failed
+	}
+	else
+	{
+		xOffset = it->second.m_xOffset;
+		yOffset = it->second.m_yOffset;
+		tex = m_spritesAtlas[it->second.m_surface];
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
+		{
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
+		}
+	}
+
+	float minx = SDL_static_cast(float, x);
+	float maxx = SDL_static_cast(float, x + w);
+	float miny = SDL_static_cast(float, y);
+	float maxy = SDL_static_cast(float, y + h);
+
+	sx += SDL_static_cast(Sint32, xOffset);
+	sy += SDL_static_cast(Sint32, yOffset);
+
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + sw) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + sh) * tex->m_scaleH;
+
+	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
+	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	if(!updateVertexBuffer(vertices, sizeof(vertices)))
+		return;
+
+	updateTextureScaling(tex);
+	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
+	ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+	ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
 }
 
 void SurfaceDirect3D11::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor)
@@ -2080,48 +2647,130 @@ void SurfaceDirect3D11::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = spriteId;
+	u32p[0] = maskSpriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, (spriteId | SDL_static_cast(Uint64, outfitColor) << 32));
+	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
+	Uint32 xOffset;
+	Uint32 yOffset;
 	Direct3D11Texture* tex;
-	U64BD3D11Textures::iterator it = m_spriteMasks.find(tempPos);
-	if(it == m_spriteMasks.end())
+	U64BD3D11Textures::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
 	{
-		tex = loadSpriteMask(tempPos, spriteId, maskSpriteId, outfitColor);
-		if(!tex)
+		if(m_sprites.size() >= MAX_SPRITES)
+		{
+			while(++m_spriteChecker < MAX_SPRITES)
+			{
+				Uint64 oldSpriteId = m_spritesIds.front();
+				it = m_sprites.find(oldSpriteId);
+				if(it == m_sprites.end())
+				{
+					UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+					exit(-1);
+				}
+
+				m_spritesIds.pop_front();
+				if(it->second.m_lastUsage == m_currentFrame)
+					m_spritesIds.push_back(oldSpriteId);
+				else
+					goto Skip_Search;
+			}
+
+			if(m_scheduleSpriteDraw)
+				checkScheduledSprites();
+
+			it = m_sprites.find(m_spritesIds.front());
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+				exit(-1);
+			}
+			m_spritesIds.pop_front();
+
+			Skip_Search:
+			Direct3D11SpriteData sprData = it->second;
+			sprData.m_lastUsage = m_currentFrame;
+			m_sprites.erase(it);
+			m_sprites[tempPos] = sprData;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		else
+		{
+			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
+			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
+			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
+			if(spriteAtlas >= m_spritesAtlas.size())
+				return;
+
+			Direct3D11SpriteData& sprData = m_sprites[tempPos];
+			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
+			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
+			sprData.m_surface = spriteAtlas;
+			sprData.m_lastUsage = m_currentFrame;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
 			return;//load failed
 	}
 	else
 	{
-		tex = it->second;
-		if(m_spritesMaskIds.front() == tempPos)
+		xOffset = it->second.m_xOffset;
+		yOffset = it->second.m_yOffset;
+		tex = m_spritesAtlas[it->second.m_surface];
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
 		{
-			m_spritesMaskIds.pop_front();
-			m_spritesMaskIds.push_back(tempPos);
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
 		}
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = minx+SDL_static_cast(float, tex->m_width);
+	float maxx = minx + 32.0f;
 	float miny = SDL_static_cast(float, y);
-	float maxy = miny+SDL_static_cast(float, tex->m_height);
+	float maxy = miny + 32.0f;
 
-	float minu = 0.0f;
-	float maxu = tex->m_width*tex->m_scaleW;
-	float minv = 0.0f;
-	float maxv = tex->m_height*tex->m_scaleH;
+	float minu = xOffset * tex->m_scaleW;
+	float maxu = (xOffset + 32) * tex->m_scaleW;
+	float minv = yOffset * tex->m_scaleH;
+	float maxv = (yOffset + 32) * tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-	if(!updateVertexBuffer(vertices, sizeof(vertices)))
-		return;
+	if(m_scheduleSpriteDraw)
+	{
+		if(tex != m_spriteAtlas)
+		{
+			checkScheduledSprites();
+			m_spriteAtlas = tex;
+		}
+		m_vertices.emplace_back(minx, miny, minu, minv, texColor);
+		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
 
-	updateTextureScaling(tex);
-	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
-	ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
+		m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+	}
+	else
+	{
+		VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+		if(!updateVertexBuffer(vertices, sizeof(vertices)))
+			return;
+
+		updateTextureScaling(tex);
+		ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
+		ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
+	}
 }
 
 void SurfaceDirect3D11::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor)
@@ -2132,38 +2781,102 @@ void SurfaceDirect3D11::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = spriteId;
+	u32p[0] = maskSpriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, (spriteId | SDL_static_cast(Uint64, outfitColor) << 32));
+	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
+	Uint32 xOffset;
+	Uint32 yOffset;
 	Direct3D11Texture* tex;
-	U64BD3D11Textures::iterator it = m_spriteMasks.find(tempPos);
-	if(it == m_spriteMasks.end())
+	U64BD3D11Textures::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
 	{
-		tex = loadSpriteMask(tempPos, spriteId, maskSpriteId, outfitColor);
-		if(!tex)
+		if(m_sprites.size() >= MAX_SPRITES)
+		{
+			while(++m_spriteChecker < MAX_SPRITES)
+			{
+				Uint64 oldSpriteId = m_spritesIds.front();
+				it = m_sprites.find(oldSpriteId);
+				if(it == m_sprites.end())
+				{
+					UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+					exit(-1);
+				}
+
+				m_spritesIds.pop_front();
+				if(it->second.m_lastUsage == m_currentFrame)
+					m_spritesIds.push_back(oldSpriteId);
+				else
+					goto Skip_Search;
+			}
+
+			it = m_sprites.find(m_spritesIds.front());
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+				exit(-1);
+			}
+			m_spritesIds.pop_front();
+
+			Skip_Search:
+			Direct3D11SpriteData sprData = it->second;
+			sprData.m_lastUsage = m_currentFrame;
+			m_sprites.erase(it);
+			m_sprites[tempPos] = sprData;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		else
+		{
+			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
+			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
+			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
+			if(spriteAtlas >= m_spritesAtlas.size())
+				return;
+
+			Direct3D11SpriteData& sprData = m_sprites[tempPos];
+			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
+			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
+			sprData.m_surface = spriteAtlas;
+			sprData.m_lastUsage = m_currentFrame;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
 			return;//load failed
 	}
 	else
 	{
-		tex = it->second;
-		if(m_spritesMaskIds.front() == tempPos)
+		xOffset = it->second.m_xOffset;
+		yOffset = it->second.m_yOffset;
+		tex = m_spritesAtlas[it->second.m_surface];
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
 		{
-			m_spritesMaskIds.pop_front();
-			m_spritesMaskIds.push_back(tempPos);
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
 		}
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
+	sx += SDL_static_cast(Sint32, xOffset);
+	sy += SDL_static_cast(Sint32, yOffset);
+
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + sw) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + sh) * tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
 	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
@@ -2178,19 +2891,26 @@ void SurfaceDirect3D11::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 
 Direct3D11Texture* SurfaceDirect3D11::createAutomapTile(Uint32 currentArea)
 {
-	if(m_automapTiles.size() >= HARDWARE_MAX_AUTOMAPTILES)
+	Direct3D11Texture* s = NULL;
+	if(m_automapTiles.size() >= MAX_AUTOMAPTILES)
 	{
 		U32BD3D11Textures::iterator it = m_automapTiles.find(m_automapTilesBuff.front());
-		if(it == m_automapTiles.end())//Something weird happen - let's erase the first one entry
-			it = m_automapTiles.begin();
+		if(it == m_automapTiles.end())
+		{
+			UTIL_MessageBox(true, "Direct3D11: Sprite Manager failure.");
+			exit(-1);
+		}
 
-		releaseDirect3DTexture(it->second);
+		s = it->second;
 		m_automapTiles.erase(it);
 		m_automapTilesBuff.pop_front();
 	}
-	Direct3D11Texture* s = createDirect3DTexture(256, 256, false);
 	if(!s)
-		return NULL;
+	{
+		s = createDirect3DTexture(256, 256, false);
+		if(!s)
+			return NULL;
+	}
 	
 	m_automapTiles[currentArea] = s;
 	m_automapTilesBuff.push_back(currentArea);
@@ -2199,7 +2919,7 @@ Direct3D11Texture* SurfaceDirect3D11::createAutomapTile(Uint32 currentArea)
 
 void SurfaceDirect3D11::uploadAutomapTile(Direct3D11Texture* texture, Uint8 color[256][256])
 {
-	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(262144));//256*256*4
+	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(262144));//256 * 256 * 4
 	if(!pixels)
 		return;
 
@@ -2250,14 +2970,14 @@ void SurfaceDirect3D11::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + sw) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + sh) * tex->m_scaleH;
 
 	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
 	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
@@ -2268,466 +2988,5 @@ void SurfaceDirect3D11::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint
 	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
 	ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 	ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
-}
-
-SurfaceDirect3D11Comp::SurfaceDirect3D11Comp()
-{
-	m_sprites = NULL;
-}
-
-SurfaceDirect3D11Comp::~SurfaceDirect3D11Comp()
-{
-	if(m_sprites)
-	{
-		for(Uint32 i = 1; i <= m_spritesCache; ++i)
-		{
-			if(m_sprites[i])
-				releaseDirect3DTexture(m_sprites[i]);
-		}
-
-		SDL_free(m_sprites);
-	}
-}
-
-void SurfaceDirect3D11Comp::init()
-{
-	SurfaceDirect3D11::init();
-	m_sprites = SDL_reinterpret_cast(Direct3D11Texture**, SDL_calloc(g_spriteCounts+1, sizeof(Direct3D11Texture*)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::Init() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-}
-
-void SurfaceDirect3D11Comp::spriteManagerReset()
-{
-	SurfaceDirect3D11::spriteManagerReset();
-	if(m_sprites)
-	{
-		for(Uint32 i = 1; i <= m_spritesCache; ++i)
-		{
-			if(m_sprites[i])
-				releaseDirect3DTexture(m_sprites[i]);
-		}
-
-		SDL_free(m_sprites);
-	}
-	m_sprites = SDL_reinterpret_cast(Direct3D11Texture**, SDL_calloc(g_spriteCounts+1, sizeof(Direct3D11Texture*)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::spriteManagerReset() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-}
-
-Direct3D11Texture* SurfaceDirect3D11Comp::loadSprite(Uint32 spriteId)
-{
-	unsigned char* pixels = g_engine.LoadSprite(spriteId, true);
-	if(!pixels)
-		return NULL;
-
-	Direct3D11Texture* s = createDirect3DTexture(32, 32, false);
-	if(!s)
-	{
-		SDL_free(pixels);
-		return NULL;
-	}
-	m_sprites[spriteId] = s;
-	updateTextureData(s, pixels);
-	SDL_free(pixels);
-	return s;
-}
-
-void SurfaceDirect3D11Comp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
-{
-	if(spriteId > g_spriteCounts)
-		return;
-
-	Direct3D11Texture* tex = m_sprites[spriteId];
-	if(!tex)
-	{
-		tex = loadSprite(spriteId);
-		if(!tex)
-			return;//load failed
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = minx+SDL_static_cast(float, tex->m_width);
-	float miny = SDL_static_cast(float, y);
-	float maxy = miny+SDL_static_cast(float, tex->m_height);
-
-	float minu = 0.0f;
-	float maxu = tex->m_width*tex->m_scaleW;
-	float minv = 0.0f;
-	float maxv = tex->m_height*tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-	if(!updateVertexBuffer(vertices, sizeof(vertices)))
-		return;
-
-	updateTextureScaling(tex);
-	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
-	ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
-}
-
-void SurfaceDirect3D11Comp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
-{
-	if(spriteId > g_spriteCounts)
-		return;
-
-	Direct3D11Texture* tex = m_sprites[spriteId];
-	if(!tex)
-	{
-		tex = loadSprite(spriteId);
-		if(!tex)
-			return;//load failed
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
-	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
-
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-	if(!updateVertexBuffer(vertices, sizeof(vertices)))
-		return;
-
-	updateTextureScaling(tex);
-	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
-	ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
-}
-
-SurfaceDirect3D11Perf::SurfaceDirect3D11Perf()
-{
-	m_sprites = NULL;
-	m_spriteAtlas = NULL;
-
-	m_spriteAtlases = 0;
-	m_spritesPerAtlas = 0;
-	m_spritesPerModulo = 0;
-
-	m_scheduleSpriteDraw = false;
-}
-
-SurfaceDirect3D11Perf::~SurfaceDirect3D11Perf()
-{
-	if(m_sprites)
-		SDL_free(m_sprites);
-
-	for(std::vector<Direct3D11Texture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
-		releaseDirect3DTexture((*it));
-
-	m_spritesAtlas.clear();
-}
-
-void SurfaceDirect3D11Perf::generateSpriteAtlases()
-{
-	//TODO: don't make atlases for whole sprites because on big .spr it eat up whole vram
-	//use only necessary amount of textures
-	if(m_maxTextureSize >= 16384 && g_spriteCounts > 65536)
-	{
-		m_spriteAtlases = (g_spriteCounts+262143)/262144;
-		m_spritesPerAtlas = 262144;
-		m_spritesPerModulo = 16384;
-	}
-	else if(m_maxTextureSize >= 8192 && g_spriteCounts > 16384)
-	{
-		m_spriteAtlases = (g_spriteCounts+65535)/65536;
-		m_spritesPerAtlas = 65536;
-		m_spritesPerModulo = 8192;
-	}
-	else if(m_maxTextureSize >= 4096 && g_spriteCounts > 4096)
-	{
-		m_spriteAtlases = (g_spriteCounts+16383)/16384;
-		m_spritesPerAtlas = 16384;
-		m_spritesPerModulo = 4096;
-	}
-	else
-	{
-		m_spriteAtlases = (g_spriteCounts+4095)/4096;
-		m_spritesPerAtlas = 4096;
-		m_spritesPerModulo = 2048;
-	}
-	for(std::vector<Direct3D11Texture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
-		releaseDirect3DTexture((*it));
-
-	m_spritesAtlas.clear();
-	for(Uint32 i = 0; i < m_spriteAtlases; ++i)
-	{
-		Direct3D11Texture* texture = createDirect3DTexture(m_spritesPerModulo, m_spritesPerModulo, false);
-		if(!texture)
-		{
-			UTIL_MessageBox(true, "Direct3D11: Out of video memory.");
-			exit(-1);
-			return;
-		}
-		m_spritesAtlas.push_back(texture);
-	}
-}
-
-void SurfaceDirect3D11Perf::checkScheduledSprites()
-{
-	size_t vertices = m_gameWindowVertices.size();
-	if(vertices > 0)
-	{
-		updateTextureScaling(m_spriteAtlas);
-		ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &m_spriteAtlas->m_resource));
-		drawTriangles(m_gameWindowVertices);
-
-		m_gameWindowVertices.clear();
-		m_gameWindowVertices.reserve(30720);
-	}
-}
-
-void SurfaceDirect3D11Perf::init()
-{
-	SurfaceDirect3D11::init();
-	m_sprites = SDL_reinterpret_cast(bool*, SDL_calloc(g_spriteCounts+1, sizeof(bool)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::Init() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-}
-
-void SurfaceDirect3D11Perf::spriteManagerReset()
-{
-	SurfaceDirect3D11::spriteManagerReset();
-	if(m_sprites)
-		SDL_free(m_sprites);
-
-	m_sprites = SDL_reinterpret_cast(bool*, SDL_calloc(g_spriteCounts+1, sizeof(bool)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::spriteManagerReset() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-	generateSpriteAtlases();
-}
-
-void SurfaceDirect3D11Perf::beginScene()
-{
-	SurfaceDirect3D11::beginScene();
-	m_scheduleSpriteDraw = false;
-}
-
-void SurfaceDirect3D11Perf::beginGameScene()
-{
-	SurfaceDirect3D11::beginGameScene();
-	m_gameWindowVertices.clear();
-	m_gameWindowVertices.reserve(30720);
-	m_scheduleSpriteDraw = true;
-}
-
-void SurfaceDirect3D11Perf::endGameScene()
-{
-	checkScheduledSprites();
-	m_scheduleSpriteDraw = false;
-	SurfaceDirect3D11::endGameScene();
-}
-
-void SurfaceDirect3D11Perf::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
-{
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
-	SurfaceDirect3D11::drawRectangle(x, y, w, h, r, g, b, a);
-}
-
-void SurfaceDirect3D11Perf::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
-{
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
-	SurfaceDirect3D11::fillRectangle(x, y, w, h, r, g, b, a);
-}
-
-bool SurfaceDirect3D11Perf::loadSprite(Uint32 spriteId, Direct3D11Texture* texture, Uint32 xoff, Uint32 yoff)
-{
-	unsigned char* pixels = g_engine.LoadSprite(spriteId, true);
-	if(!pixels)
-		return false;
-
-	ID3D11Texture2D* stagingTexture;
-	D3D11_TEXTURE2D_DESC stagingTextureDesc;
-	ID3D11Texture2D_GetDesc(SDL_reinterpret_cast(ID3D11Texture2D*, texture->m_texture), &stagingTextureDesc);
-	stagingTextureDesc.Width = 32;
-	stagingTextureDesc.Height = 32;
-	stagingTextureDesc.BindFlags = 0;
-	stagingTextureDesc.MiscFlags = 0;
-	stagingTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	stagingTextureDesc.Usage = D3D11_USAGE_STAGING;
-
-	HRESULT result = ID3D11Device_CreateTexture2D(SDL_reinterpret_cast(ID3D11Device*, m_device), &stagingTextureDesc, NULL, SDL_reinterpret_cast(ID3D11Texture2D**, &stagingTexture));
-	if(FAILED(result))
-	{
-		SDL_free(pixels);
-		return false;
-	}
-
-	D3D11_MAPPED_SUBRESOURCE textureMemory;
-	result = ID3D11DeviceContext_Map(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0, D3D11_MAP_WRITE, 0, &textureMemory);
-	if(FAILED(result))
-	{
-		SAFE_RELEASE(stagingTexture);
-		SDL_free(pixels);
-		return false;
-	}
-
-	unsigned char* dstData = SDL_reinterpret_cast(unsigned char*, textureMemory.pData);
-	UINT length = 32*4;
-	if(length == textureMemory.RowPitch)
-		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, pixels), length*32);
-	else
-	{
-		unsigned char* srcPixels = pixels;
-		if(length > textureMemory.RowPitch)
-			length = textureMemory.RowPitch;
-		for(Uint32 row = 0; row < texture->m_height; ++row)
-		{
-			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, srcPixels), length);
-			srcPixels += length;
-			dstData += textureMemory.RowPitch;
-		}
-	}
-	ID3D11DeviceContext_Unmap(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0);
-	ID3D11DeviceContext_CopySubresourceRegion(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), SDL_reinterpret_cast(ID3D11Resource*, texture->m_texture), 0, xoff, yoff, 0, SDL_reinterpret_cast(ID3D11Resource*, stagingTexture), 0, NULL);
-	SAFE_RELEASE(stagingTexture);
-	SDL_free(pixels);
-	return true;
-}
-
-void SurfaceDirect3D11Perf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
-{
-	if(spriteId > g_spriteCounts)
-		return;
-
-	Uint32 spriteIndex = spriteId-1;
-	Uint32 spriteAtlas = spriteIndex/m_spritesPerAtlas;
-	spriteIndex = (spriteIndex%m_spritesPerAtlas)*32;
-	if(spriteAtlas >= m_spritesAtlas.size())
-		return;
-
-	Uint32 xOffset = spriteIndex%m_spritesPerModulo;
-	Uint32 yOffset = (spriteIndex/m_spritesPerModulo)*32;
-
-	Direct3D11Texture* tex = m_spritesAtlas[spriteAtlas];
-	if(!m_sprites[spriteId])
-	{
-		if(!loadSprite(spriteId, tex, xOffset, yOffset))
-			return;//load failed
-		m_sprites[spriteId] = true;
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = minx+32.0f;
-	float miny = SDL_static_cast(float, y);
-	float maxy = miny+32.0f;
-
-	float minu = xOffset*tex->m_scaleW;
-	float maxu = (xOffset+32)*tex->m_scaleW;
-	float minv = yOffset*tex->m_scaleH;
-	float maxv = (yOffset+32)*tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	if(m_scheduleSpriteDraw)
-	{
-		if(tex != m_spriteAtlas)
-		{
-			checkScheduledSprites();
-			m_spriteAtlas = tex;
-		}
-		m_gameWindowVertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_gameWindowVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_gameWindowVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-
-		m_gameWindowVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-		m_gameWindowVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_gameWindowVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	}
-	else
-	{
-		VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-		if(!updateVertexBuffer(vertices, sizeof(vertices)))
-			return;
-
-		updateTextureScaling(tex);
-		ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
-		ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-		ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
-	}
-}
-
-void SurfaceDirect3D11Perf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
-{
-	if(spriteId > g_spriteCounts)
-		return;
-
-	Uint32 spriteIndex = spriteId-1;
-	Uint32 spriteAtlas = spriteIndex/m_spritesPerAtlas;
-	spriteIndex = (spriteIndex%m_spritesPerAtlas)*32;
-	if(spriteAtlas >= m_spritesAtlas.size())
-		return;
-
-	Uint32 xOffset = spriteIndex%m_spritesPerModulo;
-	Uint32 yOffset = (spriteIndex/m_spritesPerModulo)*32;
-
-	Direct3D11Texture* tex = m_spritesAtlas[spriteAtlas];
-	if(!m_sprites[spriteId])
-	{
-		if(!loadSprite(spriteId, tex, xOffset, yOffset))
-			return;//load failed
-		m_sprites[spriteId] = true;
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
-	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
-
-	sx += SDL_static_cast(Sint32, xOffset);
-	sy += SDL_static_cast(Sint32, yOffset);
-
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D11 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-	if(!updateVertexBuffer(vertices, sizeof(vertices)))
-		return;
-
-	updateTextureScaling(tex);
-	ID3D11DeviceContext_PSSetShaderResources(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 0, 1, SDL_reinterpret_cast(ID3D11ShaderResourceView**, &tex->m_resource));
-	ID3D11DeviceContext_IASetPrimitiveTopology(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-	ID3D11DeviceContext_Draw(SDL_reinterpret_cast(ID3D11DeviceContext*, m_context), 4, 0);
-}
-
-void SurfaceDirect3D11Perf::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor)
-{
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
-	SurfaceDirect3D11::drawSpriteMask(spriteId, maskSpriteId, x, y, outfitColor);
 }
 #endif

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,8 +41,8 @@ class GUI_Log
 		void addLog(Sint32 category, const std::string& text);
 
 		void onTextInput(const char* textInput);
-		void onKeyDown(SDL_Event event);
-		void onKeyUp(SDL_Event event);
+		void onKeyDown(SDL_Event& event);
+		void onKeyUp(SDL_Event& event);
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
 		void onRMouseDown(Sint32 x, Sint32 y);

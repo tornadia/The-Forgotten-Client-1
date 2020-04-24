@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -63,10 +63,10 @@ void GUI_MultiTextBox::setRect(iRect& NewRect)
 	if(m_tRect == NewRect)
 		return;
 
-	iRect nRect = iRect(NewRect.x1+NewRect.x2-13, NewRect.y1+1, 12, NewRect.y2-2);
+	iRect nRect = iRect(NewRect.x1 + NewRect.x2 - 13, NewRect.y1 + 1, 12, NewRect.y2 - 2);
 	m_scrollBar->setRect(nRect);
 	m_tRect = NewRect;
-	m_maxDisplay = (m_tRect.y2-8)/14;
+	m_maxDisplay = (m_tRect.y2 - 8) / 14;
 	m_needUpdate = true;
 }
 
@@ -74,6 +74,11 @@ void GUI_MultiTextBox::setTextEventCallback(void (*eventHandlerFunction)(Uint32,
 {
 	m_eventHandlerFunction = eventHandlerFunction;
 	m_evtParam = mEvent;
+}
+
+void GUI_MultiTextBox::selectAll()
+{
+	setSelection(0, SDL_static_cast(Uint32, m_sText.length()));
 }
 
 void GUI_MultiTextBox::setSelection(Uint32 start, Uint32 end)
@@ -101,7 +106,7 @@ void GUI_MultiTextBox::clearSelection()
 
 void GUI_MultiTextBox::deleteSelection()
 {
-	Sint32 n = SDL_static_cast(Sint32, m_selectionEnd-m_selectionStart);
+	Sint32 n = SDL_static_cast(Sint32, m_selectionEnd - m_selectionStart);
 	removeTextToTextBox(n, m_selectionStart);
 	if(m_cursorPosition != m_selectionStart)
 		moveCursor(-n);
@@ -121,7 +126,7 @@ void GUI_MultiTextBox::onTextInput(const char* textInput)
 		moveCursor(n);
 }
 
-void GUI_MultiTextBox::onKeyDown(SDL_Event event)
+void GUI_MultiTextBox::onKeyDown(SDL_Event& event)
 {
 	switch(event.key.keysym.sym)
 	{
@@ -147,7 +152,7 @@ void GUI_MultiTextBox::onKeyDown(SDL_Event event)
 					deleteSelection();
 				else if(m_cursorPosition != 0)
 				{
-					removeTextToTextBox(1, m_cursorPosition-1);
+					removeTextToTextBox(1, m_cursorPosition - 1);
 					moveCursor(-1);
 				}
 			}
@@ -300,7 +305,7 @@ void GUI_MultiTextBox::onKeyDown(SDL_Event event)
 			{
 				if(hasSelection())
 				{
-					UTIL_SetClipboardTextLatin1(m_sText.substr(SDL_static_cast(size_t, m_selectionStart), SDL_static_cast(size_t, m_selectionEnd-m_selectionStart)).c_str());
+					UTIL_SetClipboardTextLatin1(UTIL_formatConsoleText(m_sText.substr(SDL_static_cast(size_t, m_selectionStart), SDL_static_cast(size_t, m_selectionEnd - m_selectionStart))).c_str());
 					if(m_allowEdit)
 						deleteSelection();
 				}
@@ -312,7 +317,7 @@ void GUI_MultiTextBox::onKeyDown(SDL_Event event)
 			if(event.key.keysym.mod == KMOD_CTRL)
 			{
 				if(hasSelection())
-					UTIL_SetClipboardTextLatin1(m_sText.substr(SDL_static_cast(size_t, m_selectionStart), SDL_static_cast(size_t, m_selectionEnd-m_selectionStart)).c_str());
+					UTIL_SetClipboardTextLatin1(UTIL_formatConsoleText(m_sText.substr(SDL_static_cast(size_t, m_selectionStart), SDL_static_cast(size_t, m_selectionEnd - m_selectionStart))).c_str());
 			}
 		}
 		break;
@@ -370,9 +375,9 @@ void GUI_MultiTextBox::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 void GUI_MultiTextBox::onWheel(Sint32, Sint32, bool wheelUP)
 {
 	if(wheelUP)
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos()-1);
+		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() - 1);
 	else
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos()+1);
+		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() + 1);
 }
 
 void GUI_MultiTextBox::activate()
@@ -400,71 +405,28 @@ void GUI_MultiTextBox::update()
 	if(m_sText.empty())
 		return;
 	
-	Uint32 allowWidth = SDL_static_cast(Uint32, m_tRect.x2-18);
-	size_t goodPos = 0;
-	size_t start = 0;
-	size_t i = 0;
-	size_t strLen = m_sText.length();
-	while(i < strLen)
+	UTIL_parseSizedText(m_sText, 0, m_font, SDL_static_cast(Uint32, m_tRect.x2 - 18), reinterpret_cast<void*>(this), [](void* __THIS, bool, size_t start, size_t length) -> size_t
 	{
-		MultiLine newLine;
-		newLine.selectionWidth = 0;
-		if(m_sText[i] == '\n')
-		{
-			newLine.lineStart = start;
-			newLine.lineLength = i-start+1;
-			m_lines.push_back(newLine);
-			start = i+1;
-			i = start;
-			goodPos = 0;
-			continue;
-		}
+		GUI_MultiTextBox* _THIS = reinterpret_cast<GUI_MultiTextBox*>(__THIS);
 
-		Uint32 width = g_engine.calculateFontWidth(m_font, m_sText, start, i-start+1);
-		if(width >= allowWidth)
-		{
-			if(goodPos != 0)
-			{
-				newLine.lineStart = start;
-				newLine.lineLength = goodPos-start+1;
-				m_lines.push_back(newLine);
-				start = goodPos+1;
-				goodPos = 0;
-				continue;
-			}
-			else
-			{
-				newLine.lineStart = start;
-				newLine.lineLength = i-start;
-				m_lines.push_back(newLine);
-				start = i;
-			}
-		}
-		else
-		{
-			if(m_sText[i] == ' ')
-				goodPos = i;
-		}
-		++i;
-	}
-	if(i > start)
-	{
 		MultiLine newLine;
-		newLine.lineStart = start;
-		newLine.lineLength = i-start+1;
 		newLine.selectionWidth = 0;
-		m_lines.push_back(newLine);
-	}
-	else if(m_sText[i-1] == '\n')
+		newLine.lineStart = start;
+		newLine.lineLength = length;
+		_THIS->m_lines.push_back(newLine);
+		return 0;
+	});
+
+	if(m_sText[m_sText.length() - 1] == '\n')
 	{
 		MultiLine newLine;
-		newLine.lineStart = i;
+		newLine.lineStart = m_sText.length();
 		newLine.lineLength = 1;
 		newLine.selectionWidth = 0;
 		m_lines.push_back(newLine);
 	}
 
-	m_scrollBar->setScrollSize(SDL_static_cast(Sint32, m_lines.size())-m_maxDisplay);
+	m_scrollBar->setScrollSize(SDL_static_cast(Sint32, m_lines.size()) - m_maxDisplay);
 	if(hasSelection())
 		m_needUpdateSelection = true;
 }
@@ -476,18 +438,18 @@ void GUI_MultiTextBox::updateSelection()
 	{
 		MultiLine& currentLine = (*it);
 		Uint32 selectionStart = UTIL_max<Uint32>(SDL_static_cast(Uint32, currentLine.lineStart), m_selectionStart);
-		Uint32 selectionLen = UTIL_min<Uint32>(SDL_static_cast(Uint32, currentLine.lineStart+currentLine.lineLength), m_selectionEnd)-selectionStart;
+		Uint32 selectionLen = UTIL_min<Uint32>(SDL_static_cast(Uint32, currentLine.lineStart + currentLine.lineLength), m_selectionEnd) - selectionStart;
 		if(selectionLen <= SDL_static_cast(Uint32, currentLine.lineLength))
 		{
 			Uint32 selectionWidth = g_engine.calculateFontWidth(m_font, m_sText, selectionStart, selectionLen);
-			Uint32 positionOfSelection = m_textStartPosition + g_engine.calculateFontWidth(m_font, m_sText, currentLine.lineStart, selectionStart-currentLine.lineStart);
+			Uint32 positionOfSelection = m_textStartPosition + g_engine.calculateFontWidth(m_font, m_sText, currentLine.lineStart, selectionStart - currentLine.lineStart);
 			currentLine.selectionStart = SDL_static_cast(Sint32, positionOfSelection);
 			currentLine.selectionWidth = SDL_static_cast(Sint32, selectionWidth);
 		}
 		else
 			currentLine.selectionWidth = 0;
 
-		size_t position = SDL_static_cast(size_t, m_cursorPosition)-currentLine.lineStart;
+		size_t position = SDL_static_cast(size_t, m_cursorPosition) - currentLine.lineStart;
 		if(position < currentLine.lineLength)
 			cursorPos = vectorPos;
 
@@ -498,8 +460,8 @@ void GUI_MultiTextBox::updateSelection()
 	Sint32 actualPos = m_scrollBar->getScrollPos();
 	if(actualPos > cursorPos)
 		m_scrollBar->setScrollPos(cursorPos);
-	else if(actualPos < cursorPos-m_maxDisplay+1)
-		m_scrollBar->setScrollPos(cursorPos-m_maxDisplay+1);
+	else if(actualPos < cursorPos - m_maxDisplay + 1)
+		m_scrollBar->setScrollPos(cursorPos - m_maxDisplay + 1);
 }
 
 void GUI_MultiTextBox::render()
@@ -514,7 +476,7 @@ void GUI_MultiTextBox::render()
 		updateSelection();
 		m_needUpdateSelection = false;
 	}
-	if(g_frameTime-m_cursorTimer >= 333)
+	if(g_frameTime - m_cursorTimer >= 333)
 	{
 		m_cursorTimer = g_frameTime;
 		m_bShowCursor = !m_bShowCursor;
@@ -522,22 +484,22 @@ void GUI_MultiTextBox::render()
 
 	Surface* renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1+1, 1, m_tRect.y2-1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-1, m_tRect.x2-1, 1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1+m_tRect.x2-1, m_tRect.y1+1, 1, m_tRect.y2-2);
-	renderer->fillRectangle(m_tRect.x1+1, m_tRect.y1+1, m_tRect.x2-14, m_tRect.y2-2, 54, 54, 54, 255);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1 + 1, 1, m_tRect.y2 - 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1 + 1, m_tRect.y1 + m_tRect.y2 - 1, m_tRect.x2 - 1, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1 + m_tRect.x2 - 1, m_tRect.y1 + 1, 1, m_tRect.y2 - 2);
+	renderer->fillRectangle(m_tRect.x1 + 1, m_tRect.y1 + 1, m_tRect.x2 - 14, m_tRect.y2 - 2, 54, 54, 54, 255);
 	m_scrollBar->render();
 
 	Sint32 count = m_scrollBar->getScrollPos();
 	std::vector<MultiLine>::iterator it = m_lines.begin();
 	std::advance(it, count);
 
-	Sint32 posY = m_tRect.y1+4;
-	Sint32 endY = m_tRect.y1+m_tRect.y2-18;
+	Sint32 posY = m_tRect.y1 + 4;
+	Sint32 endY = m_tRect.y1 + m_tRect.y2 - 18;
 	if(m_lines.empty())
 	{
 		if(m_allowEdit && m_bActive && m_bShowCursor)
-			renderer->fillRectangle(m_tRect.x1+m_textStartPosition, posY-1, 1, 10, 255, 255, 255, 255);
+			renderer->fillRectangle(m_tRect.x1 + m_textStartPosition, posY - 1, 1, 10, 255, 255, 255, 255);
 
 		return;
 	}
@@ -548,16 +510,16 @@ void GUI_MultiTextBox::render()
 
 		MultiLine& currentLine = (*it);
 		if(currentLine.selectionWidth != 0)
-			renderer->fillRectangle(m_tRect.x1+currentLine.selectionStart, posY-1, currentLine.selectionWidth, 14, 128, 128, 128, 255);
+			renderer->fillRectangle(m_tRect.x1 + currentLine.selectionStart, posY - 1, currentLine.selectionWidth, 14, 128, 128, 128, 255);
 
-		g_engine.drawFont(m_font, m_tRect.x1+m_textStartPosition, posY, m_sText, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT, currentLine.lineStart, currentLine.lineLength);
+		g_engine.drawFont(m_font, m_tRect.x1 + m_textStartPosition, posY, m_sText, m_red, m_green, m_blue, CLIENT_FONT_ALIGN_LEFT, currentLine.lineStart, currentLine.lineLength);
 		if(m_allowEdit && m_bActive && m_bShowCursor)
 		{
-			size_t position = SDL_static_cast(size_t, m_cursorPosition)-currentLine.lineStart;
+			size_t position = SDL_static_cast(size_t, m_cursorPosition) - currentLine.lineStart;
 			if(position < currentLine.lineLength)
 			{
 				Uint32 positionOfCursor = m_textStartPosition + g_engine.calculateFontWidth(m_font, m_sText, currentLine.lineStart, position);
-				renderer->fillRectangle(m_tRect.x1+positionOfCursor, posY-1, 1, 10, 255, 255, 255, 255);
+				renderer->fillRectangle(m_tRect.x1 + positionOfCursor, posY - 1, 1, 10, 255, 255, 255, 255);
 			}
 		}
 		posY += 14;
@@ -566,7 +528,7 @@ void GUI_MultiTextBox::render()
 
 Sint32 GUI_MultiTextBox::addTextToTextBox(std::string text, Uint32 position)
 {
-	Uint32 remainLen = m_maxLength-SDL_static_cast(Uint32, m_sText.length());
+	Uint32 remainLen = m_maxLength - SDL_static_cast(Uint32, m_sText.length());
 	if(remainLen == 0)
 		return 0;
 	else
@@ -629,7 +591,7 @@ void GUI_MultiTextBox::setCursor(Uint32 position)
 
 void GUI_MultiTextBox::moveCursor(Sint32 n)
 {
-	Sint32 pos = UTIL_max<Sint32>(0, SDL_static_cast(Sint32, m_cursorPosition)+n);
+	Sint32 pos = UTIL_max<Sint32>(0, SDL_static_cast(Sint32, m_cursorPosition) + n);
 	setCursor(SDL_static_cast(Uint32, pos));
 }
 
@@ -643,7 +605,7 @@ void GUI_MultiTextBox::moveCursorVertically(Sint32 n)
 	for(; it != end; ++it)
 	{
 		MultiLine& currentLine = (*it);
-		size_t position = SDL_static_cast(size_t, m_cursorPosition)-currentLine.lineStart;
+		size_t position = SDL_static_cast(size_t, m_cursorPosition) - currentLine.lineStart;
 		if(position < currentLine.lineLength)
 		{
 			positionInLine = position;
@@ -661,8 +623,8 @@ void GUI_MultiTextBox::moveCursorVertically(Sint32 n)
 			}
 		}
 		if((*it).lineLength <= positionInLine)
-			positionInLine = (*it).lineLength-1;
-		setCursor(SDL_static_cast(Uint32, (*it).lineStart+positionInLine));
+			positionInLine = (*it).lineLength - 1;
+		setCursor(SDL_static_cast(Uint32, (*it).lineStart + positionInLine));
 	}
 	else if(n < 0)
 	{
@@ -676,8 +638,8 @@ void GUI_MultiTextBox::moveCursorVertically(Sint32 n)
 				break;
 		}
 		if((*it).lineLength <= positionInLine)
-			positionInLine = (*it).lineLength-1;
-		setCursor(SDL_static_cast(Uint32, (*it).lineStart+positionInLine));
+			positionInLine = (*it).lineLength - 1;
+		setCursor(SDL_static_cast(Uint32, (*it).lineStart + positionInLine));
 	}
 }
 
@@ -690,8 +652,8 @@ Uint32 GUI_MultiTextBox::getCursorPosition(Sint32 x, Sint32 y)
 	std::vector<MultiLine>::iterator it = m_lines.begin();
 	std::advance(it, count);
 
-	Sint32 posY = m_tRect.y1+4;
-	Sint32 endY = m_tRect.y1+m_tRect.y2-18;
+	Sint32 posY = m_tRect.y1 + 4;
+	Sint32 endY = m_tRect.y1 + m_tRect.y2 - 18;
 	if(y < posY)
 		return SDL_static_cast(Uint32, (*it).lineStart);
 
@@ -699,23 +661,23 @@ Uint32 GUI_MultiTextBox::getCursorPosition(Sint32 x, Sint32 y)
 	for(; it != end; ++it)
 	{
 		MultiLine& currentLine = (*it);
-		if(SDL_static_cast(Uint32, y-posY) < 14)
+		if(SDL_static_cast(Uint32, y - posY) < 14)
 		{
 			Sint32 lastPosition = 0;
 			for(size_t i = 0; i <= currentLine.lineLength; ++i)
 			{
 				Uint32 loopTextWidth = g_engine.calculateFontWidth(m_font, m_sText, currentLine.lineStart, i);
-				Sint32 position = m_tRect.x1+m_textStartPosition+loopTextWidth;
-				if(x-position < 0)
+				Sint32 position = m_tRect.x1 + m_textStartPosition + loopTextWidth;
+				if(x - position < 0)
 				{
-					if(SDL_abs(x-position) < SDL_abs(x-lastPosition))
-						return SDL_static_cast(Uint32, currentLine.lineStart+i);
+					if(SDL_abs(x - position) < SDL_abs(x - lastPosition))
+						return SDL_static_cast(Uint32, currentLine.lineStart + i);
 					else
-						return SDL_static_cast(Uint32, currentLine.lineStart+i-1);
+						return SDL_static_cast(Uint32, currentLine.lineStart + i - 1);
 				}
 				lastPosition = position;
 			}
-			return SDL_static_cast(Uint32, currentLine.lineStart+currentLine.lineLength-1);
+			return SDL_static_cast(Uint32, currentLine.lineStart + currentLine.lineLength - 1);
 		}
 		posY += 14;
 		if(posY > endY)
@@ -723,5 +685,5 @@ Uint32 GUI_MultiTextBox::getCursorPosition(Sint32 x, Sint32 y)
 	}
 	if(it == end)
 		return SDL_static_cast(Uint32, m_sText.length());
-	return SDL_static_cast(Uint32, (*it).lineStart+(*it).lineLength-1);
+	return SDL_static_cast(Uint32, (*it).lineStart + (*it).lineLength - 1);
 }

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -47,7 +47,6 @@ Creature::Creature()
 		m_mountAnimator[i] = NULL;
 	}
 
-	m_walkTile = NULL;
 	m_drawnTile = NULL;
 
 	m_nameLen = 0;
@@ -142,7 +141,7 @@ void Creature::move(const Position& fromPos, const Position& toPos, Tile* oldTil
 		{
 			m_walkDirection = DIRECTION_SOUTHWEST;
 
-			Position newPos = Position(toPos.x+1, toPos.y, toPos.z);
+			Position newPos = Position(toPos.x + 1, toPos.y, toPos.z);
 			Tile* newestTile = g_map.getTile(newPos);
 			if(newestTile)
 			{
@@ -174,7 +173,7 @@ void Creature::move(const Position& fromPos, const Position& toPos, Tile* oldTil
 		{
 			m_walkDirection = DIRECTION_NORTHEAST;
 
-			Position newPos = Position(fromPos.x+1, fromPos.y, fromPos.z);
+			Position newPos = Position(fromPos.x + 1, fromPos.y, fromPos.z);
 			Tile* newestTile = g_map.getTile(newPos);
 			if(newestTile)
 			{
@@ -224,7 +223,6 @@ void Creature::move(const Position& fromPos, const Position& toPos, Tile* oldTil
 		addToDrawnTile(newTile);
 	}
 
-	m_walkTile = newTile;
 	if(!preMove)
 	{
 		if(m_preWalking)
@@ -236,13 +234,14 @@ void Creature::move(const Position& fromPos, const Position& toPos, Tile* oldTil
 			g_game.checkServerMovement(m_walkDirection);
 	}
 
+	Sint32 groundSpeed = SDL_static_cast(Sint32, newTile->getGroundSpeed());
 	m_walking = true;
 	m_preWalking = preMove;
 	m_walkStartTime = g_frameTime;
-	m_walkEndTime = g_frameTime+getStepDuration(false);
-	m_walkTime = getStepDuration(true);
+	m_walkEndTime = g_frameTime + getStepDuration(groundSpeed, false);
+	m_walkTime = getStepDuration(groundSpeed, true);
 	m_walkedPixels = 0;
-	if(m_thingType->hasFlag(ThingAttribute_NoMoveAnimation))
+	if(m_thingType && m_thingType->hasFlag(ThingAttribute_NoMoveAnimation))
 		m_currentFrame = ThingFrameGroup_Idle;
 	else
 		m_currentFrame = ThingFrameGroup_Moving;
@@ -290,10 +289,10 @@ void Creature::updateFrameGroup(Uint8 frameGroup)
 	if(m_animationFrame != frameGroup)
 	{
 		m_animationFrame = frameGroup;
-		if(m_outfitAnimator[frameGroup] && (m_outfitAnimation[frameGroup].m_lastPhaseTicks + CREATURE_ANIMATION_DELAY_RESET < g_frameTime || frameGroup != ThingFrameGroup_Moving))
+		if(m_outfitAnimator[frameGroup] && (frameGroup != ThingFrameGroup_Moving || m_outfitAnimation[frameGroup].m_lastPhaseTicks + CREATURE_ANIMATION_DELAY_RESET < g_frameTime))
 			m_outfitAnimator[frameGroup]->resetAnimation(m_outfitAnimation[frameGroup]);
 
-		if(m_mountAnimator[frameGroup] && (m_mountAnimation[frameGroup].m_lastPhaseTicks + CREATURE_ANIMATION_DELAY_RESET < g_frameTime || frameGroup != ThingFrameGroup_Moving))
+		if(m_mountAnimator[frameGroup] && (frameGroup != ThingFrameGroup_Moving || m_mountAnimation[frameGroup].m_lastPhaseTicks + CREATURE_ANIMATION_DELAY_RESET < g_frameTime))
 			m_mountAnimator[frameGroup]->resetAnimation(m_mountAnimation[frameGroup]);
 	}
 }
@@ -305,7 +304,7 @@ void Creature::update()
 		m_updateTime = g_frameTime;
 		if(m_walking)
 		{
-			float walkTicks = (m_walkTime*0.03125f);
+			float walkTicks = (m_walkTime * 0.03125f);
 			m_walkedPixels = UTIL_min<Sint32>(SDL_static_cast(Sint32, (g_frameTime - m_walkStartTime) / walkTicks), 32);
 			if(m_walkedPixels >= 32)
 			{
@@ -335,7 +334,7 @@ void Creature::update()
 				{
 					Uint8 animCount = m_thingType->m_frameGroup[m_currentFrame].m_animCount;
 					if(animCount > 2)
-						m_outfitAnim = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), animCount - 2) + 1;
+						m_outfitAnim = (SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)) % (animCount - 2)) + 1;
 					else
 						m_outfitAnim = 0;
 				}
@@ -347,7 +346,7 @@ void Creature::update()
 				{
 					Uint8 animCount = m_thingType->m_frameGroup[m_currentFrame].m_animCount;
 					if(animCount > 1 && m_walkedPixels < 32)
-						m_outfitAnim = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, m_walkedPixels / 8), animCount - 1) + 1;
+						m_outfitAnim = (SDL_static_cast(Uint8, m_walkedPixels / 8) % (animCount - 1)) + 1;
 					else
 						m_outfitAnim = 0;
 				}
@@ -369,9 +368,9 @@ void Creature::update()
 					m_mountAnim = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / CREATURE_TICKS_PER_FRAME)), m_mountType->m_frameGroup[m_currentFrame].m_animCount);
 				else if(m_walking)
 				{
-					Uint8 animCount = UTIL_max<Uint8>(0, (m_mountType->m_frameGroup[m_currentFrame].m_animCount - 1));
-					if(animCount >= 1 && m_walkedPixels < 32)
-						m_mountAnim = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, m_walkedPixels / 8), animCount) + 1;
+					Uint8 animCount = m_mountType->m_frameGroup[m_currentFrame].m_animCount;
+					if(animCount > 1 && m_walkedPixels < 32)
+						m_mountAnim = (SDL_static_cast(Uint8, m_walkedPixels / 8) % (animCount - 1)) + 1;
 					else
 						m_mountAnim = 0;
 				}
@@ -408,20 +407,6 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 		{
 			posX -= m_mountType->m_displacement[0];
 			posY -= m_mountType->m_displacement[1];
-			Sint32 posYc = posY;
-			for(Uint8 y = 0; y < m_mountType->m_frameGroup[m_currentFrame].m_height; ++y)
-			{
-				Sint32 posXc = posX;
-				for(Uint8 x = 0; x < m_mountType->m_frameGroup[m_currentFrame].m_width; ++x)
-				{
-					Uint32 sprite = m_mountType->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), x, y, 0, m_direction, 0, 0, m_mountAnim);
-					if(sprite != 0)
-						renderer->drawSprite(sprite, posXc, posYc);
-					posXc -= 32;
-				}
-				posYc -= 32;
-			}
-			zPattern = UTIL_min<Uint8>(1, m_thingType->m_frameGroup[m_currentFrame].m_patternZ-1);
 		}
 		else
 		{
@@ -430,20 +415,23 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 		}
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(m_light[0] > light[0])
-		light = m_light;
-
-	if(m_isLocalCreature && (g_light.getLightIntensity() < 64 || m_position.z > 7))
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 	{
-		if(light[0] < 3)
-			light[0] = 3;
-		if(light[1] == 0)
-			light[1] = 215;
-	}
+		Uint16* light = m_thingType->m_light;
+		if(m_light[0] > light[0])
+			light = m_light;
 
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+		if(m_isLocalCreature && (g_light.getLightIntensity() < 64 || m_position.z > 7))
+		{
+			if(light[0] < 2)
+				light[0] = 2;
+			if(light[1] == 0)
+				light[1] = 215;
+		}
+
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	//TODO: Optimize the line drawning in one go
 	Sint32 squareX = posX;
@@ -455,12 +443,12 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 		if(g_game.getSelectID() == m_id)
 		{
 			renderer->drawRectangle(squareX, squareY, squareW, squareH, 248, 164, 164, 255);
-			renderer->drawRectangle(squareX+1, squareY+1, squareW-2, squareH-2, 248, 164, 164, 255);
+			renderer->drawRectangle(squareX + 1, squareY + 1, squareW - 2, squareH - 2, 248, 164, 164, 255);
 		}
 		else
 		{
 			renderer->drawRectangle(squareX, squareY, squareW, squareH, 224, 64, 64, 255);
-			renderer->drawRectangle(squareX+1, squareY+1, squareW-2, squareH-2, 224, 64, 64, 255);
+			renderer->drawRectangle(squareX + 1, squareY + 1, squareW - 2, squareH - 2, 224, 64, 64, 255);
 		}
 		squareX += 2;
 		squareY += 2;
@@ -472,12 +460,12 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 		if(g_game.getSelectID() == m_id)
 		{
 			renderer->drawRectangle(squareX, squareY, squareW, squareH, 180, 248, 180, 255);
-			renderer->drawRectangle(squareX+1, squareY+1, squareW-2, squareH-2, 180, 248, 180, 255);
+			renderer->drawRectangle(squareX + 1, squareY + 1, squareW - 2, squareH - 2, 180, 248, 180, 255);
 		}
 		else
 		{
 			renderer->drawRectangle(squareX, squareY, squareW, squareH, 64, 224, 64, 255);
-			renderer->drawRectangle(squareX+1, squareY+1, squareW-2, squareH-2, 64, 224, 64, 255);
+			renderer->drawRectangle(squareX + 1, squareY + 1, squareW - 2, squareH - 2, 64, 224, 64, 255);
 		}
 		squareX += 2;
 		squareY += 2;
@@ -487,7 +475,7 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 	else if(g_game.getSelectID() == m_id)
 	{
 		renderer->drawRectangle(squareX, squareY, squareW, squareH, 248, 248, 248, 255);
-		renderer->drawRectangle(squareX+1, squareY+1, squareW-2, squareH-2, 248, 248, 248, 255);
+		renderer->drawRectangle(squareX + 1, squareY + 1, squareW - 2, squareH - 2, 248, 248, 248, 255);
 		squareX += 2;
 		squareY += 2;
 		squareW -= 4;
@@ -496,7 +484,7 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 	if(m_showStaticSquare && g_engine.hasShowPvPFrames())
 	{
 		renderer->drawRectangle(squareX, squareY, squareW, squareH, m_staticSquareRed, m_staticSquareGreen, m_staticSquareBlue, 255);
-		renderer->drawRectangle(squareX+1, squareY+1, squareW-2, squareH-2, m_staticSquareRed, m_staticSquareGreen, m_staticSquareBlue, 255);
+		renderer->drawRectangle(squareX + 1, squareY + 1, squareW - 2, squareH - 2, m_staticSquareRed, m_staticSquareGreen, m_staticSquareBlue, 255);
 		squareX += 2;
 		squareY += 2;
 		squareW -= 4;
@@ -504,13 +492,31 @@ void Creature::render(Sint32 posX, Sint32 posY, bool)
 	}
 	if(m_showTimedSquare)
 	{
-		if(g_frameTime-m_timedSquareStartTime >= 1000)
+		if(g_frameTime - m_timedSquareStartTime >= 1000)
 			removeTimedSquare();
 		else
 		{
 			renderer->drawRectangle(squareX, squareY, squareW, squareH, m_timedSquareRed, m_timedSquareGreen, m_timedSquareBlue, 255);
-			renderer->drawRectangle(squareX+1, squareY+1, squareW-2, squareH-2, m_timedSquareRed, m_timedSquareGreen, m_timedSquareBlue, 255);
+			renderer->drawRectangle(squareX + 1, squareY + 1, squareW - 2, squareH - 2, m_timedSquareRed, m_timedSquareGreen, m_timedSquareBlue, 255);
 		}
+	}
+
+	if(m_mountType && m_thingType->m_category == ThingCategory_Creature)
+	{
+		Sint32 posYc = posY;
+		for(Uint8 y = 0; y < m_mountType->m_frameGroup[m_currentFrame].m_height; ++y)
+		{
+			Sint32 posXc = posX;
+			for(Uint8 x = 0; x < m_mountType->m_frameGroup[m_currentFrame].m_width; ++x)
+			{
+				Uint32 sprite = m_mountType->getSprite(SDL_static_cast(ThingFrameGroup, m_currentFrame), x, y, 0, m_direction, 0, 0, m_mountAnim);
+				if(sprite != 0)
+					renderer->drawSprite(sprite, posXc, posYc);
+				posXc -= 32;
+			}
+			posYc -= 32;
+		}
+		zPattern = UTIL_min<Uint8>(1, m_thingType->m_frameGroup[m_currentFrame].m_patternZ - 1);
 	}
 
 	if(m_thingType->m_frameGroup[m_currentFrame].m_layers > 1)
@@ -633,16 +639,16 @@ void Creature::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32
 			}
 		}
 	}
-	posX += SDL_static_cast(Sint32, drawX*scale);
-	posY += SDL_static_cast(Sint32, drawY*scale)-16;
-	g_engine.drawFont(CLIENT_FONT_OUTLINED, posX-m_nameLen, posY, m_name, red, green, blue, CLIENT_FONT_ALIGN_LEFT);
+	posX += SDL_static_cast(Sint32, drawX * scale);
+	posY += SDL_static_cast(Sint32, drawY * scale) - 16;
+	g_engine.drawFont(CLIENT_FONT_OUTLINED, posX - m_nameLen, posY, m_name, red, green, blue, CLIENT_FONT_ALIGN_LEFT);
 
 	Surface* renderer = g_engine.getRender();
-	renderer->fillRectangle(posX-14, posY+12, 28, 4, 0, 0, 0, 255);
-	renderer->fillRectangle(posX-13, posY+13, SDL_static_cast(Sint32, m_health*0.26f), 2, red, green, blue, 255);
+	renderer->fillRectangle(posX - 14, posY + 12, 28, 4, 0, 0, 0, 255);
+	renderer->fillRectangle(posX - 13, posY + 13, SDL_static_cast(Sint32, m_health * 0.26f), 2, red, green, blue, 255);
 
-	Sint32 POSX = posX+9;
-	Sint32 POSY = posY+18;
+	Sint32 POSX = posX + 9;
+	Sint32 POSY = posY + 18;
 	if(g_engine.hasShowMarks())
 	{
 		if(m_shield != SHIELD_NONE)
@@ -704,13 +710,13 @@ void Creature::renderOnBattle(Sint32 posX, Sint32 posY, bool renderManaBar)
 			{
 				Uint8 animCount = m_thingType->m_frameGroup[ThingFrameGroup_Idle].m_animCount;
 				if(animCount > 2)
-					animation = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), animCount-2)+1;
+					animation = (SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)) % (animCount - 2)) + 1;
 				else
 					animation = 0;
 			}
-			else if (m_thingType->m_category == ThingCategory_Item)
+			else if(m_thingType->m_category == ThingCategory_Item)
 				animation = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), m_thingType->m_frameGroup[ThingFrameGroup_Idle].m_animCount);
-			else if (m_thingType->hasFlag(ThingAttribute_AnimateAlways))
+			else if(m_thingType->hasFlag(ThingAttribute_AnimateAlways))
 				animation = UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / CREATURE_TICKS_PER_FRAME)), m_thingType->m_frameGroup[ThingFrameGroup_Idle].m_animCount);
 			else
 				animation = 0;
@@ -807,22 +813,22 @@ void Creature::renderOnBattle(Sint32 posX, Sint32 posY, bool renderManaBar)
 	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, posX, posY, m_name, red, green, blue, CLIENT_FONT_ALIGN_LEFT);
 	if(m_showStatus)
 	{
-		renderer->drawRectangle(posX-1, posY+14, 132, 5, 0, 0, 0, 255);
-		renderer->fillRectangle(posX, posY+15, SDL_static_cast(Sint32, m_health)*130/100, 3, m_red, m_green, m_blue, 255);
+		renderer->drawRectangle(posX - 1, posY + 14, 132, 5, 0, 0, 0, 255);
+		renderer->fillRectangle(posX, posY + 15, SDL_static_cast(Sint32, m_health) * 130 / 100, 3, m_red, m_green, m_blue, 255);
 		if(renderManaBar)
 		{
-			renderer->drawRectangle(posX-1, posY+20, 132, 5, 0, 0, 0, 255);
-			renderer->fillRectangle(posX, posY+21, SDL_static_cast(Sint32, m_manaPercent)*130/100, 3, 0, 0, 255, 255);
+			renderer->drawRectangle(posX - 1, posY + 20, 132, 5, 0, 0, 0, 255);
+			renderer->fillRectangle(posX, posY + 21, SDL_static_cast(Sint32, m_manaPercent) * 130 / 100, 3, 0, 0, 255, 255);
 		}
 	}
 	else
 	{
-		renderer->drawRectangle(posX-1, posY+14, 132, 5, 0, 0, 0, 255);
-		renderer->fillRectangle(posX, posY+15, 130, 3, 112, 112, 112, 255);
+		renderer->drawRectangle(posX - 1, posY + 14, 132, 5, 0, 0, 0, 255);
+		renderer->fillRectangle(posX, posY + 15, 130, 3, 112, 112, 112, 255);
 		if(renderManaBar)
 		{
-			renderer->drawRectangle(posX-1, posY+20, 132, 5, 0, 0, 0, 255);
-			renderer->fillRectangle(posX, posY+21, 130, 3, 112, 112, 112, 255);
+			renderer->drawRectangle(posX - 1, posY + 20, 132, 5, 0, 0, 0, 255);
+			renderer->fillRectangle(posX, posY + 21, 130, 3, 112, 112, 112, 255);
 		}
 	}
 
@@ -838,7 +844,7 @@ void Creature::renderOnBattle(Sint32 posX, Sint32 posY, bool renderManaBar)
 		posX -= 13;
 		if(m_shield == SHIELD_BLUE_NOSHAREDEXP_BLINK || m_shield == SHIELD_YELLOW_NOSHAREDEXP_BLINK)
 		{
-			if(g_frameTime-m_shieldTime >= CREATURE_SHIELD_BLINK_TICKS)
+			if(g_frameTime - m_shieldTime >= CREATURE_SHIELD_BLINK_TICKS)
 			{
 				m_shieldTime = g_frameTime;
 				m_showShield = !m_showShield;
@@ -889,7 +895,7 @@ void Creature::hideStaticSquare()
 void Creature::setName(const std::string name)
 {
 	m_name = std::move(name);
-	m_nameLen = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_name)/2;
+	m_nameLen = g_engine.calculateFontWidth(CLIENT_FONT_OUTLINED, m_name) / 2;
 }
 
 void Creature::setHealth(Uint8 health)
@@ -1222,6 +1228,9 @@ void Creature::setVisible(bool visible)
 
 std::pair<Sint32, Sint32> Creature::getDisplacement()
 {
+	if(!m_thingType)
+		return std::make_pair(0, 0);
+
 	if(m_thingType->m_category != ThingCategory_Creature)
 	{
 		if(m_thingType->m_category == ThingCategory_Effect)
@@ -1246,19 +1255,19 @@ Sint32 Creature::getOffsetX(bool checkPreWalk)
 		case DIRECTION_NORTH:
 			return 0;
 		case DIRECTION_EAST:
-			return m_walkedPixels-((checkPreWalk && m_preWalking) ? 0 : 32);
+			return m_walkedPixels - ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_SOUTH:
 			return 0;
 		case DIRECTION_WEST:
-			return -m_walkedPixels+((checkPreWalk && m_preWalking) ? 0 : 32);
+			return -m_walkedPixels + ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_SOUTHWEST:
-			return -m_walkedPixels+((checkPreWalk && m_preWalking) ? 0 : 32);
+			return -m_walkedPixels + ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_SOUTHEAST:
-			return m_walkedPixels-((checkPreWalk && m_preWalking) ? 0 : 32);
+			return m_walkedPixels - ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_NORTHWEST:
-			return -m_walkedPixels+((checkPreWalk && m_preWalking) ? 0 : 32);
+			return -m_walkedPixels + ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_NORTHEAST:
-			return m_walkedPixels-((checkPreWalk && m_preWalking) ? 0 : 32);
+			return m_walkedPixels - ((checkPreWalk && m_preWalking) ? 0 : 32);
 	}
 	return 0;
 }
@@ -1269,43 +1278,31 @@ Sint32 Creature::getOffsetY(bool checkPreWalk)
 	switch(m_walkDirection)
 	{
 		case DIRECTION_NORTH:
-			return -m_walkedPixels+((checkPreWalk && m_preWalking) ? 0 : 32);
+			return -m_walkedPixels + ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_EAST:
 			return 0;
 		case DIRECTION_SOUTH:
-			return m_walkedPixels-((checkPreWalk && m_preWalking) ? 0 : 32);
+			return m_walkedPixels - ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_WEST:
 			return 0;
 		case DIRECTION_SOUTHWEST:
-			return m_walkedPixels-((checkPreWalk && m_preWalking) ? 0 : 32);
+			return m_walkedPixels - ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_SOUTHEAST:
-			return m_walkedPixels-((checkPreWalk && m_preWalking) ? 0 : 32);
+			return m_walkedPixels - ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_NORTHWEST:
-			return -m_walkedPixels+((checkPreWalk && m_preWalking) ? 0 : 32);
+			return -m_walkedPixels + ((checkPreWalk && m_preWalking) ? 0 : 32);
 		case DIRECTION_NORTHEAST:
-			return -m_walkedPixels+((checkPreWalk && m_preWalking) ? 0 : 32);
+			return -m_walkedPixels + ((checkPreWalk && m_preWalking) ? 0 : 32);
 	}
 	return 0;
 }
 
-Sint32 Creature::getStepDuration(bool ignoreDiagonal)
+Sint32 Creature::getStepDuration(Sint32 groundSpeed, bool ignoreDiagonal)
 {
 	Sint32 speed = SDL_static_cast(Sint32, m_speed);
-	if(speed < 1)
-		return 0;
+	speed = (speed < 1 ? 1 : speed);//Make sure we don't get div by 0 exception
 
-	Sint32 groundSpeed = 150;
-	if(m_walkTile)
-	{
-		groundSpeed = SDL_static_cast(Sint32, m_walkTile->getGroundSpeed());
-		if(groundSpeed == 0)
-			groundSpeed = 150;
-	}
-
-	Sint32 interval = 1000;
-	if(groundSpeed > 0)
-		interval = 1000 * groundSpeed;
-
+	Sint32 interval = 1000 * groundSpeed;
 	if(g_game.hasGameFeature(GAME_FEATURE_NEWSPEED_LAW))
 	{
 		double formulatedSpeed = 1.0;
@@ -1321,11 +1318,9 @@ Sint32 Creature::getStepDuration(bool ignoreDiagonal)
 		interval /= speed;
 
 	Sint32 serverBeat = SDL_static_cast(Sint32, g_game.getServerBeat());
-	if(g_clientVersion >= 900)
-		interval = (interval / (serverBeat + serverBeat - 1)) * serverBeat;
-
+	interval = ((interval + serverBeat - 1) / serverBeat) * serverBeat;
 	if(!ignoreDiagonal && (m_walkDirection & DIRECTION_DIAGONAL_MASK) != 0)
-		interval *= (g_game.hasGameFeature(GAME_FEATURE_LONGER_DIAGONAL) ? 3 : 2);
+		interval *= 3;
 
 	return interval;
 }

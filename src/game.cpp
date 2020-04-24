@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -77,6 +77,7 @@ Game::Game()
 	m_playerHuntingXpGain = 100;
 	m_serverBeat = 50;
 	m_storePackages = 25;
+	m_gameTime = 58;
 	m_icons = 0;
 	m_cached_stats = 0;
 	m_cached_skills = 0;
@@ -150,6 +151,7 @@ void Game::reset()
 void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 {
 	m_gameFeatures.reset();
+	enableGameFeature(GAME_FEATURE_UPDATE_TILE);
 	if(clientVersion >= 770)
 	{
 		enableGameFeature(GAME_FEATURE_XTEA);
@@ -176,15 +178,19 @@ void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 		enableGameFeature(GAME_FEATURE_ACCOUNT_NAME);
 	}
 	if(clientVersion >= 840)
+	{
 		enableGameFeature(GAME_FEATURE_DOUBLE_CAPACITY);
-	if(clientVersion >= 840)
 		enableGameFeature(GAME_FEATURE_SERVER_SENDFIRST);
+	}
+	if(clientVersion >= 841)
+	{
+		disableGameFeature(GAME_FEATURE_UPDATE_TILE);
+		enableGameFeature(GAME_FEATURE_TILE_ADDTHING_STACKPOS);
+	}
 	if(clientVersion >= 854)
 		enableGameFeature(GAME_FEATURE_CREATURE_EMBLEM);
 	if(clientVersion >= 860)
 		enableGameFeature(GAME_FEATURE_ATTACK_SEQUENCE);
-	if(clientVersion > 860)
-		enableGameFeature(GAME_FEATURE_LONGER_DIAGONAL);
 	if(clientVersion >= 862)
 		enableGameFeature(GAME_FEATURE_DEATH_PENALTY);
 	if(clientVersion >= 870)
@@ -193,11 +199,12 @@ void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 		enableGameFeature(GAME_FEATURE_DOUBLE_EXPERIENCE);
 		enableGameFeature(GAME_FEATURE_SPELL_LIST);
 	}
+	if(clientVersion >= 872)
+		enableGameFeature(GAME_FEATURE_CHAT_PLAYERLIST);
 	if(clientVersion >= 910)
 	{
 		enableGameFeature(GAME_FEATURE_TOTAL_CAPACITY);
 		enableGameFeature(GAME_FEATURE_BASE_SKILLS);
-		enableGameFeature(GAME_FEATURE_CHAT_PLAYERLIST);
 		enableGameFeature(GAME_FEATURE_REGENERATION_TIME);
 		enableGameFeature(GAME_FEATURE_ITEM_ANIMATION_PHASES);
 		enableGameFeature(GAME_FEATURE_ENVIRONMENT_EFFECTS);
@@ -218,13 +225,14 @@ void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 		enableGameFeature(GAME_FEATURE_LOOKATCREATURE);
 	if(clientVersion >= 963)
 		enableGameFeature(GAME_FEATURE_ADDITIONAL_VIPINFO);
-	if(clientVersion >= 980)
+	if(clientVersion >= 971)
 	{
 		enableGameFeature(GAME_FEATURE_PREVIEW_STATE);
 		enableGameFeature(GAME_FEATURE_CLIENT_VERSION);
 	}
-	if(clientVersion >= 981)
+	if(clientVersion >= 980)
 	{
+		enableGameFeature(GAME_FEATURE_KEEP_CONNECTION_AFTER_DEATH);
 		enableGameFeature(GAME_FEATURE_LOGIN_PENDING);
 		enableGameFeature(GAME_FEATURE_VIP_STATUS);
 		enableGameFeature(GAME_FEATURE_NEWSPEED_LAW);
@@ -310,6 +318,8 @@ void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 		enableGameFeature(GAME_FEATURE_BLESS_DIALOG);
 		enableGameFeature(GAME_FEATURE_QUEST_TRACKER);
 	}
+	if(clientVersion >= 1130)
+		enableGameFeature(GAME_FEATURE_GAMETIME);
 	if(clientVersion >= 1132)
 		enableGameFeature(GAME_FEATURE_COMPEDIUM);
 	if(clientVersion >= 1140)
@@ -322,7 +332,6 @@ void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 	if(clientVersion >= 1150)
 	{
 		enableGameFeature(GAME_FEATURE_QUICK_LOOT);
-		disableGameFeature(GAME_FEATURE_TOTAL_CAPACITY);
 		enableGameFeature(GAME_FEATURE_EXTENDED_CAPACITY);
 		enableGameFeature(GAME_FEATURE_CYCLOPEDIA_MONSTERS);
 	}
@@ -404,25 +413,40 @@ void Game::processTransformInventoryItem(Uint8 slot, ItemUI* item)
 	m_inventoryItem[slot] = item;
 	if(item)
 	{
-		Position position = Position(0xFFFF, SDL_static_cast(Uint16, slot)+1, 0);
+		Position position = Position(0xFFFF, SDL_static_cast(Uint16, slot) + 1, 0);
 		item->setCurrentPosition(position);
 	}
+	UTIL_updateShopWindow();
 }
 
 void Game::processTradeOwn(const std::string& name, std::vector<ItemUI*>& itemVector)
 {
-	(void)name;
-	(void)itemVector;
+	UTIL_createTradeWindow(false, name, SDL_reinterpret_cast(void*, &itemVector));
 }
 
 void Game::processTradeCounter(const std::string& name, std::vector<ItemUI*>& itemVector)
 {
-	(void)name;
-	(void)itemVector;
+	UTIL_createTradeWindow(true, name, SDL_reinterpret_cast(void*, &itemVector));
 }
 
 void Game::processTradeClose()
 {
+	UTIL_closeTradeWindow();
+}
+
+void Game::processNPCTradeOpen(const std::string& name, Uint16 currencyId, std::vector<NPCTradeItems>& npcItems)
+{
+	UTIL_createShopWindow(name, currencyId, SDL_reinterpret_cast(void*, &npcItems));
+}
+
+void Game::processNPCTradeGoods(Uint64 playerMoney, NPCTradeGoods& npcGoods)
+{
+	UTIL_goodsShopWindow(playerMoney, SDL_reinterpret_cast(void*, &npcGoods));
+}
+
+void Game::processNPCTradeClose()
+{
+	UTIL_closeShopWindow();
 }
 
 void Game::processEditTextWindow(Uint32 windowId, ItemUI* item, Uint16 maxLen, const std::string& text, const std::string& writer, const std::string& date)
@@ -441,19 +465,24 @@ void Game::processTextMessage(MessageMode mode, const std::string& text, Uint32 
 	{
 		case MessageChannelManagement:
 		{
-			/*size_t pos1, pos2;
+			size_t pos1, pos2;
 			std::string speaker;
 			if((pos1 = text.find(" invites you to ", 0)) != std::string::npos)
 				speaker = text.substr(0, pos1);
 			else if((pos1 = text.find("You have been excluded from the channel ", 0)) != std::string::npos && (pos2 = text.find("'s Channel.", 0)) != std::string::npos)
-				speaker = text.substr(pos1+40, pos2-pos1-40);*/
+				speaker = text.substr(pos1 + 40, pos2 - pos1 - 40);
 
 			//check white list and black list
-			Channel* channel = g_chat.getChannel(channelId);
-			if(channel)
-				g_chat.addChannelMessage(channelId, mode, 0, "", 0, text, time(NULL));
+			if(UTIL_onWhiteList(speaker) || !UTIL_onBlackList(speaker))
+			{
+				Channel* channel = g_chat.getChannel(channelId);
+				if(channel)
+					g_chat.addChannelMessage(channelId, mode, 0, "", 0, text, time(NULL));
+				else
+					processTextMessage(MessageLook, text);
+			}
 			else
-				processTextMessage(MessageLook, text);
+				g_chat.ignoreListEvent();
 		}
 		break;
 		case MessageGuild:
@@ -581,6 +610,13 @@ void Game::processWalkCancel(Direction direction)
 	}
 }
 
+void Game::processWalkWait(Uint16 walkTime)
+{
+	Creature* player = g_map.getLocalCreature();
+	if(player)
+		player->addWalkTime(SDL_static_cast(Uint32, walkTime));
+}
+
 void Game::processOutfits(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Uint8 lookLegs, Uint8 lookFeet, Uint8 lookAddons, Uint16 lookMount, std::vector<OutfitDetail>& outfits, std::vector<MountDetail>& mounts)
 {
 	UTIL_createOutfitWindow(lookType, lookHead, lookBody, lookLegs, lookFeet, lookAddons, lookMount, outfits, mounts);
@@ -588,7 +624,7 @@ void Game::processOutfits(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Uint8
 
 void Game::processTutorialHint(Uint8 tutorialId)
 {
-	(void)tutorialId;
+	UTIL_createTutorialHint(SDL_static_cast(Uint32, tutorialId));
 }
 
 void Game::processCancelTarget(Uint32 sequence)
@@ -619,10 +655,10 @@ void Game::processMultiUseDelay(Uint32 delay)
 
 void Game::processPlayerModes(Uint8 fightMode, Uint8 chaseMode, Uint8 safeMode, Uint8 pvpMode)
 {
-	(void)fightMode;
-	(void)chaseMode;
-	(void)safeMode;
-	(void)pvpMode;
+	g_engine.setAttackMode(fightMode);
+	g_engine.setChaseMode(chaseMode);
+	g_engine.setSecureMode(safeMode);
+	g_engine.setPvpMode(pvpMode);
 }
 
 void Game::processTalk(const std::string& name, Uint32 statementId, Uint16 playerLevel, MessageMode mode, std::string& text, Uint32 channelId, const Position& position)
@@ -631,11 +667,26 @@ void Game::processTalk(const std::string& name, Uint32 statementId, Uint16 playe
 	{
 		case MessageSay:
 		case MessageWhisper:
-		case MessageYell:
 		case MessageSpell:
 		{
-			g_map.addStaticText(position, name, mode, text);
-			g_chat.addChannelMessage(CHANNEL_ID_DEFAULT, mode, statementId, name, playerLevel, text, time(NULL));
+			if(UTIL_onWhiteList(name) || !UTIL_onBlackList(name))
+			{
+				g_map.addStaticText(position, name, mode, text);
+				g_chat.addChannelMessage(CHANNEL_ID_DEFAULT, mode, statementId, name, playerLevel, text, time(NULL));
+			}
+			else
+				g_chat.ignoreListEvent();
+		}
+		break;
+		case MessageYell:
+		{
+			if(UTIL_onWhiteList(name) || (!g_engine.getIgnoreYellingMessages() && !UTIL_onBlackList(name)))
+			{
+				g_map.addStaticText(position, name, mode, text);
+				g_chat.addChannelMessage(CHANNEL_ID_DEFAULT, mode, statementId, name, playerLevel, text, time(NULL));
+			}
+			else
+				g_chat.ignoreListEvent();
 		}
 		break;
 		case MessageMonsterSay:
@@ -645,11 +696,11 @@ void Game::processTalk(const std::string& name, Uint32 statementId, Uint16 playe
 			g_map.addStaticText(position, name, mode, text);
 			break;
 		case MessageNpcFrom:
-		case MessageNpcFromStartBlock:
+		case MessageNpcFromBlock:
 		{
 			UTIL_replaceString(text, "{", "\x0E\x20\xA0\xFF");
 			UTIL_replaceString(text, "}", "\x0F");
-			if(mode != MessageNpcFrom)//TODO: add MessageNpcFrom mode to static texts
+			if(mode != MessageNpcFromBlock)//TODO: add MessageNpcFromBlock mode to static texts
 				g_map.addStaticText(position, name, mode, text);
 
 			g_chat.addChannelMessage(CHANNEL_ID_NPC, mode, statementId, name, playerLevel, text, time(NULL));
@@ -666,18 +717,23 @@ void Game::processTalk(const std::string& name, Uint32 statementId, Uint16 playe
 			g_chat.addChannelMessage(CHANNEL_ID_RVR, mode, statementId, name, playerLevel, text, time(NULL));
 			break;
 		case MessageRVRChannel:
-			g_chat.addChannelMessage(CHANNEL_ID_RVR, mode, statementId, name, playerLevel, text, time(NULL)-SDL_static_cast(time_t, channelId));
+			g_chat.addChannelMessage(CHANNEL_ID_RVR, mode, statementId, name, playerLevel, text, time(NULL) - SDL_static_cast(time_t, channelId));
 			break;
 		case MessagePrivateFrom:
 		{
-			if(g_engine.hasShowPrivateMessages())
-				g_map.addOnscreenText(ONSCREEN_MESSAGE_TOP, mode, name + ":\n" + text);
+			if(UTIL_onWhiteList(name) || (!g_engine.getIgnorePrivateMessages() && !UTIL_onBlackList(name)))
+			{
+				if(g_engine.hasShowPrivateMessages())
+					g_map.addOnscreenText(ONSCREEN_MESSAGE_TOP, mode, name + ":\n" + text);
 
-			Channel* privateChannel = g_chat.getPrivateChannel(name);
-			if(privateChannel)
-				g_chat.addChannelMessage(privateChannel->channelId, mode, statementId, name, playerLevel, text, time(NULL));
+				Channel* privateChannel = g_chat.getPrivateChannel(name);
+				if(privateChannel)
+					g_chat.addChannelMessage(privateChannel->channelId, mode, statementId, name, playerLevel, text, time(NULL));
+				else
+					g_chat.addChannelMessage(CHANNEL_ID_DEFAULT, mode, statementId, name, playerLevel, text, time(NULL));
+			}
 			else
-				g_chat.addChannelMessage(CHANNEL_ID_DEFAULT, mode, statementId, name, playerLevel, text, time(NULL));
+				g_chat.ignoreListEvent();
 		}
 		break;
 		case MessageGamemasterBroadcast:
@@ -725,6 +781,46 @@ void Game::processOpenOwnPrivateChannel(Uint16 channelId, const std::string& cha
 void Game::processCloseChannel(Uint16 channelId)
 {
 	g_chat.closeChannel(SDL_static_cast(Uint32, channelId));
+}
+
+void Game::processQuestLog(Uint32 questId, std::vector<QuestLogDetail>& questLogElements)
+{
+	UTIL_createQuestLog(questId, questLogElements);
+}
+
+void Game::processQuestLine(Uint16 questId, std::vector<QuestLineDetail>& questLineElements)
+{
+	UTIL_createQuestine(questId, questLineElements);
+}
+
+void Game::processVipGroups(std::vector<VipGroups>& groups, Uint8 createGroupsLeft)
+{
+	UTIL_changeVipGroups(groups, createGroupsLeft);
+}
+
+void Game::processVipAdd(Uint32 playerGUID, const std::string& playerName, const std::string& description, Uint32 iconId, bool notifyLogin, Uint8 status, std::vector<Uint8>& groups)
+{
+	UTIL_addVipPlayer(playerGUID, playerName, description, iconId, notifyLogin, status, groups);
+}
+
+void Game::processVipStatusChange(Uint32 playerGUID, Uint8 status)
+{
+	UTIL_changeVipStatus(playerGUID, status);
+}
+
+void Game::processModalWindow(Uint32 windowId, bool priority, const std::string& title, const std::string& message, Uint8 enterButtonId, Uint8 escapeButtonId, std::vector<std::pair<std::string, Uint8>>& buttons, std::vector<std::pair<std::string, Uint8>>& choices)
+{
+	UTIL_createModalDialog(windowId, priority, title, message, enterButtonId, escapeButtonId, buttons, choices);
+}
+
+void Game::sendEnterGame()
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendEnterGame();
+	}
 }
 
 void Game::sendLogout()
@@ -923,6 +1019,7 @@ void Game::sendAttack(Creature* creature)
 		m_sequence = (m_attackId ? m_attackId : sequence);
 	else
 		++m_sequence;
+
 	if(g_engine.isIngame())
 	{
 		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
@@ -930,6 +1027,7 @@ void Game::sendAttack(Creature* creature)
 		{
 			if(m_followId)
 				game->sendFollow(0, sequence);
+
 			game->sendAttack(m_attackId, m_sequence);
 		}
 	}
@@ -944,6 +1042,7 @@ void Game::sendFollow(Creature* creature)
 		m_sequence = (m_followId ? m_followId : sequence);
 	else
 		++m_sequence;
+
 	if(g_engine.isIngame())
 	{
 		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
@@ -951,6 +1050,7 @@ void Game::sendFollow(Creature* creature)
 		{
 			if(m_attackId)
 				game->sendAttack(0, sequence);
+
 			game->sendFollow(m_followId, m_sequence);
 		}
 	}
@@ -1234,6 +1334,136 @@ void Game::sendHouseWindow(Uint32 windowId, Uint8 doorId, const std::string& tex
 		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
 		if(game && game->canPerformAction())
 			game->sendHouseWindow(windowId, doorId, text);
+	}
+}
+
+void Game::sendRequestTrade(const Position& position, Uint16 itemId, Uint8 stackpos, Uint32 creatureId)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendRequestTrade(position, itemId, stackpos, creatureId);
+	}
+}
+
+void Game::sendLookInTrade(bool counterOffer, Uint8 index)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendLookInTrade(counterOffer, index);
+	}
+}
+
+void Game::sendAcceptTrade()
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendAcceptTrade();
+	}
+}
+
+void Game::sendCloseTrade()
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendCloseTrade();
+	}
+}
+
+void Game::sendLookInShop(Uint16 itemid, Uint16 count)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendLookInShop(itemid, count);
+	}
+}
+
+void Game::sendNPCPurchase(Uint16 itemid, Uint8 subtype, Uint16 amount)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendNPCPurchase(itemid, subtype, amount, g_engine.getIgnoreCapacity(), g_engine.getBuyWithBackpacks());
+	}
+}
+
+void Game::sendNPCSell(Uint16 itemid, Uint8 subtype, Uint16 amount)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendNPCSell(itemid, subtype, amount, g_engine.getIgnoreEquiped());
+	}
+}
+
+void Game::sendNPCClose()
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendNPCClose();
+	}
+}
+
+void Game::sendAddVip(const std::string& name)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendAddVip(name);
+	}
+}
+
+void Game::sendRemoveVip(Uint32 playerGUID)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendRemoveVip(playerGUID);
+	}
+}
+
+void Game::sendEditVip(Uint32 playerGUID, const std::string& description, Uint32 iconId, bool notifyLogin, std::vector<Uint8>& groupIds)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendEditVip(playerGUID, description, iconId, notifyLogin, groupIds);
+	}
+}
+
+void Game::sendVipGroupAction(VipGroupActions groupAction, Uint8 groupId, const std::string& name)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendVipGroupAction(groupAction, groupId, name);
+	}
+}
+
+void Game::sendAnswerModalDialog(Uint32 dialogId, Uint8 button, Uint8 choice)
+{
+	if(g_engine.isIngame())
+	{
+		ProtocolGame* game = GET_SAFE_PROTOCOLGAME;
+		if(game && game->canPerformAction())
+			game->sendAnswerModalDialog(dialogId, button, choice);
 	}
 }
 
@@ -1556,8 +1786,11 @@ void Game::openHelpChannel()
 
 void Game::openNPCChannel()
 {
-	g_chat.openChannel(CHANNEL_ID_NPC, CHANNEL_NAME_NPC);
-	g_chat.setCurrentChannel(CHANNEL_ID_NPC);
+	if(g_game.hasGameFeature(GAME_FEATURE_NPC_INTERFACE))
+	{
+		g_chat.openChannel(CHANNEL_ID_NPC, CHANNEL_NAME_NPC);
+		g_chat.setCurrentChannel(CHANNEL_ID_NPC);
+	}
 }
 
 void Game::switchToDefault()
@@ -1573,61 +1806,61 @@ void Game::minimapCenter()
 void Game::minimapFloorDown()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x, pos.y, pos.z+1));
+	g_automap.setPosition(Position(pos.x, pos.y, pos.z + 1));
 }
 
 void Game::minimapFloorUp()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x, pos.y, pos.z-1));
+	g_automap.setPosition(Position(pos.x, pos.y, pos.z - 1));
 }
 
 void Game::minimapScrollEast()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x+5, pos.y, pos.z));
+	g_automap.setPosition(Position(pos.x + 5, pos.y, pos.z));
 }
 
 void Game::minimapScrollNorth()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x, pos.y-5, pos.z));
+	g_automap.setPosition(Position(pos.x, pos.y - 5, pos.z));
 }
 
 void Game::minimapScrollSouth()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x, pos.y+5, pos.z));
+	g_automap.setPosition(Position(pos.x, pos.y + 5, pos.z));
 }
 
 void Game::minimapScrollWest()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x-5, pos.y, pos.z));
+	g_automap.setPosition(Position(pos.x - 5, pos.y, pos.z));
 }
 
 void Game::minimapScrollNorthWest()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x-5, pos.y-5, pos.z));
+	g_automap.setPosition(Position(pos.x - 5, pos.y - 5, pos.z));
 }
 
 void Game::minimapScrollNorthEast()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x+5, pos.y-5, pos.z));
+	g_automap.setPosition(Position(pos.x + 5, pos.y - 5, pos.z));
 }
 
 void Game::minimapScrollSouthWest()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x-5, pos.y+5, pos.z));
+	g_automap.setPosition(Position(pos.x - 5, pos.y + 5, pos.z));
 }
 
 void Game::minimapScrollSouthEast()
 {
 	Position& pos = g_automap.getPosition();
-	g_automap.setPosition(Position(pos.x+5, pos.y+5, pos.z));
+	g_automap.setPosition(Position(pos.x + 5, pos.y + 5, pos.z));
 }
 
 void Game::minimapZoomIn()
@@ -1638,6 +1871,16 @@ void Game::minimapZoomIn()
 void Game::minimapZoomOut()
 {
 	g_automap.zoomOut();
+}
+
+void Game::minimapSetZoom(Sint32 zoom)
+{
+	g_automap.setZoom(zoom);
+}
+
+Sint32 Game::minimapGetZoom()
+{
+	return g_automap.getZoom();
 }
 
 Uint8 Game::findEmptyContainerId()
@@ -1666,13 +1909,13 @@ void Game::resetPlayerExperienceTable()
 
 void Game::updatePlayerExperienceTable()
 {
-	Uint32 timeStamp = g_frameTime/1000;
+	Uint32 timeStamp = g_frameTime / 1000;
 	if(!m_expTable.empty())
 	{
 		std::pair<Uint32, Uint64>& pair = m_expTable.front();
 		double expDiff = SDL_static_cast(double, (m_playerExperience - pair.second));
 		double timeDiff = SDL_static_cast(double, (timeStamp - pair.first));
-		m_playerExpSpeed = expDiff / (timeDiff < 1.0 ? 1.0 : timeDiff);
+		m_playerExpSpeed = expDiff / UTIL_max<double>(timeDiff, 1.0);
 	}
 
 	m_expTable.push_back(std::make_pair(timeStamp, m_playerExperience));
@@ -1714,7 +1957,11 @@ void Game::setPlayerHealth(Uint32 health, Uint32 maxHealth)
 	{
 		m_playerHealth = health;
 		m_playerMaxHealth = maxHealth;
-		m_playerHealthPercent = SDL_static_cast(Uint8, SDL_static_cast(Uint64, health)*100/maxHealth);
+		if(maxHealth == 0)
+			m_playerHealthPercent = 100;
+		else
+			m_playerHealthPercent = SDL_static_cast(Uint8, SDL_static_cast(Uint64, health) * SDL_static_cast(Uint64, 100) / SDL_static_cast(Uint64, maxHealth));
+
 		m_cached_stats |= CACHED_STAT_HEALTH;
 	}
 }
@@ -1725,7 +1972,11 @@ void Game::setPlayerMana(Uint32 mana, Uint32 maxMana)
 	{
 		m_playerMana = mana;
 		m_playerMaxMana = maxMana;
-		m_playerManaPercent = SDL_static_cast(Uint8, SDL_static_cast(Uint64, mana)*100/maxMana);
+		if(maxMana == 0)
+			m_playerManaPercent = 100;
+		else
+			m_playerManaPercent = SDL_static_cast(Uint8, SDL_static_cast(Uint64, mana) * SDL_static_cast(Uint64, 100) / SDL_static_cast(Uint64, maxMana));
+
 		m_cached_stats |= CACHED_STAT_MANA;
 	}
 }

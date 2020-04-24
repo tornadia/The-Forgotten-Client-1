@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -211,11 +211,11 @@ void UTIL_hotkeyOptions()
 	newCheckBox->startEvents();
 	newWindow->addChild(newCheckBox);
 
-	GUI_Button* newButton = new GUI_Button(iRect(HOTKEYS_WIDTH-56, HOTKEYS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(HOTKEYS_WIDTH - 56, HOTKEYS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&hotkey_Events, HOTKEYS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(HOTKEYS_WIDTH-109, HOTKEYS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(HOTKEYS_WIDTH - 109, HOTKEYS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&hotkey_Events, HOTKEYS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
@@ -235,7 +235,7 @@ void UTIL_hotkeyOptions()
 	newButton->setButtonEventCallback(&hotkey_Events, HOTKEYS_REMOVE_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, HOTKEYS_HEIGHT-40, HOTKEYS_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, HOTKEYS_HEIGHT - 40, HOTKEYS_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow, true);
 }

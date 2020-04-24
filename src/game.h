@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -82,10 +82,14 @@ class Game
 		void processTradeOwn(const std::string& name, std::vector<ItemUI*>& itemVector);
 		void processTradeCounter(const std::string& name, std::vector<ItemUI*>& itemVector);
 		void processTradeClose();
+		void processNPCTradeOpen(const std::string& name, Uint16 currencyId, std::vector<NPCTradeItems>& npcItems);
+		void processNPCTradeGoods(Uint64 playerMoney, NPCTradeGoods& npcGoods);
+		void processNPCTradeClose();
 		void processEditTextWindow(Uint32 windowId, ItemUI* item, Uint16 maxLen, const std::string& text, const std::string& writer, const std::string& date);
 		void processEditHouseWindow(Uint8 doorId, Uint32 windowId, const std::string& text);
 		void processTextMessage(MessageMode mode, const std::string& text, Uint32 channelId = 0);
 		void processWalkCancel(Direction direction);
+		void processWalkWait(Uint16 walkTime);
 		void processOutfits(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Uint8 lookLegs, Uint8 lookFeet, Uint8 lookAddons, Uint16 lookMount, std::vector<OutfitDetail>& outfits, std::vector<MountDetail>& mounts);
 		void processTutorialHint(Uint8 tutorialId);
 		void processCancelTarget(Uint32 sequence);
@@ -99,7 +103,14 @@ class Game
 		void processOpenPrivateChannel(const std::string& receiver);
 		void processOpenOwnPrivateChannel(Uint16 channelId, const std::string& channelName);
 		void processCloseChannel(Uint16 channelId);
+		void processQuestLog(Uint32 questId, std::vector<QuestLogDetail>& questLogElements);
+		void processQuestLine(Uint16 questId, std::vector<QuestLineDetail>& questLineElements);
+		void processVipGroups(std::vector<VipGroups>& groups, Uint8 createGroupsLeft);
+		void processVipAdd(Uint32 playerGUID, const std::string& playerName, const std::string& description, Uint32 iconId, bool notifyLogin, Uint8 status, std::vector<Uint8>& groups);
+		void processVipStatusChange(Uint32 playerGUID, Uint8 status);
+		void processModalWindow(Uint32 windowId, bool priority, const std::string& title, const std::string& message, Uint8 enterButtonId, Uint8 escapeButtonId, std::vector<std::pair<std::string, Uint8>>& buttons, std::vector<std::pair<std::string, Uint8>>& choices);
 
+		void sendEnterGame();
 		void sendLogout();
 		void sendAutoWalk(const std::vector<Direction>& path);
 		void sendWalk(Direction dir);
@@ -148,6 +159,19 @@ class Game
 		void sendOpenParentContainer(const Position& position);
 		void sendTextWindow(Uint32 windowId, const std::string& text);
 		void sendHouseWindow(Uint32 windowId, Uint8 doorId, const std::string& text);
+		void sendRequestTrade(const Position& position, Uint16 itemId, Uint8 stackpos, Uint32 creatureId);
+		void sendLookInTrade(bool counterOffer, Uint8 index);
+		void sendAcceptTrade();
+		void sendCloseTrade();
+		void sendLookInShop(Uint16 itemid, Uint16 count);
+		void sendNPCPurchase(Uint16 itemid, Uint8 subtype, Uint16 amount);
+		void sendNPCSell(Uint16 itemid, Uint8 subtype, Uint16 amount);
+		void sendNPCClose();
+		void sendAddVip(const std::string& name);
+		void sendRemoveVip(Uint32 playerGUID);
+		void sendEditVip(Uint32 playerGUID, const std::string& description, Uint32 iconId, bool notifyLogin, std::vector<Uint8>& groupIds);
+		void sendVipGroupAction(VipGroupActions groupAction, Uint8 groupId, const std::string& name);
+		void sendAnswerModalDialog(Uint32 dialogId, Uint8 button, Uint8 choice);
 
 		void stopActions();
 		void startAutoWalk(const Position& toPosition);
@@ -177,6 +201,8 @@ class Game
 		void minimapScrollSouthEast();
 		void minimapZoomIn();
 		void minimapZoomOut();
+		void minimapSetZoom(Sint32 zoom);
+		Sint32 minimapGetZoom();
 
 		Container* findContainer(Uint8 cid) {return m_containers[cid];}
 		Uint8 findEmptyContainerId();
@@ -186,13 +212,10 @@ class Game
 
 		SDL_INLINE void setPlayerID(Uint32 localPlayerId) {m_localPlayerId = localPlayerId;}
 		SDL_FORCE_INLINE Uint32 getPlayerID() {return m_localPlayerId;}
-
 		SDL_INLINE void setAttackID(Uint32 attackId) {m_attackId = attackId;}
 		SDL_FORCE_INLINE Uint32 getAttackID() {return m_attackId;}
-
 		SDL_INLINE void setFollowID(Uint32 followId) {m_followId = followId;}
 		SDL_FORCE_INLINE Uint32 getFollowID() {return m_followId;}
-
 		SDL_INLINE void setSelectID(Uint32 selectId) {m_selectId = selectId;}
 		SDL_FORCE_INLINE Uint32 getSelectID() {return m_selectId;}
 
@@ -203,7 +226,7 @@ class Game
 
 		void setPlayerExperience(Uint64 experience);
 		SDL_FORCE_INLINE Uint64 getPlayerExperience() {return m_playerExperience;}
-		SDL_FORCE_INLINE Uint64 getExpForLevel(Sint32 lvl) {Uint64 lv = SDL_static_cast(Uint64, lvl-1); return ((50*lv*lv*lv)-(150*lv*lv)+(400*lv))/3;}
+		SDL_FORCE_INLINE Uint64 getExpForLevel(Sint32 lvl) {Uint64 lv = SDL_static_cast(Uint64, lvl - 1); return ((50ULL * lv * lv * lv) - (150ULL * lv * lv) + (400ULL * lv)) / 3;}
 
 		void setPlayerCapacity(double capacity, double totalCapacity);
 		SDL_FORCE_INLINE double getPlayerCapacity() {return m_playerCapacity;}
@@ -230,16 +253,12 @@ class Game
 
 		void setPlayerStamina(Uint16 stamina);
 		SDL_FORCE_INLINE Uint16 getPlayerStamina() {return m_playerStamina;}
-
 		void setPlayerSoul(Uint8 soul);
 		SDL_FORCE_INLINE Uint8 getPlayerSoul() {return m_playerSoul;}
-
 		void setPlayerBaseSpeed(Uint16 baseSpeed);
 		SDL_FORCE_INLINE Uint16 getPlayerBaseSpeed() {return m_playerBaseSpeed;}
-
 		void setPlayerRegeneration(Uint16 regeneration);
 		SDL_FORCE_INLINE Uint16 getPlayerRegeneration() {return m_playerRegeneration;}
-
 		void setPlayerOfflineTraining(Uint16 offlineTime);
 		SDL_FORCE_INLINE Uint16 getPlayerOfflineTraining() {return m_playerOfflineTraining;}
 
@@ -261,7 +280,9 @@ class Game
 
 		SDL_INLINE void setServerBeat(Uint16 serverBeat) {m_serverBeat = serverBeat;}
 		SDL_FORCE_INLINE Uint16 getServerBeat() {return m_serverBeat;}
-
+		SDL_INLINE void setGameTime(Uint16 gameTime) {m_gameTime = gameTime;}
+		SDL_FORCE_INLINE Uint16 getGameTime() {return m_gameTime;}
+		
 		SDL_INLINE void setIcons(Uint32 icons) {m_icons = icons;}
 		SDL_FORCE_INLINE Uint32 getIcons() {return m_icons;}
 
@@ -287,10 +308,16 @@ class Game
 		SDL_INLINE void setStorePackages(Uint16 storePackages) {m_storePackages = storePackages;}
 		SDL_FORCE_INLINE Uint16 getStorePackages() {return m_storePackages;}
 		
+		SDL_INLINE void setResourceBalance(ResourceBalanceTypes type, Uint64 balance) {m_resourceBalances[type] = balance;}
+		SDL_FORCE_INLINE Uint64 getResourceBalance(ResourceBalanceTypes type) {std::map<ResourceBalanceTypes, Uint64>::iterator it = m_resourceBalances.find(type); if(it != m_resourceBalances.end()) return it->second; return 0;}
+		SDL_INLINE void setCharmPoints(Sint32 charmPoints) {m_playerCharmPoints = charmPoints;}
+		SDL_FORCE_INLINE Sint32 getCharmPoints() {return m_playerCharmPoints;}
+		
 	protected:
 		std::bitset<GAME_FEATURE_LAST> m_gameFeatures;
 		std::vector<Direction> m_autoWalkDirections;
 		std::vector<std::pair<Uint32, Uint64>> m_expTable;
+		std::map<ResourceBalanceTypes, Uint64> m_resourceBalances;
 		std::string m_storeUrl;
 
 		ItemUI* m_inventoryItem[SLOT_LAST];
@@ -315,6 +342,7 @@ class Game
 		Uint32 m_cancelWalkCounter;
 
 		Sint32 m_playerTournamentFactor;
+		Sint32 m_playerCharmPoints;
 
 		Position m_autoWalkDestination;
 		Position m_limitWalkDestination;
@@ -336,6 +364,7 @@ class Game
 		Uint16 m_playerSkillsBaseLevel[Skills_LastAdditionalSkill];
 		Uint16 m_serverBeat;
 		Uint16 m_storePackages;
+		Uint16 m_gameTime;
 		Uint16 m_cached_stats;
 		Uint16 m_cached_skills;
 

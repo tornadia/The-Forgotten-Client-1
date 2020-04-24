@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -72,6 +72,7 @@ class Chat
 		void clear();
 		void gameStart();
 		void navigateHistory(Sint32 direction);
+		void ignoreListEvent();
 
 		void setOwnPrivateChannel(Uint32 channelId) {m_ownPrivatechannel = channelId;}
 		void openPrivateChannel(const std::string& receiver);
@@ -86,14 +87,15 @@ class Chat
 		void setCurrentChannel(Uint32 channelId);
 		Channel* getChannel(Uint32 channelId);
 		Channel* getCurrentChannel();
+		GUI_TextBox* getTextBox() {return m_textbox;}
 
 		Uint32 getOwnPrivateChannel() {return m_ownPrivatechannel;}
 		Uint32 getHelpChannelId();
 
 		std::pair<size_t, size_t> calculateChannelPages(iRect& rect);
 		void onTextInput(const char* textInput);
-		void onKeyDown(SDL_Event event);
-		void onKeyUp(SDL_Event event);
+		void onKeyDown(SDL_Event& event);
+		void onKeyUp(SDL_Event& event);
 		void onLMouseDown(iRect& rect, Sint32 x, Sint32 y);
 		void onLMouseUp(iRect& rect, Sint32 x, Sint32 y);
 		void onRMouseDown(iRect& rect, Sint32 x, Sint32 y);
@@ -108,8 +110,10 @@ class Chat
 		GUI_TextBox* m_textbox;
 		size_t m_selectedChannel;
 		size_t m_currentPage;
+		Sint32 m_resizingY;
 		Sint32 m_historyNavigator;
 		Uint32 m_ownPrivatechannel;
+		Uint32 m_ignoreListTime;
 		Uint8 m_ignoreListStatus;
 		Uint8 m_channelListStatus;
 		Uint8 m_serverLogStatus;
@@ -118,6 +122,8 @@ class Chat
 		Uint8 m_volumeAdjustement;
 		Uint8 m_buttonNext;
 		Uint8 m_buttonPrevious;
+		bool m_haveRMouse;
+		bool m_bMouseResizing;
 };
 
 #endif /* __FILE_CHAT_h_ */

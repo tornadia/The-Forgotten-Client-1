@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -41,6 +41,7 @@ enum GUIWindowID
 	GUI_WINDOW_MOTD,
 	GUI_WINDOW_CHARACTERLIST,
 	GUI_WINDOW_EXITWARNING,
+	GUI_WINDOW_LOGOUT,
 	GUI_WINDOW_DEATHNOTIFICATION,
 	GUI_WINDOW_READWRITE,
 	GUI_WINDOW_CHANNELS,
@@ -48,7 +49,16 @@ enum GUIWindowID
 	GUI_WINDOW_TUTORIALHINT,
 	GUI_WINDOW_QUESTLOG,
 	GUI_WINDOW_QUESTLINE,
-	GUI_WINDOW_ITEMMOVE
+	GUI_WINDOW_ITEMMOVE,
+	GUI_WINDOW_INVITE,
+	GUI_WINDOW_EXCLUDE,
+	GUI_WINDOW_EDITMARK,
+	GUI_WINDOW_ADDVIP,
+	GUI_WINDOW_EDITVIP,
+	GUI_WINDOW_ADDGROUP,
+	GUI_WINDOW_EDITGROUP,
+	GUI_WINDOW_MODALDIALOG,
+	GUI_WINDOW_IGNORELIST
 };
 
 class GUI_Window
@@ -83,8 +93,8 @@ class GUI_Window
 		void deActivate() {m_bActive = false;}
 
 		void onTextInput(const char* textInput);
-		void onKeyDown(SDL_Event event);
-		void onKeyUp(SDL_Event event);
+		void onKeyDown(SDL_Event& event);
+		void onKeyUp(SDL_Event& event);
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
 		void onRMouseDown(Sint32 x, Sint32 y);

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -77,6 +77,7 @@ class Tile
 		SDL_FORCE_INLINE Sint32 getTileElevation() {return m_tileElevation;}
 		SDL_FORCE_INLINE Position& getPosition() {return m_position;}
 
+		bool hasground();
 		bool isFullground();
 		bool isLookPossible();
 		bool limitsFloorsView(bool isFreeView);

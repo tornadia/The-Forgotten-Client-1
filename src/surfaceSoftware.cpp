@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,26 +20,26 @@
 */
 
 #include "surfaceSoftware.h"
-
 #include "softwareDrawning.h"
 
 //I wouldn't recommend using software renderer
 //You can use it but it is much slower
 
-static const float inv255f = (1.0f/255.0f);
+static const float inv255f = (1.0f / 255.0f);
 
 extern Engine g_engine;
 extern Uint32 g_spriteCounts;
 extern Uint16 g_pictureCounts;
 
-SurfaceSoftware::SurfaceSoftware() : m_automapTilesBuff(SOFTWARE_MAX_AUTOMAPTILES), m_spritesMaskIds(HARDWARE_MAX_SPRITEMASKS)
+SurfaceSoftware::SurfaceSoftware() : m_automapTilesBuff(MAX_AUTOMAPTILES), m_spritesIds(MAX_SPRITES)
 {
 	g_engine.RecreateWindow(false);
 	m_integer_scaling_width = 0;
 	m_integer_scaling_height = 0;
 
 	m_totalVRAM = 0;
-	m_spritesCache = 0;
+	m_spriteChecker = 0;
+	m_currentFrame = 0;
 	m_convertFormat = SDL_PIXELFORMAT_UNKNOWN;
 	m_gameWindow = NULL;
 	m_renderSurface = NULL;
@@ -48,10 +48,9 @@ SurfaceSoftware::SurfaceSoftware() : m_automapTilesBuff(SOFTWARE_MAX_AUTOMAPTILE
 
 	m_hardware = NULL;
 	m_pictures = NULL;
-	m_sprites = NULL;
 
-	m_spriteMasks.reserve(SOFTWARE_MAX_SPRITEMASKS);
-	m_automapTiles.reserve(SOFTWARE_MAX_AUTOMAPTILES);
+	m_sprites.reserve(MAX_SPRITES);
+	m_automapTiles.reserve(MAX_AUTOMAPTILES);
 	m_pictureOptimizations.reserve(256);
 
 	SDL_SmoothStretch_init();
@@ -73,28 +72,17 @@ SurfaceSoftware::~SurfaceSoftware()
 		SDL_free(m_pictures);
 	}
 
-	if(m_sprites)
-	{
-		for(Uint32 i = 1; i <= m_spritesCache; ++i)
-		{
-			if(m_sprites[i])
-				SDL_FreeSurface(m_sprites[i]);
-		}
-
-		SDL_free(m_sprites);
-	}
-
 	for(U32BSurfaces::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		SDL_FreeSurface(it->second);
 
 	for(U32BOptimizer::iterator it = m_pictureOptimizations.begin(), end = m_pictureOptimizations.end(); it != end; ++it)
 		SDL_FreeSurface(it->second.m_surface);
 
-	for(U64BSurfaces::iterator it = m_spriteMasks.begin(), end = m_spriteMasks.end(); it != end; ++it)
-		SDL_FreeSurface(it->second);
+	for(U64BSurfaces::iterator it = m_sprites.begin(), end = m_sprites.end(); it != end; ++it)
+		SDL_FreeSurface(it->second.m_surface);
 
-	m_spriteMasks.clear();
-	m_spritesMaskIds.clear();
+	m_sprites.clear();
+	m_spritesIds.clear();
 	m_pictureOptimizations.clear();
 	m_automapTilesBuff.clear();
 	m_automapTiles.clear();
@@ -159,7 +147,7 @@ bool SurfaceSoftware::isSupported()
 	return backbuffer;
 }
 
-SDL_Surface* SurfaceSoftware::converSurface(SDL_Surface* s)
+SDL_Surface* SurfaceSoftware::convertSurface(SDL_Surface* s)
 {
 	if(m_convertFormat != SDL_PIXELFORMAT_UNKNOWN && m_convertFormat != s->format->format)
 		return SDL_ConvertSurfaceFormat(s, m_convertFormat, SDL_SWSURFACE);
@@ -178,16 +166,6 @@ void SurfaceSoftware::init()
 		exit(-1);
 	}
 
-	m_sprites = SDL_reinterpret_cast(SDL_Surface**, SDL_calloc(g_spriteCounts+1, sizeof(SDL_Surface*)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::Init() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-
 	//Don't use here RLE acceleration to avoid potentially frequent RLE encoding/decoding
 	#if SDL_BYTEORDER == SDL_BIG_ENDIAN
 	m_gameWindow = SDL_CreateRGBSurface(SDL_SWSURFACE, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, 32, 0x0000FF00, 0x00FF0000, 0xFF000000, 0x000000FF);
@@ -201,7 +179,7 @@ void SurfaceSoftware::init()
 		return;
 	}
 
-	SDL_Surface* n = converSurface(m_gameWindow);
+	SDL_Surface* n = convertSurface(m_gameWindow);
 	if(n)
 	{
 		SDL_FreeSurface(m_gameWindow);
@@ -215,32 +193,13 @@ void SurfaceSoftware::spriteManagerReset()
 	for(U32BSurfaces::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		SDL_FreeSurface(it->second);
 
-	for(U64BSurfaces::iterator it = m_spriteMasks.begin(), end = m_spriteMasks.end(); it != end; ++it)
-		SDL_FreeSurface(it->second);
+	for(U64BSurfaces::iterator it = m_sprites.begin(), end = m_sprites.end(); it != end; ++it)
+		SDL_FreeSurface(it->second.m_surface);
 
-	m_spriteMasks.clear();
-	m_spritesMaskIds.clear();
+	m_sprites.clear();
+	m_spritesIds.clear();
 	m_automapTilesBuff.clear();
 	m_automapTiles.clear();
-	if(m_sprites)
-	{
-		for(Uint32 i = 1; i <= m_spritesCache; ++i)
-		{
-			if(m_sprites[i])
-				SDL_FreeSurface(m_sprites[i]);
-		}
-
-		SDL_free(m_sprites);
-	}
-	m_sprites = SDL_reinterpret_cast(SDL_Surface**, SDL_calloc(g_spriteCounts+1, sizeof(SDL_Surface*)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::spriteManagerReset() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
 }
 
 unsigned char* SurfaceSoftware::getScreenPixels(Sint32& width, Sint32& height, bool& bgra)
@@ -251,16 +210,17 @@ unsigned char* SurfaceSoftware::getScreenPixels(Sint32& width, Sint32& height, b
 		width = SDL_static_cast(Sint32, backbuffer->w);
 		height = SDL_static_cast(Sint32, backbuffer->h);
 
-		unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(width*height*4));
+		unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(width * height * 4));
 		if(!pixels)
 			return NULL;
+
 		#if SDL_BYTEORDER == SDL_BIG_ENDIAN
 		if(backbuffer->format->format == SDL_PIXELFORMAT_BGRX8888 || backbuffer->format->format == SDL_PIXELFORMAT_BGRA8888)
 		#else
 		if(backbuffer->format->format == SDL_PIXELFORMAT_RGB888 || backbuffer->format->format == SDL_PIXELFORMAT_ARGB8888)
 		#endif
 		{
-			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, pixels), SDL_reinterpret_cast(const Uint8*, backbuffer->pixels), SDL_static_cast(size_t, width*height*4));
+			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, pixels), SDL_reinterpret_cast(const Uint8*, backbuffer->pixels), SDL_static_cast(size_t, width * height * 4));
 			bgra = true;
 		}
 		#if SDL_BYTEORDER == SDL_BIG_ENDIAN
@@ -269,7 +229,7 @@ unsigned char* SurfaceSoftware::getScreenPixels(Sint32& width, Sint32& height, b
 		else if(backbuffer->format->format == SDL_PIXELFORMAT_BGR888 || backbuffer->format->format == SDL_PIXELFORMAT_ABGR8888)
 		#endif
 		{
-			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, pixels), SDL_reinterpret_cast(const Uint8*, backbuffer->pixels), SDL_static_cast(size_t, width*height*4));
+			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, pixels), SDL_reinterpret_cast(const Uint8*, backbuffer->pixels), SDL_static_cast(size_t, width * height * 4));
 			bgra = false;
 		}
 		else
@@ -280,7 +240,7 @@ unsigned char* SurfaceSoftware::getScreenPixels(Sint32& width, Sint32& height, b
 			#else
 			dst_format = SDL_PIXELFORMAT_BGR888;
 			#endif
-			if(SDL_ConvertPixels(width, height, backbuffer->format->format, backbuffer->pixels, backbuffer->pitch, dst_format, pixels, width*4) != 0)
+			if(SDL_ConvertPixels(width, height, backbuffer->format->format, backbuffer->pixels, backbuffer->pitch, dst_format, pixels, width * 4) != 0)
 			{
 				SDL_free(pixels);
 				return NULL;
@@ -294,6 +254,9 @@ unsigned char* SurfaceSoftware::getScreenPixels(Sint32& width, Sint32& height, b
 
 void SurfaceSoftware::beginScene()
 {
+	m_spriteChecker = 0;
+	++m_currentFrame;
+
 	m_renderSurface = SDL_GetWindowSurface(g_engine.m_window);
 }
 
@@ -323,7 +286,7 @@ bool SurfaceSoftware::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 		if(!m_scaled_gameWindow)
 			return false;
 
-		SDL_Surface* n = converSurface(m_scaled_gameWindow);
+		SDL_Surface* n = convertSurface(m_scaled_gameWindow);
 		if(n)
 		{
 			SDL_FreeSurface(m_scaled_gameWindow);
@@ -371,7 +334,7 @@ void SurfaceSoftware::beginGameScene()
 
 	//black our game window(so empty tiles will be drawn as black rectangle)
 	//memset is several times faster than fillrect
-	memset(m_gameWindow->pixels, 0x00, RENDERTARGET_WIDTH*RENDERTARGET_HEIGHT*4);
+	memset(m_gameWindow->pixels, 0x00, RENDERTARGET_WIDTH * RENDERTARGET_HEIGHT * 4);
 }
 
 void SurfaceSoftware::endGameScene()
@@ -379,16 +342,16 @@ void SurfaceSoftware::endGameScene()
 	m_renderSurface = SDL_GetWindowSurface(g_engine.m_window);
 }
 
-void SurfaceSoftware::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
+void SurfaceSoftware::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
-	SDL_DrawLightMap_MT(m_renderSurface, lightmap, x, y, scale, width, height);
-	/*Sint32 drawY = y-scale;
+	SDL_DrawLightMap_old_MT(m_renderSurface, lightmap, x, y, scale, width, height);
+	/*Sint32 drawY = y - scale;
 	height -= 1;
 	for(Sint32 j = 0; j < height; ++j)
 	{
-		Sint32 drawX = x-scale;
-		Sint32 index = j*width;
-		for(Sint32 k = 0; k < width-1; ++k)
+		Sint32 drawX = x - scale;
+		Sint32 index = j * width;
+		for(Sint32 k = 0; k < width - 1; ++k)
 		{
 			SDL_Rect rect = {drawX,drawY,scale,scale};
 			SDL_FillRect_MOD(m_renderSurface, &rect, UTIL_min<Sint32>(lightmap[index].r, 255), UTIL_min<Sint32>(lightmap[index].g, 255), UTIL_min<Sint32>(lightmap[index].b, 255));
@@ -397,6 +360,11 @@ void SurfaceSoftware::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint3
 		}
 		drawY += scale;
 	}*/
+}
+
+void SurfaceSoftware::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
+{
+	SDL_DrawLightMap_new_MT(m_renderSurface, lightmap, x, y, scale, width, height);
 }
 
 void SurfaceSoftware::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -420,11 +388,11 @@ void SurfaceSoftware::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint
 
 		SDL_Rect rect1 = {x,y,1,h};
 		SDL_FillRect(m_renderSurface, &rect1, color);
-		SDL_Rect rect2 = {x+w-1,y,1,h};
+		SDL_Rect rect2 = {x + w - 1,y,1,h};
 		SDL_FillRect(m_renderSurface, &rect2, color);
-		SDL_Rect rect3 = {x+1,y,w-2,1};
+		SDL_Rect rect3 = {x + 1,y,w - 2,1};
 		SDL_FillRect(m_renderSurface, &rect3, color);
-		SDL_Rect rect4 = {x+1,y+h-1,w-2,1};
+		SDL_Rect rect4 = {x + 1,y + h - 1,w - 2,1};
 		SDL_FillRect(m_renderSurface, &rect4, color);
 	}
 	else
@@ -433,11 +401,11 @@ void SurfaceSoftware::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint
 
 		SDL_Rect rect1 = {x,y,1,h};
 		SDL_FillRect_BLEND(m_renderSurface, &rect1, color, SDL_static_cast(Uint32, a));
-		SDL_Rect rect2 = {x+w-1,y,1,h};
+		SDL_Rect rect2 = {x + w - 1,y,1,h};
 		SDL_FillRect_BLEND(m_renderSurface, &rect2, color, SDL_static_cast(Uint32, a));
-		SDL_Rect rect3 = {x+1,y,w-2,1};
+		SDL_Rect rect3 = {x + 1,y,w - 2,1};
 		SDL_FillRect_BLEND(m_renderSurface, &rect3, color, SDL_static_cast(Uint32, a));
-		SDL_Rect rect4 = {x+1,y+h-1,w-2,1};
+		SDL_Rect rect4 = {x + 1,y + h - 1,w - 2,1};
 		SDL_FillRect_BLEND(m_renderSurface, &rect4, color, SDL_static_cast(Uint32, a));
 	}
 }
@@ -477,7 +445,7 @@ SDL_Surface* SurfaceSoftware::loadPicture(SDL_Surface* s, Sint32 sx, Sint32 sy, 
 		if(!optimization.m_surface)
 			return NULL;
 
-		SDL_Surface* n = converSurface(optimization.m_surface);
+		SDL_Surface* n = convertSurface(optimization.m_surface);
 		if(n)
 		{
 			SDL_FreeSurface(optimization.m_surface);
@@ -501,9 +469,9 @@ SDL_Surface* SurfaceSoftware::loadPicture(Uint16 pictureId, SDL_BlendMode blendM
 		return NULL;
 
 	#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-	SDL_Surface* s = SDL_CreateRGBSurfaceFrom(pixels, width, height, 32, 4*width, 0x0000FF00, 0x00FF0000, 0xFF000000, 0x000000FF);
+	SDL_Surface* s = SDL_CreateRGBSurfaceFrom(pixels, width, height, 32, 4 * width, 0x0000FF00, 0x00FF0000, 0xFF000000, 0x000000FF);
 	#else
-	SDL_Surface* s = SDL_CreateRGBSurfaceFrom(pixels, width, height, 32, 4*width, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+	SDL_Surface* s = SDL_CreateRGBSurfaceFrom(pixels, width, height, 32, 4 * width, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
 	#endif
 	if(!s)
 	{
@@ -513,7 +481,7 @@ SDL_Surface* SurfaceSoftware::loadPicture(Uint16 pictureId, SDL_BlendMode blendM
 
 	s->flags &= ~SDL_PREALLOC;//With this flag we will have to free memory ourselves which is a pain in ass(but remember to allocate memory via SDL_malloc so the SDL_free destroy it)
 
-	SDL_Surface* n = converSurface(s);
+	SDL_Surface* n = convertSurface(s);
 	if(n)
 	{
 		SDL_FreeSurface(s);
@@ -554,14 +522,16 @@ void SurfaceSoftware::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::
 				break;
 			case 0x0E://Special case - change rendering color
 			{
-				if(i+4 < len)//First check if we have the color bytes
+				if(i + 4 < len)//First check if we have the color bytes
 				{
-					Uint8 red = SDL_static_cast(Uint8, text[i+1]);
-					Uint8 green = SDL_static_cast(Uint8, text[i+2]);
-					Uint8 blue = SDL_static_cast(Uint8, text[i+3]);
+					Uint8 red = SDL_static_cast(Uint8, text[i + 1]);
+					Uint8 green = SDL_static_cast(Uint8, text[i + 2]);
+					Uint8 blue = SDL_static_cast(Uint8, text[i + 3]);
 					SDL_SetSurfaceColorMod(surf, red, green, blue);
 					i += 3;
 				}
+				else
+					i = len;
 			}
 			break;
 			case 0x0F://Special case - change back standard color
@@ -602,7 +572,7 @@ void SurfaceSoftware::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sin
 		if(!m_background)
 			return;
 
-		SDL_Surface* n = converSurface(m_background);
+		SDL_Surface* n = convertSurface(m_background);
 		if(n)
 		{
 			SDL_FreeSurface(m_background);
@@ -618,7 +588,7 @@ void SurfaceSoftware::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sin
 		else
 			SDL_BlitScaled(surf, &sr, m_background, &dr);
 	}
-	UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, m_renderSurface->pixels), SDL_reinterpret_cast(const Uint8*, m_background->pixels), w*h*m_renderSurface->format->BytesPerPixel);
+	UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, m_renderSurface->pixels), SDL_reinterpret_cast(const Uint8*, m_background->pixels), w * h * m_renderSurface->format->BytesPerPixel);
 }
 
 void SurfaceSoftware::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -705,7 +675,7 @@ void SurfaceSoftware::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32
 	SDL_BlitSurface(surf, &srcr, m_renderSurface, &dstr);
 }
 
-SDL_Surface* SurfaceSoftware::loadSprite(Uint32 spriteId)
+SDL_Surface* SurfaceSoftware::loadSprite(Uint64 tempPos, Uint32 spriteId)
 {
 	unsigned char* pixels = g_engine.LoadSprite(spriteId, true);
 	if(!pixels)
@@ -724,7 +694,7 @@ SDL_Surface* SurfaceSoftware::loadSprite(Uint32 spriteId)
 
 	s->flags &= ~SDL_PREALLOC;//With this flag we will have to free memory ourselves which is a pain in ass(but remember to allocate memory via SDL_malloc so the SDL_free destroy it)
 
-	SDL_Surface* n = converSurface(s);
+	SDL_Surface* n = convertSurface(s);
 	if(n)
 	{
 		SDL_FreeSurface(s);
@@ -733,8 +703,43 @@ SDL_Surface* SurfaceSoftware::loadSprite(Uint32 spriteId)
 
 	SDL_SetSurfaceBlendMode(s, SDL_BLENDMODE_BLEND);
 	SDL_SetSurfaceRLE(s, 1);
+	if(m_sprites.size() >= MAX_SPRITES)
+	{
+		U64BSurfaces::iterator it;
+		while(++m_spriteChecker < MAX_SPRITES)
+		{
+			Uint64 oldSpriteId = m_spritesIds.front();
+			it = m_sprites.find(oldSpriteId);
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "Software: Sprite Manager failure.");
+				exit(-1);
+			}
 
-	m_sprites[spriteId] = s;
+			m_spritesIds.pop_front();
+			if(it->second.m_lastUsage == m_currentFrame)
+				m_spritesIds.push_back(oldSpriteId);
+			else
+				goto Skip_Search;
+		}
+
+		it = m_sprites.find(m_spritesIds.front());
+		if(it == m_sprites.end())
+		{
+			UTIL_MessageBox(true, "Software: Sprite Manager failure.");
+			exit(-1);
+		}
+		m_spritesIds.pop_front();
+
+		Skip_Search:
+		SDL_FreeSurface(it->second.m_surface);
+		m_sprites.erase(it);
+	}
+
+	SoftwareSpriteData& sprData = m_sprites[tempPos];
+	sprData.m_surface = s;
+	sprData.m_lastUsage = m_currentFrame;
+	m_spritesIds.push_back(tempPos);
 	return s;
 }
 
@@ -757,7 +762,7 @@ SDL_Surface* SurfaceSoftware::loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Ui
 
 	s->flags &= ~SDL_PREALLOC;//With this flag we will have to free memory ourselves which is a pain in ass(but remember to allocate memory via SDL_malloc so the SDL_free destroy it)
 
-	SDL_Surface* n = converSurface(s);
+	SDL_Surface* n = convertSurface(s);
 	if(n)
 	{
 		SDL_FreeSurface(s);
@@ -766,19 +771,43 @@ SDL_Surface* SurfaceSoftware::loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Ui
 
 	SDL_SetSurfaceBlendMode(s, SDL_BLENDMODE_BLEND);
 	SDL_SetSurfaceRLE(s, 1);
-
-	m_spriteMasks[tempPos] = s;
-	if(m_spriteMasks.size() > SOFTWARE_MAX_SPRITEMASKS)
+	if(m_sprites.size() >= MAX_SPRITES)
 	{
-		U64BSurfaces::iterator it = m_spriteMasks.find(m_spritesMaskIds.front());
-		if(it == m_spriteMasks.end())//Something weird happen - let's erase the first one entry
-			it = m_spriteMasks.begin();
+		U64BSurfaces::iterator it;
+		while(++m_spriteChecker < MAX_SPRITES)
+		{
+			Uint64 oldSpriteId = m_spritesIds.front();
+			it = m_sprites.find(oldSpriteId);
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "Software: Sprite Manager failure.");
+				exit(-1);
+			}
 
-		SDL_FreeSurface(it->second);
-		m_spriteMasks.erase(it);
-		m_spritesMaskIds.pop_front();
+			m_spritesIds.pop_front();
+			if(it->second.m_lastUsage == m_currentFrame)
+				m_spritesIds.push_back(oldSpriteId);
+			else
+				goto Skip_Search;
+		}
+
+		it = m_sprites.find(m_spritesIds.front());
+		if(it == m_sprites.end())
+		{
+			UTIL_MessageBox(true, "Software: Sprite Manager failure.");
+			exit(-1);
+		}
+		m_spritesIds.pop_front();
+
+		Skip_Search:
+		SDL_FreeSurface(it->second.m_surface);
+		m_sprites.erase(it);
 	}
-	m_spritesMaskIds.push_back(tempPos);
+
+	SoftwareSpriteData& sprData = m_sprites[tempPos];
+	sprData.m_surface = s;
+	sprData.m_lastUsage = m_currentFrame;
+	m_spritesIds.push_back(tempPos);
 	return s;
 }
 
@@ -787,12 +816,31 @@ void SurfaceSoftware::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 	if(spriteId > g_spriteCounts)
 		return;
 
-	SDL_Surface* surf = m_sprites[spriteId];
-	if(!surf)
+	#if SIZEOF_VOIDP == 4
+	Uint64 tempPos;
+	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
+	u32p[0] = spriteId;
+	u32p[1] = 0;
+	#else
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
+	#endif
+	SDL_Surface* surf;
+	U64BSurfaces::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
 	{
-		surf = loadSprite(spriteId);
+		surf = loadSprite(tempPos, spriteId);
 		if(!surf)
 			return;//load failed
+	}
+	else
+	{
+		surf = it->second.m_surface;
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
+		{
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
+		}
 	}
 
 	SDL_Rect srcr = {0,0,32,32};
@@ -805,12 +853,31 @@ void SurfaceSoftware::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, 
 	if(spriteId > g_spriteCounts)
 		return;
 
-	SDL_Surface* surf = m_sprites[spriteId];
-	if(!surf)
+	#if SIZEOF_VOIDP == 4
+	Uint64 tempPos;
+	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
+	u32p[0] = spriteId;
+	u32p[1] = 0;
+	#else
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
+	#endif
+	SDL_Surface* surf;
+	U64BSurfaces::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
 	{
-		surf = loadSprite(spriteId);
+		surf = loadSprite(tempPos, spriteId);
 		if(!surf)
 			return;//load failed
+	}
+	else
+	{
+		surf = it->second.m_surface;
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
+		{
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
+		}
 	}
 
 	SDL_Rect srcr = {sx,sy,sw,sh};
@@ -824,18 +891,16 @@ void SurfaceSoftware::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 		return;
 
 	#if SIZEOF_VOIDP == 4
-	//Should avoid some unnecesary instructions on 32bit application
-	//especialy VC+GNUC compillers since clang don't use them by default
 	Uint64 tempPos;
-	Uint32* u32p64 = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p64[0] = spriteId;
-	u32p64[1] = outfitColor;
+	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
+	u32p[0] = maskSpriteId;
+	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, (spriteId | SDL_static_cast(Uint64, outfitColor) << 32));
+	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
 	SDL_Surface* surf;
-	U64BSurfaces::iterator it = m_spriteMasks.find(tempPos);
-	if(it == m_spriteMasks.end())
+	U64BSurfaces::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
 	{
 		surf = loadSpriteMask(tempPos, spriteId, maskSpriteId, outfitColor);
 		if(!surf)
@@ -843,11 +908,12 @@ void SurfaceSoftware::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 	}
 	else
 	{
-		surf = it->second;
-		if(m_spritesMaskIds.front() == tempPos)
+		surf = it->second.m_surface;
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
 		{
-			m_spritesMaskIds.pop_front();
-			m_spritesMaskIds.push_back(tempPos);
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
 		}
 	}
 
@@ -862,18 +928,16 @@ void SurfaceSoftware::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 		return;
 
 	#if SIZEOF_VOIDP == 4
-	//Should avoid some unnecesary instructions on 32bit application
-	//especialy VC+GNUC compillers since clang don't use them by default
 	Uint64 tempPos;
-	Uint32* u32p64 = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p64[0] = spriteId;
-	u32p64[1] = outfitColor;
+	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
+	u32p[0] = maskSpriteId;
+	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, (spriteId | SDL_static_cast(Uint64, outfitColor) << 32));
+	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
 	SDL_Surface* surf;
-	U64BSurfaces::iterator it = m_spriteMasks.find(tempPos);
-	if(it == m_spriteMasks.end())
+	U64BSurfaces::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
 	{
 		surf = loadSpriteMask(tempPos, spriteId, maskSpriteId, outfitColor);
 		if(!surf)
@@ -881,11 +945,12 @@ void SurfaceSoftware::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 	}
 	else
 	{
-		surf = it->second;
-		if(m_spritesMaskIds.front() == tempPos)
+		surf = it->second.m_surface;
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
 		{
-			m_spritesMaskIds.pop_front();
-			m_spritesMaskIds.push_back(tempPos);
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
 		}
 	}
 
@@ -904,7 +969,7 @@ SDL_Surface* SurfaceSoftware::createAutomapTile(Uint32 currentArea)
 	if(!s)
 		return NULL;
 
-	SDL_Surface* n = converSurface(s);
+	SDL_Surface* n = convertSurface(s);
 	if(n)
 	{
 		SDL_FreeSurface(s);
@@ -914,11 +979,14 @@ SDL_Surface* SurfaceSoftware::createAutomapTile(Uint32 currentArea)
 	SDL_SetSurfaceBlendMode(s, SDL_BLENDMODE_BLEND);
 
 	m_automapTiles[currentArea] = s;
-	if(m_automapTiles.size() > SOFTWARE_MAX_AUTOMAPTILES)
+	if(m_automapTiles.size() > MAX_AUTOMAPTILES)
 	{
 		U32BSurfaces::iterator it = m_automapTiles.find(m_automapTilesBuff.front());
-		if(it == m_automapTiles.end())//Something weird happen - let's erase the first one entry
-			it = m_automapTiles.begin();
+		if(it == m_automapTiles.end())
+		{
+			UTIL_MessageBox(true, "Software: Sprite Manager failure.");
+			exit(-1);
+		}
 
 		SDL_FreeSurface(it->second);
 		m_automapTiles.erase(it);

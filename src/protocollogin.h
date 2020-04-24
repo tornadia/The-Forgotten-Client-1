@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -35,9 +35,10 @@ enum LoginOpcodes : Uint8
 	RecvTokenSuccessOpcode = 0x0C,
 	RecvTokenFailedOpcode = 0x0D,
 	RecvMotdOpcode = 0x14,
+	RecvSurveyInvitationOpcode = 0x15,
 	RecvUpdate1Opcode = 0x1E,
 	RecvUpdate2Opcode = 0x1F,
-	RecvUpdate3Opcode = 0x20,
+	RecvUpdateBlockOpcode = 0x20,
 	RecvSessionKeyOpcode = 0x28,
 	RecvCharacterListOpcode = 0x64,
 	RecvCharacterListNewOpcode = 0x65
@@ -58,7 +59,9 @@ class ProtocolLogin : public Protocol
 		void parseTokenSuccess(InputMessage& msg);
 		void parseTokenFailed(InputMessage& msg);
 		void parseMotd(InputMessage& msg);
+		void parseSurveyInvitation(InputMessage& msg);
 		void parseUpdate(InputMessage& msg);
+		void parseUpdateBlock(InputMessage& msg);
 		void parseSessionKey(InputMessage& msg);
 		void parseCharacterList(InputMessage& msg);
 		void parseCharacterListNew(InputMessage& msg);

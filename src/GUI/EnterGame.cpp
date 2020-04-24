@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -198,9 +198,9 @@ void UTIL_createEnterGame()
 	newWindow->addChild(newLabel);
 	GUI_TextBox* newTextBox = new GUI_TextBox(iRect(ENTERGAME_ACCNAME_TEXTBOX_X, ENTERGAME_ACCNAME_TEXTBOX_Y, ENTERGAME_ACCNAME_TEXTBOX_W, ENTERGAME_ACCNAME_TEXTBOX_H), "", ENTERGAME_ACCNAME_TEXTBOX_EVENTID);
 	if(g_game.hasGameFeature(GAME_FEATURE_ACCOUNT_EMAIL))
-		newTextBox->setMaxLength(64);
+		newTextBox->setMaxLength(80);
 	else if(g_game.hasGameFeature(GAME_FEATURE_ACCOUNT_NAME))
-		newTextBox->setMaxLength(32);
+		newTextBox->setMaxLength(30);
 	else
 	{
 		newTextBox->setMaxLength(10);
@@ -209,7 +209,7 @@ void UTIL_createEnterGame()
 	newTextBox->startEvents();
 	newWindow->addChild(newTextBox);
 	newTextBox = new GUI_TextBox(iRect(ENTERGAME_PASSWORD_TEXTBOX_X, ENTERGAME_PASSWORD_TEXTBOX_Y, ENTERGAME_PASSWORD_TEXTBOX_W, ENTERGAME_PASSWORD_TEXTBOX_H), "", ENTERGAME_PASSWORD_TEXTBOX_EVENTID);
-	newTextBox->setMaxLength(32);
+	newTextBox->setMaxLength(30);
 	newTextBox->setHideCharacter('*');
 	newTextBox->startEvents();
 	newWindow->addChild(newTextBox);
@@ -217,15 +217,15 @@ void UTIL_createEnterGame()
 	newButton->setButtonEventCallback(&enterGame_Events, ENTERGAME_ACCOUNT_BUTTON_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(ENTERGAME_WIDTH-56, ENTERGAME_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	newButton = new GUI_Button(iRect(ENTERGAME_WIDTH - 56, ENTERGAME_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&enterGame_Events, ENTERGAME_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(ENTERGAME_WIDTH-109, ENTERGAME_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(ENTERGAME_WIDTH - 109, ENTERGAME_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&enterGame_Events, ENTERGAME_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, ENTERGAME_HEIGHT-40, ENTERGAME_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, ENTERGAME_HEIGHT - 40, ENTERGAME_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
 }

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -71,9 +71,9 @@ struct LightMap
 {
 	LightMap() : r(0), g(0), b(0) {}
 
-	Sint32 r;
-	Sint32 g;
-	Sint32 b;
+	Uint8 r;
+	Uint8 g;
+	Uint8 b;
 };
 
 struct ContextMenuChild
@@ -143,6 +143,7 @@ struct QuestLineDetail
 {
 	std::string missionName;
 	std::string missionDescription;
+	Uint16 missionId;
 };
 
 struct RewardCollection
@@ -156,6 +157,61 @@ struct RequestItems
 	Uint16 itemId;
 	Uint8 itemCount;
 };
+
+using NPCTradeGoods = std::map<Uint16, Uint16>;
+struct NPCTradeItems
+{
+	std::string itemName;
+	Uint32 itemWeight;
+	Uint32 itemBuyPrice;
+	Uint32 itemSellPrice;
+	Uint16 itemId;
+	Uint8 itemSubtype;
+};
+
+struct VipData
+{
+	std::string description;
+	Uint32 iconId;
+	bool notifyLogin;
+};
+
+struct VipPlayers
+{
+	std::vector<Uint8> groups;
+	std::string playerName;
+	std::string description;
+	Uint32 playerGUID;
+	Uint32 iconId;
+	Uint8 status;
+	bool notifyLogin;
+};
+
+struct VipGroups
+{
+	std::string groupName;
+	Uint8 groupId;
+	bool groupRemovable;
+};
+
+struct VipActionPlayer
+{
+	Uint8 type;
+	Uint32 playerGUID;
+};
+
+struct VipActionGroup
+{
+	Uint8 type;
+	Uint8 groupId;
+};
+
+typedef union VipAction
+{
+	Uint8 type;
+	VipActionPlayer player;
+	VipActionGroup group;
+} VipAction;
 
 struct InspectObject_NormalObject
 {
@@ -251,6 +307,24 @@ struct SpellData
 	Uint8 spellVocations;
 	Uint8 spellReqSoul;
 	bool spellReqPremium;
+};
+
+struct HouseData
+{
+	HouseData(const char* a1, Uint32 a2, Uint32 a3, Uint32 a4, Uint32 a5, Uint32 a6, Uint32 a7, Uint16 a8, Uint16 a9, Uint8 a10, Uint8 a11) :
+		houseName(a1), houseTownId(a2), houseId(a3), houseFloorBits(a4), houseSQMs(a5), houseBeds(a6), houseRent(a7), housePosX(a8), housePosY(a9), housePosZ(a10), houseBits(a11) {}
+
+	const char* houseName;
+	Uint32 houseTownId;
+	Uint32 houseId;
+	Uint32 houseFloorBits;
+	Uint32 houseSQMs;
+	Uint32 houseBeds;
+	Uint32 houseRent;
+	Uint16 housePosX;
+	Uint16 housePosY;
+	Uint8 housePosZ;
+	Uint8 houseBits;
 };
 
 #endif /* __FILE_STRUCTURES_h_ */

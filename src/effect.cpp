@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,26 +29,33 @@ extern ThingManager g_thingManager;
 extern LightSystem g_light;
 extern Uint32 g_frameTime;
 
+std::vector<Effect*> Effect::effects;
 Uint32 Effect::effectCount = 0;
 
-Effect::Effect(const Position& pos, ThingType* type)
+Effect::Effect(const Position& pos, Uint16 delay, ThingType* type)
 {
 	m_thingType = type;
 	m_animator = NULL;
 	m_position = pos;
-	m_startTime = g_frameTime;
+	m_startTime = g_frameTime + delay;
 	m_currentAnim = m_animCount = 0;
 	m_xPattern = m_yPattern = m_zPattern = 0;
 	m_topEffect = false;
 	++effectCount;
+	effects.push_back(this);
 }
 
 Effect::~Effect()
 {
+	auto it = std::find(effects.begin(), effects.end(), this);
+	if (it != effects.end()) {
+		effects.erase(it);
+	}
+
 	--effectCount;
 }
 
-Effect* Effect::createEffect(const Position& pos, Uint16 type)
+Effect* Effect::createEffect(const Position& pos, Uint16 delay, Uint16 type)
 {
 	if(effectCount >= EFFECT_MAX_INGAME_EFFECTS)
 		return NULL;
@@ -67,14 +74,15 @@ Effect* Effect::createEffect(const Position& pos, Uint16 type)
 			Uint8 height = ttype->m_frameGroup[ThingFrameGroup_Default].m_height;
 			if(width == 1 && height == 1)
 			{
-				Effect1X1* newEffectX = new Effect1X1(pos, ttype);
+				auto newEffectX = new Effect1X1(pos, delay, ttype);
 				for(Uint8 a = 0; a < animCount; ++a)
 					newEffectX->m_1X1Sprites[a] = ttype->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, a);
+
 				newEffect = newEffectX;
 			}
 			else if(width == 2 && height == 1)
 			{
-				Effect2X1* newEffectX = new Effect2X1(pos, ttype);
+				auto newEffectX = new Effect2X1(pos, delay, ttype);
 				for(Uint8 a = 0; a < animCount; ++a)
 				{
 					newEffectX->m_2X1Sprites[a][0] = ttype->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, a);
@@ -84,7 +92,7 @@ Effect* Effect::createEffect(const Position& pos, Uint16 type)
 			}
 			else if(width == 1 && height == 2)
 			{
-				Effect1X2* newEffectX = new Effect1X2(pos, ttype);
+				auto newEffectX = new Effect1X2(pos, delay, ttype);
 				for(Uint8 a = 0; a < animCount; ++a)
 				{
 					newEffectX->m_1X2Sprites[a][0] = ttype->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, a);
@@ -94,7 +102,7 @@ Effect* Effect::createEffect(const Position& pos, Uint16 type)
 			}
 			else if(width == 2 && height == 2)
 			{
-				Effect2X2* newEffectX = new Effect2X2(pos, ttype);
+				auto newEffectX = new Effect2X2(pos, delay, ttype);
 				for(Uint8 a = 0; a < animCount; ++a)
 				{
 					newEffectX->m_2X2Sprites[a][0] = ttype->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, a);
@@ -105,8 +113,9 @@ Effect* Effect::createEffect(const Position& pos, Uint16 type)
 				newEffect = newEffectX;
 			}
 		}
+
 		if(!newEffect)
-			newEffect = new Effect(pos, ttype);
+			newEffect = new Effect(pos, delay, ttype);
 
 		newEffect->m_animator = ttype->m_frameGroup[ThingFrameGroup_Default].m_animator;
 		newEffect->m_animCount = animCount;
@@ -118,7 +127,8 @@ Effect* Effect::createEffect(const Position& pos, Uint16 type)
 			newEffect->m_animator->resetAnimation(newEffect->m_animation);
 	}
 	else
-		newEffect = new EffectNULL(pos, ttype);
+		newEffect = new EffectNULL(pos, delay, ttype);
+
 	return newEffect;
 }
 
@@ -132,19 +142,35 @@ Uint16 Effect::getID()
 
 bool Effect::canBeDeleted()
 {
-	m_currentAnim = calculateAnimationPhase();
 	if(m_currentAnim >= m_animCount)
 		return true;
 	else
 		return false;
 }
 
+bool Effect::isDelayed()
+{
+	return (g_frameTime < m_startTime);
+}
+
+void Effect::update()
+{
+	for(std::vector<Effect*>::iterator it = effects.begin(), end = effects.end(); it != end; ++it)
+	{
+		Effect* effect = (*it);
+		effect->m_currentAnim = effect->calculateAnimationPhase();
+	}
+}
+
 void Effect::render(Sint32 posX, Sint32 posY, bool)
 {
 	Surface* renderer = g_engine.getRender();
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	for(Uint8 y = 0; y < m_thingType->m_frameGroup[ThingFrameGroup_Default].m_height; ++y)
 	{
@@ -154,6 +180,7 @@ void Effect::render(Sint32 posX, Sint32 posY, bool)
 			Uint32 sprite = m_thingType->getSprite(ThingFrameGroup_Default, x, y, 0, m_xPattern, m_yPattern, m_zPattern, m_currentAnim);
 			if(sprite != 0)
 				renderer->drawSprite(sprite, posXc, posY);
+
 			posXc -= 32;
 		}
 		posY -= 32;
@@ -171,10 +198,10 @@ Uint8 Effect::calculateAnimationPhase()
 	return SDL_static_cast(Uint8, (g_frameTime - m_startTime) / EFFECT_TICKS_PER_FRAME);
 }
 
-EffectNULL::EffectNULL(const Position& pos, ThingType* type) : Effect(pos, type) {;}
+EffectNULL::EffectNULL(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type) {;}
 void EffectNULL::render(Sint32, Sint32, bool) {;}
 
-Effect1X1::Effect1X1(const Position& pos, ThingType* type) : Effect(pos, type)
+Effect1X1::Effect1X1(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type)
 {
 	for(Sint32 i = 0; i < EFFECT_MAX_CACHED_ANIMATIONS; ++i)
 		m_1X1Sprites[i] = 0;
@@ -182,9 +209,12 @@ Effect1X1::Effect1X1(const Position& pos, ThingType* type) : Effect(pos, type)
 
 void Effect1X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	if(!visible_tile)
 		return;
@@ -194,7 +224,7 @@ void Effect1X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		g_engine.getRender()->drawSprite(drawSprite, posX, posY);
 }
 
-Effect2X1::Effect2X1(const Position& pos, ThingType* type) : Effect(pos, type)
+Effect2X1::Effect2X1(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type)
 {
 	for(Sint32 i = 0; i < EFFECT_MAX_CACHED_ANIMATIONS; ++i)
 	{
@@ -206,9 +236,12 @@ Effect2X1::Effect2X1(const Position& pos, ThingType* type) : Effect(pos, type)
 void Effect2X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
 	Surface* renderer = g_engine.getRender();
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint32 drawSprite;
 	if(visible_tile)
@@ -220,10 +253,10 @@ void Effect2X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X1Sprites[m_currentAnim][1];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
-Effect1X2::Effect1X2(const Position& pos, ThingType* type) : Effect(pos, type)
+Effect1X2::Effect1X2(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type)
 {
 	for(Sint32 i = 0; i < EFFECT_MAX_CACHED_ANIMATIONS; ++i)
 	{
@@ -235,9 +268,12 @@ Effect1X2::Effect1X2(const Position& pos, ThingType* type) : Effect(pos, type)
 void Effect1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
 	Surface* renderer = g_engine.getRender();
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint32 drawSprite = m_1X2Sprites[m_currentAnim][0];
 	if(visible_tile)
@@ -249,10 +285,10 @@ void Effect1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_1X2Sprites[m_currentAnim][1];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX, posY-32);
+		renderer->drawSprite(drawSprite, posX, posY - 32);
 }
 
-Effect2X2::Effect2X2(const Position& pos, ThingType* type) : Effect(pos, type)
+Effect2X2::Effect2X2(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type)
 {
 	for(Sint32 i = 0; i < EFFECT_MAX_CACHED_ANIMATIONS; ++i)
 	{
@@ -266,9 +302,12 @@ Effect2X2::Effect2X2(const Position& pos, ThingType* type) : Effect(pos, type)
 void Effect2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
 	Surface* renderer = g_engine.getRender();
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint32 drawSprite;
 	if(visible_tile)
@@ -280,7 +319,7 @@ void Effect2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X2Sprites[m_currentAnim][1];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 
 	posY -= 32;
 	drawSprite = m_2X2Sprites[m_currentAnim][2];
@@ -289,5 +328,5 @@ void Effect2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X2Sprites[m_currentAnim][3];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 }

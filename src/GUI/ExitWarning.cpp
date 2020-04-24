@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,7 +24,6 @@
 #include "../GUI_Elements/GUI_Window.h"
 #include "../GUI_Elements/GUI_Button.h"
 #include "../GUI_Elements/GUI_Separator.h"
-#include "../GUI_Elements/GUI_Grouper.h"
 #include "../GUI_Elements/GUI_Label.h"
 #include "../game.h"
 
@@ -41,7 +40,7 @@
 #define EXIT_WARNING_SECOND_LABEL_X 18
 #define EXIT_WARNING_SECOND_LABEL_Y 46
 #define EXIT_WARNING_THIRD_LABEL_TEXT "Click on \"Exit\" if you want to exit the program without logging out your character."
-#define EXIT_WARNINGTHIRD_LABEL_X 18
+#define EXIT_WARNING_THIRD_LABEL_X 18
 #define EXIT_WARNING_THIRD_LABEL_Y 60
 
 extern Engine g_engine;
@@ -96,21 +95,21 @@ void UTIL_exitWarning()
 	newWindow->addChild(newLabel);
 	newLabel = new GUI_Label(iRect(EXIT_WARNING_SECOND_LABEL_X, EXIT_WARNING_SECOND_LABEL_Y, 0, 0), EXIT_WARNING_SECOND_LABEL_TEXT);
 	newWindow->addChild(newLabel);
-	newLabel = new GUI_Label(iRect(EXIT_WARNINGTHIRD_LABEL_X, EXIT_WARNING_THIRD_LABEL_Y, 0, 0), EXIT_WARNING_THIRD_LABEL_TEXT);
+	newLabel = new GUI_Label(iRect(EXIT_WARNING_THIRD_LABEL_X, EXIT_WARNING_THIRD_LABEL_Y, 0, 0), EXIT_WARNING_THIRD_LABEL_TEXT);
 	newWindow->addChild(newLabel);
-	GUI_Button* newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-56, EXIT_WARNING_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH - 56, EXIT_WARNING_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&exitWarning_Events, EXIT_WARNING_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-109, EXIT_WARNING_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Logout", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH - 109, EXIT_WARNING_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Logout", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&exitWarning_Events, EXIT_WARNING_LOGOUT_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH-162, EXIT_WARNING_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Exit");
+	newButton = new GUI_Button(iRect(EXIT_WARNING_WIDTH - 162, EXIT_WARNING_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Exit");
 	newButton->setButtonEventCallback(&exitWarning_Events, EXIT_WARNING_EXIT_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, EXIT_WARNING_HEIGHT-40, EXIT_WARNING_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, EXIT_WARNING_HEIGHT - 40, EXIT_WARNING_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow, true);
 }

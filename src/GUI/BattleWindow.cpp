@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -69,7 +69,7 @@ extern Map g_map;
 
 bool g_haveBattleOpen = false;
 bool g_havePartyOpen = false;
-bool g_needSortCreatures = false;
+bool g_needSortCreatures = true;
 bool g_recreateBattleWindow = false;
 bool g_recreatePartyWindow = false;
 Uint8 g_mouseAction = 0;
@@ -113,7 +113,10 @@ void battle_Events(Uint32 event, Sint32 status)
 				}
 				else
 				{
-					UTIL_ResizePanel(SDL_reinterpret_cast(void*, pPanel), pRect.x2, pPanel->getCachedHeight());
+					Sint32 cachedHeight = pPanel->getCachedHeight();
+					parent->tryFreeHeight(cachedHeight - pRect.y2);
+					pPanel->setSize(pRect.x2, cachedHeight);
+					parent->checkPanels();
 
 					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(BATTLE_CONTAINER_EVENTID));
 					if(pContainer)
@@ -152,11 +155,11 @@ void battle_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_BATTLE);
 			if(pPanel)
 			{
-				GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(BATTLE_CONTAINER_EVENTID));
+				GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(BATTLE_CONFIGURE_EVENTID));
 				if(pIcon)
 				{
 					iRect& iconRect = pIcon->getRect();
-					UTIL_createBattlePopupMenu(iconRect.x1, iconRect.y1+12);
+					UTIL_createBattlePopupMenu(iconRect.x1, iconRect.y1 + 12);
 				}
 			}
 		}
@@ -170,7 +173,7 @@ void battle_Events(Uint32 event, Sint32 status)
 				if(pContainer)
 				{
 					iRect cRect = pContainer->getRect();
-					cRect.y2 = status-19;
+					cRect.y2 = status - 19;
 					pContainer->setRect(cRect);
 				}
 				
@@ -184,7 +187,7 @@ void battle_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
-		case BATTLE_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_BATTLE, status); g_haveBattleOpen = false;} break;
+		case BATTLE_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_BATTLE, status - 19); g_haveBattleOpen = false;} break;
 		case BATTLE_FLASH_EVENTID:
 		{
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_BATTLE);
@@ -296,7 +299,10 @@ void battle_Events(Uint32 event, Sint32 status)
 				}
 				else
 				{
-					UTIL_ResizePanel(SDL_reinterpret_cast(void*, pPanel), pRect.x2, pPanel->getCachedHeight());
+					Sint32 cachedHeight = pPanel->getCachedHeight();
+					parent->tryFreeHeight(cachedHeight - pRect.y2);
+					pPanel->setSize(pRect.x2, cachedHeight);
+					parent->checkPanels();
 
 					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(PARTY_CONTAINER_EVENTID));
 					if(pContainer)
@@ -327,11 +333,11 @@ void battle_Events(Uint32 event, Sint32 status)
 			GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_PARTY);
 			if(pPanel)
 			{
-				GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(PARTY_CONTAINER_EVENTID));
+				GUI_Icon* pIcon = SDL_static_cast(GUI_Icon*, pPanel->getChild(PARTY_CONFIGURE_EVENTID));
 				if(pIcon)
 				{
 					iRect& iconRect = pIcon->getRect();
-					UTIL_createBattlePopupMenu(iconRect.x1, iconRect.y1+12);
+					UTIL_createBattlePopupMenu(iconRect.x1, iconRect.y1 + 12);
 				}
 			}
 		}
@@ -345,13 +351,13 @@ void battle_Events(Uint32 event, Sint32 status)
 				if(pContainer)
 				{
 					iRect cRect = pContainer->getRect();
-					cRect.y2 = status-19;
+					cRect.y2 = status - 19;
 					pContainer->setRect(cRect);
 				}
 			}
 		}
 		break;
-		case PARTY_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_PARTY, status); g_havePartyOpen = false;} break;
+		case PARTY_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_PARTY, status - 19); g_havePartyOpen = false;} break;
 	}
 }
 
@@ -360,7 +366,7 @@ void UTIL_sortWindows()
 	switch(g_engine.getBattleSortMethod())
 	{
 		case Sort_Ascending_Time: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getVisibleTime() < b->getVisibleTime();}); break;
-		case Sort_Descending_Time: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool{return a->getVisibleTime() > b->getVisibleTime();}); break;
+		case Sort_Descending_Time: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getVisibleTime() > b->getVisibleTime();}); break;
 		case Sort_Ascending_Distance:
 		{
 			std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool
@@ -545,7 +551,7 @@ void UTIL_recreateBattleWindow(GUI_Container* container)
 		if(!container)
 			return;
 	}
-	container->clearChilds();
+	container->clearChilds(false);
 	Sint32 PosY = -9;
 	size_t creatures = g_battleCreatures.size();
 	for(size_t i = 0; i < creatures; ++i)
@@ -554,10 +560,11 @@ void UTIL_recreateBattleWindow(GUI_Container* container)
 		{
 			GUI_BattleCreature* newBattleCreature = new GUI_BattleCreature(iRect(1, PosY, 155, 23), i);
 			newBattleCreature->startEvents();
-			container->addChild(newBattleCreature);
+			container->addChild(newBattleCreature, false);
 			PosY += 23;
 		}
 	}
+	container->validateScrollBar();
 }
 
 void UTIL_flashBattleWindow()
@@ -589,8 +596,17 @@ void UTIL_toggleBattleWindow()
 		g_engine.removePanelWindow(pPanel);
 		return;
 	}
-
-	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 117), true, GUI_PANEL_WINDOW_BATTLE, true);
+	
+	if(g_needSortCreatures)
+	{
+		UTIL_sortWindows();
+		g_needSortCreatures = false;
+	}
+	
+	Sint32 savedHeight = g_engine.getContentWindowHeight(GUI_PANEL_WINDOW_BATTLE);
+	if(savedHeight < 38)
+		savedHeight = 119;
+	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, GAME_PANEL_FIXED_WIDTH - 4, savedHeight + 19), true, GUI_PANEL_WINDOW_BATTLE, true);
 	newWindow->setEventCallback(&battle_Events, BATTLE_RESIZE_WIDTH_EVENTID, BATTLE_RESIZE_HEIGHT_EVENTID, BATTLE_EXIT_WINDOW_EVENTID);
 	GUI_BattleChecker* newBattleChecker = new GUI_BattleChecker(iRect(19, 2, 0, 0));
 	newWindow->addChild(newBattleChecker);
@@ -604,19 +620,34 @@ void UTIL_toggleBattleWindow()
 	newIcon->setButtonEventCallback(&battle_Events, BATTLE_CLOSE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(131, 0, GUI_UI_ICON_CONFIGURE_WINDOW_UP_W, GUI_UI_ICON_CONFIGURE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CONFIGURE_WINDOW_UP_X, GUI_UI_ICON_CONFIGURE_WINDOW_UP_Y, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_X, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_Y, 0, "Click here to configure the battle list");
+	newIcon = new GUI_Icon(iRect(131, 0, GUI_UI_ICON_CONFIGURE_WINDOW_UP_W, GUI_UI_ICON_CONFIGURE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CONFIGURE_WINDOW_UP_X, GUI_UI_ICON_CONFIGURE_WINDOW_UP_Y, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_X, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_Y, BATTLE_CONFIGURE_EVENTID, "Click here to configure the battle list");
 	newIcon->setButtonEventCallback(&battle_Events, BATTLE_CONFIGURE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	GUI_Label* newLabel = new GUI_Label(iRect(19, 2, 0, 0), BATTLE_TITLE, 0, 144, 144, 144);
+	GUI_DynamicLabel* newLabel = new GUI_DynamicLabel(iRect(19, 2, 100, 14), BATTLE_TITLE, 0, 144, 144, 144);
+	newLabel->startEvents();
 	newWindow->addChild(newLabel);
-	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, 98), newWindow, BATTLE_CONTAINER_EVENTID);
+	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, savedHeight), newWindow, BATTLE_CONTAINER_EVENTID);
 	UTIL_recreateBattleWindow(newContainer);
 	newContainer->startEvents();
 	newWindow->addChild(newContainer);
-	g_engine.addToPanel(newWindow);
-	g_recreateBattleWindow = false;
-	g_haveBattleOpen = true;
+
+	Sint32 preferredPanel = g_engine.getContentWindowParent(GUI_PANEL_WINDOW_BATTLE);
+	bool added = g_engine.addToPanel(newWindow, preferredPanel);
+	if(!added && preferredPanel != GUI_PANEL_RANDOM)
+		added = g_engine.addToPanel(newWindow, GUI_PANEL_RANDOM);
+
+	if(added)
+	{
+		g_recreateBattleWindow = false;
+		g_haveBattleOpen = true;
+	}
+	else
+	{
+		g_recreateBattleWindow = true;
+		g_haveBattleOpen = false;
+		delete newWindow;
+	}
 }
 
 void UTIL_createBattlePopupMenu(Sint32 x, Sint32 y)
@@ -650,7 +681,7 @@ void UTIL_recreatePartyWindow(GUI_Container* container)
 		if(!container)
 			return;
 	}
-	container->clearChilds();
+	container->clearChilds(false);
 	Sint32 PosY = -9;
 	size_t creatures = g_battleCreatures.size();
 	for(size_t i = 0; i < creatures; ++i)
@@ -659,10 +690,11 @@ void UTIL_recreatePartyWindow(GUI_Container* container)
 		{
 			GUI_BattleCreature* newBattleCreature = new GUI_BattleCreature(iRect(1, PosY, 155, 30), i, true);
 			newBattleCreature->startEvents();
-			container->addChild(newBattleCreature);
+			container->addChild(newBattleCreature, false);
 			PosY += 30;
 		}
 	}
+	container->validateScrollBar();
 }
 
 void UTIL_togglePartyWindow()
@@ -673,8 +705,17 @@ void UTIL_togglePartyWindow()
 		g_engine.removePanelWindow(pPanel);
 		return;
 	}
-
-	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 117), true, GUI_PANEL_WINDOW_PARTY, true);
+	
+	if(g_needSortCreatures)
+	{
+		UTIL_sortWindows();
+		g_needSortCreatures = false;
+	}
+	
+	Sint32 savedHeight = g_engine.getContentWindowHeight(GUI_PANEL_WINDOW_PARTY);
+	if(savedHeight < 38)
+		savedHeight = 119;
+	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, savedHeight + 19), true, GUI_PANEL_WINDOW_PARTY, true);
 	newWindow->setEventCallback(&battle_Events, PARTY_RESIZE_WIDTH_EVENTID, PARTY_RESIZE_HEIGHT_EVENTID, PARTY_EXIT_WINDOW_EVENTID);
 	GUI_PartyChecker* newPartyChecker = new GUI_PartyChecker(iRect(19, 2, 0, 0));
 	newWindow->addChild(newPartyChecker);
@@ -688,19 +729,34 @@ void UTIL_togglePartyWindow()
 	newIcon->setButtonEventCallback(&battle_Events, PARTY_CLOSE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	newIcon = new GUI_Icon(iRect(131, 0, GUI_UI_ICON_CONFIGURE_WINDOW_UP_W, GUI_UI_ICON_CONFIGURE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CONFIGURE_WINDOW_UP_X, GUI_UI_ICON_CONFIGURE_WINDOW_UP_Y, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_X, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_Y, 0, "Click here to configure the battle list");
+	newIcon = new GUI_Icon(iRect(131, 0, GUI_UI_ICON_CONFIGURE_WINDOW_UP_W, GUI_UI_ICON_CONFIGURE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_CONFIGURE_WINDOW_UP_X, GUI_UI_ICON_CONFIGURE_WINDOW_UP_Y, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_X, GUI_UI_ICON_CONFIGURE_WINDOW_DOWN_Y, PARTY_CONFIGURE_EVENTID, "Click here to configure the battle list");
 	newIcon->setButtonEventCallback(&battle_Events, PARTY_CONFIGURE_EVENTID);
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
-	GUI_Label* newLabel = new GUI_Label(iRect(19, 2, 0, 0), PARTY_TITLE, 0, 144, 144, 144);
+	GUI_DynamicLabel* newLabel = new GUI_DynamicLabel(iRect(19, 2, 100, 14), PARTY_TITLE, 0, 144, 144, 144);
+	newLabel->startEvents();
 	newWindow->addChild(newLabel);
-	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, 98), newWindow, PARTY_CONTAINER_EVENTID);
+	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, savedHeight), newWindow, PARTY_CONTAINER_EVENTID);
 	UTIL_recreatePartyWindow(newContainer);
 	newContainer->startEvents();
 	newWindow->addChild(newContainer);
-	g_engine.addToPanel(newWindow);
-	g_recreatePartyWindow = false;
-	g_havePartyOpen = true;
+
+	Sint32 preferredPanel = g_engine.getContentWindowParent(GUI_PANEL_WINDOW_PARTY);
+	bool added = g_engine.addToPanel(newWindow, preferredPanel);
+	if(!added && preferredPanel != GUI_PANEL_RANDOM)
+		added = g_engine.addToPanel(newWindow, GUI_PANEL_RANDOM);
+
+	if(added)
+	{
+		g_recreatePartyWindow = false;
+		g_havePartyOpen = true;
+	}
+	else
+	{
+		g_recreatePartyWindow = true;
+		g_havePartyOpen = false;
+		delete newWindow;
+	}
 }
 
 GUI_BattleChecker::GUI_BattleChecker(iRect boxRect, Uint32 internalID)

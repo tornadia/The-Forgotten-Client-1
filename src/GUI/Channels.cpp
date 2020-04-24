@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -50,7 +50,7 @@
 #define CHANNELS_TEXTBOX_Y 179
 #define CHANNELS_TEXTBOX_W 200
 #define CHANNELS_TEXTBOX_H 16
-#define CHANNELS_TEXTBOX_EVENTID 1003
+#define CHANNELS_TEXTBOX_EVENTID 3000
 
 extern Engine g_engine;
 extern Game g_game;
@@ -108,10 +108,10 @@ void channels_Events(Uint32 event, Sint32 status)
 		case CHANNELS_LISTBOX_EVENTID:
 		{
 			//Negative status means doubleclick
-			GUI_Window* pWindow = g_engine.getCurrentWindow();
-			if(status < 0 && pWindow && pWindow->getInternalID() == GUI_WINDOW_CHANNELS)
+			GUI_Window* pWindow;
+			if(status < 0 && (pWindow = g_engine.getCurrentWindow()) != NULL && pWindow->getInternalID() == GUI_WINDOW_CHANNELS)
 			{
-				Sint32 select = (status*-1)-1;
+				Sint32 select = ~(status);
 				std::map<Sint32, Uint32>::iterator it = g_channelsCache.find(select);
 				if(it != g_channelsCache.end())
 				{
@@ -164,15 +164,15 @@ void UTIL_createChannels(std::vector<ChannelDetail>& channels)
 	newTextBox->setMaxLength(32);
 	newTextBox->startEvents();
 	newWindow->addChild(newTextBox);
-	GUI_Button* newButton = new GUI_Button(iRect(CHANNELS_WIDTH-56, CHANNELS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(CHANNELS_WIDTH - 56, CHANNELS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&channels_Events, CHANNELS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(CHANNELS_WIDTH-109, CHANNELS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Open", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(CHANNELS_WIDTH - 109, CHANNELS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Open", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&channels_Events, CHANNELS_OPEN_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, CHANNELS_HEIGHT-40, CHANNELS_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, CHANNELS_HEIGHT - 40, CHANNELS_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
 }

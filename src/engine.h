@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -46,7 +46,8 @@ class Surface
 		virtual void beginScene() = 0;
 		virtual void endScene() = 0;
 
-		virtual void drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height) = 0;
+		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height) = 0;
+		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height) = 0;
 		virtual void drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h) = 0;
 		virtual void beginGameScene() = 0;
 		virtual void endGameScene() = 0;
@@ -108,8 +109,8 @@ class Engine
 		GUI_Window* getCurrentWindow() {return m_actWindow;}
 		GUI_Window* getWindow(Uint32 internalID);
 
-		void onKeyDown(SDL_Event event);
-		void onKeyUp(SDL_Event event);
+		void onKeyDown(SDL_Event& event);
+		void onKeyUp(SDL_Event& event);
 		void onMouseMove(Sint32 x, Sint32 y);
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
@@ -129,7 +130,12 @@ class Engine
 		void bindHotkey(ClientHotkeyKeys hotKey, SDL_Keycode key, Uint16 mods, ClientHotkeys hotkeyType);
 		void resetToDefaultHotkeys(bool wasd);
 
+		Sint32 calculateMainHeight();
 		void recalculateGameWindow();
+		Sint32 getConsoleHeight() {return m_consoleHeight;}
+		void setConsoleHeight(Sint32 height);
+
+		void update();
 		void redraw();
 
 		void drawFont(Uint8 fontId, Sint32 x, Sint32 y, const std::string& text, Uint8 r, Uint8 g, Uint8 b, Sint32 align, size_t pos, size_t len);
@@ -170,6 +176,8 @@ class Engine
 
 		SDL_FORCE_INLINE Sint32 getWindowWidth() {return m_windowW;}
 		SDL_FORCE_INLINE Sint32 getWindowHeight() {return m_windowH;}
+		SDL_FORCE_INLINE Sint32 getLeftPanel() {return m_leftPanel;}
+		SDL_FORCE_INLINE Sint32 getRightPanel() {return m_rightPanel;}
 
 		SDL_INLINE void setEngineId(Uint8 engine) {m_engine = engine;}
 		SDL_FORCE_INLINE Uint8 getEngineId() {return m_engine;}
@@ -191,8 +199,6 @@ class Engine
 		SDL_INLINE void setAntialiasing(Uint8 antialiasing) {m_antialiasing = antialiasing;}
 		SDL_FORCE_INLINE bool hasAntialiasing() {return m_antialiasing >= CLIENT_ANTIALIASING_NORMAL;}
 		SDL_FORCE_INLINE Uint8 getAntialiasing() {return m_antialiasing;}
-		SDL_INLINE void setPerformanceMode(bool perfMode) {m_perfMode = perfMode;}
-		SDL_FORCE_INLINE bool hasPerformanceMode() {return m_perfMode;}
 
 		SDL_INLINE void setUnlimitedFPS(bool unlimitedFPS) {m_unlimitedFPS = unlimitedFPS; m_controlFPS = (!m_unlimitedFPS && !m_vsync);}
 		SDL_FORCE_INLINE bool isUnlimitedFPS() {return m_unlimitedFPS;}
@@ -206,19 +212,30 @@ class Engine
 		SDL_FORCE_INLINE Sint32 getFullScreenBits() {return m_fullScreenBits;}
 		SDL_FORCE_INLINE Sint32 getFullScreenHZ() {return m_fullScreenHZ;}
 		
-		SDL_INLINE void setBattleSortMethod(SortMethods sortMethod) {m_battleSortMethod = sortMethod;}
 		SDL_INLINE void setAttackMode(Uint8 attackMode) {m_attackMode = attackMode;}
 		SDL_INLINE void setChaseMode(Uint8 chaseMode) {m_chaseMode = chaseMode;}
 		SDL_INLINE void setSecureMode(Uint8 secureMode) {m_secureMode = secureMode;}
 		SDL_INLINE void setPvpMode(Uint8 pvpMode) {m_pvpMode = pvpMode;}
 		SDL_INLINE void setAmbientLight(Uint8 ambientLight) {m_lightAmbient = ambientLight;}
-		SDL_FORCE_INLINE SortMethods getBattleSortMethod() {return m_battleSortMethod;}
+		SDL_INLINE void setLevelSeparator(Uint8 levelSeparator) {m_levelSeparator = levelSeparator;}
+		SDL_INLINE void setLightMode(Uint8 lightMode) {m_lightMode = lightMode;}
 		SDL_FORCE_INLINE Uint8 getAttackMode() {return m_attackMode;}
 		SDL_FORCE_INLINE Uint8 getChaseMode() {return m_chaseMode;}
 		SDL_FORCE_INLINE Uint8 getSecureMode() {return m_secureMode;}
 		SDL_FORCE_INLINE Uint8 getPvpMode() {return m_pvpMode;}
 		SDL_FORCE_INLINE Uint8 getAmbientLight() {return m_lightAmbient;}
+		SDL_FORCE_INLINE Uint8 getLevelSeparator() {return m_levelSeparator;}
+		SDL_FORCE_INLINE Uint8 getLightMode() {return m_lightMode;}
 
+		SDL_INLINE void setBattleSortMethod(SortMethods sortMethod) {m_battleSortMethod = sortMethod;}
+		SDL_INLINE void setBuddySortMethod(VipSortMethods sortMethod) {m_buddySortmethod = sortMethod;}
+		SDL_INLINE void setBuddyHideOffline(bool hideOffline) {m_buddyHideOffline = hideOffline;}
+		SDL_INLINE void setBuddyHideGroups(bool hideGroups) {m_buddyHideGroups = hideGroups;}
+		SDL_FORCE_INLINE SortMethods getBattleSortMethod() {return m_battleSortMethod;}
+		SDL_FORCE_INLINE VipSortMethods getBuddySortMethod() {return m_buddySortmethod;}
+		SDL_FORCE_INLINE bool getBuddyHideOffline() {return m_buddyHideOffline;}
+		SDL_FORCE_INLINE bool getBuddyHideGroups() {return m_buddyHideGroups;}
+		
 		SDL_INLINE void setMotdNumber(Uint32 motdNumber) {m_motdNumber = motdNumber;}
 		SDL_INLINE void setMotdText(std::string motdText) {m_motdText = std::move(motdText);}
 		SDL_FORCE_INLINE Uint32 getMotdNumber() {return m_motdNumber;}
@@ -294,9 +311,38 @@ class Engine
 		SDL_FORCE_INLINE bool getShowMagLevelBar() {return m_showMagLevelBar;}
 		SDL_FORCE_INLINE bool getShowTrainingBar() {return m_showTrainingBar;}
 		SDL_FORCE_INLINE bool getShowSkillBar(Skills skillId) {return m_showSkillsBar[skillId];}
+		
+		SDL_INLINE void setBuySortMethod(Uint8 sortMethod) {m_buySortMethod = sortMethod;}
+		SDL_INLINE void setSellSortMethod(Uint8 sortMethod) {m_sellSortMethod = sortMethod;}
+		SDL_INLINE void setBuyWithBackpacks(bool buyWithBackpacks) {m_buyWithBackpacks = buyWithBackpacks;}
+		SDL_INLINE void setIgnoreCapacity(bool ignoreCapacity) {m_ignoreCapacity = ignoreCapacity;}
+		SDL_INLINE void setIgnoreEquiped(bool ignoreEquiped) {m_ignoreEquiped = ignoreEquiped;}
+		SDL_FORCE_INLINE Uint8 getBuySortMethod() {return m_buySortMethod;}
+		SDL_FORCE_INLINE Uint8 getSellSortMethod() {return m_sellSortMethod;}
+		SDL_FORCE_INLINE bool getBuyWithBackpacks() {return m_buyWithBackpacks;}
+		SDL_FORCE_INLINE bool getIgnoreCapacity() {return m_ignoreCapacity;}
+		SDL_FORCE_INLINE bool getIgnoreEquiped() {return m_ignoreEquiped;}
 
 		SDL_INLINE void setContentWindowHeight(Uint32 windowId, Sint32 height) {m_contentWindows[windowId] = height;}
 		SDL_FORCE_INLINE Sint32 getContentWindowHeight(Uint32 windowId) {std::map<Uint32, Sint32>::iterator it = m_contentWindows.find(windowId); if(it != m_contentWindows.end()) return it->second; return 0;}
+		SDL_FORCE_INLINE Sint32 getContentWindowParent(Uint32 windowId) {std::map<Uint32, Sint32>::iterator it = m_parentWindows.find(windowId); if(it != m_parentWindows.end()) {Sint32 panelId = it->second; m_parentWindows.erase(it); return panelId;} return -1;}
+
+		void setVipData(Uint32 playerGUID, const std::string& description, Uint32 iconId, bool notifyLogin);
+		VipData* getVipData(Uint32 playerGUID);
+
+		std::unordered_map<std::string, bool>& getBlackList() {return m_blackList;}
+		std::unordered_map<std::string, bool>& getWhiteList() {return m_whiteList;}
+
+		SDL_INLINE void setActivatedBlackList(bool activated) {m_activatedBlackList = activated;}
+		SDL_INLINE void setActivatedWhiteList(bool activated) {m_activatedWhiteList = activated;}
+		SDL_INLINE void setIgnoreYellingMessages(bool ignoreYelling) {m_ignoreYellingMessages = ignoreYelling;}
+		SDL_INLINE void setIgnorePrivateMessages(bool ignoreMessages) {m_ignorePrivateMessages = ignoreMessages;}
+		SDL_INLINE void setAllowVipMessages(bool allowMessages) {m_allowVipMessages = allowMessages;}
+		SDL_FORCE_INLINE bool getActivatedBlackList() {return m_activatedBlackList;}
+		SDL_FORCE_INLINE bool getActivatedWhiteList() {return m_activatedWhiteList;}
+		SDL_FORCE_INLINE bool getIgnoreYellingMessages() {return m_ignoreYellingMessages;}
+		SDL_FORCE_INLINE bool getIgnorePrivateMessages() {return m_ignorePrivateMessages;}
+		SDL_FORCE_INLINE bool getAllowVipMessages() {return m_allowVipMessages;}
 
 		SDL_Window* m_window;
 		Uint32 m_windowId;
@@ -325,12 +371,17 @@ class Engine
 		std::vector<GUI_Panel*> m_panels;
 		Surface* m_surface;
 
+		std::map<Uint32, VipData> m_vipData;
+		std::map<Uint32, Sint32> m_parentWindows;
 		std::map<Uint32, Sint32> m_contentWindows;
 		std::vector<Uint32> m_openDialogs;
 
+		std::unordered_map<std::string, bool> m_blackList;
+		std::unordered_map<std::string, bool> m_whiteList;
 		std::map<Uint16, std::map<SDL_Keycode, size_t>> m_hotkeyFastAccess;
 		std::vector<HotkeyUsage> m_hotkeys;
 
+		iRect m_gameBackgroundRect;
 		iRect m_gameWindowRect;
 		iRect m_chatWindowRect;
 		Sint32 m_scaledSize;
@@ -341,6 +392,18 @@ class Engine
 
 		Sint32 m_moveItemX;
 		Sint32 m_moveItemY;
+
+		iRect m_leftPanelAddRect;
+		iRect m_leftPanelRemRect;
+		iRect m_rightPanelAddRect;
+		iRect m_rightPanelRemRect;
+		Sint32 m_leftPanel;
+		Sint32 m_rightPanel;
+		Sint32 m_consoleHeight;
+		bool m_haveExtraLeftPanel;
+		bool m_haveExtraRightPanel;
+		bool m_canAddLeftPanel;
+		bool m_canAddRightPanel;
 
 		Sint32 m_fullScreenWidth;
 		Sint32 m_fullScreenHeight;
@@ -363,23 +426,29 @@ class Engine
 		Uint8 m_accountStatus;
 		Uint8 m_accountSubStatus;
 
-		SortMethods m_battleSortMethod;
 		Uint8 m_attackMode;
 		Uint8 m_chaseMode;
 		Uint8 m_secureMode;
 		Uint8 m_pvpMode;
 		Uint8 m_antialiasing;
 		Uint8 m_lightAmbient;
+		Uint8 m_levelSeparator;
+		Uint8 m_lightMode;
 		Uint8 m_engine;
 
-		Uint8 m_battleSortmethod;
-		Uint8 m_buddySortmethod;
+		Uint8 m_leftAddPanel;
+		Uint8 m_leftRemPanel;
+		Uint8 m_rightAddPanel;
+		Uint8 m_rightRemPanel;
+
+		SortMethods m_battleSortMethod;
+		VipSortMethods m_buddySortmethod;
 		bool m_buddyHideOffline;
+		bool m_buddyHideGroups;
 
 		bool m_maximized;
 		bool m_fullscreen;
 		bool m_vsync;
-		bool m_perfMode;
 		bool m_unlimitedFPS;
 		bool m_controlFPS;
 		bool m_sharpening;
@@ -406,6 +475,18 @@ class Engine
 		bool m_showMagLevelBar;
 		bool m_showTrainingBar;
 		bool m_showSkillsBar[Skills_LastSkill];
+
+		Uint8 m_buySortMethod;
+		Uint8 m_sellSortMethod;
+		bool m_buyWithBackpacks;
+		bool m_ignoreCapacity;
+		bool m_ignoreEquiped;
+
+		bool m_activatedBlackList;
+		bool m_activatedWhiteList;
+		bool m_ignoreYellingMessages;
+		bool m_ignorePrivateMessages;
+		bool m_allowVipMessages;
 
 		bool m_newCharacterList;
 		bool m_ingame;

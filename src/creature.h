@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -63,6 +63,7 @@ class Creature : public Thing
 		void showStaticSquare(Uint8 color);
 		void hideStaticSquare();
 
+		void addWalkTime(Uint32 walkTime) {m_walkEndTime += walkTime;}
 		SDL_INLINE void setId(Uint32 cid) {m_id = cid;}
 		void setName(const std::string name);
 		void setHealth(Uint8 health);
@@ -102,6 +103,8 @@ class Creature : public Thing
 		SDL_FORCE_INLINE bool hasNeedUpdate() {return m_needUpdate;}
 		SDL_FORCE_INLINE bool isLocalCreature() {return m_isLocalCreature;}
 		
+		SDL_FORCE_INLINE ThingType* getThingType() {return m_thingType;}
+		SDL_FORCE_INLINE ThingType* getMountType() {return m_mountType;}
 		SDL_FORCE_INLINE bool isWalking() {return m_walking;}
 		SDL_FORCE_INLINE bool isPreWalking() {return m_preWalking;}
 		SDL_FORCE_INLINE Sint32 getWalkOffsetX() {return m_walkOffsetX;}
@@ -112,7 +115,7 @@ class Creature : public Thing
 		std::pair<Sint32, Sint32> getDisplacement();
 		Sint32 getOffsetX(bool checkPreWalk = false);
 		Sint32 getOffsetY(bool checkPreWalk = false);
-		Sint32 getStepDuration(bool ignoreDiagonal);
+		Sint32 getStepDuration(Sint32 groundSpeed, bool ignoreDiagonal);
 
 	protected:
 		std::string m_name;
@@ -123,7 +126,6 @@ class Creature : public Thing
 		Animation m_outfitAnimation[ThingFrameGroup_Last];
 		Animation m_mountAnimation[ThingFrameGroup_Last];
 
-		Tile* m_walkTile;
 		Tile* m_drawnTile;
 
 		Uint32 m_nameLen;

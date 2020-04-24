@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -30,15 +30,16 @@ class DistanceEffect
 	public:
 		static Uint32 distanceEffectCount;
 
-		DistanceEffect(const Position& from, const Position& to, ThingType* type);
+		DistanceEffect(const Position& from, const Position& to, Uint16 delay, ThingType* type);
 		~DistanceEffect();
 
-		static DistanceEffect* createDistanceEffect(const Position& pos, const Position& to, Uint16 type);
+		static DistanceEffect* createDistanceEffect(const Position& pos, const Position& to, Uint16 delay, Uint16 type);
 
 		Uint16 getID();
 		SDL_FORCE_INLINE const Position& getFromPos() {return m_fromPosition;}
 		SDL_FORCE_INLINE const Position& getToPos() {return m_toPosition;}
 		float getFlightProgress();
+		bool isDelayed();
 
 		virtual void render(Sint32 posX, Sint32 posY);
 
@@ -57,7 +58,7 @@ class DistanceEffect
 class DistanceEffectNULL : public DistanceEffect
 {
 	public:
-		DistanceEffectNULL(const Position& pos, const Position& to, ThingType* type);
+		DistanceEffectNULL(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY);
 };
@@ -65,7 +66,7 @@ class DistanceEffectNULL : public DistanceEffect
 class DistanceEffect1X1 : public DistanceEffect
 {
 	public:
-		DistanceEffect1X1(const Position& pos, const Position& to, ThingType* type);
+		DistanceEffect1X1(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY);
 
@@ -75,7 +76,7 @@ class DistanceEffect1X1 : public DistanceEffect
 class DistanceEffect2X1 : public DistanceEffect
 {
 	public:
-		DistanceEffect2X1(const Position& pos, const Position& to, ThingType* type);
+		DistanceEffect2X1(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY);
 
@@ -86,7 +87,7 @@ class DistanceEffect2X1 : public DistanceEffect
 class DistanceEffect1X2 : public DistanceEffect
 {
 	public:
-		DistanceEffect1X2(const Position& pos, const Position& to, ThingType* type);
+		DistanceEffect1X2(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY);
 
@@ -97,7 +98,7 @@ class DistanceEffect1X2 : public DistanceEffect
 class DistanceEffect2X2 : public DistanceEffect
 {
 	public:
-		DistanceEffect2X2(const Position& pos, const Position& to, ThingType* type);
+		DistanceEffect2X2(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY);
 

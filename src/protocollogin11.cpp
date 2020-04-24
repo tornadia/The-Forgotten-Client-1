@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -43,11 +43,6 @@ void handleRequest(Uint32, Sint32 internalId)
 	}
 }
 
-ProtocolLogin11::ProtocolLogin11()
-{
-	m_requestId = 0;
-}
-
 void ProtocolLogin11::parseMessage()
 {
 	SDL_snprintf(g_buffer, sizeof(g_buffer), "%slogin.dat", g_prefPath.c_str());
@@ -62,31 +57,19 @@ void ProtocolLogin11::parseMessage()
 	size_t sizeData = SDL_static_cast(size_t, SDL_RWtell(fp));
 	if(sizeData <= 0)
 	{
+		SDL_RWclose(fp);
 		#ifdef SDL_FILESYSTEM_WINDOWS
 		DeleteFileA(g_buffer);
 		#elif HAVE_STDIO_H
 		remove(g_buffer);
 		#endif
-		SDL_RWclose(fp);
 		UTIL_messageBox("Connection Failed", "Cannot connect to a login server.\n\nError: Protocol mismatched.");
 		return;
 	}
 
-	char* msgData = SDL_reinterpret_cast(char*, SDL_malloc(sizeData));
-	if(!msgData)
-	{
-		#ifdef SDL_FILESYSTEM_WINDOWS
-		DeleteFileA(g_buffer);
-		#elif HAVE_STDIO_H
-		remove(g_buffer);
-		#endif
-		SDL_RWclose(fp);
-		UTIL_messageBox("Connection Failed", "Cannot connect to a login server.\n\nError: Protocol mismatched.");
-		return;
-	}
-
+	std::vector<char> msgData(sizeData);
 	SDL_RWseek(fp, 0, RW_SEEK_SET);
-	SDL_RWread(fp, msgData, 1, sizeData);
+	SDL_RWread(fp, &msgData[0], 1, sizeData);
 	SDL_RWclose(fp);
 	#ifdef SDL_FILESYSTEM_WINDOWS
 	DeleteFileA(g_buffer);
@@ -94,10 +77,39 @@ void ProtocolLogin11::parseMessage()
 	remove(g_buffer);
 	#endif
 
-	JSON_VALUE* msgJson = JSON_VALUE::decode(msgData);
-	SDL_free(msgData);
+	std::unique_ptr<JSON_VALUE> dataJson(JSON_VALUE::decode(&msgData[0]));
+	JSON_VALUE* msgJson = dataJson.get();
 	if(msgJson && msgJson->IsObject())
 	{
+		JSON_VALUE* errorCodeJson = msgJson->find("errorCode");
+		if(errorCodeJson && errorCodeJson->IsNumber())
+		{
+			switch(SDL_static_cast(Uint32, errorCodeJson->AsNumber()))
+			{
+				case 6:
+				{
+					//Two-Factor Authentication
+				}
+				break;
+				case 8:
+				{
+					//Two-Factor Email Code Authentication
+				}
+				break;
+				default:
+				{
+					//TODO: detect if there are more errorcodes we need to handle, 9-10 seems to be something but needs more test to determine
+					JSON_VALUE* errorMessageJson = msgJson->find("errorMessage");
+					if(errorMessageJson && errorMessageJson->IsString())
+						UTIL_messageBox("Sorry", errorMessageJson->AsString());
+					else
+						UTIL_messageBox("Sorry", "Unknown message.");
+				}
+				break;
+			}
+			return;
+		}
+
 		std::map<Uint8, WorldDetail> worlds;
 		std::vector<CharacterDetail> characters;
 
@@ -120,8 +132,12 @@ void ProtocolLogin11::parseMessage()
 			JSON_VALUE* premiumTime = sessionJson->find("premiumuntil");
 			if(premiumTime && premiumTime->IsNumber())
 			{
+				time_t currentTime = time(NULL);
 				time_t premiumUntil = SDL_static_cast(time_t, premiumTime->AsNumber());
-				accountPremDays = UTIL_max<Uint32>(SDL_static_cast(Uint32, SDL_floor((premiumUntil - time(NULL)) / 86400.0)), 1);
+				if(premiumUntil >= currentTime)
+					accountPremDays = UTIL_max<Uint32>(SDL_static_cast(Uint32, SDL_floor((premiumUntil - time(NULL)) / 86400.0)), 1);
+				else
+					accountPremDays = (premiumUntil == 0 ? 0xFFFFFFFF : 0);
 			}
 
 			JSON_VALUE* status = sessionJson->find("status");
@@ -187,9 +203,9 @@ void ProtocolLogin11::parseMessage()
 						}
 						if(portJson)
 						{
-							if(portJson->IsNumber())
+							if(portJson->IsString())
 								world.worldPort = SDL_static_cast(Uint16, SDL_strtoul(portJson->AsString().c_str(), NULL, 10));
-							else if(portJson->IsString())
+							else if(portJson->IsNumber())
 								world.worldPort = SDL_static_cast(Uint16, portJson->AsNumber());
 						}
 						worlds[worldId] = world;
@@ -295,31 +311,27 @@ void ProtocolLogin11::parseMessage()
 	}
 	else
 		UTIL_messageBox("Connection Failed", "Cannot connect to a login server.\n\nError: Protocol mismatched.");
-
-	if(msgJson)
-		delete msgJson;
 }
 
 void ProtocolLogin11::initializeConnection()
 {
 	std::string& accountToken = g_engine.getAccountToken();
 	JSON_OBJECT jsonObject;
+	jsonObject["type"] = new JSON_VALUE("login");
 	jsonObject["email"] = new JSON_VALUE(g_engine.getAccountName());
 	jsonObject["accountname"] = new JSON_VALUE(g_engine.getAccountName());
 	jsonObject["password"] = new JSON_VALUE(g_engine.getAccountPassword());
 	jsonObject["stayloggedin"] = new JSON_VALUE(true);
 	if(!accountToken.empty())
 		jsonObject["token"] = new JSON_VALUE(accountToken);
-	jsonObject["type"] = new JSON_VALUE("login");
 
 	SDL_snprintf(g_buffer, sizeof(g_buffer), "%slogin.dat", g_prefPath.c_str());
-	JSON_VALUE* json = new JSON_VALUE(jsonObject);
+	auto json = std::make_unique<JSON_VALUE>(jsonObject);
 	#if CLIENT_OVVERIDE_VERSION == 0
-	m_requestId = g_http.addRequest(g_engine.getClientHost(), g_buffer, JSON_VALUE::encode(json), &handleRequest, 0);
+	m_requestId = g_http.addRequest(g_engine.getClientHost(), g_buffer, JSON_VALUE::encode(json.get()), &handleRequest, 0);
 	#else
-	m_requestId = g_http.addRequest(CLIENT_OVVERIDE_LOGIN_HOST, g_buffer, JSON_VALUE::encode(json), &handleRequest, 0);
+	m_requestId = g_http.addRequest(CLIENT_OVVERIDE_LOGIN_HOST, g_buffer, JSON_VALUE::encode(json.get()), &handleRequest, 0);
 	#endif
-	delete json;
 }
 
 void ProtocolLogin11::closeConnection()

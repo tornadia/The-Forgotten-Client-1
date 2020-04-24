@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,7 +22,7 @@
 #ifndef __FILE_CURSORS_h_
 #define __FILE_CURSORS_h_
 
-static const char *crosshair_pixels[] = {
+static const char* crosshair_pixels[] = {
 	"     xxxxxxxxx                  ",
 	"     x.......x                  ",
 	"      x.....x                   ",
@@ -57,7 +57,7 @@ static const char *crosshair_pixels[] = {
 	"                                ",
 };
 
-static const char *resizens_pixels[] = {
+static const char* resizens_pixels[] = {
 	"    x                           ",
 	"   x.x                          ",
 	"  x...x                         ",
@@ -92,7 +92,7 @@ static const char *resizens_pixels[] = {
 	"                                ",
 };
 
-static const char *resizewe_pixels[] = {
+static const char* resizewe_pixels[] = {
 	"    xx        xx                ",
 	"   x.x        x.x               ",
 	"  x..x        x..x              ",
@@ -127,7 +127,7 @@ static const char *resizewe_pixels[] = {
 	"                                ",
 };
 
-static const char *lenshelp_pixels[] = {
+static const char* lenshelp_pixels[] = {
 	"   xxxxxx                       ",
 	"  x......x                      ",
 	" x..xxxx..x                     ",

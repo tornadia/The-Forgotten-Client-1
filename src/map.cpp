@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -44,7 +44,7 @@ AStarNodes::AStarNodes(const Position& startPos)
 	openNodes.reserve(MAX_NODES_COMPLEXITY);
 	openNodeTotalCost.reserve(MAX_NODES_COMPLEXITY);
 	nodesTable.reserve(MAX_NODES_COMPLEXITY);
-	nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode)*MAX_NODES_COMPLEXITY));
+	nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode) * MAX_NODES_COMPLEXITY));
 
 	curNode = 1;
 
@@ -264,7 +264,7 @@ AStarNode* AStarNodes::getNodeByPosition(Uint32 xy)
 
 Sint32 AStarNodes::getMapWalkFactor(AStarNode* node, const Position& neighborPos)
 {
-	return (((std::abs(node->x-neighborPos.x)+std::abs(node->y-neighborPos.y))-1)*MAP_DIAGONALWALKFACTOR)+MAP_NORMALWALKFACTOR;
+	return (((std::abs(node->x - neighborPos.x) + std::abs(node->y - neighborPos.y)) - 1) * MAP_DIAGONALWALKFACTOR) + MAP_NORMALWALKFACTOR;
 }
 
 Map::Map()
@@ -330,8 +330,8 @@ Map::~Map()
 Tile* Map::getTile(const Position& position)
 {
 	Sint16 offset = Position::getOffsetZ(m_centerPosition, position);
-	Sint32 posX = Position::getOffsetX(position, m_centerPosition)+(MAP_WIDTH_OFFSET-1)-offset;
-	Sint32 posY = Position::getOffsetY(position, m_centerPosition)+(MAP_HEIGHT_OFFSET-1)-offset;
+	Sint32 posX = Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 1) - offset;
+	Sint32 posY = Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 1) - offset;
 	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
 		return NULL;
 
@@ -341,8 +341,8 @@ Tile* Map::getTile(const Position& position)
 Tile* Map::getTileOrCreate(const Position& position)
 {
 	Sint16 offset = Position::getOffsetZ(m_centerPosition, position);
-	Sint32 posX = Position::getOffsetX(position, m_centerPosition)+(MAP_WIDTH_OFFSET-1)-offset;
-	Sint32 posY = Position::getOffsetY(position, m_centerPosition)+(MAP_HEIGHT_OFFSET-1)-offset;
+	Sint32 posX = Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 1) - offset;
+	Sint32 posY = Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 1) - offset;
 	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
 		return NULL;
 
@@ -355,8 +355,8 @@ Tile* Map::getTileOrCreate(const Position& position)
 
 Tile* Map::resetTile(const Position& position, Sint32 offset)
 {
-	Sint32 posX = Position::getOffsetX(position, m_centerPosition)+(MAP_WIDTH_OFFSET-1)-offset;
-	Sint32 posY = Position::getOffsetY(position, m_centerPosition)+(MAP_HEIGHT_OFFSET-1)-offset;
+	Sint32 posX = Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 1) - offset;
+	Sint32 posY = Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 1) - offset;
 	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
 	{
 		SDL_snprintf(g_buffer, sizeof(g_buffer), "Tile Pos: %d, %d, %d\nPlayer Pos: %d, %d, %d\nRows: %d, %d\nOffset: %d", position.x, position.y, position.z, m_centerPosition.x, m_centerPosition.y, m_centerPosition.z, posX, posY, offset);
@@ -374,8 +374,8 @@ Tile* Map::resetTile(const Position& position, Sint32 offset)
 
 void Map::cleanTile(const Position& position, Sint32 offset)
 {
-	Sint32 posX = Position::getOffsetX(position, m_centerPosition)+(MAP_WIDTH_OFFSET-1)-offset;
-	Sint32 posY = Position::getOffsetY(position, m_centerPosition)+(MAP_HEIGHT_OFFSET-1)-offset;
+	Sint32 posX = Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 1) - offset;
+	Sint32 posY = Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 1) - offset;
 	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
 		return;
 
@@ -387,6 +387,15 @@ void Map::cleanTile(const Position& position, Sint32 offset)
 	}
 }
 
+void Map::update()
+{
+	Effect::update();
+	if(!m_localCreature) //If somehow we don't have localcreature avoid crashing
+		return;
+
+	m_localCreature->update();
+}
+
 void Map::render()
 {
 	if(!m_localCreature) //If somehow we don't have localcreature avoid crashing
@@ -395,31 +404,31 @@ void Map::render()
 	if(m_needUpdateCache)
 		updateCacheMap();
 
-	m_localCreature->update();
 	Sint32 offsetX = -m_localCreature->getOffsetX(true);
 	Sint32 offsetY = -m_localCreature->getOffsetY(true);
-	g_light.initLightMap(offsetX, offsetY);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+		g_light.initLightMap(offsetX, offsetY, getCentralPosition().z);
 
 	Surface* renderer = g_engine.getRender();
 	renderer->beginGameScene();
 	for(Sint32 z = m_cachedLastVisibleFloor; z >= m_cachedFirstVisibleFloor; --z)
 	{
-		if(z != m_cachedLastVisibleFloor)
+		if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE && z != m_cachedLastVisibleFloor)
 		{
 			for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
 			{
 				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
 				{
-					//Reset only the first visible full ground tiles to minimalize cpu usage
-					if(m_cachedFirstFullGrounds[y][x] == z)
+					//Reset only the first visible ground tiles to minimalize cpu usage
+					if(m_cachedFirstGrounds[y][x] == z)
 						g_light.resetLightSource(x, y);
 				}
 			}
 		}
-		Sint32 posY = -32+offsetY;
+		Sint32 posY = -32 + offsetY;
 		for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
 		{
-			Sint32 posX = -32+offsetX;
+			Sint32 posX = -32 + offsetX;
 			for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
 			{
 				Tile* tile = m_tiles[z][y][x];
@@ -435,18 +444,18 @@ void Map::render()
 								if(x2 == 0 && y2 == 0)
 									continue;
 
-								Sint32 indexX = x-x2;
-								Sint32 indexY = y-y2;
+								Sint32 indexX = x - x2;
+								Sint32 indexY = y - y2;
 								if(indexX >= 0 && indexY >= 0)
 								{
 									tile = m_tiles[z][indexY][indexX];
 									if(tile)
-										tile->render(posX-x2*32, posY-y2*32, (m_cachedFirstFullGrounds[indexY][indexX] >= z));
+										tile->render(posX - x2 * 32, posY - y2 * 32, (m_cachedFirstFullGrounds[indexY][indexX] >= z));
 								}
 							}
 						}
 					}
-					if(z == GAME_PLAYER_FLOOR+1)
+					if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE && z == GAME_PLAYER_FLOOR + 1)
 					{
 						//Check for translucent on sea floor so if needed we draw small light source
 						Tile* seaTile = m_tiles[GAME_PLAYER_FLOOR][y][x];
@@ -464,11 +473,18 @@ void Map::render()
 			posY += 32;
 		}
 
-		Sint32 offsetZ = (z-SDL_static_cast(Sint32, m_centerPosition.z));
+		Sint32 offsetZ = (z - SDL_static_cast(Sint32, m_centerPosition.z));
 		std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[z];
 		for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(); it != distanceEffects.end();)
 		{
-			float flightProgress = (*it)->getFlightProgress();
+			DistanceEffect* distanceEffect = (*it);
+			if(distanceEffect->isDelayed())
+			{
+				++it;
+				continue;
+			}
+
+			float flightProgress = distanceEffect->getFlightProgress();
 			if(flightProgress > 1.f)
 			{
 				delete (*it);
@@ -476,19 +492,34 @@ void Map::render()
 			}
 			else
 			{
-				const Position& fromPos = (*it)->getFromPos();
-				const Position& toPos = (*it)->getToPos();
+				const Position& fromPos = distanceEffect->getFromPos();
+				const Position& toPos = distanceEffect->getToPos();
 
-				Sint32 screenxFrom = ((Position::getOffsetX(fromPos, m_centerPosition)+(MAP_WIDTH_OFFSET-2)+offsetZ)*32)+offsetX;
-				Sint32 screenyFrom = ((Position::getOffsetY(fromPos, m_centerPosition)+(MAP_HEIGHT_OFFSET-2)+offsetZ)*32)+offsetY;
+				Sint32 screenxFrom = ((Position::getOffsetX(fromPos, m_centerPosition) + (MAP_WIDTH_OFFSET - 2) + offsetZ) * 32) + offsetX;
+				Sint32 screenyFrom = ((Position::getOffsetY(fromPos, m_centerPosition) + (MAP_HEIGHT_OFFSET - 2) + offsetZ) * 32) + offsetY;
 
-				Sint32 screenxTo = ((Position::getOffsetX(toPos, m_centerPosition)+(MAP_WIDTH_OFFSET-2)+offsetZ)*32)+offsetX;
-				Sint32 screenyTo = ((Position::getOffsetY(toPos, m_centerPosition)+(MAP_HEIGHT_OFFSET-2)+offsetZ)*32)+offsetY;
+				Sint32 screenxTo = ((Position::getOffsetX(toPos, m_centerPosition) + (MAP_WIDTH_OFFSET - 2) + offsetZ) * 32) + offsetX;
+				Sint32 screenyTo = ((Position::getOffsetY(toPos, m_centerPosition) + (MAP_HEIGHT_OFFSET - 2) + offsetZ) * 32) + offsetY;
 
-				Sint32 screenx = screenxFrom+SDL_static_cast(Sint32, (screenxTo-screenxFrom)*flightProgress);
-				Sint32 screeny = screenyFrom+SDL_static_cast(Sint32, (screenyTo-screenyFrom)*flightProgress);
-				(*it)->render(screenx, screeny);
+				Sint32 screenx = screenxFrom + SDL_static_cast(Sint32, (screenxTo - screenxFrom) * flightProgress);
+				Sint32 screeny = screenyFrom + SDL_static_cast(Sint32, (screenyTo - screenyFrom) * flightProgress);
+				distanceEffect->render(screenx, screeny);
 				++it;
+			}
+		}
+	}
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		if(g_engine.getLevelSeparator() != 100)
+		{
+			float brightness = g_engine.getLevelSeparator() / 100.f;
+			for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+			{
+				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+				{
+					if(m_cachedFirstGrounds[y][x] > SDL_static_cast(Sint32, getCentralPosition().z))
+						g_light.setLightSource(x, y, brightness);
+				}
 			}
 		}
 	}
@@ -516,8 +547,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 		tileOffsetY = 0;
 		startX = 1;
 		startY = 1;
-		endX = (GAME_MAP_WIDTH-2);
-		endY = (GAME_MAP_HEIGHT-2);
+		endX = (GAME_MAP_WIDTH - 2);
+		endY = (GAME_MAP_HEIGHT - 2);
 	}
 	else if(m_localCreature->isPreWalking())
 	{
@@ -531,8 +562,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 				tileOffsetY = 0;
 				startX = 2;
 				startY = 1;
-				endX = (GAME_MAP_WIDTH-1);
-				endY = (GAME_MAP_HEIGHT-2);
+				endX = (GAME_MAP_WIDTH - 1);
+				endY = (GAME_MAP_HEIGHT - 2);
 			}
 			break;
 			case DIRECTION_SOUTH:
@@ -543,8 +574,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 				tileOffsetY = 32;
 				startX = 1;
 				startY = 2;
-				endX = (GAME_MAP_WIDTH-2);
-				endY = (GAME_MAP_HEIGHT-1);
+				endX = (GAME_MAP_WIDTH - 2);
+				endY = (GAME_MAP_HEIGHT - 1);
 			}
 			break;
 			case DIRECTION_WEST:
@@ -555,8 +586,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 				tileOffsetY = 0;
 				startX = 0;
 				startY = 1;
-				endX = (GAME_MAP_WIDTH-3);
-				endY = (GAME_MAP_HEIGHT-2);
+				endX = (GAME_MAP_WIDTH - 3);
+				endY = (GAME_MAP_HEIGHT - 2);
 			}
 			break;
 			case DIRECTION_SOUTHWEST:
@@ -567,8 +598,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 				tileOffsetY = 32;
 				startX = 0;
 				startY = 2;
-				endX = (GAME_MAP_WIDTH-3);
-				endY = (GAME_MAP_HEIGHT-1);
+				endX = (GAME_MAP_WIDTH - 3);
+				endY = (GAME_MAP_HEIGHT - 1);
 			}
 			break;
 			case DIRECTION_SOUTHEAST:
@@ -579,8 +610,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 				tileOffsetY = 32;
 				startX = 2;
 				startY = 2;
-				endX = (GAME_MAP_WIDTH-1);
-				endY = (GAME_MAP_HEIGHT-1);
+				endX = (GAME_MAP_WIDTH - 1);
+				endY = (GAME_MAP_HEIGHT - 1);
 			}
 			break;
 			case DIRECTION_NORTHWEST:
@@ -591,8 +622,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 				tileOffsetY = -32;
 				startX = 0;
 				startY = 0;
-				endX = (GAME_MAP_WIDTH-3);
-				endY = (GAME_MAP_HEIGHT-3);
+				endX = (GAME_MAP_WIDTH - 3);
+				endY = (GAME_MAP_HEIGHT - 3);
 			}
 			break;
 			case DIRECTION_NORTHEAST:
@@ -603,8 +634,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 				tileOffsetY = -32;
 				startX = 2;
 				startY = 0;
-				endX = (GAME_MAP_WIDTH-1);
-				endY = (GAME_MAP_HEIGHT-3);
+				endX = (GAME_MAP_WIDTH - 1);
+				endY = (GAME_MAP_HEIGHT - 3);
 			}
 			break;
 			default://DIRECTION_NORTH
@@ -615,8 +646,8 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 				tileOffsetY = -32;
 				startX = 1;
 				startY = 0;
-				endX = (GAME_MAP_WIDTH-2);
-				endY = (GAME_MAP_HEIGHT-3);
+				endX = (GAME_MAP_WIDTH - 2);
+				endY = (GAME_MAP_HEIGHT - 3);
 			}
 			break;
 		}
@@ -629,26 +660,34 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 		tileOffsetY = 0;
 		startX = 1;
 		startY = 1;
-		endX = (GAME_MAP_WIDTH-2);
-		endY = (GAME_MAP_HEIGHT-2);
+		endX = (GAME_MAP_WIDTH - 2);
+		endY = (GAME_MAP_HEIGHT - 2);
 	}
 
-	Sint32 fixedSize = scaledSize/2;
+	Sint32 fixedSize = scaledSize / 2;
 	Sint32 z = SDL_static_cast(Sint32, m_centerPosition.z);
-	Sint32 posY = offsetY+tileOffsetY;
+	Sint32 posY = offsetY + tileOffsetY;
 	for(Sint32 y = startY; y < endY; ++y)
 	{
-		Sint32 posX = offsetX+tileOffsetX+16;
+		Sint32 posX = offsetX + tileOffsetX + 16;
 		for(Sint32 x = startX; x < endX; ++x)
 		{
 			Tile* tile = m_tiles[z][y][x];
 			if(tile)
 				tile->renderInformations(px, py, posX, posY, scale, (m_cachedFirstVisibleGround[y][x] >= z));
+
 			posX += 32;
 		}
 		posY += 32;
 	}
-	g_engine.getRender()->drawLightMap(g_light.getLightMap(), px+SDL_static_cast(Sint32, offsetX*scale), py+SDL_static_cast(Sint32, offsetY*scale), scaledSize, GAME_MAP_WIDTH, GAME_MAP_HEIGHT);
+
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		if(g_engine.getLightMode() == CLIENT_LIGHT_MODE_OLD)
+			g_engine.getRender()->drawLightMap_old(g_light.getLightMap(), px + SDL_static_cast(Sint32, offsetX * scale), py + SDL_static_cast(Sint32, offsetY * scale), scaledSize, GAME_MAP_WIDTH, GAME_MAP_HEIGHT);
+		else
+			g_engine.getRender()->drawLightMap_new(g_light.getLightMap(), px + SDL_static_cast(Sint32, offsetX * scale), py + SDL_static_cast(Sint32, offsetY * scale), scaledSize, GAME_MAP_WIDTH, GAME_MAP_HEIGHT);
+	}
 	
 	pw += px;
 	ph += py;
@@ -656,12 +695,11 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 	{
 		StaticText* staticText = (*it);
 		const Position& position = staticText->getPosition();
-
 		Sint32 offsetZ = (SDL_static_cast(Sint32, position.z) - z);
-		Sint32 screenx = ((Position::getOffsetX(position, m_centerPosition)+(MAP_WIDTH_OFFSET-2)+offsetZ)*32)+offsetX;
-		Sint32 screeny = ((Position::getOffsetY(position, m_centerPosition)+(MAP_HEIGHT_OFFSET-2)+offsetZ)*32)+offsetY;
-		screenx = SDL_static_cast(Sint32, screenx*scale)+px+fixedSize;
-		screeny = SDL_static_cast(Sint32, screeny*scale)+py;
+		Sint32 screenx = ((Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 2) + offsetZ) * 32) + offsetX;
+		Sint32 screeny = ((Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 2) + offsetZ) * 32) + offsetY;
+		screenx = SDL_static_cast(Sint32, screenx * scale) + px + fixedSize;
+		screeny = SDL_static_cast(Sint32, screeny * scale) + py;
 		staticText->render(screenx, screeny, px, py, pw, ph);
 		if(staticText->canBeDeleted())
 		{
@@ -680,13 +718,13 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 			it = m_animatedTexts.erase(it);
 			continue;
 		}
-		const Position& position = animatedText->getPosition();
 
+		const Position& position = animatedText->getPosition();
 		Sint32 offsetZ = (SDL_static_cast(Sint32, position.z) - z);
-		Sint32 screenx = ((Position::getOffsetX(position, m_centerPosition)+(MAP_WIDTH_OFFSET-2)+offsetZ)*32)+offsetX;
-		Sint32 screeny = ((Position::getOffsetY(position, m_centerPosition)+(MAP_HEIGHT_OFFSET-2)+offsetZ)*32)+offsetY;
-		screenx = SDL_static_cast(Sint32, screenx*scale)+px+fixedSize;
-		screeny = SDL_static_cast(Sint32, screeny*scale)+py;
+		Sint32 screenx = ((Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 2) + offsetZ) * 32) + offsetX;
+		Sint32 screeny = ((Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 2) + offsetZ) * 32) + offsetY;
+		screenx = SDL_static_cast(Sint32, screenx * scale) + px + fixedSize;
+		screeny = SDL_static_cast(Sint32, screeny * scale) + py;
 		animatedText->render(screenx, screeny, px, py, pw, ph);
 		++it;
 	}
@@ -753,15 +791,15 @@ void Map::changeMap(Direction direction)
 			{
 				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
 				{
-					Tile* tile = m_tiles[z][GAME_MAP_HEIGHT-1][x];
+					Tile* tile = m_tiles[z][GAME_MAP_HEIGHT - 1][x];
 					if(tile)
 						delete tile;
 				}
 
-				for(Sint32 y = GAME_MAP_HEIGHT-1; --y >= 0;)
+				for(Sint32 y = GAME_MAP_HEIGHT - 1; --y >= 0;)
 				{
 					for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
-						m_tiles[z][y+1][x] = m_tiles[z][y][x];
+						m_tiles[z][y + 1][x] = m_tiles[z][y][x];
 				}
 
 				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
@@ -785,14 +823,14 @@ void Map::changeMap(Direction direction)
 
 				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
 				{
-					for(Sint32 x = 0; x < GAME_MAP_WIDTH-1; ++x)
-						m_tiles[z][y][x] = m_tiles[z][y][x+1];
+					for(Sint32 x = 0; x < GAME_MAP_WIDTH - 1; ++x)
+						m_tiles[z][y][x] = m_tiles[z][y][x + 1];
 				}
 
 				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
 				{
 					//Reset the tiles that we get later
-					m_tiles[z][y][GAME_MAP_WIDTH-1] = NULL;
+					m_tiles[z][y][GAME_MAP_WIDTH - 1] = NULL;
 				}
 			}
 		}
@@ -808,16 +846,16 @@ void Map::changeMap(Direction direction)
 						delete tile;
 				}
 
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT-1; ++y)
+				for(Sint32 y = 0; y < GAME_MAP_HEIGHT - 1; ++y)
 				{
 					for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
-						m_tiles[z][y][x] = m_tiles[z][y+1][x];
+						m_tiles[z][y][x] = m_tiles[z][y + 1][x];
 				}
 
 				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
 				{
 					//Reset the tiles that we get later
-					m_tiles[z][GAME_MAP_HEIGHT-1][x] = NULL;
+					m_tiles[z][GAME_MAP_HEIGHT - 1][x] = NULL;
 				}
 			}
 		}
@@ -828,15 +866,15 @@ void Map::changeMap(Direction direction)
 			{
 				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
 				{
-					Tile* tile = m_tiles[z][y][GAME_MAP_WIDTH-1];
+					Tile* tile = m_tiles[z][y][GAME_MAP_WIDTH - 1];
 					if(tile)
 						delete tile;
 				}
 
 				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
 				{
-					for(Sint32 x = GAME_MAP_WIDTH-1; --x >= 0;)
-						m_tiles[z][y][x+1] = m_tiles[z][y][x];
+					for(Sint32 x = GAME_MAP_WIDTH - 1; --x >= 0;)
+						m_tiles[z][y][x + 1] = m_tiles[z][y][x];
 				}
 
 				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
@@ -903,7 +941,7 @@ void Map::checkDistanceEffects()
 		std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[z];
 		for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(); it != distanceEffects.end();)
 		{
-			if((*it)->getFlightProgress() > 1.f)
+			if(!(*it)->isDelayed() && (*it)->getFlightProgress() > 1.f)
 			{
 				delete (*it);
 				it = distanceEffects.erase(it);
@@ -924,7 +962,7 @@ void Map::addDistanceEffect(DistanceEffect* distanceEffect, Uint8 posZ)
 	m_distanceEffects[posZ].push_back(distanceEffect);
 }
 
-void Map::removeDistanceEffects(Uint8 posZ)
+void Map::removeMagicEffects(Uint8 posZ)
 {
 	std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[posZ];
 	for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(), end = distanceEffects.end(); it != end; ++it)
@@ -940,7 +978,7 @@ void Map::removeMagicEffects(const Position& position, Uint16 effectId)
 	Tile* tile = getTile(position);
 	if(tile)
 		tile->removeMagicEffects(effectId);
-
+	
 	std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[position.z];
 	for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(); it != distanceEffects.end();)
 	{
@@ -952,6 +990,56 @@ void Map::removeMagicEffects(const Position& position, Uint16 effectId)
 		else
 			++it;
 	}
+}
+
+bool Map::checkSightLine(const Position& fromPos, const Position& toPos)
+{
+	if(fromPos == toPos)
+		return true;
+
+	Position start(fromPos.z > toPos.z ? toPos : fromPos);
+	Position destination(fromPos.z > toPos.z ? fromPos : toPos);
+
+	const Sint8 mx = (start.x < destination.x ? 1 : start.x == destination.x ? 0 : -1);
+	const Sint8 my = (start.y < destination.y ? 1 : start.y == destination.y ? 0 : -1);
+
+	Sint32 A = Position::getOffsetY(destination, start);
+	Sint32 B = Position::getOffsetX(start, destination);
+	Sint32 C = -(A * destination.x + B * destination.y);
+	while(start.x != destination.x || start.y != destination.y)
+	{
+		Sint32 move_hor = std::abs(A * (start.x + mx) + B * (start.y) + C);
+		Sint32 move_ver = std::abs(A * (start.x) + B * (start.y + my) + C);
+		Sint32 move_cross = std::abs(A * (start.x + mx) + B * (start.y + my) + C);
+
+		if(start.y != destination.y && (start.x == destination.x || move_hor > move_ver || move_hor > move_cross))
+			start.y += my;
+
+		if(start.x != destination.x && (start.y == destination.y || move_ver > move_hor || move_ver > move_cross))
+			start.x += mx;
+
+		Tile* tile = getTile(start);
+		if(tile && !tile->isLookPossible())
+			return false;
+	}
+
+	// now we need to perform a jump between floors to see if everything is clear (literally)
+	while(start.z != destination.z)
+	{
+		Tile* tile = getTile(start);
+		if(tile && tile->getThingCount() > 0)
+			return false;
+
+		start.z++;
+	}
+
+	return true;
+}
+
+bool Map::isSightClear(const Position& fromPos, const Position& toPos)
+{
+	// Cast two converging rays and see if either yields a result.
+	return checkSightLine(fromPos, toPos) || checkSightLine(toPos, fromPos);
 }
 
 PathFind Map::findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos)
@@ -999,15 +1087,15 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 		return PathFind_ReturnTooFar;
 
 	AutomapArea* areas[4];
-	areas[0] = g_automap.getArea(startPos.x-127, startPos.y-127, startPos.z);
-	areas[1] = g_automap.getArea(startPos.x-127, startPos.y+127, startPos.z);
-	areas[2] = g_automap.getArea(startPos.x+127, startPos.y+127, startPos.z);
-	areas[3] = g_automap.getArea(startPos.x+127, startPos.y-127, startPos.z);
+	areas[0] = g_automap.getArea(startPos.x - 127, startPos.y - 127, startPos.z);
+	areas[1] = g_automap.getArea(startPos.x - 127, startPos.y + 127, startPos.z);
+	areas[2] = g_automap.getArea(startPos.x + 127, startPos.y + 127, startPos.z);
+	areas[3] = g_automap.getArea(startPos.x + 127, startPos.y - 127, startPos.z);
 
-	Sint32 startX = startPos.x-127;
-	Sint32 startY = startPos.y-127;
-	Uint16 areaX = areas[0]->getBasePosition().x+256;
-	Uint16 areaY = areas[0]->getBasePosition().y+256;
+	Sint32 startX = startPos.x - 127;
+	Sint32 startY = startPos.y - 127;
+	Uint16 areaX = areas[0]->getBasePosition().x + 256;
+	Uint16 areaY = areas[0]->getBasePosition().y + 256;
 
 	AStarNodes nodes(startPos);
 	AStarNode* found = nullptr;
@@ -1076,7 +1164,7 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 		{
 			Sint32 posX = x + *neighbors++;
 			Sint32 posY = y + *neighbors++;
-			if(SDL_static_cast(Uint32, posX-startX) > 254 || SDL_static_cast(Uint32, posY-startY) > 254)
+			if(SDL_static_cast(Uint32, posX - startX) > 254 || SDL_static_cast(Uint32, posY - startY) > 254)
 				continue;
 
 			pos.x = SDL_static_cast(Uint16, posX);
@@ -1186,13 +1274,13 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 	return PathFind_ReturnSuccessfull;
 }
 
-Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature* &topCreature, bool multifloor)
+Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature*& topCreature, bool multifloor)
 {
 	if(!m_localCreature) //If somehow we don't have localcreature avoid crashing
 		return NULL;
 
-	Sint32 xOffset = SDL_static_cast(Sint32, m_localCreature->getOffsetX(true)*scale);
-	Sint32 yOffset = SDL_static_cast(Sint32, m_localCreature->getOffsetY(true)*scale);
+	Sint32 xOffset = SDL_static_cast(Sint32, m_localCreature->getOffsetX(true) * scale);
+	Sint32 yOffset = SDL_static_cast(Sint32, m_localCreature->getOffsetY(true) * scale);
 
 	Sint32 firstVisibleFloor;
 	Sint32 lastVisibleFloor;
@@ -1208,8 +1296,8 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 	}
 	topCreature = NULL;
 
-	Sint32 posX = ((x-gameWindow.x1)/scaledSize)+1;
-	Sint32 posY = ((y-gameWindow.y1)/scaledSize)+1;
+	Sint32 posX = ((x - gameWindow.x1) / scaledSize) + 1;
+	Sint32 posY = ((y - gameWindow.y1) / scaledSize) + 1;
 	for(Sint32 z = lastVisibleFloor; z <= firstVisibleFloor; ++z)
 	{
 		if(!topCreature)
@@ -1218,15 +1306,15 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 			{
 				for(Sint32 x2 = 1; x2 >= -1; --x2)
 				{
-					Sint32 indexX = posX+x2;
-					Sint32 indexY = posY+y2;
+					Sint32 indexX = posX + x2;
+					Sint32 indexY = posY + y2;
 					if(indexX >= 0 && indexY >= 0 && indexX < GAME_MAP_WIDTH && indexY < GAME_MAP_HEIGHT)
 					{
 						Tile* tile = m_tiles[z][indexY][indexX];
 						if(tile)
 						{
-							Sint32 elevationSize = SDL_static_cast(Sint32, tile->getTileElevation()*scale);
-							iRect irect = iRect(gameWindow.x1+((indexX-1)*scaledSize)-elevationSize-xOffset, gameWindow.y1+((indexY-1)*scaledSize)-elevationSize-yOffset, scaledSize+elevationSize, scaledSize+elevationSize);
+							Sint32 elevationSize = SDL_static_cast(Sint32, tile->getTileElevation() * scale);
+							iRect irect = iRect(gameWindow.x1 + ((indexX - 1) * scaledSize) - elevationSize - xOffset, gameWindow.y1 + ((indexY - 1) * scaledSize) - elevationSize - yOffset, scaledSize + elevationSize, scaledSize + elevationSize);
 							topCreature = tile->getTopCreature(x, y, irect, scale);
 							if(topCreature)
 								goto Search_for_Tile;
@@ -1241,15 +1329,15 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 		{
 			for(Sint32 x2 = 1; x2 >= -1; --x2)
 			{
-				Sint32 indexX = posX+x2;
-				Sint32 indexY = posY+y2;
+				Sint32 indexX = posX + x2;
+				Sint32 indexY = posY + y2;
 				if(indexX >= 0 && indexY >= 0 && indexX < GAME_MAP_WIDTH && indexY < GAME_MAP_HEIGHT)
 				{
 					Tile* tile = m_tiles[z][indexY][indexX];
 					if(tile)
 					{
-						Sint32 elevationSize = SDL_static_cast(Sint32, tile->getTileElevation()*scale);
-						iRect irect = iRect(gameWindow.x1+((indexX-1)*scaledSize)-elevationSize-xOffset, gameWindow.y1+((indexY-1)*scaledSize)-elevationSize-yOffset, scaledSize+elevationSize, scaledSize+elevationSize);
+						Sint32 elevationSize = SDL_static_cast(Sint32, tile->getTileElevation() * scale);
+						iRect irect = iRect(gameWindow.x1 + ((indexX - 1) * scaledSize) - elevationSize - xOffset, gameWindow.y1 + ((indexY - 1) * scaledSize) - elevationSize - yOffset, scaledSize + elevationSize, scaledSize + elevationSize);
 						if(irect.isPointInside(x, y))
 						{
 							if(tile->isLookingPossible())
@@ -1311,19 +1399,19 @@ void Map::updateCacheMap()
 {
 	Sint32 posZ = SDL_static_cast(Sint32, m_centerPosition.z);
 	if(posZ > GAME_PLAYER_FLOOR)
-		m_cachedLastVisibleFloor = posZ+GAME_MAP_AWARERANGE;
+		m_cachedLastVisibleFloor = posZ + GAME_MAP_AWARERANGE;
 	else
 		m_cachedLastVisibleFloor = GAME_PLAYER_FLOOR;
 
 	Sint32 firstFloor = 0;
 	if(posZ > GAME_PLAYER_FLOOR)
-		firstFloor = UTIL_max<Sint32>(posZ-GAME_MAP_AWARERANGE, GAME_PLAYER_FLOOR+1);
+		firstFloor = UTIL_max<Sint32>(posZ - GAME_MAP_AWARERANGE, GAME_PLAYER_FLOOR + 1);
 
 	for(Sint32 x = -1; x <= 1 && firstFloor < posZ; ++x)
 	{
 		for(Sint32 y = -1; y <= 1 && firstFloor < posZ; ++y)
 		{
-			Position pos(SDL_static_cast(Uint16, SDL_static_cast(Sint32, m_centerPosition.x)+x), SDL_static_cast(Uint16, SDL_static_cast(Sint32, m_centerPosition.y)+y), m_centerPosition.z);
+			Position pos(SDL_static_cast(Uint16, SDL_static_cast(Sint32, m_centerPosition.x) + x), SDL_static_cast(Uint16, SDL_static_cast(Sint32, m_centerPosition.y) + y), m_centerPosition.z);
 
 			bool isLookPossible = false;
 			Tile* tile = getTile(pos);
@@ -1340,7 +1428,7 @@ void Map::updateCacheMap()
 					tile = getTile(upperPos);
 					if(tile && tile->limitsFloorsView(!isLookPossible))
 					{
-						firstFloor = upperPos.z+1;
+						firstFloor = upperPos.z + 1;
 						break;
 					}
 
@@ -1348,7 +1436,7 @@ void Map::updateCacheMap()
 					tile = getTile(coveredPos);
 					if(tile && tile->limitsFloorsView(isLookPossible))
 					{
-						firstFloor = coveredPos.z+1;
+						firstFloor = coveredPos.z + 1;
 						break;
 					}
 				}
@@ -1363,31 +1451,39 @@ void Map::updateCacheMap()
 	{
 		for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
 		{
-			bool haveFirstVisible = false;
-			bool haveFirstFloor = false;
+			bool haveFirstVisibleGround = false;
+			bool haveFirstGrounds = false;
+			bool haveFirstFullGrounds = false;
 			for(Sint32 z = m_cachedFirstVisibleFloor; z < m_cachedLastVisibleFloor; ++z)
 			{
 				Tile* tile = m_tiles[z][y][x];
 				if(tile)
 				{
-					if(!haveFirstVisible && tile->limitsFloorsView(false))
+					if(!haveFirstVisibleGround && tile->limitsFloorsView(false))
 					{
 						m_cachedFirstVisibleGround[y][x] = z;
-						haveFirstVisible = true;
+						haveFirstVisibleGround = true;
 					}
-
-					if(!haveFirstFloor && tile->isFullground())
+					if(!haveFirstGrounds && tile->hasground())
+					{
+						m_cachedFirstGrounds[y][x] = z;
+						haveFirstGrounds = true;
+					}
+					if(!haveFirstFullGrounds && tile->isFullground())
 					{
 						m_cachedFirstFullGrounds[y][x] = z;
-						haveFirstFloor = true;
+						haveFirstFullGrounds = true;
 					}
 				}
 			}
 
-			if(!haveFirstVisible)
+			if(!haveFirstVisibleGround)
 				m_cachedFirstVisibleGround[y][x] = m_cachedLastVisibleFloor;
 
-			if(!haveFirstFloor)
+			if(!haveFirstGrounds)
+				m_cachedFirstGrounds[y][x] = m_cachedLastVisibleFloor;
+
+			if(!haveFirstFullGrounds)
 				m_cachedFirstFullGrounds[y][x] = m_cachedLastVisibleFloor;
 		}
 	}

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -39,10 +39,14 @@ class GUI_Container : public GUI_Element
 
 		GUI_Element* getActiveElement() {return m_actElement;}
 		void setActiveElement(GUI_Element* actElement);
+		void validateScrollBar();
 
-		void clearChilds();
-		void addChild(GUI_Element* pChild);
-		void removeChild(GUI_Element* pChild);
+		Sint32 getLastPosX() {return m_lastPosX;}
+		Sint32 getLastPosY() {return m_lastPosY;}
+
+		void clearChilds(bool resetScrollBar = true);
+		void addChild(GUI_Element* pChild, bool resetScrollBar = true);
+		void removeChild(GUI_Element* pChild, bool resetScrollBar = true);
 		GUI_Element* getChild(Uint32 internalID);
 		void setAsMaxHeight();
 

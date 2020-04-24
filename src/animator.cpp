@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -22,7 +22,6 @@
 #include "animator.h"
 
 extern Uint32 g_frameTime;
-extern Uint32 g_frameDiff;
 
 Animator::Animator()
 {
@@ -72,7 +71,7 @@ void Animator::setPhase(Animation& cAnim, Sint32 phase)
 		calculateSynchronous(cAnim);
 }
 
-Sint32 Animator::getPhase(Animation& cAnim, Sint32 movementSpeed)
+Sint32 Animator::getPhase(Animation& cAnim, Uint32 movementSpeed)
 {
 	if(g_frameTime != cAnim.m_lastPhaseTicks && !cAnim.m_isComplete)
 	{
@@ -109,7 +108,7 @@ Sint32 Animator::getPhase(Animation& cAnim, Sint32 movementSpeed)
 
 Sint32 Animator::getStartPhase()
 {
-	if(m_startPhase > -1)
+	if(m_startPhase >= 0 && m_startPhase < m_animationPhases)
 		return m_startPhase;
 	return UTIL_random(0, m_animationPhases - 1);
 }
@@ -131,11 +130,11 @@ void Animator::resetAnimation(Animation& cAnim, Sint32 phase)
 	setPhase(cAnim, phase);
 }
 
-Sint32 Animator::getMovementDuration(Sint32 movementSpeed)
+Sint32 Animator::getMovementDuration(Uint32 movementSpeed)
 {
 	Uint32 maximum_speed_delay = 100;
 	Uint32 minimum_speed_delay = 550;
-	Uint32 interval = UTIL_min<Uint32>(minimum_speed_delay, UTIL_max<Uint32>(maximum_speed_delay, movementSpeed));
+	Uint32 interval = UTIL_min<Uint32>(UTIL_max<Uint32>(maximum_speed_delay, movementSpeed), minimum_speed_delay);
 	float delta_interval = SDL_static_cast(float, interval - maximum_speed_delay) / SDL_static_cast(float, minimum_speed_delay - maximum_speed_delay);
 	float minimum_speed_duration = (720.f / m_animationPhases);
 	float maximum_speed_duration = (280.f / m_animationPhases);

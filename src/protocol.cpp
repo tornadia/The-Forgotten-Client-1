@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -87,10 +87,10 @@ bool Protocol::onRecv(InputMessage& msg)
 		msg.setMessageSize(messageSize + msg.getReadPos());
 	}
 
-	if(compression)
+	/*if(compression)
 	{
 		//TODO
-	}
+	}*/
 
 	while(!msg.eof())
 		parseMessage(msg);
@@ -106,13 +106,13 @@ bool Protocol::onSend(OutputMessage& msg)
 	if(m_encryption)
 	{
 		Uint16 msgSize = msg.getMessageSize();
-		Uint16 paddingBytes = ((msgSize+2) & 7);
+		Uint16 paddingBytes = ((msgSize + 2) & 7);
 		if(paddingBytes != 0)
-			msg.addPaddingBytes(8-paddingBytes);
+			msg.addPaddingBytes(8 - paddingBytes);
 
 		msg.setWritePos(m_checksumMethod != CHECKSUM_METHOD_NONE ? 6 : 2);
 		msg.addU16(msgSize);
-		if(!XTEA_encrypt(msg.getWriteBuffer()-2, msgSize+10-paddingBytes, m_encryptionKeys))
+		if(!XTEA_encrypt(msg.getWriteBuffer() - 2, msgSize + 10 - paddingBytes, m_encryptionKeys))
 			return false;
 	}
 
@@ -120,7 +120,7 @@ bool Protocol::onSend(OutputMessage& msg)
 	{
 		if(m_checksumMethod == CHECKSUM_METHOD_ADLER32)
 		{
-			Uint32 checksum = adler32Checksum(msg.getBuffer()+6, msg.getMessageSize());
+			Uint32 checksum = adler32Checksum(msg.getBuffer() + 6, msg.getMessageSize());
 			msg.setWritePos(2);
 			msg.addU32(checksum);
 		}
@@ -143,19 +143,36 @@ Uint16 Protocol::getHeaderPos()
 	return 2 + (m_encryption ? 2 : 0) + (m_checksumMethod != CHECKSUM_METHOD_NONE ? 4 : 0);
 }
 
-Uint16 Protocol::getOS()
+Uint8 Protocol::getOS()
 {
-	if(g_clientVersion <= 760)
-		return PROTOCOL_OS_WINDOWS;
-
-	#if defined(SDL_VIDEO_DRIVER_WINDOWS) || defined(SDL_VIDEO_DRIVER_WINRT)
-	return PROTOCOL_OS_WINDOWS;
-	#elif defined(SDL_VIDEO_DRIVER_EMSCRIPTEN)
-	//Since it's website based report as flash because it's similar
-	return PROTOCOL_OS_FLASH;
+	#if defined(SDL_VIDEO_DRIVER_ANDROID)
+	return PROTOCOL_OS_ANDROID;
+	#elif defined(SDL_VIDEO_DRIVER_UIKIT)
+	return PROTOCOL_OS_IPHONEOS;
+	#elif defined(SDL_VIDEO_DRIVER_COCOA)
+	return PROTOCOL_OS_MACOSX;
+	#elif defined(SDL_VIDEO_DRIVER_PANDORA)
+	#ifdef WIZ_GLES_LITE
+	return PROTOCOL_OS_WIZ;
 	#else
-	//Everything other report as linux
-	return PROTOCOL_OS_LINUX;
+	return PROTOCOL_OS_PANDORA;
+	#endif
+	#elif defined(SDL_VIDEO_DRIVER_PSP)
+	return PROTOCOL_OS_PSP;
+	#elif defined(SDL_VIDEO_DRIVER_WINDOWS)
+	return PROTOCOL_OS_WINDOWS;
+	#elif defined(SDL_VIDEO_DRIVER_WINRT)
+	return PROTOCOL_OS_WINDOWSRT;
+	#elif defined(SDL_VIDEO_DRIVER_HAIKU)
+	return PROTOCOL_OS_HAIKU;
+	#elif defined(SDL_VIDEO_DRIVER_EMSCRIPTEN)
+	return PROTOCOL_OS_EMSCRIPTEN;
+	#elif defined(SDL_VIDEO_DRIVER_NACL)
+	return PROTOCOL_OS_NACL;
+	#elif defined(SDL_VIDEO_DRIVER_RPI)
+	return PROTOCOL_OS_RASPBERRYPI;
+	#else
+	return PROTOCOL_OS_UNIX;
 	#endif
 }
 
@@ -166,16 +183,16 @@ Uint16 Protocol::getProtocolVersion()
 	#else
 	switch(g_clientVersion)
 	{
-		case 980: return 971;
+		case 980: return 972;
 		case 981: return 973;
 		case 982: return 974;
 		case 983: return 975;
 		case 984: return 976;
 		case 985: return 977;
 		case 986: return 978;
-		case 1001: return 979;
+		case 1000: return 979;
+		case 1001: return 980;
 		case 1002: return 980;
-		case 1101: return 1100;
 		case 1102: return 1101;
 		case 1103: return 1101;
 		case 1104: return 1101;

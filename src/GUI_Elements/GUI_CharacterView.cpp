@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -40,11 +40,11 @@ void GUI_CharacterView::render()
 
 	Surface* renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1+1, 1, m_tRect.y2-1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1+1, m_tRect.y1+m_tRect.y2-1, m_tRect.x2-1, 1);
-	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1+m_tRect.x2-1, m_tRect.y1+1, 1, m_tRect.y2-2);
-	renderer->fillRectangle(m_tRect.x1+1, m_tRect.y1+1, m_tRect.x2-2, m_tRect.y2-2, 64, 64, 64, 255);
-	renderer->setClipRect(m_tRect.x1+1, m_tRect.y1+1, m_tRect.x2-2, m_tRect.y2-2);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1 + 1, 1, m_tRect.y2 - 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1 + 1, m_tRect.y1 + m_tRect.y2 - 1, m_tRect.x2 - 1, 1);
+	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1 + m_tRect.x2 - 1, m_tRect.y1 + 1, 1, m_tRect.y2 - 2);
+	renderer->fillRectangle(m_tRect.x1 + 1, m_tRect.y1 + 1, m_tRect.x2 - 2, m_tRect.y2 - 2, 64, 64, 64, 255);
+	renderer->setClipRect(m_tRect.x1 + 1, m_tRect.y1 + 1, m_tRect.x2 - 2, m_tRect.y2 - 2);
 
 	CharacterDetail& character = accountCharList[SDL_static_cast(size_t, lastSelectId)];
 	ThingType* thingType = g_thingManager.getThingType(ThingCategory_Creature, character.lookType);
@@ -60,11 +60,11 @@ void GUI_CharacterView::render()
 		if(thingType->m_frameGroup[ThingFrameGroup_Idle].m_layers > 1)
 		{
 			Uint32 outfitColors = (character.lookFeet << 24) | (character.lookLegs << 16) | (character.lookBody << 8) | (character.lookHead);
-			Sint32 scale = 9+thingType->m_frameGroup[ThingFrameGroup_Idle].m_realSize/2;
-			Sint32 drawY = m_tRect.y1+scale;
+			Sint32 scale = 9 + thingType->m_frameGroup[ThingFrameGroup_Idle].m_realSize / 2;
+			Sint32 drawY = m_tRect.y1 + scale;
 			for(Uint8 y = 0; y < thingType->m_frameGroup[ThingFrameGroup_Idle].m_height; ++y)
 			{
-				Sint32 drawX = m_tRect.x1+scale;
+				Sint32 drawX = m_tRect.x1 + scale;
 				for(Uint8 x = 0; x < thingType->m_frameGroup[ThingFrameGroup_Idle].m_width; ++x)
 				{
 					Uint32 sprite = thingType->getSprite(ThingFrameGroup_Idle, x, y, 0, DIRECTION_SOUTH, 0, 0, currentAnim);
@@ -110,11 +110,11 @@ void GUI_CharacterView::render()
 		}
 		else
 		{
-			Sint32 scale = 9+thingType->m_frameGroup[ThingFrameGroup_Idle].m_realSize/2;
-			Sint32 drawY = m_tRect.y1+scale;
+			Sint32 scale = 9 + thingType->m_frameGroup[ThingFrameGroup_Idle].m_realSize / 2;
+			Sint32 drawY = m_tRect.y1 + scale;
 			for(Uint8 y = 0; y < thingType->m_frameGroup[ThingFrameGroup_Idle].m_height; ++y)
 			{
-				Sint32 drawX = m_tRect.x1+scale;
+				Sint32 drawX = m_tRect.x1 + scale;
 				for(Uint8 x = 0; x < thingType->m_frameGroup[ThingFrameGroup_Idle].m_width; ++x)
 				{
 					Uint32 sprite = thingType->getSprite(ThingFrameGroup_Idle, x, y, 0, DIRECTION_SOUTH, 0, 0, currentAnim);
@@ -143,11 +143,11 @@ void GUI_CharacterView::render()
 	}
 
 	Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u Level", character.level);
-	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1+140, m_tRect.y1+16, std::string(g_buffer, SDL_static_cast(size_t, len)), 180, 180, 180, CLIENT_FONT_ALIGN_CENTER);
+	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1 + 140, m_tRect.y1 + 16, std::string(g_buffer, SDL_static_cast(size_t, len)), 180, 180, 180, CLIENT_FONT_ALIGN_CENTER);
 	len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u/%u HP", character.health, character.healthMax);
-	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1+140, m_tRect.y1+30, std::string(g_buffer, SDL_static_cast(size_t, len)), 180, 180, 180, CLIENT_FONT_ALIGN_CENTER);
+	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1 + 140, m_tRect.y1 + 30, std::string(g_buffer, SDL_static_cast(size_t, len)), 180, 180, 180, CLIENT_FONT_ALIGN_CENTER);
 	len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u/%u MP", character.mana, character.manaMax);
-	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1+140, m_tRect.y1+46, std::string(g_buffer, SDL_static_cast(size_t, len)), 180, 180, 180, CLIENT_FONT_ALIGN_CENTER);
-	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1+140, m_tRect.y1+62, character.vocName, 180, 180, 180, CLIENT_FONT_ALIGN_CENTER);
+	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1 + 140, m_tRect.y1 + 46, std::string(g_buffer, SDL_static_cast(size_t, len)), 180, 180, 180, CLIENT_FONT_ALIGN_CENTER);
+	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1 + 140, m_tRect.y1 + 62, character.vocName, 180, 180, 180, CLIENT_FONT_ALIGN_CENTER);
 	renderer->disableClipRect();
 }

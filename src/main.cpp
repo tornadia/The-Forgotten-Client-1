@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -85,12 +85,12 @@ void SDL_framerateDelay(FPSmanager * manager)
 
 	++manager->framecount;
 	current_ticks = SDL_GetTicks();
-	time_passed = current_ticks-manager->lastticks;
+	time_passed = current_ticks - manager->lastticks;
 	manager->lastticks = current_ticks;
-	target_ticks = manager->baseticks+SDL_static_cast(Uint32, manager->framecount*manager->rateticks);
+	target_ticks = manager->baseticks + SDL_static_cast(Uint32, manager->framecount * manager->rateticks);
 	if(current_ticks <= target_ticks)
 	{
-		the_delay = target_ticks-current_ticks;
+		the_delay = target_ticks - current_ticks;
 		SDL_Delay(the_delay);
 	}
 	else
@@ -104,7 +104,7 @@ void SDL_setFramerate(FPSmanager * manager, Uint32 rate)
 {
 	manager->framecount = 0;
 	manager->rate = UTIL_max<Uint32>(30, UTIL_min<Uint32>(200, rate));
-	manager->rateticks = 1000.0f/manager->rate;
+	manager->rateticks = 1000.0f / manager->rate;
 }
 
 void SDL_setKeyRepeat(Uint32 delay, Uint32 repeatInterval)
@@ -210,7 +210,7 @@ void initCursors()
 		g_cursors[CLIENT_CURSOR_CROSSHAIR] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
 		g_cursors[CLIENT_CURSOR_RESIZENS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
 		g_cursors[CLIENT_CURSOR_RESIZEWE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
-		g_cursors[CLIENT_CURSOR_LENSHELP] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);//We can't do much about this
+		g_cursors[CLIENT_CURSOR_LENSHELP] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);//We can't do much about this
 	}
 	else
 	{//Some of drivers don't support system cursors or they aren't exactly what we want
@@ -301,7 +301,7 @@ int main(int argc, char* argv[])
 			if(g_engine.isControlledFPS())
 				SDL_framerateDelay(&g_fpsmanager);
 			
-			g_frameDiff = SDL_GetTicks()-g_frameTime;
+			g_frameDiff = SDL_GetTicks() - g_frameTime;
 			g_frameTime = SDL_GetTicks();
 			
 			SDL_CheckKeyRepeat();
@@ -477,14 +477,14 @@ int main(int argc, char* argv[])
 							//Should we ignore xRel and go only for yRel?
 							if(xRel > 0 || yRel > 0)
 							{
-								for(Sint32 i = 0; i < xRel+yRel; ++i)
+								for(Sint32 i = 0; i < (xRel + yRel); ++i)
 									g_engine.onWheel(x, y, true);
 							}
 							else if(xRel < 0 || yRel < 0)
 							{
 								xRel *= -1;
 								yRel *= -1;
-								for(Sint32 i = 0; i < xRel+yRel; ++i)
+								for(Sint32 i = 0; i < (xRel + yRel); ++i)
 									g_engine.onWheel(x, y, false);
 							}
 						}
@@ -496,7 +496,7 @@ int main(int argc, char* argv[])
 						if(event.text.windowID == g_engine.m_windowId)
 						{
 							//SDL2 uses UTF-8 encoded strings and we want to maintain latin1 string as the Real Tibia
-							char* textInput = SDL_iconv_string("ISO-8859-1", "UTF-8", event.text.text, SDL_strlen(event.text.text)+1);
+							char* textInput = SDL_iconv_string("ISO-8859-1", "UTF-8", event.text.text, SDL_strlen(event.text.text) + 1);
 							if(!textInput)
 								break;
 							
@@ -531,7 +531,7 @@ int main(int argc, char* argv[])
 				}
 			}
 
-			if(g_frameTime >= g_frameUpdate+FPSinterval)
+			if(g_frameTime >= g_frameUpdate + FPSinterval)
 			{
 				SDL_snprintf(g_buffer, sizeof(g_buffer), "%s [%s: %u FPS, Ping: %u ms]", PRODUCT_NAME, g_engine.getRender()->getName(), g_frames, g_ping);
 				SDL_SetWindowTitle(g_engine.m_window, g_buffer);
@@ -540,18 +540,20 @@ int main(int argc, char* argv[])
 				g_frames = 0;
 			}
 
+			g_engine.update();
 			g_http.updateHttp();
 			if(g_connection)
 				g_connection->updateConnection();
 
-			if(g_active)
-				g_engine.redraw();
-			else
+			if(!g_active)
 			{
 				//Let's maintain a little CPU usage to check for events(maybe we will be restored?)
 				//100ms Sleep should maintain ~10FPS - should be enough for "instant" unsleep
 				SDL_Delay(100);
 			}
+			else
+				g_engine.redraw();
+
 			++g_frames;
 		}
 	}

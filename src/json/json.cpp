@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,7 +26,7 @@
 
 char JSON_tolower(char src)
 {
-	return (('A' <= src && src <= 'Z') ? src+0x20 : src);
+	return (('A' <= src && src <= 'Z') ? src + 0x20 : src);
 }
 
 JSON_VALUE::JSON_VALUE(const JSON_VALUE& _source)

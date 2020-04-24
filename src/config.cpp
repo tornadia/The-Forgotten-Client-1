@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -57,7 +57,7 @@ bool Config::openToRead(const char* fileName)
 				std::string& value = dataKeys[i];
 				if(value.size() < 5 || value[0] == '#')
 					continue;
-				else if(value[value.length()-1] == '\r')
+				else if(value[value.length() - 1] == '\r')
 					value.pop_back();
 
 				StringVector keys = UTIL_explodeString(value, " = ");

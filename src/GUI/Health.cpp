@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,7 +29,7 @@
 #include "../game.h"
 #include "Health.h"
 
-#define HEALTH_WIDTH 172
+#define HEALTH_WIDTH (GAME_PANEL_FIXED_WIDTH - 4)
 #define HEALTH_HEIGHT 32
 #define HEALTH_FLASH_EVENTID 1000
 #define HEALTH_MARK_X 9
@@ -94,7 +94,7 @@ void UTIL_updateHealthPanel()
 	{
 		GUI_Health* pHealth = SDL_static_cast(GUI_Health*, pPanel->getChild(HEALTH_BAR_EVENTID));
 		if(pHealth)
-			pHealth->setPercent(SDL_static_cast(Sint32, g_game.getPlayerHealthPercent())*90/100);
+			pHealth->setPercent(SDL_static_cast(Sint32, g_game.getPlayerHealthPercent()) * 90 / 100);
 
 		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", g_game.getPlayerHealth());
 		GUI_Label* pLabel = SDL_static_cast(GUI_Label*, pPanel->getChild(HEALTH_LABEL_EVENTID));
@@ -111,7 +111,7 @@ void UTIL_updateHealthPanel()
 	{
 		GUI_Mana* pMana = SDL_static_cast(GUI_Mana*, pPanel->getChild(MANA_BAR_EVENTID));
 		if(pMana)
-			pMana->setPercent(SDL_static_cast(Sint32, g_game.getPlayerManaPercent())*90/100);
+			pMana->setPercent(SDL_static_cast(Sint32, g_game.getPlayerManaPercent()) * 90 / 100);
 
 		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", g_game.getPlayerMana());
 		GUI_Label* pLabel = SDL_static_cast(GUI_Label*, pPanel->getChild(MANA_LABEL_EVENTID));
@@ -127,38 +127,49 @@ void UTIL_updateHealthPanel()
 
 void UTIL_createHealthPanel()
 {
+	bool newWindow;
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_HEALTH);
 	if(pPanel)
-		g_engine.removePanelWindow(pPanel);
+	{
+		newWindow = false;
+		pPanel->clearChilds();
+	}
+	else
+	{
+		newWindow = true;
+		pPanel = new GUI_PanelWindow(iRect(0, 0, HEALTH_WIDTH, HEALTH_HEIGHT), false, GUI_PANEL_WINDOW_HEALTH);
+	}
 
-	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, HEALTH_WIDTH, HEALTH_HEIGHT), false, GUI_PANEL_WINDOW_HEALTH);
 	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(HEALTH_MARK_X, HEALTH_MARK_Y, HEALTH_MARK_W, HEALTH_MARK_H), GUI_UI_IMAGE, GUI_UI_SYMBOL_HEALTH_X, GUI_UI_SYMBOL_HEALTH_Y);
-	newWindow->addChild(newImage);
+	pPanel->addChild(newImage);
 	newImage = new GUI_StaticImage(iRect(MANA_MARK_X, MANA_MARK_Y, MANA_MARK_W, MANA_MARK_H), GUI_UI_IMAGE, GUI_UI_SYMBOL_MANA_X, GUI_UI_SYMBOL_MANA_Y);
-	newWindow->addChild(newImage);
+	pPanel->addChild(newImage);
 	GUI_Health* newHP = new GUI_Health(iRect(HEALTH_BAR_X, HEALTH_BAR_Y, HEALTH_BAR_W, HEALTH_BAR_H), HEALTH_BAR_EVENTID);
-	newHP->setPercent(SDL_static_cast(Sint32, g_game.getPlayerHealthPercent())*90/100);
-	newWindow->addChild(newHP);
+	newHP->setPercent(SDL_static_cast(Sint32, g_game.getPlayerHealthPercent()) * 90 / 100);
+	pPanel->addChild(newHP);
 	GUI_Mana* newMP = new GUI_Mana(iRect(MANA_BAR_X, MANA_BAR_Y, MANA_BAR_W, MANA_BAR_H), MANA_BAR_EVENTID);
-	newMP->setPercent(SDL_static_cast(Sint32, g_game.getPlayerManaPercent())*90/100);
-	newWindow->addChild(newMP);
+	newMP->setPercent(SDL_static_cast(Sint32, g_game.getPlayerManaPercent()) * 90 / 100);
+	pPanel->addChild(newMP);
 	Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", g_game.getPlayerHealth());
 	GUI_Label* newLabel = new GUI_Label(iRect(HEALTH_LABEL_X, HEALTH_LABEL_Y, 0, 0), std::string(g_buffer, SDL_static_cast(size_t, len)), HEALTH_LABEL_EVENTID);
-	newWindow->addChild(newLabel);
+	pPanel->addChild(newLabel);
 	len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u%%", SDL_static_cast(Uint32, g_game.getPlayerHealthPercent()));
 	newLabel = new GUI_Label(iRect(HEALTH_PERCENT_X, HEALTH_PERCENT_Y, 0, 0), std::string(g_buffer, SDL_static_cast(size_t, len)), HEALTH_PERCENT_EVENTID);
 	newLabel->setFont(CLIENT_FONT_OUTLINED);
 	newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
-	newWindow->addChild(newLabel);
+	pPanel->addChild(newLabel);
 	len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", g_game.getPlayerMana());
 	newLabel = new GUI_Label(iRect(MANA_LABEL_X, MANA_LABEL_Y, 0, 0), std::string(g_buffer, SDL_static_cast(size_t, len)), MANA_LABEL_EVENTID);
-	newWindow->addChild(newLabel);
+	pPanel->addChild(newLabel);
 	len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u%%", SDL_static_cast(Uint32, g_game.getPlayerManaPercent()));
 	newLabel = new GUI_Label(iRect(MANA_PERCENT_X, MANA_PERCENT_Y, 0, 0), std::string(g_buffer, SDL_static_cast(size_t, len)), MANA_PERCENT_EVENTID);
 	newLabel->setFont(CLIENT_FONT_OUTLINED);
 	newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
-	newWindow->addChild(newLabel);
-	g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+	pPanel->addChild(newLabel);
+	if(newWindow)
+		g_engine.addToPanel(pPanel, GUI_PANEL_MAIN);
+	else
+		pPanel->checkPanels();
 }
 
 void UTIL_flashHealthPanel()

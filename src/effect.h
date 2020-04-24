@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -29,18 +29,21 @@ class ThingType;
 class Effect
 {
 	public:
+		static std::vector<Effect*> effects;
 		static Uint32 effectCount;
 
-		Effect(const Position& pos, ThingType* type);
+		Effect(const Position& pos, Uint16 delay, ThingType* type);
 		~Effect();
 
-		static Effect* createEffect(const Position& pos, Uint16 type);
+		static Effect* createEffect(const Position& pos, Uint16 delay, Uint16 type);
 
 		Uint16 getID();
 		SDL_FORCE_INLINE const Position& getPos() {return m_position;}
 		bool canBeDeleted();
+		bool isDelayed();
 		bool isTopEffect() {return m_topEffect;}
 
+		static void update();
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
 		Uint8 calculateAnimationPhase();
@@ -63,7 +66,7 @@ class Effect
 class EffectNULL : public Effect
 {
 	public:
-		EffectNULL(const Position& pos, ThingType* type);
+		EffectNULL(const Position& pos, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 };
@@ -71,7 +74,7 @@ class EffectNULL : public Effect
 class Effect1X1 : public Effect
 {
 	public:
-		Effect1X1(const Position& pos, ThingType* type);
+		Effect1X1(const Position& pos, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
@@ -81,7 +84,7 @@ class Effect1X1 : public Effect
 class Effect2X1 : public Effect
 {
 	public:
-		Effect2X1(const Position& pos, ThingType* type);
+		Effect2X1(const Position& pos, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
@@ -91,7 +94,7 @@ class Effect2X1 : public Effect
 class Effect1X2 : public Effect
 {
 	public:
-		Effect1X2(const Position& pos, ThingType* type);
+		Effect1X2(const Position& pos, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
@@ -101,7 +104,7 @@ class Effect1X2 : public Effect
 class Effect2X2 : public Effect
 {
 	public:
-		Effect2X2(const Position& pos, ThingType* type);
+		Effect2X2(const Position& pos, Uint16 delay, ThingType* type);
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 

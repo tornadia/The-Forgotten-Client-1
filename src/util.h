@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,8 +33,12 @@ void colorFrom8bitFloat(Uint8 color, float& r, float& g, float& b);
 void colorFrom8bit(Uint8 color, Uint8& r, Uint8& g, Uint8& b);
 void getOutfitColorFloat(Uint8 color, float& r, float& g, float& b);
 void getOutfitColorRGB(Uint8 color, Uint8& r, Uint8& g, Uint8& b);
+void getTrianglePointFloat(const float v0[2], const float v1[2], const float v2[2], const float c0[3], const float c1[3], const float c2[3], const float p[2], float c[3]);
 
 bool SDL_HasSSSE3();
+bool SDL_HasFMA3();
+bool SDL_HasFMA4();
+bool SDL_HasXOP();
 char* SDL_GetCPUName();
 
 #ifdef __USE_SSE2__
@@ -48,13 +52,6 @@ SDL_FORCE_INLINE Uint32 UTIL_power_of_2(Uint32 input)
 	return value;
 }
 void UTIL_integer_scale(Sint32& w, Sint32& h, Sint32 expectW, Sint32 expectH, Sint32 limitW, Sint32 limitH);
-SDL_FORCE_INLINE float UTIL_sqrtf(float x)
-{
-	//(~95%) accuracy should be enough for light system and much faster than sqrt intrinsic
-	Uint32 i = *SDL_reinterpret_cast(Uint32*, &x);
-	i += (127 << 23); i >>= 1;
-	return *SDL_reinterpret_cast(float*, &i);
-}
 
 std::string SDL_ReadLEString(SDL_RWops* src);
 void SDL_WriteLEString(SDL_RWops* src, const std::string& text);
@@ -80,12 +77,14 @@ StringVector UTIL_explodeString(const std::string& inString, const std::string& 
 Sint32 UTIL_random(Sint32 min_range, Sint32 max_range);
 Uint16 UTIL_parseModifiers(Uint16 mods);
 std::string UTIL_ipv4_tostring(Uint32 ipV4);
-std::string UTIL_formatCreatureName(const std::string &name);
+std::string UTIL_formatCreatureName(const std::string& name);
+std::string UTIL_formatConsoleText(const std::string& text);
 std::string UTIL_formatStringCommas(const std::string& v);
 std::string UTIL_formatDate(const char* format, time_t time);
+void UTIL_parseSizedText(const std::string& text, size_t start, Uint8 fontId, Uint32 allowedWidth, void* _THIS, size_t (*callback)(void* __THIS, bool skipLine, size_t start, size_t length));
 
 template<typename T>
-SDL_FORCE_INLINE T UTIL_safeMod(T value, T denom) {return (denom > 1 ? value % denom : 0);}
+SDL_FORCE_INLINE T UTIL_safeMod(T value, T denom) {return (value % (denom > 1 ? denom : 1));}
 template <typename T>
 SDL_FORCE_INLINE T UTIL_min(T a, T b) {return (a < b ? a : b);}
 template <typename T>

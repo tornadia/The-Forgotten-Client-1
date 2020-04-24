@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -35,7 +35,8 @@ extern LPSDL_DrawTriangle_MOD SDL_DrawTriangle_MOD;
 typedef Sint32 (*LPSDL_SmoothStretch)(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect);
 extern LPSDL_SmoothStretch SDL_SmoothStretch;
 
-void SDL_DrawLightMap_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+void SDL_DrawLightMap_old_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+void SDL_DrawLightMap_new_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 Sint32 SDL_SmoothStretch_MT(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* dst, SDL_Rect* dstrect);
 
 void SDL_SmoothStretch_init();

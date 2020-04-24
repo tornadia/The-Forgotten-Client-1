@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -30,18 +30,19 @@ GUI_Button::GUI_Button(iRect boxRect, const std::string labelName, Uint32 intern
 	m_sy[0] = m_sy[1] = 0;
 
 	setRect(boxRect);
+	cacheUI();
 	m_description = std::move(description);
 	m_label = std::move(labelName);
-	m_startX = g_engine.calculateFontWidth(CLIENT_FONT_SMALL, m_label)/2;
+	m_startX = g_engine.calculateFontWidth(CLIENT_FONT_SMALL, m_label) / 2;
 	m_pressed = 0;
 	m_evtParam = 0;
 	m_eventHandlerFunction = NULL;
 	m_internalID = internalID;
 }
 
-void GUI_Button::setRect(iRect& NewRect)
+void GUI_Button::cacheUI()
 {
-	switch(NewRect.x2)
+	switch(m_tRect.x2)
 	{
 		case GUI_UI_BUTTON_34PX_GRAY_UP_W:
 		{
@@ -73,7 +74,7 @@ void GUI_Button::setRect(iRect& NewRect)
 			m_sy[0] = GUI_UI_BUTTON_43PX_GREEN_UP_Y;
 			m_sx[1] = GUI_UI_BUTTON_43PX_GREEN_DOWN_X;
 			m_sy[1] = GUI_UI_BUTTON_43PX_GREEN_DOWN_Y;
-			NewRect.x2 = 43;//width correction
+			m_tRect.x2 = 43;//width correction
 		}
 		break;
 		case GUI_UI_BUTTON_43PX_RED_UP_W:
@@ -82,7 +83,7 @@ void GUI_Button::setRect(iRect& NewRect)
 			m_sy[0] = GUI_UI_BUTTON_43PX_RED_UP_Y;
 			m_sx[1] = GUI_UI_BUTTON_43PX_RED_DOWN_X;
 			m_sy[1] = GUI_UI_BUTTON_43PX_RED_DOWN_Y;
-			NewRect.x2 = 43;//width correction
+			m_tRect.x2 = 43;//width correction
 		}
 		break;
 		case GUI_UI_BUTTON_48PX_GRAY_UP_W:
@@ -123,7 +124,7 @@ void GUI_Button::setRect(iRect& NewRect)
 			m_sy[0] = GUI_UI_BUTTON_86PX_GREEN_UP_Y;
 			m_sx[1] = GUI_UI_BUTTON_86PX_GREEN_DOWN_X;
 			m_sy[1] = GUI_UI_BUTTON_86PX_GREEN_DOWN_Y;
-			NewRect.x2 = 86;//width correction
+			m_tRect.x2 = 86;//width correction
 		}
 		break;
 		case GUI_UI_BUTTON_86PX_GOLD_UP_W:
@@ -132,7 +133,7 @@ void GUI_Button::setRect(iRect& NewRect)
 			m_sy[0] = GUI_UI_BUTTON_86PX_GOLD_UP_Y;
 			m_sx[1] = GUI_UI_BUTTON_86PX_GOLD_DOWN_X;
 			m_sy[1] = GUI_UI_BUTTON_86PX_GOLD_DOWN_Y;
-			NewRect.x2 = 86;//width correction
+			m_tRect.x2 = 86;//width correction
 		}
 		break;
 		default:
@@ -144,7 +145,6 @@ void GUI_Button::setRect(iRect& NewRect)
 		}
 		break;
 	}
-	m_tRect = NewRect;
 }
 
 void GUI_Button::setButtonEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent)
@@ -192,7 +192,7 @@ void GUI_Button::render()
 
 	Surface* renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
-	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+(m_tRect.x2/2)+(pressed ? 1 : 0)-m_startX, m_tRect.y1+(pressed ? 7 : 6), m_label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
+	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1 + (m_tRect.x2 / 2) + (pressed ? 1 : 0) - m_startX, m_tRect.y1 + (pressed ? 7 : 6), m_label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
 }
 
 GUI_RadioButton::GUI_RadioButton(iRect boxRect, const std::string labelName, Uint32 internalID, const std::string description):
@@ -234,5 +234,5 @@ void GUI_RadioButton::render()
 	
 	Surface* renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
-	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1+(m_tRect.x2/2)+(pressed ? 1 : 0)-m_startX, m_tRect.y1+(pressed ? 7 : 6), m_label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
+	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1 + (m_tRect.x2 / 2) + (pressed ? 1 : 0) - m_startX, m_tRect.y1 + (pressed ? 7 : 6), m_label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
 }

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,13 +34,13 @@
 #define INFO_FIRST_LABEL_TEXT PRODUCT_NAME
 #define INFO_FIRST_LABEL_X 132
 #define INFO_FIRST_LABEL_Y 41
-#define INFO_SECOND_LABEL_TEXT "Version 0.3.0 Pre-Alpha"
+#define INFO_SECOND_LABEL_TEXT "Version 0.5.0 Pre-Alpha"
 #define INFO_SECOND_LABEL_X 132
 #define INFO_SECOND_LABEL_Y 55
 #define INFO_THIRD_LABEL_TEXT "Written by: Saiyans King"
 #define INFO_THIRD_LABEL_X 132
 #define INFO_THIRD_LABEL_Y 70
-#define INFO_FOURTH_LABEL_TEXT "©Copyright© 2019"
+#define INFO_FOURTH_LABEL_TEXT "©Copyright© 2020"
 #define INFO_FOURTH_LABEL_X 132
 #define INFO_FOURTH_LABEL_Y 84
 #define INFO_FIFTH_LABEL_TEXT "Using: Simple DirectMedia Layer 2.0"
@@ -114,19 +114,19 @@ void UTIL_info()
 	newButton->setButtonEventCallback(&info_Events, INFO_WEBSITE_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(INFO_WIDTH-56, INFO_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(INFO_WIDTH - 56, INFO_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&info_Events, INFO_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(INFO_WIDTH-56, INFO_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
+	newButton = new GUI_Button(iRect(INFO_WIDTH - 56, INFO_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&info_Events, INFO_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Grouper* newGrouper = new GUI_Grouper(iRect(18, 32, INFO_WIDTH-36, INFO_HEIGHT-91));
+	GUI_Grouper* newGrouper = new GUI_Grouper(iRect(18, 32, INFO_WIDTH - 36, INFO_HEIGHT - 91));
 	newWindow->addChild(newGrouper);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(27, INFO_HEIGHT-105, INFO_WIDTH-54, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(27, INFO_HEIGHT - 105, INFO_WIDTH - 54, 2));
 	newWindow->addChild(newSeparator);
-	newSeparator = new GUI_Separator(iRect(13, INFO_HEIGHT-40, INFO_WIDTH-26, 2));
+	newSeparator = new GUI_Separator(iRect(13, INFO_HEIGHT - 40, INFO_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
 }

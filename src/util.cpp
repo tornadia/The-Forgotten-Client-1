@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -20,6 +20,9 @@
 */
 
 #include "util.h"
+#include "engine.h"
+
+#include <random>
 #ifdef __WIN32__
 #include <Shellapi.h>
 #endif
@@ -29,7 +32,7 @@ LPXTEA_DECRYPT XTEA_decrypt;
 LPXTEA_ENCRYPT XTEA_encrypt;
 LPADLER32CHECKSUM adler32Checksum;
 
-Uint32 g_randomSeed = 0x72434654;
+extern Engine g_engine;
 
 static const Uint8 outfitColorTable[][3] =
 {
@@ -119,6 +122,22 @@ void getOutfitColorRGB(Uint8 color, Uint8& r, Uint8& g, Uint8& b)
 	b = RGBc[2];
 }
 
+SDL_FORCE_INLINE float edgeFunction(const float a[2], const float b[2], const float c[2])
+{
+	return (c[0] - a[0]) * (b[1] - a[1]) - (c[1] - a[1]) * (b[0] - a[0]);
+}
+
+void getTrianglePointFloat(const float v0[2], const float v1[2], const float v2[2], const float c0[3], const float c1[3], const float c2[3], const float p[2], float result[3])
+{
+	float area = edgeFunction(v0, v1, v2);
+	float w0 = edgeFunction(v1, v2, p); w0 /= area;
+	float w1 = edgeFunction(v2, v0, p); w1 /= area;
+	float w2 = edgeFunction(v0, v1, p); w2 /= area;
+	result[0] = w0 * c0[0] + w1 * c1[0] + w2 * c2[0];
+	result[1] = w0 * c0[1] + w1 * c1[1] + w2 * c2[1];
+	result[2] = w0 * c0[2] + w1 * c1[2] + w2 * c2[2];
+}
+
 #ifdef __GNUC__
 void __cpuid(int* cpuinfo, int info)
 {
@@ -140,6 +159,54 @@ bool SDL_HasSSSE3()
 	int cpuinfo[4];
 	__cpuid(cpuinfo, 1);
 	return (cpuinfo[2] & (1 << 9));
+	#else
+	return false;
+	#endif
+}
+
+bool SDL_HasFMA3()
+{
+	//SDL don't have checks for FMA3 so write one ourself
+	//Currently only gcc + msvc
+	#if defined(__GNUC__) || defined(_MSC_VER)
+	if(!SDL_HasAVX())
+		return false;
+
+	int cpuinfo[4];
+	__cpuid(cpuinfo, 1);
+	return (cpuinfo[2] & (1 << 12));
+	#else
+	return false;
+	#endif
+}
+
+bool SDL_HasFMA4()
+{
+	//SDL don't have checks for FMA4 so write one ourself
+	//Currently only gcc + msvc
+	#if defined(__GNUC__) || defined(_MSC_VER)
+	if(!SDL_HasAVX())
+		return false;
+
+	int cpuinfo[4];
+	__cpuid(cpuinfo, 0x80000001);
+	return (cpuinfo[2] & (1 << 16));
+	#else
+	return false;
+	#endif
+}
+
+bool SDL_HasXOP()
+{
+	//SDL don't have checks for XOP so write one ourself
+	//Currently only gcc + msvc
+	#if defined(__GNUC__) || defined(_MSC_VER)
+	if(!SDL_HasAVX())
+		return false;
+
+	int cpuinfo[4];
+	__cpuid(cpuinfo, 0x80000001);
+	return (cpuinfo[2] & (1 << 11));
 	#else
 	return false;
 	#endif
@@ -201,6 +268,7 @@ char* SDL_GetCPUName()
 		//Trim the spaces if there's any
 		if(g_buffer[i] != ' ' && g_buffer[i] != '\0')
 			break;
+
 		g_buffer[i] = '\0';
 	}
 	return g_buffer;
@@ -245,7 +313,7 @@ void UTIL_integer_scale(Sint32& w, Sint32& h, Sint32 expectW, Sint32 expectH, Si
 	{
 		if(!haveXvalue)
 		{
-			Sint32 tW = w*i;
+			Sint32 tW = w * i;
 			if(tW >= expectW)
 			{
 				w = tW;
@@ -254,7 +322,7 @@ void UTIL_integer_scale(Sint32& w, Sint32& h, Sint32 expectW, Sint32 expectH, Si
 			}
 			else if(tW > limitW)
 			{
-				tW = w*(i-1);
+				tW = w * (i - 1);
 				w = tW;
 				haveXvalue = true;
 				if(haveYvalue) return;
@@ -262,7 +330,7 @@ void UTIL_integer_scale(Sint32& w, Sint32& h, Sint32 expectW, Sint32 expectH, Si
 		}
 		if(!haveYvalue)
 		{
-			Sint32 tH = h*i;
+			Sint32 tH = h * i;
 			if(tH >= expectH)
 			{
 				h = tH;
@@ -271,7 +339,7 @@ void UTIL_integer_scale(Sint32& w, Sint32& h, Sint32 expectW, Sint32 expectH, Si
 			}
 			else if(tH > limitW)
 			{
-				tH = h*(i-1);
+				tH = h * (i - 1);
 				h = tH;
 				haveYvalue = true;
 				if(haveXvalue) return;
@@ -377,7 +445,7 @@ std::string SDL_ReadProtobufString(SDL_RWops* src)
 
 void UTIL_SetClipboardTextLatin1(const char* clipboardText)
 {
-	char* utf8Text = SDL_iconv_string("UTF-8", "ISO-8859-1", clipboardText, SDL_strlen(clipboardText)+1);
+	char* utf8Text = SDL_iconv_string("UTF-8", "ISO-8859-1", clipboardText, SDL_strlen(clipboardText) + 1);
 	if(utf8Text)
 	{
 		SDL_SetClipboardText(utf8Text);
@@ -391,7 +459,7 @@ char* UTIL_GetClipboardTextLatin1()
 	if(!clipboardText)
 		return NULL;
 
-	char* latin1Text = SDL_iconv_string("ISO-8859-1", "UTF-8", clipboardText, SDL_strlen(clipboardText)+1);
+	char* latin1Text = SDL_iconv_string("ISO-8859-1", "UTF-8", clipboardText, SDL_strlen(clipboardText) + 1);
 	SDL_free(clipboardText);
 	return latin1Text;
 }
@@ -408,21 +476,21 @@ void UTIL_OpenURL(const char* url)
 {
 	//SDL don't have any native function to open a web browser with given url so write one ourselves
 	#ifdef SDL_VIDEO_DRIVER_WINDOWS
-		ShellExecuteA(GetDesktopWindow(), "open", url, NULL, NULL, SW_SHOWNORMAL);
+	ShellExecuteA(GetDesktopWindow(), "open", url, NULL, NULL, SW_SHOWNORMAL);
 	#else
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "xdg-open %s", apps[i], url);
-		system(g_buffer);
-		/*char *apps[] = {"xdg-open", "x-www-browser", "firefox", "chrome", "opera", "mozilla", "galeon", "konqueror", "safari", "open", NULL};
-		for(int i = 0; apps[i]; ++i)
+	SDL_snprintf(g_buffer, sizeof(g_buffer), "xdg-open %s", apps[i], url);
+	system(g_buffer);
+	/*char* apps[] = {"xdg-open", "x-www-browser", "firefox", "chrome", "opera", "mozilla", "galeon", "konqueror", "safari", "open", NULL};
+	for(int i = 0; apps[i]; ++i)
+	{
+		SDL_snprintf(g_buffer, sizeof(g_buffer), "which %s >/dev/null", apps[i]);
+		if(system(g_buffer) == 0)
 		{
-			SDL_snprintf(g_buffer, sizeof(g_buffer), "which %s >/dev/null", apps[i]);
-			if(system(g_buffer) == 0)
-			{
-				SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s", apps[i], url);
-				system(g_buffer);
-				return;
-			}
-		}*/
+			SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s", apps[i], url);
+			system(g_buffer);
+			return;
+		}
+	}*/
 	#endif
 }
 
@@ -488,8 +556,8 @@ void UTIL_replaceString(std::string& str, const std::string& sought, const std::
 	size_t replaceLen = replacement.length();
 	while((pos = str.find(sought, start)) != std::string::npos)
 	{
-		str.assign(str.substr(0, pos).append(replacement).append(str.substr(pos+soughtLen)));
-		start = pos+replaceLen;
+		str.assign(str.substr(0, pos).append(replacement).append(str.substr(pos + soughtLen)));
+		start = pos + replaceLen;
 	}
 }
 
@@ -499,8 +567,8 @@ StringVector UTIL_explodeString(const std::string& inString, const std::string& 
 	std::string::size_type start = 0, end = 0;
 	while(--limit != -1 && (end = inString.find(separator, start)) != std::string::npos)
 	{
-		returnVector.push_back(inString.substr(start, end-start));
-		start = end+separator.size();
+		returnVector.push_back(inString.substr(start, end - start));
+		start = end + separator.size();
 	}
 
 	returnVector.push_back(inString.substr(start));
@@ -509,12 +577,14 @@ StringVector UTIL_explodeString(const std::string& inString, const std::string& 
 
 Sint32 UTIL_random(Sint32 min_range, Sint32 max_range)
 {
-	g_randomSeed = (8253729 * g_randomSeed + 2396403);
-	Uint32 v1 = (g_randomSeed & 65535);
-	g_randomSeed = (8253729 * g_randomSeed + 2396403);
-	Uint32 v2 = (g_randomSeed & 65535);
-	Uint32 value = v1 | (v2 << 16);
-	return min_range + (SDL_static_cast(Sint32, value) % (max_range-min_range+1));
+	static std::default_random_engine generator(SDL_static_cast(unsigned, time(NULL)));
+	static std::uniform_int_distribution<Sint32> uniformRand;
+	if(min_range == max_range)
+		return min_range;
+	else if(min_range > max_range)
+		std::swap(min_range, max_range);
+
+	return uniformRand(generator, std::uniform_int_distribution<Sint32>::param_type(min_range, max_range));
 }
 
 Uint16 UTIL_parseModifiers(Uint16 mods)
@@ -543,20 +613,48 @@ std::string UTIL_formatCreatureName(const std::string& name)
 	std::string formatedName = name;
 	if(!formatedName.empty())
 	{
-		bool upchnext = false;
+		bool upchnext = true;
 		for(size_t i = 0, len = formatedName.length(); i < len; ++i)
 		{
 			char character = formatedName[i];
 			if(upchnext)
 			{
-				formatedName[i] = SDL_static_cast(char, SDL_toupper(SDL_static_cast(int, character)));
+				formatedName[i] = (SDL_static_cast(unsigned char, character - 'a') <= ('Z' - 'A') ? character - 0x20 : character);
 				upchnext = false;
 			}
-			if(character == ' ')
-				upchnext = true;
+			else
+			{
+				if(character == ' ')
+					upchnext = true;
+				else
+					formatedName[i] = (SDL_static_cast(unsigned char, character - 'A') <= ('z' - 'a') ? character + 0x20 : character);
+			}
 		}
 	}
 	return formatedName;
+}
+
+std::string UTIL_formatConsoleText(const std::string& text)
+{
+	std::string result;
+	for(size_t i = 0, end = text.length(); i < end; ++i)
+	{
+		Uint8 character = SDL_static_cast(Uint8, text[i]);
+		if(character == 0x0E)
+		{
+			if(i + 4 < end)
+				i += 3;
+			else
+				i = end;
+
+			continue;
+		}
+		else if(character == 0x0F)
+			continue;
+		else
+			result.push_back(character);
+	}
+	return result;
 }
 
 std::string UTIL_formatStringCommas(const std::string& v)
@@ -593,6 +691,48 @@ std::string UTIL_formatDate(const char* format, time_t time)
 #if (defined(_MSC_VER) && (_MSC_VER >= 1400))
 #pragma warning(pop)
 #endif
+
+void UTIL_parseSizedText(const std::string& text, size_t start, Uint8 fontId, Uint32 allowedWidth, void* _THIS, size_t(*callback)(void* __THIS, bool skipLine, size_t start, size_t length))
+{
+	//TODO: optimize this for speed
+	size_t goodPos = 0;
+	size_t i = start;
+	size_t strLen = text.length();
+	while(i < strLen)
+	{
+		if(text[i] == '\n')
+		{
+			strLen += callback(_THIS, false, start, i - start + 1);
+			start = i + 1;
+			i = start;
+			goodPos = 0;
+			continue;
+		}
+
+		Uint32 width = g_engine.calculateFontWidth(fontId, text, start, i - start + 1);
+		if(width >= allowedWidth)
+		{
+			if(goodPos != 0)
+			{
+				strLen += callback(_THIS, false, start, goodPos - start + 1);
+				start = goodPos + 1;
+				goodPos = 0;
+				continue;
+			}
+			else
+			{
+				strLen += callback(_THIS, true, start, i - start);
+				start = i;
+			}
+		}
+		else if(text[i] == ' ')
+			goodPos = i;
+
+		++i;
+	}
+	if(i > start)
+		callback(_THIS, false, start, i - start + 1);
+}
 
 #ifdef __USE_AVX2__
 bool XTEA_decrypt_AVX2(Uint8* buffer, size_t size, const Uint32* keys)
@@ -1016,18 +1156,23 @@ Uint32 adler32Checksum_scalar(const Uint8* data, size_t length)
 	return (b << 16) | a;
 }
 
+void UTIL_FastCopy_Standard(Uint8* dst, const Uint8* src, size_t size)
+{
+	#if defined(_WIN32)
+	__movsb(dst, src, size);
+	#elif defined(__i386__) || defined(__x86_64___)
+	__asm__ __volatile__("rep movsb" : "+D"(dst), "+S"(src), "+c"(size) : : "memory");
+	#else
+	SDL_memcpy(dst, src, size);
+	#endif
+}
+
 #ifdef __USE_SSE__
 void UTIL_FastCopy_SSE(Uint8* dst, const Uint8* src, size_t size)
 {
 	if(size <= 128)
 	{
-		#if defined(_WIN32)
-		__movsb(dst, src, size);
-		#elif defined(__i386__) || defined(__x86_64___)
-		__asm__ __volatile__("rep movsb" : "+D"(dst), "+S"(src), "+c"(size) : : "memory");
-		#else
-		SDL_memcpy(dst, src, size);
-		#endif
+		UTIL_FastCopy_Standard(dst, src, size);
 		return;
 	}
 	size_t padding = (16 - (SDL_reinterpret_cast(size_t, dst) & 15)) & 15;
@@ -1078,15 +1223,7 @@ void UTIL_FastCopy_SSE(Uint8* dst, const Uint8* src, size_t size)
 	_mm_sfence();
 	size &= 63;
 	if(size)
-	{
-		#if defined(_WIN32)
-		__movsb(dst, src, size);
-		#elif defined(__i386__) || defined(__x86_64___)
-		__asm__ __volatile__("rep movsb" : "+D"(dst), "+S"(src), "+c"(size) : : "memory");
-		#else
-		SDL_memcpy(dst, src, size);
-		#endif
-	}
+		UTIL_FastCopy_Standard(dst, src, size);
 }
 #endif
 
@@ -1095,13 +1232,7 @@ void UTIL_FastCopy_SSE41(Uint8* dst, const Uint8* src, size_t size)
 {
 	if(size <= 128)
 	{
-		#if defined(_WIN32)
-		__movsb(dst, src, size);
-		#elif defined(__i386__) || defined(__x86_64___)
-		__asm__ __volatile__("rep movsb" : "+D"(dst), "+S"(src), "+c"(size) : : "memory");
-		#else
-		SDL_memcpy(dst, src, size);
-		#endif
+		UTIL_FastCopy_Standard(dst, src, size);
 		return;
 	}
 	size_t padding = (16 - (SDL_reinterpret_cast(size_t, dst) & 15)) & 15;
@@ -1150,32 +1281,12 @@ void UTIL_FastCopy_SSE41(Uint8* dst, const Uint8* src, size_t size)
 	_mm_sfence();
 	size &= 63;
 	if(size)
-	{
-		#if defined(_WIN32)
-		__movsb(dst, src, size);
-		#elif defined(__i386__) || defined(__x86_64___)
-		__asm__ __volatile__("rep movsb" : "+D"(dst), "+S"(src), "+c"(size) : : "memory");
-		#else
-		SDL_memcpy(dst, src, size);
-		#endif
-	}
+		UTIL_FastCopy_Standard(dst, src, size);
 }
 #endif
 
-void UTIL_FastCopy_Standard(Uint8* dst, const Uint8* src, size_t size)
-{
-	#if defined(_WIN32)
-	__movsb(dst, src, size);
-	#elif defined(__i386__) || defined(__x86_64___)
-	__asm__ __volatile__("rep movsb" : "+D"(dst), "+S"(src), "+c"(size) : : "memory");
-	#else
-	SDL_memcpy(dst, src, size);
-	#endif
-}
-
 void UTIL_initSubsystem()
 {
-	g_randomSeed += SDL_static_cast(Uint32, time(NULL));
 	UTIL_FastCopy = SDL_reinterpret_cast(LPUTIL_FastCopy, UTIL_FastCopy_Standard);
 	XTEA_decrypt = SDL_reinterpret_cast(LPXTEA_DECRYPT, XTEA_decrypt_scalar);
 	XTEA_encrypt = SDL_reinterpret_cast(LPXTEA_ENCRYPT, XTEA_encrypt_scalar);

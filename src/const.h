@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,6 +24,7 @@
 
 #include "defines.h"
 
+#define CLIENT_TFC_PROTOCOL 50
 #define CLIENT_OVVERIDE_VERSION 0
 #if CLIENT_OVVERIDE_VERSION > 0
 #define CLIENT_OVVERIDE_PROTOCOL_VERSION 860
@@ -69,6 +70,11 @@ const Uint8 CLIENT_FONT_NONOUTLINED = 0;
 const Uint8 CLIENT_FONT_OUTLINED = 1;
 const Uint8 CLIENT_FONT_SMALL = 2;
 const Uint8 CLIENT_FONT_LAST = 3;
+
+//Light Modes ids
+const Uint8 CLIENT_LIGHT_MODE_NONE = 0;
+const Uint8 CLIENT_LIGHT_MODE_OLD = 1;
+const Uint8 CLIENT_LIGHT_MODE_NEW = 2;
 
 //Graphics Engines ids
 const Uint8 CLIENT_ENGINE_SOFTWARE = 0;
@@ -123,23 +129,22 @@ const size_t CHAT_MAXIMUM_MESSAGE_HISTORY = 500;
 const Uint32 MAX_CANCEL_WALK_BEFORE_STOP_AUTOWALK = 10;
 
 #define GAME_MAX_CONTAINERS 16
+#define GAME_PANEL_FIXED_WIDTH 176
 #define GAME_PANEL_MINIMUM_HEIGHT 57
-#define GAME_MINIMUM_WIDTH 640
-#define GAME_MINIMUM_HEIGHT 480
+#define GAME_MINIMUM_WIDTH 800//640
+#define GAME_MINIMUM_HEIGHT 600//480
 #define GAME_MAP_WIDTH 18
 #define GAME_MAP_HEIGHT 14
 #define GAME_MAP_FLOORS 15
 #define GAME_MAP_AWARERANGE 2
 #define GAME_PLAYER_FLOOR 7
-#define RENDERTARGET_WIDTH ((GAME_MAP_WIDTH-3)*32)
-#define RENDERTARGET_HEIGHT ((GAME_MAP_HEIGHT-3)*32)
+#define RENDERTARGET_WIDTH ((GAME_MAP_WIDTH - 3) * 32)
+#define RENDERTARGET_HEIGHT ((GAME_MAP_HEIGHT - 3) * 32)
 
-//The difference between hardware and software is that the first use videocard memory and second system memory
-//The circular buffer use bitwise operation instead of modulo which means the size should be power of 2
-#define HARDWARE_MAX_SPRITEMASKS 16384 //16384*32*32*4 ~ 64MB
-#define HARDWARE_MAX_AUTOMAPTILES 32 //32*256*256*4 ~ 8MB
-#define SOFTWARE_MAX_SPRITEMASKS 16384 //16384*32*32*4 ~ 64MB
-#define SOFTWARE_MAX_AUTOMAPTILES 32 //32*256*256*4 ~ 8MB
+//The circular buffer use bitwise operation instead of modulo which means the size must be power of 2
+//Higher value will result with better performance but will require more ram
+#define MAX_SPRITES 16384 //16384 * 32 * 32 * 4 ~ 64MB
+#define MAX_AUTOMAPTILES 16 //16 * 256 * 256 * 4 ~ 4MB
 #define VULKAN_INFLIGHT_FRAMES 2
 
 enum ContextMenu_Styles : Uint8
@@ -162,7 +167,10 @@ enum Slots : Uint8
 	SLOT_FEET = 7,
 	SLOT_RING = 8,
 	SLOT_AMMO = 9,
-	SLOT_LAST = 10
+	SLOT_PURSE = 10,
+	SLOT_STORE = 11,
+	SLOT_BLESSINGS = 12,
+	SLOT_LAST = 13
 };
 
 enum Direction : Uint8
@@ -394,7 +402,7 @@ enum MessageMode : Uint8
 	MessageRVRAnswer,
 	MessageRVRContinue,
 	MessageGameHighlight,
-	MessageNpcFromStartBlock,
+	MessageNpcFromBlock,
 	MessageInvalid = 0xFF
 };
 
@@ -447,6 +455,16 @@ enum MarketOfferState : Uint8
 	OFFERSTATE_ACCEPTEDEX = 255
 };
 
+enum ResourceBalanceTypes : Uint8
+{
+	RESOURCETYPE_BANK_GOLD = 0,
+	RESOURCETYPE_INVENTORY_GOLD = 1,
+	RESOURCETYPE_PREY_BONUS_REROLLS = 10,
+	RESOURCETYPE_COLLECTION_TOKENS = 20,
+	RESOURCETYPE_CHARM_POINTS = 30,
+	RESOURCETYPE_TOURNAMENT_TICKET_VOUCHERS = 40
+};
+
 enum CyclopediaCharacterInfoType : Uint8
 {
 	CHARACTERINFO_BASEINFORMATION = 0,
@@ -461,6 +479,21 @@ enum CyclopediaCharacterInfoType : Uint8
 	CHARACTERINFO_INSPECTION = 9,
 	CHARACTERINFO_BADGES = 10,
 	CHARACTERINFO_TITLES = 11
+};
+
+enum CyclopediaMapData : Uint8
+{
+	MAPDATA_SETMARK = 0,
+	MAPDATA_AREADATA = 1,
+	MAPDATA_SETRAID = 2,
+	MAPDATA_IMMINENTRAID = 3,
+	MAPDATA_UNKNOWN4 = 4,
+	MAPDATA_INTERESTPOINTS = 5,
+	MAPDATA_UNKNOWN6 = 6,
+	MAPDATA_UNKNOWN7 = 7,
+	MAPDATA_UNKNOWN8 = 8,
+	MAPDATA_IMPROVEDRESPAWNS = 9,
+	MAPDATA_UNKNOWN10 = 10
 };
 
 enum FeatureEventType : Uint8
@@ -613,6 +646,41 @@ enum SortMethods : Uint8
 	Sort_Descending_Name = 7
 };
 
+enum ShopSortMethods : Uint8
+{
+	Shop_Sort_Name = 0,
+	Shop_Sort_Price = 1,
+	Shop_Sort_Weight = 2
+};
+
+enum VipSortMethods : Uint8
+{
+	Vip_Sort_Name = 0,
+	Vip_Sort_Status = 1,
+	Vip_Sort_Type = 2
+};
+
+enum VipStatus : Uint8
+{
+	VIP_STATUS_OFFLINE = 0,
+	VIP_STATUS_ONLINE = 1,
+	VIP_STATUS_PENDING = 2
+};
+
+enum VipGroupActions : Uint8
+{
+	VIP_GROUP_ACTION_ADD = 1,
+	VIP_GROUP_ACTION_EDIT = 2,
+	VIP_GROUP_ACTION_REMOVE = 3
+};
+
+enum VipActions : Uint8
+{
+	VIP_ACTION_NONE = 0,
+	VIP_ACTION_PLAYER = 1,
+	VIP_ACTION_GROUP = 2
+};
+
 enum MapMarks : Uint8
 {
 	MAPMARK_TICK = 0,
@@ -635,6 +703,15 @@ enum MapMarks : Uint8
 	MAPMARK_REDWEST = 17,
 	MAPMARK_GREENNORTH = 18,
 	MAPMARK_GREENSOUTH = 19
+};
+
+enum ChannelEvent : Uint8
+{
+	CHANNEL_EVENT_JOIN = 0,
+	CHANNEL_EVENT_LEAVE = 1,
+	CHANNEL_EVENT_INVITE = 2,
+	CHANNEL_EVENT_EXCLUDE = 3,
+	CHANNEL_EVENT_PENDING = 4
 };
 
 enum PlayerVocations : Uint8
@@ -850,20 +927,20 @@ enum GameFeatures
 	//8.40+
 	GAME_FEATURE_SERVER_SENDFIRST,
 	GAME_FEATURE_DOUBLE_CAPACITY,
+	GAME_FEATURE_TILE_ADDTHING_STACKPOS,
 	//8.50+
 	GAME_FEATURE_CREATURE_EMBLEM,
 	//8.60+
 	GAME_FEATURE_ATTACK_SEQUENCE,
-	GAME_FEATURE_LONGER_DIAGONAL,
 	GAME_FEATURE_DEATH_PENALTY,
 	//8.70+
 	GAME_FEATURE_MOUNTS,
 	GAME_FEATURE_DOUBLE_EXPERIENCE,
 	GAME_FEATURE_SPELL_LIST,
+	GAME_FEATURE_CHAT_PLAYERLIST,
 	//9.10+
 	GAME_FEATURE_TOTAL_CAPACITY,
 	GAME_FEATURE_BASE_SKILLS,
-	GAME_FEATURE_CHAT_PLAYERLIST,
 	GAME_FEATURE_REGENERATION_TIME,
 	GAME_FEATURE_ITEM_ANIMATION_PHASES,
 	GAME_FEATURE_ENVIRONMENT_EFFECTS,
@@ -878,9 +955,11 @@ enum GameFeatures
 	GAME_FEATURE_EXTENDED_SPRITES,
 	GAME_FEATURE_LOOKATCREATURE,
 	GAME_FEATURE_ADDITIONAL_VIPINFO,
-	//9.80+
+	//9.70+
 	GAME_FEATURE_PREVIEW_STATE,
 	GAME_FEATURE_CLIENT_VERSION,
+	//9.80+
+	GAME_FEATURE_KEEP_CONNECTION_AFTER_DEATH,
 	GAME_FEATURE_LOGIN_PENDING,
 	GAME_FEATURE_VIP_STATUS,
 	GAME_FEATURE_NEWSPEED_LAW,
@@ -932,6 +1011,7 @@ enum GameFeatures
 	GAME_FEATURE_BLESS_DIALOG,
 	GAME_FEATURE_QUEST_TRACKER,
 	//11.30+
+	GAME_FEATURE_GAMETIME,
 	GAME_FEATURE_COMPEDIUM,
 	//11.40+
 	GAME_FEATURE_PLAYERICONS_U32,
@@ -950,6 +1030,8 @@ enum GameFeatures
 	GAME_FEATURE_TOURNAMENTS,
 	//12.20+
 	GAME_FEATURE_ACCOUNT_EMAIL,
+	//8.40-(deprecated in 8.41+)
+	GAME_FEATURE_UPDATE_TILE,
 	//Custom
 	GAME_FEATURE_ITEMS_U16,
 	GAME_FEATURE_EFFECTS_U16,

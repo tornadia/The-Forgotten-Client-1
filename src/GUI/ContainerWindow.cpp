@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -76,7 +76,7 @@ void container_Events(Uint32 event, Sint32 status)
 					pPanel->setSize(pRect.x2, 19);
 					parent->checkPanels();
 
-					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(CONTAINER_CONTAINER_EVENTID));
+					GUI_ContainerContainer* pContainer = SDL_static_cast(GUI_ContainerContainer*, pPanel->getChild(CONTAINER_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeInvisible();
 
@@ -90,9 +90,12 @@ void container_Events(Uint32 event, Sint32 status)
 				}
 				else
 				{
-					UTIL_ResizePanel(SDL_reinterpret_cast(void*, pPanel), pRect.x2, pPanel->getCachedHeight());
+					Sint32 cachedHeight = pPanel->getCachedHeight();
+					parent->tryFreeHeight(cachedHeight - pRect.y2);
+					pPanel->setSize(pRect.x2, cachedHeight);
+					parent->checkPanels();
 
-					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(CONTAINER_CONTAINER_EVENTID));
+					GUI_ContainerContainer* pContainer = SDL_static_cast(GUI_ContainerContainer*, pPanel->getChild(CONTAINER_CONTAINER_EVENTID));
 					if(pContainer)
 						pContainer->makeVisible();
 
@@ -136,7 +139,7 @@ void container_Events(Uint32 event, Sint32 status)
 					if(pContainer)
 					{
 						iRect cRect = pContainer->getRect();
-						cRect.y2 = status-43;
+						cRect.y2 = status - 43;
 						pContainer->setRect(cRect);
 					}
 
@@ -145,7 +148,7 @@ void container_Events(Uint32 event, Sint32 status)
 					{
 						iRect pRect = pPanel->getRect();
 						iRect cRect = pContent->getRect();
-						cRect.y1 = pRect.y1+status-30;
+						cRect.y1 = pRect.y1 + status - 30;
 						pContent->setRect(cRect);
 					}
 				}
@@ -155,7 +158,7 @@ void container_Events(Uint32 event, Sint32 status)
 					if(pContainer)
 					{
 						iRect cRect = pContainer->getRect();
-						cRect.y2 = status-19;
+						cRect.y2 = status - 19;
 						pContainer->setRect(cRect);
 					}
 				}
@@ -181,7 +184,7 @@ void container_Events(Uint32 event, Sint32 status)
 					if(SDL_static_cast(Uint16, container->getCapacity()) > container->getFirstIndex())
 						g_game.sendSeekInContainer(index, 0);
 					else
-						g_game.sendSeekInContainer(index, container->getFirstIndex()-SDL_static_cast(Uint16, container->getCapacity()));
+						g_game.sendSeekInContainer(index, container->getFirstIndex() - SDL_static_cast(Uint16, container->getCapacity()));
 				}
 			}
 		}
@@ -193,7 +196,7 @@ void container_Events(Uint32 event, Sint32 status)
 			{
 				Container* container = g_game.findContainer(index);
 				if(container)
-					g_game.sendSeekInContainer(index, container->getFirstIndex()+SDL_static_cast(Uint16, container->getCapacity()));
+					g_game.sendSeekInContainer(index, container->getFirstIndex() + SDL_static_cast(Uint16, container->getCapacity()));
 			}
 		}
 		break;
@@ -213,12 +216,12 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 
 	if(pPanel)
 	{
-		GUI_Label* pLabel = SDL_static_cast(GUI_Label*, pPanel->getChild(CONTAINER_TITLE_EVENTID));
-		if(pLabel)
-			pLabel->setName(container->getName());
+		GUI_DynamicLabel* pDynamicLabel = SDL_static_cast(GUI_DynamicLabel*, pPanel->getChild(CONTAINER_TITLE_EVENTID));
+		if(pDynamicLabel)
+			pDynamicLabel->setName(container->getName());
 		else
 		{
-			GUI_Label* newLabel = new GUI_Label(iRect(19, 2, 0, 0), container->getName(), CONTAINER_TITLE_EVENTID, 144, 144, 144);
+			GUI_DynamicLabel* newLabel = new GUI_DynamicLabel(iRect(19, 2, 90, 14), container->getName(), CONTAINER_TITLE_EVENTID, 144, 144, 144);
 			pPanel->addChild(newLabel);
 		}
 
@@ -253,18 +256,20 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 		GUI_ContainerContainer* pContainer = SDL_static_cast(GUI_ContainerContainer*, pPanel->getChild(CONTAINER_CONTAINER_EVENTID));
 		if(pContainer)
 		{
-			pContainer->clearChilds();
+			pContainer->clearChilds(false);
 			for(size_t i = 0, end = SDL_static_cast(size_t, container->getCapacity()); i != end; ++i)
 			{
-				GUI_ContainerItem* newContainerItem = new GUI_ContainerItem(iRect(SDL_static_cast(Sint32, ((i%4)*37))+8, SDL_static_cast(Sint32, ((i/4)*37))-6, 32, 32), index, i);
+				GUI_ContainerItem* newContainerItem = new GUI_ContainerItem(iRect(SDL_static_cast(Sint32, ((i % 4) * 37)) + 8, SDL_static_cast(Sint32, ((i / 4) * 37)) - 6, 32, 32), index, i);
 				newContainerItem->startEvents();
-				pContainer->addChild(newContainerItem);
+				pContainer->addChild(newContainerItem, false);
 			}
 
 			pPanel->setMinHeight(60 + (container->hasPages() ? 24 : 0));
 			pContainer->setAsMaxHeight();
 			if(container->hasPages())
 				pPanel->setMaxHeight(pPanel->getMaxHeight() + 24);
+
+			pContainer->validateScrollBar();
 		}
 
 		if(container->hasPages())
@@ -273,18 +278,18 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 			GUI_Content* pContent = SDL_static_cast(GUI_Content*, pPanel->getChild(CONTAINER_PAGE_CONTENT_EVENTID));
 			if(!pContent)
 			{
-				pContent = new GUI_Content(iRect(2, panelRect.y2-30, 168, 24), CONTAINER_PAGE_CONTENT_EVENTID);
+				pContent = new GUI_Content(iRect(2, panelRect.y2 - 30, 168, 24), CONTAINER_PAGE_CONTENT_EVENTID);
 				pContent->startEvents();
 				pPanel->addChild(pContent);
 			}
 
-			Uint16 currentPage = 1+(container->getFirstIndex()/SDL_static_cast(Uint16, container->getCapacity()));
-			Uint16 totalPages = 1+((container->getSize() > 0 ? (container->getSize()-1) : 0)/SDL_static_cast(Uint16, container->getCapacity()));
+			Uint16 currentPage = 1 + (container->getFirstIndex() / SDL_static_cast(Uint16, container->getCapacity()));
+			Uint16 totalPages = 1 + ((container->getSize() > 0 ? (container->getSize() - 1) : 0) / SDL_static_cast(Uint16, container->getCapacity()));
 			bool hasPrevPage = (currentPage > 1);
 			bool hasNextPage = (totalPages > currentPage);
 
 			Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Page %u of %u", SDL_static_cast(Uint32, currentPage), SDL_static_cast(Uint32, totalPages));
-			pLabel = SDL_static_cast(GUI_Label*, pContent->getChild(CONTAINER_PAGE_TEXT_EVENTID));
+			GUI_Label* pLabel = SDL_static_cast(GUI_Label*, pContent->getChild(CONTAINER_PAGE_TEXT_EVENTID));
 			if(pLabel)
 				pLabel->setName(std::string(g_buffer, SDL_static_cast(size_t, len)));
 			else
@@ -347,8 +352,8 @@ void UTIL_createContainerWindow(Uint8 index)
 	if(!container)
 		return;
 
-	Sint32 defaultHeight = 40*SDL_static_cast(Sint32, UTIL_max<size_t>(1, ((container->getItems().size()+3)/4)));
-	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 19+defaultHeight+(container->hasPages() ? 24 : 0)), true, windowId, true);
+	Sint32 defaultHeight = 40 * SDL_static_cast(Sint32, UTIL_max<size_t>(1, ((container->getItems().size() + 3) / 4)));
+	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, GAME_PANEL_FIXED_WIDTH - 4, 19 + defaultHeight + (container->hasPages() ? 24 : 0)), true, windowId, true);
 	newWindow->setEventCallback(&container_Events, container_CreateEvent(index, CONTAINER_RESIZE_WIDTH_EVENTID), container_CreateEvent(index, CONTAINER_RESIZE_HEIGHT_EVENTID), container_CreateEvent(index, CONTAINER_EXIT_WINDOW_EVENTID));
 	GUI_ContainerImage* newImage = new GUI_ContainerImage(iRect(2, 0, 12, 12), index);
 	newWindow->addChild(newImage);
@@ -364,7 +369,9 @@ void UTIL_createContainerWindow(Uint8 index)
 	newContainer->startEvents();
 	newWindow->addChild(newContainer);
 	UTIL_recreateContainerWindow(index, newWindow);
-	g_engine.addToPanel(newWindow);
+	if(!g_engine.addToPanel(newWindow))
+		delete newWindow;
+
 	container->resetDirty();
 }
 
@@ -517,7 +524,7 @@ void GUI_ContainerItem::onRMouseDown(Sint32, Sint32)
 void GUI_ContainerItem::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2);
 
 	Container* container = g_game.findContainer(m_cid);
 	if(!container)
@@ -536,9 +543,9 @@ void GUI_ContainerItem::render()
 			}
 
 			if(container->isUnlocked())
-				renderer->drawRectangle(m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2, 255, 255, 255, 255);
+				renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 255, 255, 255, 255);
 			else
-				renderer->drawRectangle(m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2, 255, 0, 0, 255);
+				renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 255, 0, 0, 255);
 		}
 	}
 }

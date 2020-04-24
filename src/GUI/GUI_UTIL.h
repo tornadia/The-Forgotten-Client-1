@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -50,6 +50,9 @@ void UTIL_info();
 //Exit window
 void UTIL_exitWarning();
 
+//Logout window
+void UTIL_logout();
+
 //Message Box window
 void UTIL_messageBox(const std::string& title, const std::string& message);
 
@@ -79,6 +82,15 @@ void UTIL_createOutfitWindow(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Ui
 //Item Move window
 void UTIL_createItemMove();
 
+//Modal Dialog Window
+void UTIL_createModalDialog(Uint32 windowId, bool priority, const std::string& title, const std::string& message, Uint8 enterButtonId, Uint8 escapeButtonId, std::vector<std::pair<std::string, Uint8>>& buttons, std::vector<std::pair<std::string, Uint8>>& choices);
+
+//Ignore List Window
+void UTIL_createIgnoreList();
+void UTIL_toggleIgnore(const std::string& playerName);
+bool UTIL_onBlackList(const std::string& playerName);
+bool UTIL_onWhiteList(const std::string& playerName);
+
 //Tutorial Hint window
 void UTIL_createTutorialHint(Uint32 hintId);
 
@@ -91,7 +103,7 @@ void UTIL_updateHealthPanel();
 void UTIL_flashHealthPanel();
 
 //Inventory widget
-void UTIL_createInventoryPanel();
+void UTIL_createInventoryPanel(bool minimized = false);
 void UTIL_updateInventoryPanel();
 void UTIL_flashQuestsButton();
 void UTIL_flashFollowButton();
@@ -119,9 +131,26 @@ void UTIL_refreshPartyWindow();
 
 //VIP widget
 void UTIL_toggleVipWindow();
+void UTIL_createVipPopupMenu(Sint32 x, Sint32 y, VipAction& action);
+void UTIL_resetVipPlayers();
+void UTIL_addVipPlayer(Uint32 playerGUID, const std::string& playerName, const std::string& description, Uint32 iconId, bool notifyLogin, Uint8 status, std::vector<Uint8>& groups);
+void UTIL_changeVipStatus(Uint32 playerGUID, Uint8 status);
+void UTIL_changeVipGroups(std::vector<VipGroups>& groups, Uint8 createGroupsLeft);
+bool UTIL_haveVipPlayer(const std::string& name);
 
 //Container widget
 void UTIL_createContainerWindow(Uint8 index);
+
+//Trade widget
+void UTIL_createTradeWindow(bool counter, const std::string& name, void* itemsData);
+void UTIL_closeTradeWindow();
+
+//Shop widget
+void UTIL_createShopWindow(const std::string& name, Uint16 currencyId, void* itemsData);
+void UTIL_createShopPopupMenu(Sint32 x, Sint32 y);
+void UTIL_goodsShopWindow(Uint64 playerMoney, void* itemsData);
+void UTIL_closeShopWindow();
+void UTIL_updateShopWindow();
 
 //Spells widget
 void UTIL_toggleSpellsWindow();

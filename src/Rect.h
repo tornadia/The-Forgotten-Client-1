@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -90,9 +90,9 @@ struct iRect
 	bool isPointInside(const Sint32 posX, const Sint32 posY) const
 	{
 		#if !defined(__ALLOW_WINDOWS_OUTBOUNDS__)
-		return (SDL_static_cast(Uint32, posX-x1) < SDL_static_cast(Uint32, x2) && SDL_static_cast(Uint32, posY-y1) < SDL_static_cast(Uint32, y2));
+		return (SDL_static_cast(Uint32, posX - x1) < SDL_static_cast(Uint32, x2) && SDL_static_cast(Uint32, posY - y1) < SDL_static_cast(Uint32, y2));
 		#else
-		return (x1 <= posX && y1 <= posY && x1+x2 >= posX && y1+y2 >= posY);
+		return (x1 <= posX && y1 <= posY && x1 + x2 >= posX && y1 + y2 >= posY);
 		#endif
 	}
 

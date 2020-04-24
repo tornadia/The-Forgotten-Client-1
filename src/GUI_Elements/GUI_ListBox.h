@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -32,15 +32,16 @@ class GUI_ListBox : public GUI_Element
 		~GUI_ListBox();
 
 		void setRect(iRect& NewRect);
-		void setEventCallback(void(*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);
+		void setEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);
 
 		SDL_FORCE_INLINE Sint32 getSelect() {return m_select;}
 		void setSelect(Sint32 select);
 
 		void add(const std::string data);
+		void set(Sint32 select, const std::string data);
 		void erase(Sint32 select);
 
-		void onKeyDown(SDL_Event event);
+		void onKeyDown(SDL_Event& event);
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);

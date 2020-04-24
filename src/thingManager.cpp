@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,12 +31,6 @@ extern SpriteManager g_spriteManager;
 extern Uint32 g_datRevision;
 
 /*flags: These are values that represent how the client can interact with the appearance, and it's mostly used for Objects.
-
-write: If the object is writable and editable.
-max_text_length: Maximum number of characters it can hold.
-
-write_once: If the object is writable, but only once.
-max_text_length_once: Maximum number of characters it can hold.
 
 lenshelp: If the appearance should trigger the help icon when the help feature is used on the client.
 id: The ID of the help tooltip.
@@ -463,7 +457,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 			ThingFrameGroup frameGroupType = ThingFrameGroup_Default;
 			Uint32 frameGroupId = 0;
 
-			Sint64 framegroupLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+			Sint64 framegroupLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 			while(SDL_RWtell(rwops) < framegroupLimit)
 			{
 				tag = SDL_ReadProtobufTag(rwops);
@@ -479,7 +473,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					frameGroupId = SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops));
 				else if(tagHigh == 3 && tagLow == 26)// optional .tibia.protobuf.appearances.SpriteInfo sprite_info = 3;
 				{
-					Sint64 spriteInfoLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+					Sint64 spriteInfoLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 					while(SDL_RWtell(rwops) < spriteInfoLimit)
 					{
 						tag = SDL_ReadProtobufTag(rwops);
@@ -504,11 +498,11 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 									haveData = (SDL_RWtell(rwops) < spriteInfoLimit);
 								} while(haveData && SDL_ReadU8(rwops) == 40);
 								if(haveData)//Rewind one byte
-									SDL_RWseek(rwops, SDL_RWtell(rwops)-1, RW_SEEK_SET);
+									SDL_RWseek(rwops, SDL_RWtell(rwops) - 1, RW_SEEK_SET);
 							}
 							else if(tagLow == 42)
 							{
-								Sint64 spriteIdLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+								Sint64 spriteIdLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 								while(SDL_RWtell(rwops) < spriteIdLimit)
 									parseFrameGroup.m_sprites.push_back(SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops)));
 							}
@@ -517,7 +511,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 						{
 							parseFrameGroup.m_animator = new Animator();
 
-							Sint64 spriteAnimationLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 spriteAnimationLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < spriteAnimationLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -554,7 +548,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 									do
 									{
 										Sint32 min = 0, max = 0;
-										Sint64 spritePhaseLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+										Sint64 spritePhaseLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 										while(SDL_RWtell(rwops) < spritePhaseLimit)
 										{
 											tag = SDL_ReadProtobufTag(rwops);
@@ -571,7 +565,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 										haveData = (SDL_RWtell(rwops) < spriteAnimationLimit);
 									} while(haveData && SDL_ReadU8(rwops) == 50);
 									if(haveData)//Rewind one byte
-										SDL_RWseek(rwops, SDL_RWtell(rwops)-1, RW_SEEK_SET);
+										SDL_RWseek(rwops, SDL_RWtell(rwops) - 1, RW_SEEK_SET);
 
 									parseFrameGroup.m_animCount = SDL_static_cast(Uint8, parseFrameGroup.m_animator->getAnimationPhases());
 								}
@@ -588,7 +582,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							bool haveData = true;
 							do
 							{
-								Sint64 spriteBoxLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+								Sint64 spriteBoxLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 								while(SDL_RWtell(rwops) < spriteBoxLimit)
 								{
 									tag = SDL_ReadProtobufTag(rwops);
@@ -608,7 +602,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 								haveData = (SDL_RWtell(rwops) < spriteInfoLimit);
 							} while(haveData && SDL_ReadU8(rwops) == 74);
 							if(haveData)//Rewind one byte
-								SDL_RWseek(rwops, SDL_RWtell(rwops)-1, RW_SEEK_SET);
+								SDL_RWseek(rwops, SDL_RWtell(rwops) - 1, RW_SEEK_SET);
 						}
 						else
 							break;
@@ -637,7 +631,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 		}
 		else if(tagHigh == 3 && tagLow == 26)// optional .tibia.protobuf.appearances.AppearanceFlags flags = 3;
 		{
-			Sint64 flagsLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+			Sint64 flagsLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 			while(SDL_RWtell(rwops) < flagsLimit)
 			{
 				tag = SDL_ReadProtobufTag(rwops);
@@ -649,7 +643,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 10)
 						{
-							Sint64 bankLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 bankLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < bankLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -760,7 +754,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 82)
 						{
-							Sint64 writableLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 writableLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < writableLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -783,7 +777,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 90)
 						{
-							Sint64 writableLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 writableLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < writableLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -905,7 +899,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 170)
 						{
-							Sint64 hookLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 hookLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < hookLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -914,9 +908,9 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 								if(tagHigh == 1 && tagLow == 8)// optional .tibia.protobuf.shared.HOOK_TYPE direction = 1;
 								{
 									Uint64 direction = SDL_ReadProtobufVariant(rwops);
-									if (direction == 1)
+									if(direction == 1)
 										m_flags |= ThingAttribute_HookSouth;
-									else if (direction == 2)
+									else if(direction == 2)
 										m_flags |= ThingAttribute_HookEast;
 								}
 								else
@@ -942,7 +936,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 186)
 						{
-							Sint64 lightLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 lightLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < lightLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -992,7 +986,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 210)
 						{
-							Sint64 displacementLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 displacementLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < displacementLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1020,7 +1014,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 218)
 						{
-							Sint64 elevationLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 elevationLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < elevationLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1065,7 +1059,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 242)
 						{
-							Sint64 minimapLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 minimapLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < minimapLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1088,7 +1082,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 250)
 						{
-							Sint64 lensLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 lensLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < lensLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1133,7 +1127,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 18)
 						{
-							Sint64 clothLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 clothLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < clothLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1156,7 +1150,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 26)
 						{
-							Sint64 actionLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 actionLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < actionLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1179,7 +1173,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 34)
 						{
-							Sint64 marketLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 marketLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < marketLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1232,11 +1226,11 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 											haveData = (SDL_RWtell(rwops) < marketLimit);
 										} while(haveData && SDL_ReadU8(rwops) == 40);
 										if(haveData)//Rewind one byte
-											SDL_RWseek(rwops, SDL_RWtell(rwops)-1, RW_SEEK_SET);
+											SDL_RWseek(rwops, SDL_RWtell(rwops) - 1, RW_SEEK_SET);
 									}
 									else if(tagLow == 42)
 									{
-										Sint64 spriteIdLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+										Sint64 spriteIdLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 										while(SDL_RWtell(rwops) < spriteIdLimit)
 										{
 											Uint16 restrictedVocs = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
@@ -1310,7 +1304,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							bool haveData = true;
 							do
 							{
-								Sint64 actionLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+								Sint64 actionLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 								while(SDL_RWtell(rwops) < actionLimit)
 								{
 									tag = SDL_ReadProtobufTag(rwops);
@@ -1327,10 +1321,10 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 									else
 										break;
 								}
-								haveData = (SDL_RWtell(rwops) < flagsLimit-1);
+								haveData = (SDL_RWtell(rwops) < flagsLimit - 1);
 							} while(haveData && SDL_ReadLE16(rwops) == 706);
 							if(haveData)//Rewind two bytes
-								SDL_RWseek(rwops, SDL_RWtell(rwops)-2, RW_SEEK_SET);
+								SDL_RWseek(rwops, SDL_RWtell(rwops) - 2, RW_SEEK_SET);
 						}
 						else
 							goto loop_break;
@@ -1340,7 +1334,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 74)
 						{
-							Sint64 expireLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 expireLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < expireLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1384,7 +1378,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 					{
 						if(tagLow == 98)
 						{
-							Sint64 cyclopediaLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops))+SDL_RWtell(rwops);
+							Sint64 cyclopediaLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < cyclopediaLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1542,13 +1536,15 @@ bool ThingManager::loadAppearances(const char* filename)
 				{
 					tempItems.emplace_back();
 					ThingType& tType = tempItems.back();
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Items, file);
+					tType.m_category = ThingCategory_Item;
+					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file)) + SDL_RWtell(file), Items, file);
 				}
 				else if(tagHigh == 2 && tagLow == 18)// repeated .tibia.protobuf.appearances.Appearance outfit = 2;
 				{
 					tempCreatures.emplace_back();
 					ThingType& tType = tempCreatures.back();
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Creatures, file);
+					tType.m_category = ThingCategory_Creature;
+					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file)) + SDL_RWtell(file), Creatures, file);
 					if(!tType.m_frameGroup[ThingFrameGroup_Moving].m_sprites.empty() && tType.m_frameGroup[ThingFrameGroup_Idle].m_sprites.empty())
 					{
 						FrameGroup& fromFrame = tType.m_frameGroup[ThingFrameGroup_Moving];
@@ -1569,13 +1565,15 @@ bool ThingManager::loadAppearances(const char* filename)
 				{
 					tempEffect.emplace_back();
 					ThingType& tType = tempEffect.back();
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), Effects, file);
+					tType.m_category = ThingCategory_Effect;
+					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file)) + SDL_RWtell(file), Effects, file);
 				}
 				else if(tagHigh == 4 && tagLow == 34)// repeated .tibia.protobuf.appearances.Appearance missile = 4;
 				{
 					tempDistanceEffects.emplace_back();
 					ThingType& tType = tempDistanceEffects.back();
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file))+SDL_RWtell(file), DistanceEffects, file);
+					tType.m_category = ThingCategory_DistanceEffect;
+					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file)) + SDL_RWtell(file), DistanceEffects, file);
 				}
 				else
 					break;

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -171,7 +171,7 @@ const char* rvs_get_action(Uint8 id)
 	return "Unknown action";
 }
 
-void rvs_Events(Uint32 event, Sint32)
+void rvs_Events(Uint32, Sint32)
 {
 }
 

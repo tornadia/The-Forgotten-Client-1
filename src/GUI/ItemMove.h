@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,7 +31,7 @@ class GUI_ItemMove : public GUI_Element
 		GUI_ItemMove(iRect boxRect, Uint16 itemId, Uint16 itemCount, Uint32 internalID = 0);
 		~GUI_ItemMove();
 
-		void onKeyDown(SDL_Event event);
+		void onKeyDown(SDL_Event& event);
 		void setItemCount(Uint16 itemCount);
 		void render();
 

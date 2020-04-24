@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -115,7 +115,7 @@ void Connection::updateConnection()
 			{
 				if(!still_running)
 				{
-					CURLMsg *msg = curl_multi_info_read(SDL_reinterpret_cast(CURLM*, m_curlHandle), &still_running);
+					CURLMsg* msg = curl_multi_info_read(SDL_reinterpret_cast(CURLM*, m_curlHandle), &still_running);
 					if(msg)
 					{
 						switch(msg->data.result)
@@ -129,30 +129,10 @@ void Connection::updateConnection()
 									m_protocol->onConnect();
 							}
 							break;
-							case CURLE_COULDNT_RESOLVE_HOST:
-							{
-								closeConnectionError(CONNECTION_ERROR_RESOLVE_HOST);
-								return;
-							}
-							return;
-							case CURLE_OPERATION_TIMEDOUT:
-							{
-								closeConnectionError(CONNECTION_ERROR_TIMEOUT);
-								return;
-							}
-							return;
-							case CURLE_COULDNT_CONNECT:
-							{
-								closeConnectionError(CONNECTION_ERROR_REFUSED_CONNECT);
-								return;
-							}
-							return;
-							default:
-							{
-								closeConnectionError(CONNECTION_ERROR_FAIL_CONNECT);
-								return;
-							}
-							return;
+							case CURLE_COULDNT_RESOLVE_HOST: closeConnectionError(CONNECTION_ERROR_RESOLVE_HOST); return;
+							case CURLE_OPERATION_TIMEDOUT: closeConnectionError(CONNECTION_ERROR_TIMEOUT); return;
+							case CURLE_COULDNT_CONNECT: closeConnectionError(CONNECTION_ERROR_REFUSED_CONNECT); return;
+							default: closeConnectionError(CONNECTION_ERROR_FAIL_CONNECT); return;
 						}
 					}
 					else
@@ -231,6 +211,7 @@ void Connection::updateConnection()
 			}
 		}
 		break;
+		case CONNECTION_STATE_SEND_ERROR: closeConnectionError(CONNECTION_ERROR_SEND_FAIL); break;
 		case CONNECTION_STATE_CLOSED:
 		case CONNECTION_STATE_ERROR:
 			//Ignore
@@ -280,7 +261,9 @@ void Connection::sendMessage(OutputMessage& msg)
 		{
 			if(result != CURLE_AGAIN)
 			{
-				closeConnectionError(CONNECTION_ERROR_SEND_FAIL);
+				//Closing socket here is unsafe - schedule it to a safe switch
+				//closeConnectionError(CONNECTION_ERROR_SEND_FAIL);
+				m_connectionState = CONNECTION_STATE_SEND_ERROR;
 				return;
 			}
 			else

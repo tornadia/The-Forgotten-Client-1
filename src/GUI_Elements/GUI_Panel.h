@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,15 +26,12 @@
 
 enum GUIPanelID
 {
-	GUI_PANEL_MAIN,//Always
-	GUI_PANEL_RIGHT1,//Always
-	GUI_PANEL_RIGHT2,//Optional
-	GUI_PANEL_RIGHT3,//Optional
-	GUI_PANEL_RIGHT4,//Optional
-	GUI_PANEL_LEFT1,//Optional
-	GUI_PANEL_LEFT2,//Optional
-	GUI_PANEL_LEFT3,//Optional
-	GUI_PANEL_LEFT4,//Optional
+	GUI_PANEL_MAIN = 1,//Always
+	GUI_PANEL_RIGHT = 2,//Always
+	GUI_PANEL_EXTRA_RIGHT_START = 1000,//Optional
+	GUI_PANEL_EXTRA_RIGHT_END = 1999,//Optional
+	GUI_PANEL_EXTRA_LEFT_START = 2000,//Optional
+	GUI_PANEL_EXTRA_LEFT_END = 2999,//Optional
 	GUI_PANEL_RANDOM = -1
 };
 
@@ -55,9 +52,11 @@ class GUI_Panel
 		void checkPanels();
 		void checkPanel(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y);
 		bool tryFreeHeight(GUI_PanelWindow* pPanel);
+		bool tryFreeHeight(Sint32 needFreeHeight);
 		void addPanel(GUI_PanelWindow* pPanel);
 		void removePanel(GUI_PanelWindow* pPanel, bool deletePanel = true);
 		GUI_PanelWindow* getPanel(Uint32 internalID);
+		std::vector<GUI_PanelWindow*>& getPanelWindows() {return m_panels;}
 
 		void setActPanel(GUI_PanelWindow* panel) {m_actPanel = panel;}
 		void setInternalID(Sint32 internalId) {m_internalID = internalId;}
@@ -71,7 +70,7 @@ class GUI_Panel
 		void onWheel(Sint32 x, Sint32 y, bool wheelUP);
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 
-		void render();
+		GUI_PanelWindow* render();
 
 	protected:
 		std::vector<GUI_PanelWindow*> m_panels;

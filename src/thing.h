@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -26,12 +26,11 @@
 
 class Item;
 class Creature;
-
 class Thing
 {
 	public:
 		Thing();
-		virtual ~Thing() {;}
+		virtual ~Thing() {}
 
 		void setCurrentPosition(Position& newPosition) {m_position = newPosition;}
 		Position& getCurrentPosition() {return m_position;}

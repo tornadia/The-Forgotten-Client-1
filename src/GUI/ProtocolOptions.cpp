@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -85,7 +85,7 @@
 #define PROTOCOL_CLIENT_LISTBOX_Y 310
 #define PROTOCOL_CLIENT_LISTBOX_W 200
 #define PROTOCOL_CLIENT_LISTBOX_H 78
-#define PROTOCOL_CLIENT_VERSIONS "713:720:721;723:724:726;727:730:740:741:750:755:760:770:771:772:780:781:782:790:792:800:810:811:820:821:822:823:830:831:840:841:842:850:851:852:853:854:855:856:857:860:861:862:870:871:872:873:874:900:910:920:931:940:941:942:943:944:945:946:950:951:952:953:954:960:961:962:963:970:971:972:973:980:981:982:983:984:985:986:1000:1001:1002:1010:1011:1012:1013:1020:1021:1022:1030:1031:1032:1033:1034:1035:1036:1037:1038:1039:1040:1041:1050:1051:1052:1053:1054:1055:1056:1057:1058:1059:1060:1061:1062:1063:1064:1070:1071:1072:1073:1074:1075:1076:1077:1078:1079:1080:1081:1082:1090:1091:1092:1093:1094:1095:1096:1097:1098:1099:1100;1101:1102:1103:1104:1110:1120;1121:1130:1132:1134:1135:1140:1141:1142:1143:1144:1145:1146:1147:1148:1149:1150:1151:1152:1153:1154:1155:1156:1157:1158:1159:1160:1165:1166:1170:1171:1172:1173:1174:1175:1180:1181:1182:1183:1185:1186:1187:1190:1191:1192:1193:1194:1195:1200:1201:1202:1203:1205:1206:1207:1208:1209:1210:1211:1212:1215:1220;1230"
+#define PROTOCOL_CLIENT_VERSIONS "713:720:721;723:724:726;727:730:740:741:750:755:760:770:771:772:780:781:782:790:792:800:810:811:820:821:822:823:830:831:840:841:842:850:851:852:853:854:855:856:857:860:861:862:870:871:872:873:874:900:910:920:931:940:941:942:943:944:945:946:950:951:952:953:954:960:961:962:963:970:971:972:973:980:981:982:983:984:985:986:1000:1001:1002:1010:1011:1012:1013:1020:1021:1022:1030:1031:1032:1033:1034:1035:1036:1037:1038:1039:1040:1041:1050:1051:1052:1053:1054:1055:1056:1057:1058:1059:1060:1061:1062:1063:1064:1070:1071:1072:1073:1074:1075:1076:1077:1078:1079:1080:1081:1082:1090:1091:1092:1093:1094:1095:1096:1097:1098:1099:1100;1101:1102:1103:1104:1110:1120;1121:1130:1132:1134:1135:1140:1141:1142:1143:1144:1145:1146:1147:1148:1149:1150:1151:1152:1153:1154:1155:1156:1157:1158:1159:1160:1165:1166:1170:1171:1172:1173:1174:1175:1180:1181:1182:1183:1185:1186:1187:1190:1191:1192:1193:1194:1195:1200:1201:1202:1203:1205:1206:1207:1208:1209:1210:1211:1212:1215:1220:1230:1231"
 
 extern Engine g_engine;
 extern Game g_game;
@@ -163,7 +163,7 @@ void UTIL_protocolOptions()
 		return;
 
 	Uint32 count = 0;
-	std::string data = std::string(PROTOCOL_CLIENT_VERSIONS, sizeof(PROTOCOL_CLIENT_VERSIONS)-1);
+	std::string data = std::string(PROTOCOL_CLIENT_VERSIONS, sizeof(PROTOCOL_CLIENT_VERSIONS) - 1);
 	StringVector versions = UTIL_explodeString(data, ":");
 	for(StringVector::iterator it = versions.begin(), end = versions.end(); it != end; ++it)
 		g_protocols[count++] = SDL_static_cast(Uint32, SDL_strtoul((*it).c_str(), NULL, 10));
@@ -207,8 +207,8 @@ void UTIL_protocolOptions()
 	for(std::map<Uint32, Uint32>::iterator it = g_protocols.begin(), end = g_protocols.end(); it != end; ++it)
 	{
 		Uint32 version = it->second;
-		Uint32 versionUpper = version/100;
-		Uint32 versionLower = version%100;
+		Uint32 versionUpper = version / 100;
+		Uint32 versionLower = version % 100;
 		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u.%02u", versionUpper, versionLower);
 		newListBox->add(std::string(g_buffer, SDL_static_cast(size_t, len)));
 		if(g_clientVersion == version)
@@ -221,13 +221,13 @@ void UTIL_protocolOptions()
 	newListBox->setEventCallback(&protocoloptions_Events, PROTOCOL_CLIENT_LISTBOX_EVENTID);
 	newListBox->startEvents();
 	newWindow->addChild(newListBox);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, PROTOCOL_HEIGHT-40, PROTOCOL_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, PROTOCOL_HEIGHT - 40, PROTOCOL_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
-	GUI_Button* newButton = new GUI_Button(iRect(PROTOCOL_WIDTH-109, PROTOCOL_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(PROTOCOL_WIDTH - 109, PROTOCOL_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&protocoloptions_Events, PROTOCOL_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(PROTOCOL_WIDTH-56, PROTOCOL_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	newButton = new GUI_Button(iRect(PROTOCOL_WIDTH - 56, PROTOCOL_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&protocoloptions_Events, PROTOCOL_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);

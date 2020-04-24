@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,20 +33,23 @@ class LightSystem
 		void changeFloor(Uint8 z);
 
 		void addLightSource(Sint32 x, Sint32 y, Uint16 light[2]);
+		void setLightSource(Sint32 x, Sint32 y, float brightness);
 		void resetLightSource(Sint32 x, Sint32 y);
-		void initLightMap(Sint32 offsetX, Sint32 offsetY);
+		void initLightMap(Sint32 offsetX, Sint32 offsetY, Uint8 floorZ);
+		Uint8 getLightSourceAverage(Sint32 x, Sint32 y);
 
 		SDL_FORCE_INLINE Uint16 getLightIntensity() {return m_light[0];}
 		SDL_FORCE_INLINE Uint16 getLightColor() {return m_light[1];}
 		SDL_FORCE_INLINE LightMap* getLightMap() {return m_lightMap;}
 
 	protected:
-		LightMap m_lightMap[GAME_MAP_WIDTH*GAME_MAP_HEIGHT];
+		LightMap m_lightMap[GAME_MAP_WIDTH * GAME_MAP_HEIGHT];
 
 		Sint32 m_offsetX;
 		Sint32 m_offsetY;
 		Uint16 m_light[2];
 
+		Uint8 m_lightAmbient;
 		Uint8 m_lightRed;
 		Uint8 m_lightGreen;
 		Uint8 m_lightBlue;

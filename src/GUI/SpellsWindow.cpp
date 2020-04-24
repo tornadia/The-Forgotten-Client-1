@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -45,7 +45,7 @@ SpellData g_spells[] =
 {
 	//{incantation, name, group[, secondGroup], id, price, type, reqLvl, reqPrem, vocations, reqMana, reqSoul[, runeId], cooldown, groupCooldown[, secondGroupCooldown]}
 	{"exura", "Light Healing", SPELL_GROUP_HEALING, 0x05, 0, SPELL_TYPE_INSTANT, 8, false, SPELL_VOCATION_PALADIN_SORCERER_DRUID, 20, 0, 1, 1},
-	{"exura gran", "Intense Healing", SPELL_GROUP_HEALING, 0x06, 350, SPELL_TYPE_INSTANT, 20, true, SPELL_VOCATION_PALADIN_SORCERER_DRUID, 64, 0, 1, 1},
+	{"exura gran", "Intense Healing", SPELL_GROUP_HEALING, 0x06, 350, SPELL_TYPE_INSTANT, 20, false, SPELL_VOCATION_PALADIN_SORCERER_DRUID, 64, 0, 1, 1},
 	{"exura vita", "Ultimate Healing", SPELL_GROUP_HEALING, 0x00, 1000, SPELL_TYPE_INSTANT, 30, false, SPELL_VOCATION_SORCERER_DRUID, 160, 0, 1, 1},
 	{"adura gran", "Intense Healing Rune", SPELL_GROUP_SUPPORT, 0x49, 600, SPELL_TYPE_RUNE, 15, false, SPELL_VOCATION_DRUID, 120, 2, 0, 2, 2},
 	{"adura vita", "Ultimate Healing Rune", SPELL_GROUP_SUPPORT, 0x3D, 1500, SPELL_TYPE_RUNE, 24, false, SPELL_VOCATION_DRUID, 400, 3, 0, 2, 2},
@@ -163,7 +163,7 @@ SpellData g_spells[] =
 	{"exori max tera", "Ultimate Terra Strike", SPELL_GROUP_ATTACK, 0x24, 15000, SPELL_TYPE_INSTANT, 90, true, SPELL_VOCATION_DRUID, 100, 0, 30, 4},
 	{"exura gran ico", "Intense Wound Cleansing", SPELL_GROUP_HEALING, 0x03, 6000, SPELL_TYPE_INSTANT, 80, true, SPELL_VOCATION_KNIGHT, 200, 0, 600, 1},
 	{"utura", "Recovery", SPELL_GROUP_HEALING, 0x0E, 4000, SPELL_TYPE_INSTANT, 50, true, SPELL_VOCATION_KNIGHT_PALADIN, 75, 0, 60, 1},
-	{"utura gran", "Intense Recovery", SPELL_GROUP_HEALING, 0x0F, 10000, SPELL_TYPE_INSTANT, 100, true, SPELL_VOCATION_ALL, 165, 0, 60, 1},
+	{"utura gran", "Intense Recovery", SPELL_GROUP_HEALING, 0x0F, 10000, SPELL_TYPE_INSTANT, 100, true, SPELL_VOCATION_KNIGHT_PALADIN, 165, 0, 60, 1},
 	{"exura dis", "Practise Healing", SPELL_GROUP_HEALING, 0x7F, 0, SPELL_TYPE_INSTANT, 1, false, SPELL_VOCATION_ALL, 5, 0, 1, 1},
 	{"exevo dis flam hur", "Practise Fire Wave", SPELL_GROUP_ATTACK, 0x80, 0, SPELL_TYPE_INSTANT, 1, false, SPELL_VOCATION_ALL, 5, 0, 4, 2},
 	{"adori dis min vis", "Practise Magic Missile Rune", SPELL_GROUP_SUPPORT, 0x81, 0, SPELL_TYPE_RUNE, 1, false, SPELL_VOCATION_ALL, 5, 0, 0, 2, 2},
@@ -209,7 +209,10 @@ void spells_Events(Uint32 event, Sint32 status)
 				}
 				else
 				{
-					UTIL_ResizePanel(SDL_reinterpret_cast(void*, pPanel), pRect.x2, pPanel->getCachedHeight());
+					Sint32 cachedHeight = pPanel->getCachedHeight();
+					parent->tryFreeHeight(cachedHeight - pRect.y2);
+					pPanel->setSize(pRect.x2, cachedHeight);
+					parent->checkPanels();
 
 					GUI_Container* pContainer = SDL_static_cast(GUI_Container*, pPanel->getChild(SPELLS_CONTAINER_EVENTID));
 					if(pContainer)
@@ -247,7 +250,7 @@ void spells_Events(Uint32 event, Sint32 status)
 				if(pContainer)
 				{
 					iRect cRect = pContainer->getRect();
-					cRect.y2 = status-19;
+					cRect.y2 = status - 19;
 					pContainer->setRect(cRect);
 				}
 			}
@@ -263,7 +266,7 @@ void UTIL_toggleSpellsWindow()
 	if(pPanel)
 		g_engine.removePanelWindow(pPanel);
 
-	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 117), true, GUI_PANEL_WINDOW_SPELL_LIST, true);
+	GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, GAME_PANEL_FIXED_WIDTH - 4, 117), true, GUI_PANEL_WINDOW_SPELL_LIST, true);
 	newWindow->setEventCallback(&spells_Events, SPELLS_RESIZE_WIDTH_EVENTID, SPELLS_RESIZE_HEIGHT_EVENTID, SPELLS_EXIT_WINDOW_EVENTID);
 	GUI_StaticImage* newImage = new GUI_StaticImage(iRect(2, 0, GUI_UI_ICON_SPELLSLIST_W, GUI_UI_ICON_SPELLSLIST_H), GUI_UI_IMAGE, GUI_UI_ICON_SPELLSLIST_X, GUI_UI_ICON_SPELLSLIST_Y);
 	newWindow->addChild(newImage);
@@ -284,5 +287,12 @@ void UTIL_toggleSpellsWindow()
 	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, 98), newWindow, SPELLS_CONTAINER_EVENTID);
 	newContainer->startEvents();
 	newWindow->addChild(newContainer);
-	g_engine.addToPanel(newWindow);
+
+	Sint32 preferredPanel = g_engine.getContentWindowParent(GUI_PANEL_WINDOW_SPELL_LIST);
+	bool added = g_engine.addToPanel(newWindow, preferredPanel);
+	if(!added && preferredPanel != GUI_PANEL_RANDOM)
+		added = g_engine.addToPanel(newWindow, GUI_PANEL_RANDOM);
+
+	if(!added)
+		delete newWindow;
 }

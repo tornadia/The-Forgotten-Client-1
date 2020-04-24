@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -91,24 +91,24 @@ void mainWindow_Events(Uint32 event, Sint32)
 void UTIL_createMainWindow()
 {
 	#if CLIENT_OVVERIDE_VERSION != 0
-	g_mainWindow = new GUI_Window(iRect(0, 0, MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT-30), "", GUI_WINDOW_MAIN);
+	g_mainWindow = new GUI_Window(iRect(0, 0, MAIN_WINDOW_WIDTH, MAIN_WINDOW_HEIGHT - 30), "", GUI_WINDOW_MAIN);
 	GUI_Button* newButton = new GUI_Button(iRect(MAIN_WINDOW_ENTERGAME_BUTTON_X, MAIN_WINDOW_ENTERGAME_BUTTON_Y, MAIN_WINDOW_ENTERGAME_BUTTON_W, MAIN_WINDOW_ENTERGAME_BUTTON_H), MAIN_WINDOW_ENTERGAME_BUTTON_TEXT);
 	newButton->setButtonEventCallback(&mainWindow_Events, MAIN_WINDOW_ENTERGAME_EVENTID);
 	newButton->startEvents();
 	g_mainWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(MAIN_WINDOW_ACCESSACC_BUTTON_X, MAIN_WINDOW_ACCESSACC_BUTTON_Y-30, MAIN_WINDOW_ACCESSACC_BUTTON_W, MAIN_WINDOW_ACCESSACC_BUTTON_H), MAIN_WINDOW_ACCESSACC_BUTTON_TEXT);
+	newButton = new GUI_Button(iRect(MAIN_WINDOW_ACCESSACC_BUTTON_X, MAIN_WINDOW_ACCESSACC_BUTTON_Y - 30, MAIN_WINDOW_ACCESSACC_BUTTON_W, MAIN_WINDOW_ACCESSACC_BUTTON_H), MAIN_WINDOW_ACCESSACC_BUTTON_TEXT);
 	newButton->setButtonEventCallback(&mainWindow_Events, MAIN_WINDOW_ACCESSACC_EVENTID);
 	newButton->startEvents();
 	g_mainWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(MAIN_WINDOW_OPTIONS_BUTTON_X, MAIN_WINDOW_OPTIONS_BUTTON_Y-30, MAIN_WINDOW_OPTIONS_BUTTON_W, MAIN_WINDOW_OPTIONS_BUTTON_H), MAIN_WINDOW_OPTIONS_BUTTON_TEXT);
+	newButton = new GUI_Button(iRect(MAIN_WINDOW_OPTIONS_BUTTON_X, MAIN_WINDOW_OPTIONS_BUTTON_Y - 30, MAIN_WINDOW_OPTIONS_BUTTON_W, MAIN_WINDOW_OPTIONS_BUTTON_H), MAIN_WINDOW_OPTIONS_BUTTON_TEXT);
 	newButton->setButtonEventCallback(&mainWindow_Events, MAIN_WINDOW_OPTIONS_EVENTID);
 	newButton->startEvents();
 	g_mainWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(MAIN_WINDOW_INFO_BUTTON_X, MAIN_WINDOW_INFO_BUTTON_Y-30, MAIN_WINDOW_INFO_BUTTON_W, MAIN_WINDOW_INFO_BUTTON_H), MAIN_WINDOW_INFO_BUTTON_TEXT);
+	newButton = new GUI_Button(iRect(MAIN_WINDOW_INFO_BUTTON_X, MAIN_WINDOW_INFO_BUTTON_Y - 30, MAIN_WINDOW_INFO_BUTTON_W, MAIN_WINDOW_INFO_BUTTON_H), MAIN_WINDOW_INFO_BUTTON_TEXT);
 	newButton->setButtonEventCallback(&mainWindow_Events, MAIN_WINDOW_INFO_EVENTID);
 	newButton->startEvents();
 	g_mainWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(MAIN_WINDOW_EXITGAME_BUTTON_X, MAIN_WINDOW_EXITGAME_BUTTON_Y-30, MAIN_WINDOW_EXITGAME_BUTTON_W, MAIN_WINDOW_EXITGAME_BUTTON_H), MAIN_WINDOW_EXITGAME_BUTTON_TEXT);
+	newButton = new GUI_Button(iRect(MAIN_WINDOW_EXITGAME_BUTTON_X, MAIN_WINDOW_EXITGAME_BUTTON_Y - 30, MAIN_WINDOW_EXITGAME_BUTTON_W, MAIN_WINDOW_EXITGAME_BUTTON_H), MAIN_WINDOW_EXITGAME_BUTTON_TEXT);
 	newButton->setButtonEventCallback(&mainWindow_Events, MAIN_WINDOW_EXITGAME_EVENTID);
 	newButton->startEvents();
 	g_mainWindow->addChild(newButton);

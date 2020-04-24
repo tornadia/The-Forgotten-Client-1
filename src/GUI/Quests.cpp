@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -92,12 +92,10 @@ void quests_Events(Uint32 event, Sint32 status)
 		case QUEST_LOG_LISTBOX_EVENTID:
 		{
 			//Negative status means doubleclick
-			GUI_Window* pWindow = g_engine.getCurrentWindow();
-			if(status < 0 && pWindow && pWindow->getInternalID() == GUI_WINDOW_QUESTLOG)
+			GUI_Window* pWindow;
+			if(status < 0 && (pWindow = g_engine.getCurrentWindow()) != NULL && pWindow->getInternalID() == GUI_WINDOW_QUESTLOG)
 			{
-				status *= -1;
-				status -= 1;
-
+				status = ~(status);
 				g_game.sendOpenQuestLine(g_questsLogCache[status].questId);
 			}
 		}
@@ -115,10 +113,7 @@ void quests_Events(Uint32 event, Sint32 status)
 			if(pWindow && pWindow->getInternalID() == GUI_WINDOW_QUESTLINE)
 			{
 				if(status < 0)
-				{
-					status *= -1;
-					status -= 1;
-				}
+					status = ~(status);
 
 				GUI_MultiTextBox* pTextBox = SDL_static_cast(GUI_MultiTextBox*, pWindow->getChild(QUEST_LINE_TEXTBOX_EVENTID));
 				if(pTextBox)
@@ -135,12 +130,12 @@ void UTIL_createQuestLog(Uint32 questId, std::vector<QuestLogDetail>& questLogEl
 	if(pWindow)
 		g_engine.removeWindow(pWindow);
 
-	g_questsLogCache = questLogElements;
+	g_questsLogCache = std::move(questLogElements);
 
 	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, QUEST_LOG_WIDTH, QUEST_LOG_HEIGHT), QUEST_LOG_TITLE, GUI_WINDOW_QUESTLOG);
 	GUI_ListBox* newListBox = new GUI_ListBox(iRect(QUEST_LOG_LISTBOX_X, QUEST_LOG_LISTBOX_Y, QUEST_LOG_LISTBOX_W, QUEST_LOG_LISTBOX_H), QUEST_LOG_LISTBOX_EVENTID);
 	Sint32 count = 0, select = -1;
-	for(std::vector<QuestLogDetail>::iterator it = questLogElements.begin(), end = questLogElements.end(); it != end; ++it)
+	for(std::vector<QuestLogDetail>::iterator it = g_questsLogCache.begin(), end = g_questsLogCache.end(); it != end; ++it)
 	{
 		QuestLogDetail& questLogElement = (*it);
 		if(questLogElement.questCompleted)
@@ -156,15 +151,15 @@ void UTIL_createQuestLog(Uint32 questId, std::vector<QuestLogDetail>& questLogEl
 	newListBox->setEventCallback(&quests_Events, QUEST_LOG_LISTBOX_EVENTID);
 	newListBox->startEvents();
 	newWindow->addChild(newListBox);
-	GUI_Button* newButton = new GUI_Button(iRect(QUEST_LOG_WIDTH-56, QUEST_LOG_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(QUEST_LOG_WIDTH - 56, QUEST_LOG_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&quests_Events, QUEST_LOG_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(QUEST_LOG_WIDTH-109, QUEST_LOG_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Show", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(QUEST_LOG_WIDTH - 109, QUEST_LOG_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Show", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&quests_Events, QUEST_LOG_OPEN_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, QUEST_LOG_HEIGHT-40, QUEST_LOG_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, QUEST_LOG_HEIGHT - 40, QUEST_LOG_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
 }
@@ -175,7 +170,7 @@ void UTIL_createQuestine(Uint16 questId, std::vector<QuestLineDetail>& questLine
 	if(pWindow)
 		g_engine.removeWindow(pWindow);
 
-	g_questsLineCache = questLineElements;
+	g_questsLineCache = std::move(questLineElements);
 
 	std::string labelName;
 	for(std::vector<QuestLogDetail>::iterator it = g_questsLogCache.begin(), end = g_questsLogCache.end(); it != end; ++it)
@@ -189,7 +184,7 @@ void UTIL_createQuestine(Uint16 questId, std::vector<QuestLineDetail>& questLine
 	GUI_Label* newLabel = new GUI_Label(iRect(QUEST_LINE_LABEL_X, QUEST_LINE_LABEL_Y, 0, 0), labelName);
 	newWindow->addChild(newLabel);
 	GUI_ListBox* newListBox = new GUI_ListBox(iRect(QUEST_LINE_LISTBOX_X, QUEST_LINE_LISTBOX_Y, QUEST_LINE_LISTBOX_W, QUEST_LINE_LISTBOX_H), QUEST_LINE_LISTBOX_EVENTID);
-	for(std::vector<QuestLineDetail>::iterator it = questLineElements.begin(), end = questLineElements.end(); it != end; ++it)
+	for(std::vector<QuestLineDetail>::iterator it = g_questsLineCache.begin(), end = g_questsLineCache.end(); it != end; ++it)
 	{
 		QuestLineDetail& questLineElement = (*it);
 		newListBox->add(questLineElement.missionName);
@@ -198,14 +193,14 @@ void UTIL_createQuestine(Uint16 questId, std::vector<QuestLineDetail>& questLine
 	newListBox->setEventCallback(&quests_Events, QUEST_LINE_LISTBOX_EVENTID);
 	newListBox->startEvents();
 	newWindow->addChild(newListBox);
-	GUI_MultiTextBox* newTextBox = new GUI_MultiTextBox(iRect(QUEST_LINE_TEXTBOX_X, QUEST_LINE_TEXTBOX_Y, QUEST_LINE_TEXTBOX_W, QUEST_LINE_TEXTBOX_H), false, (!questLineElements.empty() ? questLineElements[0].missionDescription : ""), QUEST_LINE_TEXTBOX_EVENTID, 175, 175, 175);
+	GUI_MultiTextBox* newTextBox = new GUI_MultiTextBox(iRect(QUEST_LINE_TEXTBOX_X, QUEST_LINE_TEXTBOX_Y, QUEST_LINE_TEXTBOX_W, QUEST_LINE_TEXTBOX_H), false, (!g_questsLineCache.empty() ? g_questsLineCache[0].missionDescription : ""), QUEST_LINE_TEXTBOX_EVENTID, 175, 175, 175);
 	newTextBox->startEvents();
 	newWindow->addChild(newTextBox);
-	GUI_Button* newButton = new GUI_Button(iRect(QUEST_LINE_WIDTH-56, QUEST_LINE_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(QUEST_LINE_WIDTH - 56, QUEST_LINE_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&quests_Events, QUEST_LINE_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, QUEST_LINE_HEIGHT-40, QUEST_LINE_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, QUEST_LINE_HEIGHT - 40, QUEST_LINE_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow, true);
 }

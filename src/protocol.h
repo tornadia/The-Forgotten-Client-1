@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -24,11 +24,23 @@
 
 #include "connection.h"
 
-enum ProtocolOS
+enum ProtocolOS : Uint8
 {
-	PROTOCOL_OS_LINUX = 1,
-	PROTOCOL_OS_WINDOWS = 2,
-	PROTOCOL_OS_FLASH = 3
+	LEGACY_CIPBIA_OS = 2,
+	QT_CIPBIA_OS = 5,
+	PROTOCOL_OS_ANDROID = 100,
+	PROTOCOL_OS_IPHONEOS = 101,
+	PROTOCOL_OS_MACOSX = 102,
+	PROTOCOL_OS_WIZ = 103,
+	PROTOCOL_OS_PANDORA = 104,
+	PROTOCOL_OS_PSP = 105,
+	PROTOCOL_OS_WINDOWS = 106,
+	PROTOCOL_OS_WINDOWSRT = 107,
+	PROTOCOL_OS_HAIKU = 108,
+	PROTOCOL_OS_NACL = 109,
+	PROTOCOL_OS_EMSCRIPTEN = 110,
+	PROTOCOL_OS_RASPBERRYPI = 111,
+	PROTOCOL_OS_UNIX = 112
 };
 
 enum ChecksumMethods : Uint8
@@ -63,7 +75,7 @@ class Protocol
 
 		Uint16 getHeaderPos();
 
-		static Uint16 getOS();
+		static Uint8 getOS();
 		static Uint16 getProtocolVersion();
 		static Uint32 getClientVersion();
 

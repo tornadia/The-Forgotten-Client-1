@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -28,7 +28,7 @@
 
 #define GENERAL_OPTIONS_TITLE "General Options"
 #define GENERAL_OPTIONS_WIDTH 246
-#define GENERAL_OPTIONS_HEIGHT 345
+#define GENERAL_OPTIONS_HEIGHT 444
 #define GENERAL_OPTIONS_HELP_LINK "http://www.tibia.com/gameguides/?subtopic=manual&section=options"
 #define GENERAL_OPTIONS_HELP_EVENTID 1000
 #define GENERAL_OPTIONS_CANCEL_EVENTID 1001
@@ -81,6 +81,24 @@
 #define GENERAL_OPTIONS_SHOW_COOLDOWN_W 210
 #define GENERAL_OPTIONS_SHOW_COOLDOWN_H 22
 #define GENERAL_OPTIONS_SHOW_COOLDOWN_EVENTID 1010
+#define GENERAL_OPTIONS_SHOW_ACTION1_TEXT "Show Action Bar 1"
+#define GENERAL_OPTIONS_SHOW_ACTION1_X 18
+#define GENERAL_OPTIONS_SHOW_ACTION1_Y 296
+#define GENERAL_OPTIONS_SHOW_ACTION1_W 210
+#define GENERAL_OPTIONS_SHOW_ACTION1_H 22
+#define GENERAL_OPTIONS_SHOW_ACTION1_EVENTID 1011
+#define GENERAL_OPTIONS_SHOW_ACTION2_TEXT "Show Action Bar 2"
+#define GENERAL_OPTIONS_SHOW_ACTION2_X 18
+#define GENERAL_OPTIONS_SHOW_ACTION2_Y 329
+#define GENERAL_OPTIONS_SHOW_ACTION2_W 210
+#define GENERAL_OPTIONS_SHOW_ACTION2_H 22
+#define GENERAL_OPTIONS_SHOW_ACTION2_EVENTID 1012
+#define GENERAL_OPTIONS_ASK_BUY_PRODUCTS_TEXT "Ask Before Buying Products"
+#define GENERAL_OPTIONS_ASK_BUY_PRODUCTS_X 18
+#define GENERAL_OPTIONS_ASK_BUY_PRODUCTS_Y 362
+#define GENERAL_OPTIONS_ASK_BUY_PRODUCTS_W 210
+#define GENERAL_OPTIONS_ASK_BUY_PRODUCTS_H 22
+#define GENERAL_OPTIONS_ASK_BUY_PRODUCTS_EVENTID 1013
 
 extern Engine g_engine;
 
@@ -172,19 +190,31 @@ void UTIL_generalOptions()
 	newCheckBox->setBoxEventCallback(&general_options_Events, GENERAL_OPTIONS_SHOW_COOLDOWN_EVENTID);
 	newCheckBox->startEvents();
 	newWindow->addChild(newCheckBox);
-	GUI_Button* newButton = new GUI_Button(iRect(GENERAL_OPTIONS_WIDTH-56, GENERAL_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	newCheckBox = new GUI_CheckBox(iRect(GENERAL_OPTIONS_SHOW_ACTION1_X, GENERAL_OPTIONS_SHOW_ACTION1_Y, GENERAL_OPTIONS_SHOW_ACTION1_W, GENERAL_OPTIONS_SHOW_ACTION1_H), GENERAL_OPTIONS_SHOW_ACTION1_TEXT, false, GENERAL_OPTIONS_SHOW_ACTION1_EVENTID);
+	newCheckBox->setBoxEventCallback(&general_options_Events, GENERAL_OPTIONS_SHOW_ACTION1_EVENTID);
+	newCheckBox->startEvents();
+	newWindow->addChild(newCheckBox);
+	newCheckBox = new GUI_CheckBox(iRect(GENERAL_OPTIONS_SHOW_ACTION2_X, GENERAL_OPTIONS_SHOW_ACTION2_Y, GENERAL_OPTIONS_SHOW_ACTION2_W, GENERAL_OPTIONS_SHOW_ACTION2_H), GENERAL_OPTIONS_SHOW_ACTION2_TEXT, false, GENERAL_OPTIONS_SHOW_ACTION2_EVENTID);
+	newCheckBox->setBoxEventCallback(&general_options_Events, GENERAL_OPTIONS_SHOW_ACTION2_EVENTID);
+	newCheckBox->startEvents();
+	newWindow->addChild(newCheckBox);
+	newCheckBox = new GUI_CheckBox(iRect(GENERAL_OPTIONS_ASK_BUY_PRODUCTS_X, GENERAL_OPTIONS_ASK_BUY_PRODUCTS_Y, GENERAL_OPTIONS_ASK_BUY_PRODUCTS_W, GENERAL_OPTIONS_ASK_BUY_PRODUCTS_H), GENERAL_OPTIONS_ASK_BUY_PRODUCTS_TEXT, false, GENERAL_OPTIONS_ASK_BUY_PRODUCTS_EVENTID);
+	newCheckBox->setBoxEventCallback(&general_options_Events, GENERAL_OPTIONS_ASK_BUY_PRODUCTS_EVENTID);
+	newCheckBox->startEvents();
+	newWindow->addChild(newCheckBox);
+	GUI_Button* newButton = new GUI_Button(iRect(GENERAL_OPTIONS_WIDTH - 56, GENERAL_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&general_options_Events, GENERAL_OPTIONS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GENERAL_OPTIONS_WIDTH-109, GENERAL_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(GENERAL_OPTIONS_WIDTH - 109, GENERAL_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&general_options_Events, GENERAL_OPTIONS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GENERAL_OPTIONS_WIDTH-162, GENERAL_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
+	newButton = new GUI_Button(iRect(GENERAL_OPTIONS_WIDTH - 162, GENERAL_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
 	newButton->setButtonEventCallback(&general_options_Events, GENERAL_OPTIONS_HELP_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, GENERAL_OPTIONS_HEIGHT-40, GENERAL_OPTIONS_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, GENERAL_OPTIONS_HEIGHT - 40, GENERAL_OPTIONS_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow, true);
 }

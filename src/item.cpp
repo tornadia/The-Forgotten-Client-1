@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -69,7 +69,7 @@ Item* Item::createItem(const Position& pos, Uint16 type, Uint16 count, Sint32 ph
 				}
 				else if(count < 5)
 				{
-					xPattern = SDL_static_cast(Uint8, count-1);
+					xPattern = SDL_static_cast(Uint8, count - 1);
 					yPattern = 0;
 				}
 				else
@@ -227,6 +227,7 @@ Item* Item::createItem(const Position& pos, Uint16 type, Uint16 count, Sint32 ph
 					Item1X1* newItemX = new Item1X1(pos, ttype);
 					for(Uint8 a = 0; a < animCount; ++a)
 						newItemX->m_1X1Sprites[a] = ttype->getSprite(ThingFrameGroup_Default, 0, 0, 0, xPattern, yPattern, zPattern, a);
+
 					newItem = newItemX;
 				}
 				else if(width == 2 && height == 1)
@@ -263,6 +264,7 @@ Item* Item::createItem(const Position& pos, Uint16 type, Uint16 count, Sint32 ph
 				}
 			}
 		}
+
 		if(!newItem)
 			newItem = new Item(pos, ttype);
 
@@ -281,6 +283,7 @@ Item* Item::createItem(const Position& pos, Uint16 type, Uint16 count, Sint32 ph
 	}
 	else
 		newItem = new ItemNULL(pos, ttype);
+
 	return newItem;
 }
 
@@ -299,7 +302,7 @@ Uint8 Item::calculateAnimationPhase()
 		if(m_animator)
 			return SDL_static_cast(Uint8, m_animator->getPhase(m_animation));
 
-		return UTIL_safeMod<Uint8>(SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)), m_animCount);
+		return (SDL_static_cast(Uint8, (g_frameTime / ITEM_TICKS_PER_FRAME)) % m_animCount);
 	}
 	return 0;
 }
@@ -313,9 +316,12 @@ void Item::render(Sint32 posX, Sint32 posY, bool)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint8 animationFrame = calculateAnimationPhase();
 	for(Uint8 l = 0; l < m_thingType->m_frameGroup[ThingFrameGroup_Default].m_layers; ++l)
@@ -353,9 +359,12 @@ void Item1X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	if(!visible_tile)
 		return;
@@ -384,9 +393,12 @@ void Item2X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint8 animationFrame = calculateAnimationPhase();
 	Uint32 drawSprite;
@@ -399,7 +411,7 @@ void Item2X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X1Sprites[animationFrame][1];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
 Item1X2::Item1X2(const Position& pos, ThingType* type) : Item(pos, type)
@@ -420,9 +432,12 @@ void Item1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint8 animationFrame = calculateAnimationPhase();
 	Uint32 drawSprite = m_1X2Sprites[animationFrame][0];
@@ -435,7 +450,7 @@ void Item1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_1X2Sprites[animationFrame][1];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX, posY-32);
+		renderer->drawSprite(drawSprite, posX, posY - 32);
 }
 
 Item2X2::Item2X2(const Position& pos, ThingType* type) : Item(pos, type)
@@ -458,9 +473,12 @@ void Item2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint8 animationFrame = calculateAnimationPhase();
 	Uint32 drawSprite;
@@ -473,7 +491,7 @@ void Item2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X2Sprites[animationFrame][1];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 
 	posY -= 32;
 	drawSprite = m_2X2Sprites[animationFrame][2];
@@ -482,7 +500,7 @@ void Item2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X2Sprites[animationFrame][3];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
 Item1X1X2::Item1X1X2(const Position& pos, ThingType* type) : Item(pos, type)
@@ -503,9 +521,12 @@ void Item1X1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	if(!visible_tile)
 		return;
@@ -538,9 +559,12 @@ void Item2X1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint8 animationFrame = calculateAnimationPhase();
 	Uint32 drawSprite;
@@ -557,11 +581,11 @@ void Item2X1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X1X2Sprites[animationFrame][2];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 
 	drawSprite = m_2X1X2Sprites[animationFrame][3];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
 Item1X2X2::Item1X2X2(const Position& pos, ThingType* type) : Item(pos, type)
@@ -582,9 +606,12 @@ void Item1X2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint8 animationFrame = calculateAnimationPhase();
 	Uint32 drawSprite;
@@ -601,11 +628,11 @@ void Item1X2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_1X2X2Sprites[animationFrame][2];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX, posY-32);
+		renderer->drawSprite(drawSprite, posX, posY - 32);
 
 	drawSprite = m_1X2X2Sprites[animationFrame][3];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX, posY-32);
+		renderer->drawSprite(drawSprite, posX, posY - 32);
 }
 
 Item2X2X2::Item2X2X2(const Position& pos, ThingType* type) : Item(pos, type)
@@ -628,9 +655,12 @@ void Item2X2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		posY -= m_thingType->m_displacement[1];
 	}
 
-	Uint16* light = m_thingType->m_light;
-	if(light[0] > 0)
-		g_light.addLightSource(posX, posY, light);
+	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
+	{
+		Uint16* light = m_thingType->m_light;
+		if(light[0] > 0)
+			g_light.addLightSource(posX, posY, light);
+	}
 
 	Uint8 animationFrame = calculateAnimationPhase();
 	Uint32 drawSprite;
@@ -647,11 +677,11 @@ void Item2X2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X2X2Sprites[animationFrame][2];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 
 	drawSprite = m_2X2X2Sprites[animationFrame][3];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 
 	posY -= 32;
 	drawSprite = m_2X2X2Sprites[animationFrame][4];
@@ -664,9 +694,9 @@ void Item2X2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 
 	drawSprite = m_2X2X2Sprites[animationFrame][6];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 
 	drawSprite = m_2X2X2Sprites[animationFrame][7];
 	if(drawSprite != 0)
-		renderer->drawSprite(drawSprite, posX-32, posY);
+		renderer->drawSprite(drawSprite, posX - 32, posY);
 }

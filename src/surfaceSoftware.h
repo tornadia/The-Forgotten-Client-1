@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -36,9 +36,17 @@ struct PictureOptimization
 	Sint32 m_height;
 };
 
+struct SoftwareSpriteData
+{
+	SoftwareSpriteData() : m_surface(NULL), m_lastUsage(0) {}
+
+	SDL_Surface* m_surface;
+	Uint32 m_lastUsage;
+};
+
 typedef std::unordered_map<Uint32, PictureOptimization> U32BOptimizer;
 typedef std::unordered_map<Uint32, SDL_Surface*> U32BSurfaces;
-typedef std::unordered_map<Uint64, SDL_Surface*> U64BSurfaces;
+typedef std::unordered_map<Uint64, SoftwareSpriteData> U64BSurfaces;
 
 class SurfaceSoftware : public Surface
 {
@@ -47,7 +55,7 @@ class SurfaceSoftware : public Surface
 		virtual ~SurfaceSoftware();
 
 		virtual bool isSupported();
-		SDL_Surface* converSurface(SDL_Surface* s);
+		SDL_Surface* convertSurface(SDL_Surface* s);
 		virtual const char* getName() {return "Software";}
 		virtual const char* getSoftware() {return "Softrast 1.0";}
 		virtual const char* getHardware() {return m_hardware;}
@@ -62,7 +70,8 @@ class SurfaceSoftware : public Surface
 		virtual void endScene();
 
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
-		virtual void drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void beginGameScene();
 		virtual void endGameScene();
@@ -79,7 +88,7 @@ class SurfaceSoftware : public Surface
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
-		SDL_Surface* loadSprite(Uint32 spriteId);
+		SDL_Surface* loadSprite(Uint64 tempPos, Uint32 spriteId);
 		SDL_Surface* loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor);
 		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
 		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
@@ -93,12 +102,11 @@ class SurfaceSoftware : public Surface
 	protected:
 		U32BOptimizer m_pictureOptimizations;
 		U32BSurfaces m_automapTiles;
-		U64BSurfaces m_spriteMasks;
+		U64BSurfaces m_sprites;
 		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesMaskIds;
+		std::circular_buffer<Uint64> m_spritesIds;
 
 		SDL_Surface** m_pictures;
-		SDL_Surface** m_sprites;
 		char* m_hardware;
 
 		SDL_Surface* m_gameWindow;
@@ -107,7 +115,8 @@ class SurfaceSoftware : public Surface
 		SDL_Surface* m_scaled_gameWindow;
 
 		Uint32 m_totalVRAM;
-		Uint32 m_spritesCache;
+		Uint32 m_spriteChecker;
+		Uint32 m_currentFrame;
 		Uint32 m_convertFormat;
 
 		Sint32 m_integer_scaling_width;

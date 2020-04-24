@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -23,6 +23,7 @@
 #define __FILE_GUI_OUTFITS_h_
 
 #include "../GUI_Elements/GUI_Element.h"
+#include "../animator.h"
 
 class ThingType;
 class GUI_Outfit_View : public GUI_Element
@@ -37,6 +38,7 @@ class GUI_Outfit_View : public GUI_Element
 
 		void startMovement();
 		void stopMovement();
+		void resetAnimation();
 		void updateMovement();
 
 		Sint32 getOffsetX();
@@ -48,10 +50,13 @@ class GUI_Outfit_View : public GUI_Element
 		ThingType* m_ground;
 		ThingType* m_outfit;
 		ThingType* m_mount;
+		Animation m_outfitAnimation[ThingFrameGroup_Last];
+		Animation m_mountAnimation[ThingFrameGroup_Last];
 		Uint32 m_walkStartTime;
 		Sint32 m_walkedPixels;
 		Uint8 m_direction;
-		Uint8 m_currentAnim;
+		Uint8 m_outfitAnim;
+		Uint8 m_mountAnim;
 		Uint8 m_currentFrame;
 		bool m_showOutfit;
 		bool m_showMount;

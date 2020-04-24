@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -114,15 +114,15 @@ Engine::Engine()
 	m_fullscreen = false;
 	m_vsync = true;
 	m_antialiasing = CLIENT_ANTIALIASING_NORMAL;
-	m_perfMode = false;
 	m_unlimitedFPS = true;
-	m_battleSortMethod = Sort_Ascending_Time;
 	m_attackMode = ATTACKMODE_BALANCED;
 	m_chaseMode = CHASEMODE_STAND;
 	m_secureMode = SECUREMODE_SECURE;
 	m_pvpMode = PVPMODE_DOVE;
 	m_actionData = CLIENT_ACTION_NONE;
 	m_lightAmbient = 25;
+	m_levelSeparator = 80;
+	m_lightMode = CLIENT_LIGHT_MODE_OLD;
 	m_windowId = 0;
 	m_controlFPS = false;
 	m_sharpening = false;
@@ -155,6 +155,10 @@ Engine::Engine()
 	for(Sint32 i = Skills_Fist; i < Skills_LastSkill; ++i)
 		m_showSkillsBar[i] = true;
 
+	m_buyWithBackpacks = false;
+	m_ignoreCapacity = false;
+	m_ignoreEquiped = true;
+
 	m_motdText.assign("No current information.");
 	m_motdNumber = 0;
 
@@ -170,6 +174,29 @@ Engine::Engine()
 
 	m_moveItemX = SDL_MIN_SINT32;
 	m_moveItemY = SDL_MIN_SINT32;
+
+	m_leftPanel = GUI_PANEL_RANDOM;
+	m_rightPanel = GUI_PANEL_MAIN;
+	m_consoleHeight = 140;
+	m_haveExtraLeftPanel = false;
+	m_haveExtraRightPanel = false;
+	m_canAddLeftPanel = false;
+	m_canAddRightPanel = false;
+	m_leftAddPanel = 0;
+	m_leftRemPanel = 0;
+	m_rightAddPanel = 0;
+	m_rightRemPanel = 0;
+
+	m_battleSortMethod = Sort_Ascending_Time;
+	m_buddySortmethod = Vip_Sort_Name;
+	m_buddyHideOffline = false;
+	m_buddyHideGroups = false;
+
+	m_activatedBlackList = true;
+	m_activatedWhiteList = true;
+	m_ignoreYellingMessages = false;
+	m_ignorePrivateMessages = false;
+	m_allowVipMessages = false;
 }
 
 void Engine::loadCFG()
@@ -199,8 +226,13 @@ void Engine::loadCFG()
 		m_engine = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
 		data = cfg.fetchKey("BasicBrightness");
 		m_lightAmbient = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
-		if(m_lightAmbient > 100)
-			m_lightAmbient = 100;
+		m_lightAmbient = (m_lightAmbient > 100 ? 100 : m_lightAmbient);
+		data = cfg.fetchKey("LevelSeparator");
+		m_levelSeparator = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
+		m_levelSeparator = (m_levelSeparator > 100 ? 100 : m_levelSeparator);
+		data = cfg.fetchKey("LightMode");
+		m_lightMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
+		m_lightMode = (m_lightMode > CLIENT_LIGHT_MODE_NEW ? CLIENT_LIGHT_MODE_OLD : m_lightMode);
 
 		data = cfg.fetchKey("WindowedMode");
 		if(data.size() > 2)
@@ -255,8 +287,7 @@ void Engine::loadCFG()
 		m_sharpening = (data == "yes" ? true : false);
 		data = cfg.fetchKey("Antialiasing");
 		m_antialiasing = (data == "yes" ? CLIENT_ANTIALIASING_NORMAL : data == "integer" ? CLIENT_ANTIALIASING_INTEGER : CLIENT_ANTIALIASING_NONE);
-		data = cfg.fetchKey("PerfMode");
-		m_perfMode = (data == "yes" ? true : false);
+		m_antialiasing = (m_antialiasing > CLIENT_ANTIALIASING_INTEGER ? CLIENT_ANTIALIASING_NORMAL : m_antialiasing);
 
 		data = cfg.fetchKey("ClassicControl");
 		m_classicControl = (data == "yes" ? true : false);
@@ -291,26 +322,74 @@ void Engine::loadCFG()
 		m_showPrivateMessages = (data == "yes" ? true : false);
 
 		data = cfg.fetchKey("AttackMode");
-		m_attackMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10))+1;
-		if(m_attackMode > ATTACKMODE_DEFENSE) m_attackMode = ATTACKMODE_BALANCED;
+		m_attackMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10)) + 1;
+		m_attackMode = (m_attackMode > ATTACKMODE_DEFENSE ? ATTACKMODE_BALANCED : m_attackMode);
 		data = cfg.fetchKey("ChaseMode");
 		m_chaseMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
-		if(m_chaseMode > CHASEMODE_FOLLOW) m_chaseMode = CHASEMODE_STAND;
+		m_chaseMode = (m_chaseMode > CHASEMODE_FOLLOW ? CHASEMODE_STAND : m_chaseMode);
 		data = cfg.fetchKey("SecureMode");
 		m_secureMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
-		if(m_secureMode > SECUREMODE_UNSECURE) m_secureMode = SECUREMODE_SECURE;
+		m_secureMode = (m_secureMode > SECUREMODE_UNSECURE ? SECUREMODE_SECURE : m_secureMode);
 		data = cfg.fetchKey("PvpMode");
 		m_pvpMode = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
-		if(m_pvpMode > PVPMODE_RED_FIST) m_secureMode = PVPMODE_DOVE;
+		m_pvpMode = (m_pvpMode > PVPMODE_RED_FIST ? PVPMODE_DOVE : m_secureMode);
 
 		data = cfg.fetchKey("LastMotD");
 		m_motdNumber = SDL_static_cast(Uint32, SDL_strtoul(data.c_str(), NULL, 10));
-		//data = cfg.fetchKey("AutomapZoom");
-		//g_automap.setZoom(SDL_static_cast(Sint32, SDL_strtol(data.c_str(), NULL, 10)));
-		//data = cfg.fetchKey("ConsoleHeight");
+		data = cfg.fetchKey("AutomapZoom");
+		g_game.minimapSetZoom(SDL_static_cast(Sint32, SDL_strtol(data.c_str(), NULL, 10)));
+		data = cfg.fetchKey("ConsoleHeight");
+		m_consoleHeight = SDL_static_cast(Sint32, SDL_strtol(data.c_str(), NULL, 10));
 
-		//data = cfg.fetchKey("White");
-		//data = cfg.fetchKey("Ignore");
+		data = cfg.fetchKey("ActivatedIgnoreList");
+		m_activatedBlackList = (data == "yes" ? true : false);
+		data = cfg.fetchKey("ActivatedWhiteList");
+		m_activatedWhiteList = (data == "yes" ? true : false);
+		data = cfg.fetchKey("IgnoreYelling");
+		m_ignoreYellingMessages = (data == "yes" ? true : false);
+		data = cfg.fetchKey("IgnorePrivateMessages");
+		m_ignorePrivateMessages = (data == "yes" ? true : false);
+		data = cfg.fetchKey("AllowVipMessages");
+		m_allowVipMessages = (data == "yes" ? true : false);
+
+		data = cfg.fetchKey("White");
+		if(data.size() > 2)
+		{
+			data.pop_back();
+			data.erase(data.begin());
+			m_whiteList.clear();
+
+			StringVector whiteListElements = UTIL_explodeString(data, ",");
+			for(StringVector::iterator it = whiteListElements.begin(), end = whiteListElements.end(); it != end; ++it)
+			{
+				std::string& whiteListElement = (*it);
+				if(whiteListElement.back() == '"')
+					whiteListElement.pop_back();
+				if(whiteListElement.front() == '"')
+					whiteListElement.erase(whiteListElement.begin());
+
+				m_whiteList[whiteListElement] = true;
+			}
+		}
+		data = cfg.fetchKey("Ignore");
+		if(data.size() > 2)
+		{
+			data.pop_back();
+			data.erase(data.begin());
+			m_blackList.clear();
+
+			StringVector blackListElements = UTIL_explodeString(data, ",");
+			for(StringVector::iterator it = blackListElements.begin(), end = blackListElements.end(); it != end; ++it)
+			{
+				std::string& blackListElement = (*it);
+				if(blackListElement.back() == '"')
+					blackListElement.pop_back();
+				if(blackListElement.front() == '"')
+					blackListElement.erase(blackListElement.begin());
+
+				m_blackList[blackListElement] = true;
+			}
+		}
 		//data = cfg.fetchKey("KnownTutorialHints");
 
 		data = cfg.fetchKey("LevelBar");
@@ -350,6 +429,12 @@ void Engine::loadCFG()
 				StringVector windowData = UTIL_explodeString(data, ",");
 				if(windowData.size() == 2)
 					m_contentWindows[SDL_static_cast(Uint32, SDL_strtoul(windowData[0].c_str(), NULL, 10))] = SDL_static_cast(Sint32, SDL_strtol(windowData[1].c_str(), NULL, 10));
+				else if(windowData.size() == 3)
+				{
+					Uint32 windowId = SDL_static_cast(Uint32, SDL_strtoul(windowData[0].c_str(), NULL, 10));
+					m_contentWindows[windowId] = SDL_static_cast(Sint32, SDL_strtol(windowData[1].c_str(), NULL, 10));
+					m_parentWindows[windowId] = SDL_static_cast(Sint32, SDL_strtol(windowData[2].c_str(), NULL, 10));
+				}
 			}
 		}
 
@@ -360,14 +445,67 @@ void Engine::loadCFG()
 			m_openDialogs.push_back(SDL_static_cast(Uint32, SDL_strtoul(data.c_str(), NULL, 10)));
 		}
 
-		//data = cfg.fetchKey("BuddySortmethods");
-		//data = cfg.fetchKey("BuddyHideOffline");
+		vectorData = cfg.fetchKeys("Buddy");
+		for(StringVector::iterator it = vectorData.begin(), end = vectorData.end(); it != end; ++it)
+		{
+			data = (*it);
+			if(data.size() > 2)
+			{
+				data.pop_back();
+				data.erase(data.begin());
 
-		//data = cfg.fetchKey("SortOrderBuy");
-		//data = cfg.fetchKey("SortOrderSell");
-		//data = cfg.fetchKey("BuyWithBackpacks");
-		//data = cfg.fetchKey("IgnoreCapacity");
-		//data = cfg.fetchKey("SellEquipped");
+				StringVector windowData = UTIL_explodeString(data, ",");
+				if(windowData.size() == 4)
+				{
+					Uint32 playerGUID = SDL_static_cast(Uint32, SDL_strtoul(windowData[0].c_str(), NULL, 10));
+					Uint32 iconId = SDL_static_cast(Uint32, SDL_strtoul(windowData[1].c_str(), NULL, 10));
+					if(windowData[2].back() == '"')
+						windowData[2].pop_back();
+					if(windowData[2].front() == '"')
+						windowData[2].erase(windowData[2].begin());
+
+					setVipData(playerGUID, windowData[2], iconId, (windowData[3] == "yes" ? true : false));
+				}
+			}
+		}
+
+		data = cfg.fetchKey("BattleSortmethod");
+		m_battleSortMethod = SDL_static_cast(SortMethods, SDL_strtoul(data.c_str(), NULL, 10));
+		m_battleSortMethod = (m_battleSortMethod > Sort_Descending_Name ? Sort_Ascending_Time : m_battleSortMethod);
+		data = cfg.fetchKey("BuddySortmethods");
+		if(data.size() > 2)
+		{
+			data.pop_back();
+			data.erase(data.begin());
+
+			StringVector sortData = UTIL_explodeString(data, ",");
+			if(sortData.size() == 3)
+				m_buddySortmethod = SDL_static_cast(VipSortMethods, SDL_strtoul(sortData[0].c_str(), NULL, 10));
+		}
+		data = cfg.fetchKey("BuddyHideOffline");
+		m_buddyHideOffline = (data == "yes" ? true : false);
+		data = cfg.fetchKey("BuddyHideGroups");
+		m_buddyHideGroups = (data == "yes" ? true : false);
+		
+		data = cfg.fetchKey("SortOrderBuy");
+		m_buySortMethod = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
+		m_buySortMethod = (m_buySortMethod > Shop_Sort_Weight ? Shop_Sort_Name : m_buySortMethod);
+		data = cfg.fetchKey("SortOrderSell");
+		m_sellSortMethod = SDL_static_cast(Uint8, SDL_strtoul(data.c_str(), NULL, 10));
+		m_sellSortMethod = (m_sellSortMethod > Shop_Sort_Weight ? Shop_Sort_Name : m_sellSortMethod);
+		data = cfg.fetchKey("BuyWithBackpacks");
+		m_buyWithBackpacks = (data == "yes" ? true : false);
+		data = cfg.fetchKey("IgnoreCapacity");
+		m_ignoreCapacity = (data == "yes" ? true : false);
+		data = cfg.fetchKey("SellEquipped");
+		m_ignoreEquiped = (data == "yes" ? false : true);
+		
+		data = cfg.fetchKey("LeftSidebars");
+		m_leftPanel = SDL_static_cast(Sint32, SDL_strtol(data.c_str(), NULL, 10));
+		m_leftPanel = (m_leftPanel == 0 ? GUI_PANEL_RANDOM : m_leftPanel + GUI_PANEL_EXTRA_LEFT_START - 1);
+		data = cfg.fetchKey("RightSidebars");
+		m_rightPanel = SDL_static_cast(Sint32, SDL_strtol(data.c_str(), NULL, 10));
+		m_rightPanel = (m_rightPanel == 0 ? GUI_PANEL_MAIN : m_rightPanel + GUI_PANEL_EXTRA_RIGHT_START - 1);
 	}
 	#if CLIENT_OVVERIDE_VERSION > 0
 	g_clientVersion = CLIENT_OVVERIDE_PROTOCOL_VERSION;
@@ -404,6 +542,10 @@ void Engine::saveCFG()
 		cfg.insertKey("LightEffects", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_lightAmbient));
 		cfg.insertKey("BasicBrightness", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_levelSeparator));
+		cfg.insertKey("LevelSeparator", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_lightMode));
+		cfg.insertKey("LightMode", std::string(g_buffer, SDL_static_cast(size_t, len)));
 
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "(%d,%d,%d,%d,%s)", m_windowX, m_windowY, m_windowCachedW, m_windowCachedH, (m_maximized ? "yes" : "no"));
 		cfg.insertKey("WindowedMode", std::string(g_buffer, SDL_static_cast(size_t, len)));
@@ -423,8 +565,6 @@ void Engine::saveCFG()
 		cfg.insertKey("Sharpening", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_antialiasing == CLIENT_ANTIALIASING_NORMAL ? "yes" : m_antialiasing == CLIENT_ANTIALIASING_INTEGER ? "integer" : "no"));
 		cfg.insertKey("Antialiasing", std::string(g_buffer, SDL_static_cast(size_t, len)));
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_perfMode ? "yes" : "no"));
-		cfg.insertKey("PerfMode", std::string(g_buffer, SDL_static_cast(size_t, len)));
 
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_classicControl ? "yes" : "no"));
 		cfg.insertKey("ClassicControl", std::string(g_buffer, SDL_static_cast(size_t, len)));
@@ -458,7 +598,7 @@ void Engine::saveCFG()
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_showPrivateMessages ? "yes" : "no"));
 		cfg.insertKey("PrivateMessages", std::string(g_buffer, SDL_static_cast(size_t, len)));
 
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_attackMode-1));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_attackMode - 1));
 		cfg.insertKey("AttackMode", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_chaseMode));
 		cfg.insertKey("ChaseMode", std::string(g_buffer, SDL_static_cast(size_t, len)));
@@ -469,15 +609,58 @@ void Engine::saveCFG()
 
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", m_motdNumber);
 		cfg.insertKey("LastMotD", std::string(g_buffer, SDL_static_cast(size_t, len)));
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", 1);
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", g_game.minimapGetZoom());
 		cfg.insertKey("AutomapZoom", std::string(g_buffer, SDL_static_cast(size_t, len)));
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", 0);
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%d", m_consoleHeight);
 		cfg.insertKey("ConsoleHeight", std::string(g_buffer, SDL_static_cast(size_t, len)));
 
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "{}");
-		cfg.insertKey("White", std::string(g_buffer, SDL_static_cast(size_t, len)));
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "{}");
-		cfg.insertKey("Ignore", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_activatedBlackList ? "yes" : "no"));
+		cfg.insertKey("ActivatedIgnoreList", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_activatedWhiteList ? "yes" : "no"));
+		cfg.insertKey("ActivatedWhiteList", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_ignoreYellingMessages ? "yes" : "no"));
+		cfg.insertKey("IgnoreYelling", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_ignorePrivateMessages ? "yes" : "no"));
+		cfg.insertKey("IgnorePrivateMessages", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_allowVipMessages ? "yes" : "no"));
+		cfg.insertKey("AllowVipMessages", std::string(g_buffer, SDL_static_cast(size_t, len)));
+
+		bool itFirst = true;
+		std::string listString("{");
+		for(std::unordered_map<std::string, bool>::iterator it = m_whiteList.begin(), end = m_whiteList.end(); it != end; ++it)
+		{
+			if(it->second)
+			{
+				if(itFirst)
+					itFirst = false;
+				else
+					listString.append(1, ',');
+
+				listString.append(1, '"');
+				listString.append(it->first);
+				listString.append(1, '"');
+			}
+		}
+		listString.append(1, '}');
+		cfg.insertKey("White", listString);
+		itFirst = true;
+		listString.assign("{");
+		for(std::unordered_map<std::string, bool>::iterator it = m_blackList.begin(), end = m_blackList.end(); it != end; ++it)
+		{
+			if(it->second)
+			{
+				if(itFirst)
+					itFirst = false;
+				else
+					listString.append(1, ',');
+
+				listString.append(1, '"');
+				listString.append(it->first);
+				listString.append(1, '"');
+			}
+		}
+		listString.append(1, '}');
+		cfg.insertKey("Ignore", listString);
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "{}");
 		cfg.insertKey("KnownTutorialHints", std::string(g_buffer, SDL_static_cast(size_t, len)));
 
@@ -490,9 +673,8 @@ void Engine::saveCFG()
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_showTrainingBar ? "yes" : "no"));
 		cfg.insertKey("OfflineTrainingBar", std::string(g_buffer, SDL_static_cast(size_t, len)));
 
-		bool itFirst = true;
-		Uint32 itPosition = 0;
-		g_buffer[itPosition++] = '{';
+		itFirst = true;
+		listString.assign("{");
 		for(Sint32 i = Skills_Fist; i < Skills_LastSkill; ++i)
 		{
 			if(m_showSkillsBar[i])
@@ -500,16 +682,21 @@ void Engine::saveCFG()
 				if(itFirst)
 					itFirst = false;
 				else
-					g_buffer[itPosition++] = ',';
+					listString.append(1, ',');
 
-				g_buffer[itPosition++] = SDL_static_cast(char, i) + '0';
+				listString.append(std::to_string(i));
 			}
 		}
-		g_buffer[itPosition++] = '}';
-		cfg.insertKey("SkillBars", std::string(g_buffer, SDL_static_cast(size_t, itPosition)));
+		listString.append(1, '}');
+		cfg.insertKey("SkillBars", listString);
 		for(std::map<Uint32, Sint32>::iterator it = m_contentWindows.begin(), end = m_contentWindows.end(); it != end; ++it)
 		{
-			len = SDL_snprintf(g_buffer, sizeof(g_buffer), "(%u,%d)", it->first, it->second);
+			std::map<Uint32, Sint32>::iterator pit = m_parentWindows.find(it->first);
+			if(pit != m_parentWindows.end())
+				len = SDL_snprintf(g_buffer, sizeof(g_buffer), "(%u,%d,%d)", it->first, it->second, pit->second);
+			else
+				len = SDL_snprintf(g_buffer, sizeof(g_buffer), "(%u,%d)", it->first, it->second);
+
 			cfg.insertKey("ContentWindow", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		}
 		for(std::vector<Uint32>::iterator it = m_openDialogs.begin(), end = m_openDialogs.end(); it != end; ++it)
@@ -517,24 +704,37 @@ void Engine::saveCFG()
 			len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", (*it));
 			cfg.insertKey("OpenDialogs", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		}
+		for(std::map<Uint32, VipData>::iterator it = m_vipData.begin(), end = m_vipData.end(); it != end; ++it)
+		{
+			VipData& vip = it->second;
+			len = SDL_snprintf(g_buffer, sizeof(g_buffer), "(%u,%u,\"%s\",%s)", it->first, vip.iconId, vip.description.c_str(), (vip.notifyLogin ? "yes" : "no"));
+			cfg.insertKey("Buddy", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		}
 
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_battleSortmethod));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_battleSortMethod));
 		cfg.insertKey("BattleSortmethod", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_buddySortmethod == 0 ? "(0,1,2)" : m_buddySortmethod == 1 ? "(1,2,0)" : "(2,0,1)"));
 		cfg.insertKey("BuddySortmethods", std::string(g_buffer, SDL_static_cast(size_t, len)));
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_buddyHideOffline ? "yes" : "no"));
 		cfg.insertKey("BuddyHideOffline", std::string(g_buffer, SDL_static_cast(size_t, len)));
-
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "0");
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", (m_buddyHideGroups ? "yes" : "no"));
+		cfg.insertKey("BuddyHideGroups", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_buySortMethod));
 		cfg.insertKey("SortOrderBuy", std::string(g_buffer, SDL_static_cast(size_t, len)));
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "2");
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, m_sellSortMethod));
 		cfg.insertKey("SortOrderSell", std::string(g_buffer, SDL_static_cast(size_t, len)));
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "no");
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), (m_buyWithBackpacks ? "yes" : "no"));
 		cfg.insertKey("BuyWithBackpacks", std::string(g_buffer, SDL_static_cast(size_t, len)));
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "no");
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), (m_ignoreCapacity ? "yes" : "no"));
 		cfg.insertKey("IgnoreCapacity", std::string(g_buffer, SDL_static_cast(size_t, len)));
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "no");
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), (m_ignoreEquiped ? "no" : "yes"));
 		cfg.insertKey("SellEquipped", std::string(g_buffer, SDL_static_cast(size_t, len)));
+
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%d", (m_leftPanel == GUI_PANEL_RANDOM ? 0 : m_leftPanel - GUI_PANEL_EXTRA_LEFT_START + 1));
+		cfg.insertKey("LeftSidebars", std::string(g_buffer, SDL_static_cast(size_t, len)));
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%d", (m_rightPanel == GUI_PANEL_MAIN ? 0 : m_rightPanel - GUI_PANEL_EXTRA_RIGHT_START + 1));
+		cfg.insertKey("RightSidebars", std::string(g_buffer, SDL_static_cast(size_t, len)));
 	}
 }
 
@@ -558,7 +758,7 @@ void Engine::attachFullScreenInfo()
 			{
 				reportBits = SDL_BITSPERPIXEL(displayMode.format);
 				if(reportBits == 24)
-					reportBits = SDL_BYTESPERPIXEL(displayMode.format)*8;
+					reportBits = SDL_BYTESPERPIXEL(displayMode.format) * 8;
 				if(m_fullScreenBits == reportBits)
 				{
 					SDL_SetWindowDisplayMode(m_window, &displayMode);
@@ -583,7 +783,7 @@ void Engine::run()
 		{
 			m_fullScreenBits = SDL_BITSPERPIXEL(displayMode.format);
 			if(m_fullScreenBits == 24)
-				m_fullScreenBits = SDL_BYTESPERPIXEL(displayMode.format)*8;
+				m_fullScreenBits = SDL_BYTESPERPIXEL(displayMode.format) * 8;
 		}
 	}
 	loadCFG();
@@ -625,7 +825,7 @@ void Engine::run()
 	}
 	m_windowId = SDL_GetWindowID(m_window);
 	m_controlFPS = (!m_unlimitedFPS && !m_vsync);
-
+	
 	//createwindow don't generate resize event so send one ourselves
 	UTIL_ResizeEvent(m_windowId, m_windowW, m_windowH);
 
@@ -670,11 +870,7 @@ void Engine::parseCommands(int argc, char* argv[])
 	//Does argv[0] on all platforms is the path to our application?
 	for(int i = 1; i < argc; ++i)
 	{
-		if(SDL_strcasecmp(argv[i], "-compatibility") == 0)
-			m_perfMode = false;
-		else if(SDL_strcasecmp(argv[i], "-performance") == 0)
-			m_perfMode = true;
-		else if(SDL_strcasecmp(argv[i], "-force-d3d11") == 0)
+		if(SDL_strcasecmp(argv[i], "-force-d3d11") == 0)
 			m_engine = CLIENT_ENGINE_DIRECT3D11;
 		else if(SDL_strcasecmp(argv[i], "-force-d3d9") == 0)
 			m_engine = CLIENT_ENGINE_DIRECT3D;
@@ -762,66 +958,31 @@ bool Engine::init()
 		m_surface = new SurfaceSoftware();
 	#if defined(SDL_VIDEO_VULKAN)
 	else if(m_engine == CLIENT_ENGINE_VULKAN)
-	{
-		if(m_perfMode)
-			m_surface = new SurfaceVulkanPerf();
-		else
-			m_surface = new SurfaceVulkanComp();
-	}
+		m_surface = new SurfaceVulkan();
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL)
 	else if(m_engine == CLIENT_ENGINE_OPENGL)
-	{
-		if(m_perfMode)
-			m_surface = new SurfaceOpenglPerf();
-		else
-			m_surface = new SurfaceOpenglComp();
-	}
+		m_surface = new SurfaceOpengl();
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL_ES)
 	else if(m_engine == CLIENT_ENGINE_OPENGLES)
-	{
-		if(m_perfMode)
-			m_surface = new SurfaceOpenglESPerf();
-		else
-			m_surface = new SurfaceOpenglESComp();
-	}
+		m_surface = new SurfaceOpenglES();
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL_ES2)
 	else if(m_engine == CLIENT_ENGINE_OPENGLES2)
-	{
-		if(m_perfMode)
-			m_surface = new SurfaceOpenglES2Perf();
-		else
-			m_surface = new SurfaceOpenglES2Comp();
-	}
+		m_surface = new SurfaceOpenglES2();
 	#endif
 	#if defined(SDL_VIDEO_RENDER_D3D)
 	else if(m_engine == CLIENT_ENGINE_DIRECT3D)
-	{
-		if(m_perfMode)
-			m_surface = new SurfaceDirect3D9Perf();
-		else
-			m_surface = new SurfaceDirect3D9Comp();
-	}
+		m_surface = new SurfaceDirect3D9();
 	#endif
 	#if defined(SDL_VIDEO_RENDER_D3D11)
 	else if(m_engine == CLIENT_ENGINE_DIRECT3D11)
-	{
-		if(m_perfMode)
-			m_surface = new SurfaceDirect3D11Perf();
-		else
-			m_surface = new SurfaceDirect3D11Comp();
-	}
+		m_surface = new SurfaceDirect3D11();
 	#endif
 	#if defined(SDL_VIDEO_RENDER_DDRAW)
 	else if(m_engine == CLIENT_ENGINE_DIRECT3D7)
-	{
-		if(m_perfMode)
-			m_surface = new SurfaceDirectDrawPerf();
-		else
-			m_surface = new SurfaceDirectDrawComp();
-	}
+		m_surface = new SurfaceDirectDraw();
 	#endif
 	else
 	{
@@ -869,21 +1030,25 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 			picture = GUI_FONT_SMALL_IMAGE;
 			break;
 	}
-
 	if(!picture)
-		return;//TODO; assertion
+		return;
 
 	Sint32 w, h;
 	unsigned char* pixels = LoadPicture(picture, true, w, h);
 	if(!pixels || width != w || height != h)
-		return;//TODO; assertion
+	{
+		SDL_snprintf(g_buffer, sizeof(g_buffer), "Cannot read file '%s'.\n\nPlease re-install the program.", g_picPath.c_str());
+		UTIL_MessageBox(true, g_buffer);
+		exit(-1);
+		return;
+	}
 
-	Uint32 protectionSize = (w*h*4)-4;
+	Uint32 protectionSize = (w * h * 4) - 4;
 	m_charPicture[font] = picture;
 	for(Sint32 i = 1; i < 32; ++i)
 	{
-		m_charx[font][i] = 0;m_chary[font][i] = 0;
-		m_charw[font][i] = 0;m_charh[font][i] = 0;
+		m_charx[font][i] = 0; m_chary[font][i] = 0;
+		m_charw[font][i] = 0; m_charh[font][i] = 0;
 	}
 
 	for(Sint32 j = 0; j < vchars; ++j)
@@ -894,27 +1059,27 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 			if(ch > 255)
 				continue;
 
-			m_charx[font][ch] = k*maxchw;
-			m_chary[font][ch] = j*maxchh;
+			m_charx[font][ch] = k * maxchw;
+			m_chary[font][ch] = j * maxchh;
 
 			Sint32 chWidth = 0, chHeight = 0;
-			for(Sint32 xPos = m_charx[font][ch]; xPos < m_charx[font][ch]+maxchw; ++xPos)
+			for(Sint32 xPos = m_charx[font][ch]; xPos < m_charx[font][ch] + maxchw; ++xPos)
 			{
-				for(Sint32 yPos = m_chary[font][ch]; yPos < m_chary[font][ch]+maxchh; ++yPos)
+				for(Sint32 yPos = m_chary[font][ch]; yPos < m_chary[font][ch] + maxchh; ++yPos)
 				{
-					Uint32 offset = (yPos*width+xPos)*4;
-					if(offset <= protectionSize && pixels[offset+3] == 0xFF)
+					Uint32 offset = (yPos * width + xPos) * 4;
+					if(offset <= protectionSize && pixels[offset + 3] == 0xFF)
 					{
-						if(chWidth < xPos-m_charx[font][ch])
-							chWidth = xPos-m_charx[font][ch];
-						if(chHeight < yPos-m_chary[font][ch])
-							chHeight = yPos-m_chary[font][ch];
+						if(chWidth < xPos - m_charx[font][ch])
+							chWidth = xPos - m_charx[font][ch];
+						if(chHeight < yPos - m_chary[font][ch])
+							chHeight = yPos - m_chary[font][ch];
 					}
 				}
 			}
 
-			m_charw[font][ch] = chWidth+1;
-			m_charh[font][ch] = chHeight+1;
+			m_charw[font][ch] = chWidth + 1;
+			m_charh[font][ch] = chHeight + 1;
 		}
 	}
 
@@ -924,12 +1089,12 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 	switch(font)
 	{
 		case CLIENT_FONT_NONOUTLINED:
-			m_charx[font][0] = 1;m_chary[font][0] = 0;
+			m_charx[font][0] = 1; m_chary[font][0] = 0;
 			m_charw[font][32] = m_charw[font][160] = 2;
 			break;
 
 		case CLIENT_FONT_OUTLINED:
-			m_charx[font][0] = -1;m_chary[font][0] = 1;
+			m_charx[font][0] = -1; m_chary[font][0] = 1;
 			m_charw[font][32] = m_charw[font][160] = 4;
 			break;
 			
@@ -960,21 +1125,23 @@ Uint32 Engine::calculateFontWidth(Uint8 fontId, const std::string& text, size_t 
 		{
 			case '\n':
 			case '\r'://return here?
-				return calculatedWidth+ySpace;
+				return calculatedWidth + ySpace;
 			case 0x0E://Special case - change rendering color
 			{
-				if(i+4 < len)//First check if we have the color bytes
+				if(i + 4 < len)//First check if we have the color bytes
 					i += 3;
+				else
+					i = len;
 			}
 			break;
 			case 0x0F://Special case - change back standard color
 				break;
 			default:
-				calculatedWidth += m_charw[fontId][character]+xSpace;
+				calculatedWidth += m_charw[fontId][character] + xSpace;
 				break;
 		}
 	}
-	return calculatedWidth+ySpace;
+	return calculatedWidth + ySpace;
 }
 
 Uint32 Engine::calculateFontWidth(Uint8 fontId, const std::string& text)
@@ -993,21 +1160,23 @@ Uint32 Engine::calculateFontWidth(Uint8 fontId, const std::string& text)
 		{
 			case '\n':
 			case '\r':
-				return calculatedWidth+ySpace;
+				return calculatedWidth + ySpace;
 			case 0x0E://Special case - change rendering color
 			{
-				if(i+4 < len)//First check if we have the color bytes
+				if(i + 4 < len)//First check if we have the color bytes
 					i += 3;
+				else
+					i = len;
 			}
 			break;
 			case 0x0F://Special case - change back standard color
 				break;
 			default:
-				calculatedWidth += m_charw[fontId][character]+xSpace;
+				calculatedWidth += m_charw[fontId][character] + xSpace;
 				break;
 		}
 	}
-	return calculatedWidth+ySpace;
+	return calculatedWidth + ySpace;
 }
 
 void Engine::exitGame()
@@ -1105,7 +1274,7 @@ GUI_Window* Engine::getWindow(Uint32 internalID)
 	return NULL;
 }
 
-void Engine::onKeyDown(SDL_Event event)
+void Engine::onKeyDown(SDL_Event& event)
 {
 	if(m_contextMenu)
 		return;
@@ -1201,7 +1370,12 @@ void Engine::onKeyDown(SDL_Event event)
 				case CLIENT_HOTKEY_MOVEMENT_TURNSOUTH: g_game.sendTurn(DIRECTION_SOUTH); break;
 				case CLIENT_HOTKEY_MOVEMENT_MOUNT:
 				{
-					//Send mount
+					if(event.key.repeat == 0 && g_game.hasGameFeature(GAME_FEATURE_MOUNTS))
+					{
+						Creature* localCreature = g_map.getLocalCreature();
+						if(localCreature)
+							g_game.sendMount(!localCreature->getMountType());
+					}
 				}
 				break;
 				case CLIENT_HOTKEY_MOVEMENT_STOPACTIONS:
@@ -1438,7 +1612,7 @@ void Engine::onKeyDown(SDL_Event event)
 	}
 }
 
-void Engine::onKeyUp(SDL_Event event)
+void Engine::onKeyUp(SDL_Event& event)
 {
 	if(m_contextMenu)
 		return;
@@ -1531,6 +1705,53 @@ void Engine::onMouseMove(Sint32 x, Sint32 y)
 		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 			(*it)->onMouseMove(x, y, (*it)->isInsideRect(x, y));
 
+		{
+			bool inside = m_leftPanelAddRect.isPointInside(x, y);
+			if(m_leftAddPanel > 0)
+			{
+				if(m_leftAddPanel == 1 && !inside)
+					m_leftAddPanel = 2;
+				else if(m_leftAddPanel == 2 && inside)
+					m_leftAddPanel = 1;
+			}
+			if(inside)
+				showDescription(x, y, (m_canAddLeftPanel ? "Open new sidebar" : "Enlarge client or reduce game window to make room for further sidebar"));
+
+			inside = m_leftPanelRemRect.isPointInside(x, y);
+			if(m_leftRemPanel > 0)
+			{
+				if(m_leftRemPanel == 1 && !inside)
+					m_leftRemPanel = 2;
+				else if(m_leftRemPanel == 2 && inside)
+					m_leftRemPanel = 1;
+			}
+			if(inside)
+				showDescription(x, y, (m_haveExtraLeftPanel ? "Close this sidebar" : "Last sidebar cannot be closed"));
+		}
+		{
+			bool inside = m_rightPanelAddRect.isPointInside(x, y);
+			if(m_rightAddPanel > 0)
+			{
+				if(m_rightAddPanel == 1 && !inside)
+					m_rightAddPanel = 2;
+				else if(m_rightAddPanel == 2 && inside)
+					m_rightAddPanel = 1;
+			}
+			if(inside)
+				showDescription(x, y, (m_canAddRightPanel ? "Open new sidebar" : "Enlarge client or reduce game window to make room for further sidebar"));
+
+			inside = m_rightPanelRemRect.isPointInside(x, y);
+			if(m_rightRemPanel > 0)
+			{
+				if(m_rightRemPanel == 1 && !inside)
+					m_rightRemPanel = 2;
+				else if(m_rightRemPanel == 2 && inside)
+					m_rightRemPanel = 1;
+			}
+			if(inside)
+				showDescription(x, y, (m_haveExtraRightPanel ? "Close this sidebar" : "Last sidebar cannot be closed"));
+		}
+
 		g_chat.onMouseMove(m_chatWindowRect, x, y);
 		if(m_actionData == CLIENT_ACTION_MOVEITEM || m_actionData == CLIENT_ACTION_USEWITH || m_actionData == CLIENT_ACTION_TRADE || m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
 			g_actualCursor = CLIENT_CURSOR_CROSSHAIR;
@@ -1590,8 +1811,7 @@ void Engine::onLMouseDown(Sint32 x, Sint32 y)
 	if(m_ingame)
 	{
 		GUI_Panel* gPanel = NULL;
-		std::vector<GUI_Panel*>::iterator it = m_panels.begin();
-		for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 		{
 			if((*it)->isInsideRect(x, y))
 			{
@@ -1601,8 +1821,6 @@ void Engine::onLMouseDown(Sint32 x, Sint32 y)
 		}
 		if(gPanel)
 		{
-			m_panels.erase(it);
-			m_panels.push_back(gPanel);
 			gPanel->onLMouseDown(x, y);
 			return;
 		}
@@ -1616,16 +1834,30 @@ void Engine::onLMouseDown(Sint32 x, Sint32 y)
 				if(thing)
 				{
 					Position& position = tile->getPosition();
-					setActionData(CLIENT_ACTION_FIRST, (topCreature ? topCreature->getId() : 0), (thing->getItem() ? thing->getItem()->getID() : 0x62), position.x, position.y, position.z, SDL_static_cast(Uint8, tile->getThingStackPos(thing)));
-					setActionData(CLIENT_ACTION_SECOND, 0, (thing->getItem() ? thing->getItem()->getItemCount() : 1), 0, 0, 0, 0);
+					setActionData(CLIENT_ACTION_FIRST, (topCreature ? topCreature->getId() : 0), (thing->isItem() ? thing->getItem()->getID() : 0x62), position.x, position.y, position.z, SDL_static_cast(Uint8, tile->getThingStackPos(thing)));
+					setActionData(CLIENT_ACTION_SECOND, 0, (thing->isItem() ? thing->getItem()->getItemCount() : 1), 0, 0, 0, 0);
 					enableMoveItem(x, y);
 				}
 			}
 
 			setAction(CLIENT_ACTION_LEFTMOUSE);
+			return;
 		}
 		else
 			g_chat.onLMouseDown(m_chatWindowRect, x, y);
+
+		{
+			if(m_leftPanelAddRect.isPointInside(x, y))
+				m_leftAddPanel = 1;
+			else if(m_leftPanelRemRect.isPointInside(x, y))
+				m_leftRemPanel = 1;
+		}
+		{
+			if(m_rightPanelAddRect.isPointInside(x, y))
+				m_rightAddPanel = 1;
+			else if(m_rightPanelRemRect.isPointInside(x, y))
+				m_rightRemPanel = 1;
+		}
 	}
 	else
 	{
@@ -1651,8 +1883,7 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 		if(m_actionData == CLIENT_ACTION_MOVEITEM)
 		{
 			GUI_Panel* gPanel = NULL;
-			std::vector<GUI_Panel*>::iterator it = m_panels.begin();
-			for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+			for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 			{
 				if((*it)->isInsideRect(x, y))
 				{
@@ -1661,11 +1892,7 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 				}
 			}
 			if(gPanel)
-			{
-				m_panels.erase(it);
-				m_panels.push_back(gPanel);
 				gPanel->onLMouseUp(x, y);
-			}
 			else if(m_gameWindowRect.isPointInside(x, y))
 			{
 				Creature* topCreature;
@@ -1686,8 +1913,7 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 			Thing* useThing = NULL;
 
 			GUI_Panel* gPanel = NULL;
-			std::vector<GUI_Panel*>::iterator it = m_panels.begin();
-			for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+			for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 			{
 				if((*it)->isInsideRect(x, y))
 				{
@@ -1697,8 +1923,6 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 			}
 			if(gPanel)
 			{
-				m_panels.erase(it);
-				m_panels.push_back(gPanel);
 				itemui = SDL_reinterpret_cast(ItemUI*, gPanel->onAction(x, y));
 				if(!itemui && g_game.getSelectID() != 0)
 					topCreature = g_map.getCreatureById(g_game.getSelectID());
@@ -1715,9 +1939,9 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 				g_game.sendUseOnCreature(Position(actionData.posX, actionData.posY, actionData.posZ), actionData.itemId, actionData.posStack, topCreature->getId());
 			else if(useThing)
 			{
-				Item* item = useThing->getItem();
-				if(item)
+				if(useThing->isItem())
 				{
+					Item* item = useThing->getItem();
 					Position& position = item->getCurrentPosition();
 					Tile* itemTile = g_map.getTile(position);
 					if(itemTile)
@@ -1734,7 +1958,31 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 		}
 		else if(m_actionData == CLIENT_ACTION_TRADE)
 		{
-			//Initiate trade
+			Creature* topCreature = NULL;
+
+			GUI_Panel* gPanel = NULL;
+			for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+			{
+				if((*it)->isInsideRect(x, y))
+				{
+					gPanel = (*it);
+					break;
+				}
+			}
+			if(gPanel)
+			{
+				if(g_game.getSelectID() != 0)
+					topCreature = g_map.getCreatureById(g_game.getSelectID());
+			}
+			else if(m_gameWindowRect.isPointInside(x, y))
+				g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, true);
+
+			ClientActionData& actionData = g_engine.m_actionDataStructure[CLIENT_ACTION_FIRST];
+			if(topCreature && topCreature->isPlayer())
+				g_game.sendRequestTrade(Position(actionData.posX, actionData.posY, actionData.posZ), actionData.itemId, actionData.posStack, topCreature->getId());
+			else
+				g_game.processTextMessage(MessageFailure, "Select a player to trade with.");
+
 			setAction(CLIENT_ACTION_NONE);
 		}
 		else if(m_actionData == CLIENT_ACTION_SEARCHHOTKEY)
@@ -1750,8 +1998,7 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 			Thing* useThing = NULL;
 
 			GUI_Panel* gPanel = NULL;
-			std::vector<GUI_Panel*>::iterator it = m_panels.begin();
-			for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+			for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 			{
 				if((*it)->isInsideRect(x, y))
 				{
@@ -1760,11 +2007,7 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 				}
 			}
 			if(gPanel)
-			{
-				m_panels.erase(it);
-				m_panels.push_back(gPanel);
 				itemui = SDL_reinterpret_cast(ItemUI*, gPanel->onAction(x, y));
-			}
 			else if(m_gameWindowRect.isPointInside(x, y))
 			{
 				Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, true);
@@ -1794,9 +2037,9 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 					}
 					else if(lookThing)
 					{
-						Item* item = lookThing->getItem();
-						if(item)
+						if(lookThing->isItem())
 						{
+							Item* item = lookThing->getItem();
 							Position& position = item->getCurrentPosition();
 							Tile* itemTile = g_map.getTile(position);
 							if(itemTile)
@@ -1826,9 +2069,9 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 					{
 						if(useThing)
 						{
-							Item* item = useThing->getItem();
-							if(item)
+							if(useThing->isItem())
 							{
+								Item* item = useThing->getItem();
 								Position& position = item->getCurrentPosition();
 								Tile* itemTile = g_map.getTile(position);
 								if(itemTile)
@@ -1868,9 +2111,9 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 							g_game.sendAttack((g_game.getAttackID() == topCreature->getId()) ? NULL : topCreature);
 						else if(useThing)
 						{
-							Item* item = useThing->getItem();
-							if(item)
+							if(useThing->isItem())
 							{
+								Item* item = useThing->getItem();
 								Position& position = item->getCurrentPosition();
 								Tile* itemTile = g_map.getTile(position);
 								if(itemTile)
@@ -1906,7 +2149,7 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 					}
 					else if(m_classicControl && keyMods == KMOD_CTRL)
 					{
-						GUI_ContextMenu* newMenu = createThingContextMenu(topCreature, itemui, (useThing && useThing->getItem() ? useThing->getItem() : NULL));
+						GUI_ContextMenu* newMenu = createThingContextMenu(topCreature, itemui, (useThing && useThing->isItem() ? useThing->getItem() : NULL));
 						newMenu->setEventCallback(&Engine::standardThingEvent);
 						showContextMenu(newMenu, x, y);
 					}
@@ -1972,6 +2215,59 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 			(*it)->onLMouseUp(x, y);
 
 		g_chat.onLMouseUp(m_chatWindowRect, x, y);
+
+		{
+			if(m_leftAddPanel == 1)
+			{
+				m_panels.push_back(new GUI_Panel(iRect(0, 0, 0, 0), (m_leftPanel == GUI_PANEL_RANDOM ? GUI_PANEL_EXTRA_LEFT_START : ++m_leftPanel)));
+				recalculateGameWindow();
+			}
+			else if(m_leftRemPanel == 1)
+			{
+				if(m_leftPanel != GUI_PANEL_RANDOM)
+				{
+					for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+					{
+						if((*it)->getInternalID() == m_leftPanel)
+						{
+							delete (*it);
+							m_panels.erase(it);
+							break;
+						}
+					}
+					recalculateGameWindow();
+				}
+			}
+			
+			m_leftAddPanel = 0;
+			m_leftRemPanel = 0;
+		}
+		{
+			if(m_rightAddPanel == 1)
+			{
+				m_panels.push_back(new GUI_Panel(iRect(0, 0, 0, 0), (m_rightPanel == GUI_PANEL_MAIN ? GUI_PANEL_EXTRA_RIGHT_START : ++m_rightPanel)));
+				recalculateGameWindow();
+			}
+			else if(m_rightRemPanel == 1)
+			{
+				if(m_rightPanel != GUI_PANEL_MAIN)
+				{
+					for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+					{
+						if((*it)->getInternalID() == m_rightPanel)
+						{
+							delete (*it);
+							m_panels.erase(it);
+							break;
+						}
+					}
+					recalculateGameWindow();
+				}
+			}
+
+			m_rightAddPanel = 0;
+			m_rightRemPanel = 0;
+		}
 	}
 	else
 	{
@@ -2015,8 +2311,7 @@ void Engine::onRMouseDown(Sint32 x, Sint32 y)
 	if(m_ingame)
 	{
 		GUI_Panel* gPanel = NULL;
-		std::vector<GUI_Panel*>::iterator it = m_panels.begin();
-		for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 		{
 			if((*it)->isInsideRect(x, y))
 			{
@@ -2026,8 +2321,6 @@ void Engine::onRMouseDown(Sint32 x, Sint32 y)
 		}
 		if(gPanel)
 		{
-			m_panels.erase(it);
-			m_panels.push_back(gPanel);
 			gPanel->onRMouseDown(x, y);
 			return;
 		}
@@ -2065,8 +2358,7 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 			Thing* useThing = NULL;
 
 			GUI_Panel* gPanel = NULL;
-			std::vector<GUI_Panel*>::iterator it = m_panels.begin();
-			for(std::vector<GUI_Panel*>::iterator end = m_panels.end(); it != end; ++it)
+			for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 			{
 				if((*it)->isInsideRect(x, y))
 				{
@@ -2075,11 +2367,7 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 				}
 			}
 			if(gPanel)
-			{
-				m_panels.erase(it);
-				m_panels.push_back(gPanel);
 				itemui = SDL_reinterpret_cast(ItemUI*, gPanel->onAction(x, y));
-			}
 			else if(m_gameWindowRect.isPointInside(x, y))
 			{
 				Tile* tile = g_map.findTile(x, y, m_gameWindowRect, m_scaledSize, m_scale, topCreature, true);
@@ -2109,9 +2397,9 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 					}
 					else if(lookThing)
 					{
-						Item* item = lookThing->getItem();
-						if(item)
+						if(lookThing->isItem())
 						{
+							Item* item = lookThing->getItem();
 							Position& position = item->getCurrentPosition();
 							Tile* itemTile = g_map.getTile(position);
 							if(itemTile)
@@ -2141,9 +2429,9 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 					{
 						if(useThing)
 						{
-							Item* item = useThing->getItem();
-							if(item)
+							if(useThing->isItem())
 							{
+								Item* item = useThing->getItem();
 								Position& position = item->getCurrentPosition();
 								Tile* itemTile = g_map.getTile(position);
 								if(itemTile)
@@ -2183,9 +2471,9 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 							g_game.sendAttack((g_game.getAttackID() == topCreature->getId()) ? NULL : topCreature);
 						else if(useThing)
 						{
-							Item* item = useThing->getItem();
-							if(item)
+							if(useThing->isItem())
 							{
+								Item* item = useThing->getItem();
 								Position& position = item->getCurrentPosition();
 								Tile* itemTile = g_map.getTile(position);
 								if(itemTile)
@@ -2221,7 +2509,7 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 					}
 					else if((m_classicControl && keyMods == KMOD_CTRL) || (!m_classicControl && keyMods == KMOD_NONE))
 					{
-						GUI_ContextMenu* newMenu = createThingContextMenu(topCreature, itemui, (useThing && useThing->getItem() ? useThing->getItem() : NULL));
+						GUI_ContextMenu* newMenu = createThingContextMenu(topCreature, itemui, (useThing && useThing->isItem() ? useThing->getItem() : NULL));
 						newMenu->setEventCallback(&Engine::standardThingEvent);
 						showContextMenu(newMenu, x, y);
 					}
@@ -2357,7 +2645,8 @@ void Engine::windowResize(Sint32 width, Sint32 height)
 	if(g_mainWindow)
 		g_mainWindow->onReshape(m_windowW, m_windowH);
 
-	recalculateGameWindow();
+	if(m_ingame)
+		recalculateGameWindow();
 }
 
 void Engine::windowMoved(Sint32 x, Sint32 y)
@@ -2494,7 +2783,7 @@ void Engine::resetToDefaultHotkeys(bool wasd)
 	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_KP_9, KMOD_NONE, CLIENT_HOTKEY_MOVEMENT_GONORTHEAST);
 	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_KP_1, KMOD_NONE, CLIENT_HOTKEY_MOVEMENT_GOSOUTHWEST);
 	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_KP_3, KMOD_NONE, CLIENT_HOTKEY_MOVEMENT_GOSOUTHEAST);
-	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_t, (KMOD_CTRL+KMOD_ALT), CLIENT_HOTKEY_DIALOGS_OPENTERMINAL);
+	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_t, (KMOD_CTRL + KMOD_ALT), CLIENT_HOTKEY_DIALOGS_OPENTERMINAL);
 	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_r, KMOD_CTRL, CLIENT_HOTKEY_MOVEMENT_MOUNT);
 	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_z, KMOD_CTRL, CLIENT_HOTKEY_DIALOGS_OPENBUGREPORTS);
 	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_i, KMOD_CTRL, CLIENT_HOTKEY_DIALOGS_OPENIGNORELIST);
@@ -2528,26 +2817,133 @@ void Engine::resetToDefaultHotkeys(bool wasd)
 	bindHotkey(CLIENT_HOTKEY_FIRST_KEY, SDLK_TAB, KMOD_NONE, CLIENT_HOTKEY_CHAT_NEXTCHANNEL);
 }
 
+Sint32 Engine::calculateMainHeight()
+{
+	for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+	{
+		if((*it)->getInternalID() == GUI_PANEL_MAIN)
+			return (*it)->getRect().y2 - (*it)->getFreeHeight();
+	}
+	return 0;
+}
+
 void Engine::recalculateGameWindow()
 {
-	Sint32 width = m_windowW-176;
-	Sint32 height = m_windowH-140;
+	m_leftPanel = GUI_PANEL_RANDOM;
+	m_rightPanel = GUI_PANEL_MAIN;
+	m_haveExtraLeftPanel = false;
+	m_haveExtraRightPanel = false;
 
-	Sint32 scaledSize = width/(GAME_MAP_WIDTH-3);
-	Sint32 scaledSize2 = height/(GAME_MAP_HEIGHT-3);
-	if(scaledSize < scaledSize2)
-		m_scaledSize = scaledSize;
-	else
-		m_scaledSize = scaledSize2;
+	Sint32 minWidth = 248;
+	Sint32 minHeight = 184;
 
-	m_scale = m_scaledSize*0.03125f;
+	Sint32 x = 0;
+	Sint32 y = 0;
+	Sint32 width = m_windowW;
+	Sint32 height = UTIL_max<Sint32>(minHeight, UTIL_min<Sint32>(m_windowH - 111, m_windowH - m_consoleHeight));
+	Sint32 mainHeight = calculateMainHeight();
+	for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(); it != m_panels.end(); ++it)
+	{
+		Sint32 panelId = (*it)->getInternalID();
+		switch(panelId)
+		{
+			case GUI_PANEL_MAIN:
+			{
+				iRect panelRect = (*it)->getRect();
+				panelRect.x1 = m_windowW - GAME_PANEL_FIXED_WIDTH;
+				panelRect.x2 = GAME_PANEL_FIXED_WIDTH;
+				panelRect.y1 = y;
+				panelRect.y2 = mainHeight;
+				(*it)->setRect(panelRect);
+			}
+			break;
+			case GUI_PANEL_RIGHT:
+			{
+				width -= GAME_PANEL_FIXED_WIDTH;
 
-	Sint32 windowWidth = m_scaledSize*(GAME_MAP_WIDTH-3);
-	Sint32 windowHeight = m_scaledSize*(GAME_MAP_HEIGHT-3);
-	Sint32 windowX = UTIL_max<Sint32>(width/2 - windowWidth/2, 1);
-	Sint32 windowY = UTIL_max<Sint32>(height/2 - windowHeight/2, 1);
+				iRect panelRect = (*it)->getRect();
+				panelRect.x1 = m_windowW - GAME_PANEL_FIXED_WIDTH;
+				panelRect.x2 = GAME_PANEL_FIXED_WIDTH;
+				panelRect.y1 = y + mainHeight;
+				panelRect.y2 = m_windowH - mainHeight;
+				(*it)->setRect(panelRect);
+				(*it)->tryFreeHeight(0);
+			}
+			break;
+			default:
+			{
+				if(width - GAME_PANEL_FIXED_WIDTH < minWidth)
+				{
+					delete (*it);
+					it = m_panels.erase(it);
+					--it;//We can do this assuming main panel should be first in vector
+					break;
+				}
+
+				if(panelId >= GUI_PANEL_EXTRA_RIGHT_START && panelId <= GUI_PANEL_EXTRA_RIGHT_END)
+				{
+					width -= GAME_PANEL_FIXED_WIDTH;
+					if(m_rightPanel == GUI_PANEL_MAIN || panelId > m_rightPanel)
+						m_rightPanel = panelId;
+
+					iRect panelRect = (*it)->getRect();
+					panelRect.x1 = m_windowW - ((panelId - GUI_PANEL_EXTRA_RIGHT_START + 2) * GAME_PANEL_FIXED_WIDTH);
+					panelRect.x2 = GAME_PANEL_FIXED_WIDTH;
+					panelRect.y1 = y;
+					panelRect.y2 = m_windowH;
+					(*it)->setRect(panelRect);
+					(*it)->tryFreeHeight(0);
+					m_haveExtraRightPanel = true;
+				}
+				else if(panelId >= GUI_PANEL_EXTRA_LEFT_START && panelId <= GUI_PANEL_EXTRA_LEFT_END)
+				{
+					x += GAME_PANEL_FIXED_WIDTH;
+					width -= GAME_PANEL_FIXED_WIDTH;
+					if(m_leftPanel == GUI_PANEL_RANDOM || panelId > m_leftPanel)
+						m_leftPanel = panelId;
+
+					iRect panelRect = (*it)->getRect();
+					panelRect.x1 = (panelId - GUI_PANEL_EXTRA_LEFT_START) * GAME_PANEL_FIXED_WIDTH;
+					panelRect.x2 = GAME_PANEL_FIXED_WIDTH;
+					panelRect.y1 = y;
+					panelRect.y2 = m_windowH;
+					(*it)->setRect(panelRect);
+					(*it)->tryFreeHeight(0);
+					m_haveExtraLeftPanel = true;
+				}
+			}
+			break;
+		}
+	}
+
+	m_scaledSize = UTIL_min<Sint32>((width - 4) / (GAME_MAP_WIDTH - 3), (height - 4) / (GAME_MAP_HEIGHT - 3));
+	m_scale = m_scaledSize * 0.03125f;
+
+	Sint32 windowWidth = m_scaledSize * (GAME_MAP_WIDTH - 3);
+	Sint32 windowHeight = m_scaledSize * (GAME_MAP_HEIGHT - 3);
+	height = UTIL_min<Sint32>(height, windowHeight + 4);
+	m_consoleHeight = m_windowH - height;
+	Sint32 windowX = UTIL_max<Sint32>(x + (width / 2 - windowWidth / 2), x + 2);
+	Sint32 windowY = UTIL_max<Sint32>(y + (height / 2 - windowHeight / 2), y + 2);
+	m_gameBackgroundRect = iRect(x, y, width, height);
 	m_gameWindowRect = iRect(windowX, windowY, windowWidth, windowHeight);
-	m_chatWindowRect = iRect(0, height, width, 140);
+	m_chatWindowRect = iRect(x, height, width, m_consoleHeight);
+
+	bool condition = (width - windowWidth - 4 >= GAME_PANEL_FIXED_WIDTH);
+	m_canAddLeftPanel = (condition ? true : false);
+	m_canAddRightPanel = (condition ? true : false);
+}
+
+void Engine::setConsoleHeight(Sint32 height)
+{
+	m_consoleHeight = height;
+	recalculateGameWindow();
+}
+
+void Engine::update()
+{
+	if(m_ingame)
+		g_map.update();
 }
 
 void Engine::redraw()
@@ -2556,14 +2952,76 @@ void Engine::redraw()
 	if(m_ingame)
 	{
 		g_map.render();
-		m_surface->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, 0, 0, m_windowW-176, m_windowH-140);
+		m_surface->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_gameBackgroundRect.x1, m_gameBackgroundRect.y1, m_gameBackgroundRect.x2, m_gameBackgroundRect.y2);
+		m_surface->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_gameWindowRect.x1 - 1, m_gameWindowRect.y1 - 1, m_gameWindowRect.x2 + 2, 1);
+		m_surface->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_gameWindowRect.x1 - 1, m_gameWindowRect.y1, 1, m_gameWindowRect.y2 + 1);
+		m_surface->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_gameWindowRect.x1, m_gameWindowRect.y1+ m_gameWindowRect.y2, m_gameWindowRect.x2 + 1, 1);
+		m_surface->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_gameWindowRect.x1 + m_gameWindowRect.x2, m_gameWindowRect.y1, 1, m_gameWindowRect.y2);
 		m_surface->drawGameScene(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2);
 		m_surface->setClipRect(m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2);
 		g_map.renderInformations(m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2, m_scale, m_scaledSize);
 		m_surface->disableClipRect();
 		g_chat.render(m_chatWindowRect);
+
+		GUI_PanelWindow* topPanel = NULL;
 		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
-			(*it)->render();
+		{
+			GUI_PanelWindow* panel = (*it)->render();
+			topPanel = (panel ? panel : topPanel);
+		}
+
+		{
+			m_leftPanelAddRect = iRect(m_gameBackgroundRect.x1, m_gameBackgroundRect.y1, GUI_UI_SIDEBAR_LEFT_ADD_UP_W, GUI_UI_SIDEBAR_LEFT_ADD_UP_H);
+			if(m_leftPanel != GUI_PANEL_RANDOM)
+				m_leftPanelAddRect.x1 = m_gameBackgroundRect.x1 - 2;
+
+			if(m_canAddLeftPanel)
+			{
+				if(m_leftAddPanel == 1)
+					m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_LEFT_ADD_DOWN_X, GUI_UI_SIDEBAR_LEFT_ADD_DOWN_Y, m_leftPanelAddRect.x1, m_leftPanelAddRect.y1, m_leftPanelAddRect.x2, m_leftPanelAddRect.y2);
+				else
+					m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_LEFT_ADD_UP_X, GUI_UI_SIDEBAR_LEFT_ADD_UP_Y, m_leftPanelAddRect.x1, m_leftPanelAddRect.y1, m_leftPanelAddRect.x2, m_leftPanelAddRect.y2);
+			}
+			else
+				m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_LEFT_ADD_DISABLED_X, GUI_UI_SIDEBAR_LEFT_ADD_DISABLED_Y, m_leftPanelAddRect.x1, m_leftPanelAddRect.y1, m_leftPanelAddRect.x2, m_leftPanelAddRect.y2);
+
+			m_leftPanelRemRect = iRect(m_leftPanelAddRect.x1, m_leftPanelAddRect.y1 + m_leftPanelAddRect.y2, GUI_UI_SIDEBAR_LEFT_REMOVE_UP_W, GUI_UI_SIDEBAR_LEFT_REMOVE_UP_H);
+			if(m_haveExtraLeftPanel)
+			{
+				if(m_leftRemPanel == 1)
+					m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_LEFT_REMOVE_DOWN_X, GUI_UI_SIDEBAR_LEFT_REMOVE_DOWN_Y, m_leftPanelRemRect.x1, m_leftPanelRemRect.y1, m_leftPanelRemRect.x2, m_leftPanelRemRect.y2);
+				else
+					m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_LEFT_REMOVE_UP_X, GUI_UI_SIDEBAR_LEFT_REMOVE_UP_Y, m_leftPanelRemRect.x1, m_leftPanelRemRect.y1, m_leftPanelRemRect.x2, m_leftPanelRemRect.y2);
+			}
+			else
+				m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_LEFT_REMOVE_DISABLED_X, GUI_UI_SIDEBAR_LEFT_REMOVE_DISABLED_Y, m_leftPanelRemRect.x1, m_leftPanelRemRect.y1, m_leftPanelRemRect.x2, m_leftPanelRemRect.y2);
+		}
+		{
+			m_rightPanelAddRect = iRect(m_gameBackgroundRect.x1 + m_gameBackgroundRect.x2 - 7, m_gameBackgroundRect.y1, GUI_UI_SIDEBAR_RIGHT_ADD_UP_W, GUI_UI_SIDEBAR_RIGHT_ADD_UP_H);
+			if(m_canAddRightPanel)
+			{
+				if(m_rightAddPanel == 1)
+					m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_RIGHT_ADD_DOWN_X, GUI_UI_SIDEBAR_RIGHT_ADD_DOWN_Y, m_rightPanelAddRect.x1, m_rightPanelAddRect.y1, m_rightPanelAddRect.x2, m_rightPanelAddRect.y2);
+				else
+					m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_RIGHT_ADD_UP_X, GUI_UI_SIDEBAR_RIGHT_ADD_UP_Y, m_rightPanelAddRect.x1, m_rightPanelAddRect.y1, m_rightPanelAddRect.x2, m_rightPanelAddRect.y2);
+			}
+			else
+				m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_RIGHT_ADD_DISABLED_X, GUI_UI_SIDEBAR_RIGHT_ADD_DISABLED_Y, m_rightPanelAddRect.x1, m_rightPanelAddRect.y1, m_rightPanelAddRect.x2, m_rightPanelAddRect.y2);
+
+			m_rightPanelRemRect = iRect(m_rightPanelAddRect.x1, m_rightPanelAddRect.y1 + m_rightPanelAddRect.y2, GUI_UI_SIDEBAR_RIGHT_REMOVE_UP_W, GUI_UI_SIDEBAR_RIGHT_REMOVE_UP_H);
+			if(m_haveExtraRightPanel)
+			{
+				if(m_rightRemPanel == 1)
+					m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_RIGHT_REMOVE_DOWN_X, GUI_UI_SIDEBAR_RIGHT_REMOVE_DOWN_Y, m_rightPanelRemRect.x1, m_rightPanelRemRect.y1, m_rightPanelRemRect.x2, m_rightPanelRemRect.y2);
+				else
+					m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_RIGHT_REMOVE_UP_X, GUI_UI_SIDEBAR_RIGHT_REMOVE_UP_Y, m_rightPanelRemRect.x1, m_rightPanelRemRect.y1, m_rightPanelRemRect.x2, m_rightPanelRemRect.y2);
+			}
+			else
+				m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_RIGHT_REMOVE_DISABLED_X, GUI_UI_SIDEBAR_RIGHT_REMOVE_DISABLED_Y, m_rightPanelRemRect.x1, m_rightPanelRemRect.y1, m_rightPanelRemRect.x2, m_rightPanelRemRect.y2);
+		}
+
+		if(topPanel)
+			topPanel->render();
 	}
 	else
 	{
@@ -2574,19 +3032,18 @@ void Engine::redraw()
 
 	if(m_showPerformance)
 	{
-		static Uint64 lastFrameTime = 0;
-		Uint64 previousFrameTime = lastFrameTime;
-		lastFrameTime = SDL_GetPerformanceCounter();
-		double frameTime = SDL_static_cast(double, (lastFrameTime-previousFrameTime)*1000)/SDL_GetPerformanceFrequency();
+		extern Uint32 g_frameDiff;
 		extern Uint16 g_lastFrames;
 
-		Sint32 posX = m_windowW-5;
+		Sint32 posX;
 		if(m_ingame)
-			posX -= 176;
+			posX = m_gameBackgroundRect.x1 + m_gameBackgroundRect.x2 - 5;
+		else
+			posX = m_windowW - 5;
 
 		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u FPS", g_lastFrames);
 		drawFont(CLIENT_FONT_OUTLINED, posX, 5, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%.2fms", frameTime);
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u ms", g_frameDiff);
 		drawFont(CLIENT_FONT_OUTLINED, posX, 19, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Ping: %u ms", g_ping);
 		drawFont(CLIENT_FONT_OUTLINED, posX, 33, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
@@ -2663,7 +3120,7 @@ void Engine::drawFont(Uint8 fontId, Sint32 x, Sint32 y, const std::string& text,
 				rx -= calculatedWidth;
 				break;
 			case CLIENT_FONT_ALIGN_CENTER:
-				rx -= calculatedWidth/2;
+				rx -= calculatedWidth / 2;
 				break;
 		}
 		m_surface->drawFont(m_charPicture[fontId], rx, ry, text, start, pos, r, g, b, m_charx[fontId], m_chary[fontId], m_charw[fontId], m_charh[fontId]);
@@ -2689,16 +3146,16 @@ void Engine::drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8
 	else
 	{
 		Uint8 frs = thing->m_frameGroup[ThingFrameGroup_Default].m_realSize;
-		Uint8 fmax = SDL_static_cast(Uint8, (SDL_static_cast(Uint32, frs)+31)/32);
+		Uint8 fmax = SDL_static_cast(Uint8, (SDL_static_cast(Uint32, frs) + 31) / 32);
 		fx = (fx > fmax ? fmax : fx);
 		fy = (fy > fmax ? fmax : fy);
-		Sint32 scale = SDL_static_cast(Sint32, scaled/(frs*0.03125f));
+		Sint32 scale = SDL_static_cast(Sint32, scaled / (frs * 0.03125f));
 		for(Uint8 l = 0; l < fl; ++l)
 		{
-			Sint32 posYc = y+scaled-scale;
+			Sint32 posYc = y + scaled - scale;
 			for(Uint8 cy = 0; cy < fy; ++cy)
 			{
-				Sint32 posXc = x+scaled-scale;
+				Sint32 posXc = x + scaled - scale;
 				for(Uint8 cx = 0; cx < fx; ++cx)
 				{
 					Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, l, xPattern, yPattern, zPattern, animation);
@@ -2708,18 +3165,18 @@ void Engine::drawItem(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uint8
 						Sint32 sx = 0, sy = 0, sw = 32, sh = 32;
 						if(dx < x)
 						{
-							Sint32 diff = x-dx;
+							Sint32 diff = x - dx;
 							dx += diff;
 							dw -= diff;
-							sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+							sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 							sw -= sx;
 						}
 						if(dy < y)
 						{
-							Sint32 diff = y-dy;
+							Sint32 diff = y - dy;
 							dy += diff;
 							dh -= diff;
-							sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+							sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 							sh -= sy;
 						}
 						m_surface->drawSprite(sprite, dx, dy, dw, dh, sx, sy, sw, sh);
@@ -2761,16 +3218,16 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 	else
 	{
 		Uint8 frs = thing->m_frameGroup[ThingFrameGroup_Idle].m_realSize;
-		Uint8 fmax = SDL_static_cast(Uint8, (SDL_static_cast(Uint32, frs)+31)/32);
+		Uint8 fmax = SDL_static_cast(Uint8, (SDL_static_cast(Uint32, frs) + 31) / 32);
 		fx = (fx > fmax ? fmax : fx);
 		fy = (fy > fmax ? fmax : fy);
-		Sint32 scale = SDL_static_cast(Sint32, scaled/(frs*0.03125f));
+		Sint32 scale = SDL_static_cast(Sint32, scaled / (frs * 0.03125f));
 		if(fl > 1)
 		{
-			Sint32 posYc = y+scaled-scale;
+			Sint32 posYc = y + scaled - scale;
 			for(Uint8 cy = 0; cy < fy; ++cy)
 			{
-				Sint32 posXc = x+scaled-scale;
+				Sint32 posXc = x + scaled - scale;
 				for(Uint8 cx = 0; cx < fx; ++cx)
 				{
 					Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, cx, cy, 0, xPattern, yPattern, zPattern, animation);
@@ -2781,18 +3238,18 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 						Sint32 sx = 0, sy = 0, sw = 32, sh = 32;
 						if(dx < x)
 						{
-							Sint32 diff = x-dx;
+							Sint32 diff = x - dx;
 							dx += diff;
 							dw -= diff;
-							sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+							sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 							sw -= sx;
 						}
 						if(dy < y)
 						{
-							Sint32 diff = y-dy;
+							Sint32 diff = y - dy;
 							dy += diff;
 							dh -= diff;
-							sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+							sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 							sh -= sy;
 						}
 						if(spriteMask != 0)
@@ -2807,10 +3264,10 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 		}
 		else
 		{
-			Sint32 posYc = y+scaled-scale;
+			Sint32 posYc = y + scaled - scale;
 			for(Uint8 cy = 0; cy < fy; ++cy)
 			{
-				Sint32 posXc = x+scaled-scale;
+				Sint32 posXc = x + scaled - scale;
 				for(Uint8 cx = 0; cx < fx; ++cx)
 				{
 					Uint32 sprite = thing->getSprite(ThingFrameGroup_Idle, cx, cy, 0, xPattern, yPattern, zPattern, animation);
@@ -2820,18 +3277,18 @@ void Engine::drawOutfit(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 						Sint32 sx = 0, sy = 0, sw = 32, sh = 32;
 						if(dx < x)
 						{
-							Sint32 diff = x-dx;
+							Sint32 diff = x - dx;
 							dx += diff;
 							dw -= diff;
-							sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+							sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 							sw -= sx;
 						}
 						if(dy < y)
 						{
-							Sint32 diff = y-dy;
+							Sint32 diff = y - dy;
 							dy += diff;
 							dh -= diff;
-							sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+							sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 							sh -= sy;
 						}
 						m_surface->drawSprite(sprite, dx, dy, dw, dh, sx, sy, sw, sh);
@@ -2857,14 +3314,14 @@ void Engine::drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 	else
 	{
 		Uint8 frs = thing->m_frameGroup[ThingFrameGroup_Default].m_realSize;
-		Uint8 fmax = SDL_static_cast(Uint8, (SDL_static_cast(Uint32, frs)+31)/32);
+		Uint8 fmax = SDL_static_cast(Uint8, (SDL_static_cast(Uint32, frs) + 31) / 32);
 		fx = (fx > fmax ? fmax : fx);
 		fy = (fy > fmax ? fmax : fy);
-		Sint32 scale = SDL_static_cast(Sint32, scaled/(frs*0.03125f));
-		Sint32 posYc = y+scaled-scale;
+		Sint32 scale = SDL_static_cast(Sint32, scaled / (frs * 0.03125f));
+		Sint32 posYc = y + scaled - scale;
 		for(Uint8 cy = 0; cy < fy; ++cy)
 		{
-			Sint32 posXc = x+scaled-scale;
+			Sint32 posXc = x + scaled - scale;
 			for(Uint8 cx = 0; cx < fx; ++cx)
 			{
 				Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, 0, xPattern, yPattern, zPattern, animation);
@@ -2874,18 +3331,18 @@ void Engine::drawEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 scaled, Uin
 					Sint32 sx = 0, sy = 0, sw = 32, sh = 32;
 					if(dx < x)
 					{
-						Sint32 diff = x-dx;
+						Sint32 diff = x - dx;
 						dx += diff;
 						dw -= diff;
-						sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+						sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 						sw -= sx;
 					}
 					if(dy < y)
 					{
-						Sint32 diff = y-dy;
+						Sint32 diff = y - dy;
 						dy += diff;
 						dh -= diff;
-						sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+						sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 						sh -= sy;
 					}
 					m_surface->drawSprite(sprite, dx, dy, dw, dh, sx, sy, sw, sh);
@@ -2910,14 +3367,14 @@ void Engine::drawDistanceEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 sca
 	else
 	{
 		Uint8 frs = thing->m_frameGroup[ThingFrameGroup_Default].m_realSize;
-		Uint8 fmax = SDL_static_cast(Uint8, (SDL_static_cast(Uint32, frs)+31)/32);
+		Uint8 fmax = SDL_static_cast(Uint8, (SDL_static_cast(Uint32, frs) + 31) / 32);
 		fx = (fx > fmax ? fmax : fx);
 		fy = (fy > fmax ? fmax : fy);
-		Sint32 scale = SDL_static_cast(Sint32, scaled/(frs*0.03125f));
-		Sint32 posYc = y+scaled-scale;
+		Sint32 scale = SDL_static_cast(Sint32, scaled / (frs * 0.03125f));
+		Sint32 posYc = y + scaled - scale;
 		for(Uint8 cy = 0; cy < fy; ++cy)
 		{
-			Sint32 posXc = x+scaled-scale;
+			Sint32 posXc = x + scaled - scale;
 			for(Uint8 cx = 0; cx < fx; ++cx)
 			{
 				Uint32 sprite = thing->getSprite(ThingFrameGroup_Default, cx, cy, 0, xPattern, yPattern, zPattern, animation);
@@ -2927,18 +3384,18 @@ void Engine::drawDistanceEffect(ThingType* thing, Sint32 x, Sint32 y, Sint32 sca
 					Sint32 sx = 0, sy = 0, sw = 32, sh = 32;
 					if(dx < x)
 					{
-						Sint32 diff = x-dx;
+						Sint32 diff = x - dx;
 						dx += diff;
 						dw -= diff;
-						sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+						sx = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 						sw -= sx;
 					}
 					if(dy < y)
 					{
-						Sint32 diff = y-dy;
+						Sint32 diff = y - dy;
 						dy += diff;
 						dh -= diff;
-						sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff)/SDL_static_cast(float, scale)*32.f);
+						sy = SDL_static_cast(Sint32, SDL_static_cast(float, diff) / SDL_static_cast(float, scale) * 32.f);
 						sh -= sy;
 					}
 					m_surface->drawSprite(sprite, dx, dy, dw, dh, sx, sy, sw, sh);
@@ -2978,50 +3435,103 @@ unsigned char* Engine::LoadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint
 	getOutfitColorFloat(SDL_static_cast(Uint8, outfitColor >> 8), bR, bG, bB);
 	getOutfitColorFloat(SDL_static_cast(Uint8, outfitColor >> 16), lR, lG, lB);
 	getOutfitColorFloat(SDL_static_cast(Uint8, outfitColor >> 24), fR, fG, fB);
-	for(Uint16 i = 0; i <= 4092; i += 4)
+	if(bgra)
 	{
-		if(tempPixels[i+3] == SDL_ALPHA_OPAQUE)
+		for(Uint16 i = 0; i <= 4092; i += 4)
 		{
-			Uint32 U32pixel = *SDL_reinterpret_cast(Uint32*, &tempPixels[i]);
-			#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Head
-			if(U32pixel == 0xFFFFFF00)
-			#else
-			if(U32pixel == 0x00FFFFFF)
-			#endif
+			if(tempPixels[i + 3] == SDL_ALPHA_OPAQUE)
 			{
-				pixels[i+2] = SDL_static_cast(Uint8, pixels[i+2]*hR);
-				pixels[i+1] = SDL_static_cast(Uint8, pixels[i+1]*hG);
-				pixels[i] = SDL_static_cast(Uint8, pixels[i]*hB);
+				Uint32 U32pixel = *SDL_reinterpret_cast(Uint32*, &tempPixels[i]);
+				#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Head
+				if(U32pixel == 0xFFFFFF00)
+				#else
+				if(U32pixel == 0x00FFFFFF)
+				#endif
+				{
+					pixels[i + 2] = SDL_static_cast(Uint8, pixels[i + 2] * hR);
+					pixels[i + 1] = SDL_static_cast(Uint8, pixels[i + 1] * hG);
+					pixels[i] = SDL_static_cast(Uint8, pixels[i] * hB);
+				}
+				#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Body
+				else if(U32pixel == 0xFFFF0000)
+				#else
+				else if(U32pixel == 0x0000FFFF)
+				#endif
+				{
+					pixels[i + 2] = SDL_static_cast(Uint8, pixels[i + 2] * bR);
+					pixels[i + 1] = SDL_static_cast(Uint8, pixels[i + 1] * bG);
+					pixels[i] = SDL_static_cast(Uint8, pixels[i] * bB);
+				}
+				#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Legs
+				else if(U32pixel == 0xFF00FF00)
+				#else
+				else if(U32pixel == 0x00FF00FF)
+				#endif
+				{
+					pixels[i + 2] = SDL_static_cast(Uint8, pixels[i + 2] * lR);
+					pixels[i + 1] = SDL_static_cast(Uint8, pixels[i + 1] * lG);
+					pixels[i] = SDL_static_cast(Uint8, pixels[i] * lB);
+				}
+				#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Feet
+				else if(U32pixel == 0xFF0000FF)
+				#else
+				else if(U32pixel == 0xFF0000FF)
+				#endif
+				{
+					pixels[i + 2] = SDL_static_cast(Uint8, pixels[i + 2] * fR);
+					pixels[i + 1] = SDL_static_cast(Uint8, pixels[i + 1] * fG);
+					pixels[i] = SDL_static_cast(Uint8, pixels[i] * fB);
+				}
 			}
-			#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Body
-			else if(U32pixel == 0xFFFF0000)
-			#else
-			else if(U32pixel == 0x0000FFFF)
-			#endif
+		}
+	}
+	else
+	{
+		for(Uint16 i = 0; i <= 4092; i += 4)
+		{
+			if(tempPixels[i + 3] == SDL_ALPHA_OPAQUE)
 			{
-				pixels[i+2] = SDL_static_cast(Uint8, pixels[i+2]*bR);
-				pixels[i+1] = SDL_static_cast(Uint8, pixels[i+1]*bG);
-				pixels[i] = SDL_static_cast(Uint8, pixels[i]*bB);
-			}
-			#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Legs
-			else if(U32pixel == 0xFF00FF00)
-			#else
-			else if(U32pixel == 0x00FF00FF)
-			#endif
-			{
-				pixels[i+2] = SDL_static_cast(Uint8, pixels[i+2]*lR);
-				pixels[i+1] = SDL_static_cast(Uint8, pixels[i+1]*lG);
-				pixels[i] = SDL_static_cast(Uint8, pixels[i]*lB);
-			}
-			#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Feet
-			else if(U32pixel == 0xFF0000FF)
-			#else
-			else if(U32pixel == 0xFF0000FF)
-			#endif
-			{
-				pixels[i+2] = SDL_static_cast(Uint8, pixels[i+2]*fR);
-				pixels[i+1] = SDL_static_cast(Uint8, pixels[i+1]*fG);
-				pixels[i] = SDL_static_cast(Uint8, pixels[i]*fB);
+				Uint32 U32pixel = *SDL_reinterpret_cast(Uint32*, &tempPixels[i]);
+				#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Head
+				if(U32pixel == 0xFF00FFFF)
+				#else
+				if(U32pixel == 0xFFFF00FF)
+				#endif
+				{
+					pixels[i] = SDL_static_cast(Uint8, pixels[i] * hR);
+					pixels[i + 1] = SDL_static_cast(Uint8, pixels[i + 1] * hG);
+					pixels[i + 2] = SDL_static_cast(Uint8, pixels[i + 2] * hB);
+				}
+				#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Body
+				else if(U32pixel == 0xFF0000FF)
+				#else
+				else if(U32pixel == 0xFF0000FF)
+				#endif
+				{
+					pixels[i] = SDL_static_cast(Uint8, pixels[i] * bR);
+					pixels[i + 1] = SDL_static_cast(Uint8, pixels[i + 1] * bG);
+					pixels[i + 2] = SDL_static_cast(Uint8, pixels[i + 2] * bB);
+				}
+				#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Legs
+				else if(U32pixel == 0xFF00FF00)
+				#else
+				else if(U32pixel == 0x00FF00FF)
+				#endif
+				{
+					pixels[i] = SDL_static_cast(Uint8, pixels[i] * lR);
+					pixels[i + 1] = SDL_static_cast(Uint8, pixels[i + 1] * lG);
+					pixels[i + 2] = SDL_static_cast(Uint8, pixels[i + 2] * lB);
+				}
+				#if SDL_BYTEORDER == SDL_LIL_ENDIAN //Feet
+				else if(U32pixel == 0xFFFF0000)
+				#else
+				else if(U32pixel == 0x0000FFFF)
+				#endif
+				{
+					pixels[i] = SDL_static_cast(Uint8, pixels[i] * fR);
+					pixels[i + 1] = SDL_static_cast(Uint8, pixels[i + 1] * fG);
+					pixels[i + 2] = SDL_static_cast(Uint8, pixels[i + 2] * fB);
+				}
 			}
 		}
 	}
@@ -3046,11 +3556,11 @@ unsigned char* Engine::LoadPicture(Uint16 pictureId, bool bgra, Sint32& width, S
 		SDL_RWseek(pictures, 3, RW_SEEK_CUR);//ignore colorkey
 		if(i == pictureId)
 		{
-			width = SDL_static_cast(Sint32, w*32);
-			height = SDL_static_cast(Sint32, h*32);
+			width = SDL_static_cast(Sint32, w * 32);
+			height = SDL_static_cast(Sint32, h * 32);
 
-			Uint32 protectionSize = width*height*4;
-			unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(protectionSize));
+			Uint32 protectionSize = width * height * 4;
+			unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_calloc(protectionSize, sizeof(unsigned char)));
 			if(!pixels)
 			{
 				SDL_RWclose(pictures);
@@ -3065,7 +3575,6 @@ unsigned char* Engine::LoadPicture(Uint16 pictureId, bool bgra, Sint32& width, S
 				{
 					Uint16 pixelSize, chunkSize;
 					Uint16 readData = 0, writeData = 0;
-					bool state = false;
 
 					chunkLoc = SDL_ReadLE32(pictures);
 					oldLoc = SDL_static_cast(Uint32, SDL_RWtell(pictures));
@@ -3075,38 +3584,34 @@ unsigned char* Engine::LoadPicture(Uint16 pictureId, bool bgra, Sint32& width, S
 					while(readData < pixelSize)
 					{
 						chunkSize = SDL_ReadLE16(pictures);
-						readData += 2;
+						writeData += chunkSize;
+						chunkSize = SDL_ReadLE16(pictures);
+						readData += 4;
 						for(Uint16 j = 0; j < chunkSize; ++j)
 						{
-							Uint16 xPos = x*32+(writeData+j) % 32;
-							Uint16 yPos = y*32+(writeData+j) / 32;
-							Uint32 offset = (yPos*width+xPos)*4;
+							Uint16 xPos = x * 32 + (writeData + j) % 32;
+							Uint16 yPos = y * 32 + (writeData + j) / 32;
+							Uint32 offset = (yPos * width + xPos) * 4;
 							if(offset <= protectionSize)
 							{
-								if(state)
+								if(bgra)
 								{
-									if(bgra)
-									{
-										pixels[offset+2] = SDL_ReadU8(pictures);
-										pixels[offset+1] = SDL_ReadU8(pictures);
-										pixels[offset] = SDL_ReadU8(pictures);
-										pixels[offset+3] = SDL_ReadU8(pictures);
-									}
-									else
-									{
-										pixels[offset] = SDL_ReadU8(pictures);
-										pixels[offset+1] = SDL_ReadU8(pictures);
-										pixels[offset+2] = SDL_ReadU8(pictures);
-										pixels[offset+3] = SDL_ReadU8(pictures);
-									}
-									readData += 4;
+									pixels[offset + 2] = SDL_ReadU8(pictures);
+									pixels[offset + 1] = SDL_ReadU8(pictures);
+									pixels[offset] = SDL_ReadU8(pictures);
+									pixels[offset + 3] = SDL_ReadU8(pictures);
 								}
 								else
-									pixels[offset+3] = SDL_ALPHA_TRANSPARENT;
+								{
+									pixels[offset] = SDL_ReadU8(pictures);
+									pixels[offset + 1] = SDL_ReadU8(pictures);
+									pixels[offset + 2] = SDL_ReadU8(pictures);
+									pixels[offset + 3] = SDL_ReadU8(pictures);
+								}
+								readData += 4;
 							}
 						}
 						writeData += chunkSize;
-						state = !state;
 					}
 					SDL_RWseek(pictures, oldLoc, RW_SEEK_SET);
 				}
@@ -3115,7 +3620,7 @@ unsigned char* Engine::LoadPicture(Uint16 pictureId, bool bgra, Sint32& width, S
 			return pixels;
 		}
 		else
-			SDL_RWseek(pictures, 4*h*w, RW_SEEK_CUR);
+			SDL_RWseek(pictures, w * h * 4, RW_SEEK_CUR);
 	}
 	SDL_RWclose(pictures);
 	return NULL;
@@ -3218,7 +3723,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* lookThing = tile->getTopLookThing();
 					if(lookThing)
-						g_game.sendLookAt(pos, (lookThing->getItem() ? lookThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(lookThing)));
+						g_game.sendLookAt(pos, (lookThing->isItem() ? lookThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(lookThing)));
 				}
 			}
 		}
@@ -3240,7 +3745,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* useThing = tile->getTopUseThing();
 					if(useThing)
-						g_game.sendUseItem(pos, (useThing->getItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)), g_game.findEmptyContainerId());
+						g_game.sendUseItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)), g_game.findEmptyContainerId());
 				}
 			}
 		}
@@ -3257,7 +3762,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* useThing = tile->getTopUseThing();
 					if(useThing)
-						g_game.sendUseItem(pos, (useThing->getItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)), g_game.findEmptyContainerId());
+						g_game.sendUseItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)), g_game.findEmptyContainerId());
 				}
 			}
 		}
@@ -3273,7 +3778,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				if(tile)
 				{
 					Thing* useThing = tile->getTopUseThing();
-					if(useThing)
+					if(useThing && useThing->isItem())
 					{
 						Item* item = useThing->getItem();
 						if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
@@ -3296,7 +3801,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* useThing = tile->getTopUseThing();
 					if(useThing)
-						g_game.sendRotateItem(pos, (useThing->getItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+						g_game.sendRotateItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
 				}
 			}
 		}
@@ -3304,6 +3809,23 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 		case THING_EVENT_TRADE:
 		{
 			//Trade
+			Position pos = Position(actionData.posX, actionData.posY, actionData.posZ);
+			if(pos.x == 0xFFFF)
+				g_engine.setAction(CLIENT_ACTION_TRADE);
+			else
+			{
+				Tile* tile = g_map.getTile(pos);
+				if(tile)
+				{
+					Thing* useThing = tile->getTopUseThing();
+					if(useThing && useThing->isItem())
+					{
+						Item* item = useThing->getItem();
+						g_engine.setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), pos.x, pos.y, pos.z, SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+						g_engine.setAction(CLIENT_ACTION_TRADE);
+					}
+				}
+			}
 		}
 		break;
 		case THING_EVENT_WRAP:
@@ -3316,7 +3838,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* useThing = tile->getTopUseThing();
 					if(useThing)
-						g_game.sendWrapState(pos, (useThing->getItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+						g_game.sendWrapState(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
 				}
 			}
 		}
@@ -3383,12 +3905,16 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 		break;
 		case THING_EVENT_ADDTOVIPLIST:
 		{
-			//Add to vip list
+			Creature* creature = g_map.getCreatureById(actionData.creatureId);
+			if(creature)
+				g_game.sendAddVip(creature->getName());
 		}
 		break;
 		case THING_EVENT_IGNORE:
 		{
-			//Ignore/Unignore
+			Creature* creature = g_map.getCreatureById(actionData.creatureId);
+			if(creature)
+				UTIL_toggleIgnore(creature->getName());
 		}
 		break;
 		case THING_EVENT_RULEVIOLATION:
@@ -3518,7 +4044,7 @@ GUI_ContextMenu* Engine::createThingContextMenu(Creature* creature, ItemUI* item
 			newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_SETOUTFIT, "Set Outfit", "");
 			if(g_game.hasGameFeature(GAME_FEATURE_MOUNTS))
 			{
-				if(true/*!wearMount*/)
+				if(!creature->getMountType())
 					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_MOUNT, "Mount", "");
 				else
 					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_DISMOUNT, "Dismount", "");
@@ -3557,16 +4083,14 @@ GUI_ContextMenu* Engine::createThingContextMenu(Creature* creature, ItemUI* item
 					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_INVITETOPRIVATECHAT, "Invite to private chat", "");
 					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_EXCLUDEFROMPRIVATECHAT, "Exclude from private chat", "");
 				}
-
-				/*
-				if(notHaveVip(topCreature->getName()))
+				if(!UTIL_haveVipPlayer(creatureName))
 					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_ADDTOVIPLIST, "Add to VIP list", "");
-				*/
 
-				/*
-				SDL_snprintf(g_buffer, sizeof(g_buffer), (isIgnored(topCreature->getName()) ? "Unignore %s" : "Ignore %s"), topCreature->getName().c_str());
-				newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_IGNORE, g_buffer, "");
-				*/
+				if(!UTIL_onWhiteList(creatureName))
+				{
+					SDL_snprintf(g_buffer, sizeof(g_buffer), (UTIL_onBlackList(creatureName) ? "Unignore %s" : "Ignore %s"), creatureName.c_str());
+					newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_IGNORE, g_buffer, "");
+				}
 
 				Uint8 targetShield = creature->getShield();
 				Uint8 playerShield = (g_map.getLocalCreature() ? g_map.getLocalCreature()->getShield() : SHIELD_NONE);
@@ -3692,7 +4216,7 @@ void Engine::showDescription(Sint32 mouseX, Sint32 mouseY, const std::string& de
 
 bool Engine::addToPanel(GUI_PanelWindow* pPanel, Sint32 preferredPanel)
 {
-	for(std::vector<GUI_Panel*>::reverse_iterator it = m_panels.rbegin(), end = m_panels.rend(); it != end; ++it)
+	for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 	{
 		if(preferredPanel != GUI_PANEL_RANDOM)
 		{
@@ -3725,7 +4249,7 @@ bool Engine::addToPanel(GUI_PanelWindow* pPanel, Sint32 preferredPanel)
 	}
 	if(preferredPanel == GUI_PANEL_RANDOM)
 	{
-		for(std::vector<GUI_Panel*>::reverse_iterator it = m_panels.rbegin(), end = m_panels.rend(); it != end; ++it)
+		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 		{
 			if((*it)->tryFreeHeight(pPanel))
 			{
@@ -3763,6 +4287,49 @@ GUI_PanelWindow* Engine::getPanel(Uint32 internalID)
 
 void Engine::clearPanels()
 {
+	if(!m_panels.empty())
+	{
+		m_openDialogs.clear();
+		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
+		{
+			std::vector<GUI_PanelWindow*>& windows = (*it)->getPanelWindows();
+			for(std::vector<GUI_PanelWindow*>::iterator wit = windows.begin(), wend = windows.end(); wit != wend; ++wit)
+			{
+				Uint32 windowId = (*wit)->getInternalID();
+				switch(windowId)
+				{
+					//Save only windows that needed saving
+					case GUI_PANEL_WINDOW_INVENTORY:
+					case GUI_PANEL_WINDOW_INVENTORY_MINIMIZED:
+					case GUI_PANEL_WINDOW_MINIMAP:
+					case GUI_PANEL_WINDOW_HEALTH:
+					case GUI_PANEL_WINDOW_BUTTONS:
+					case GUI_PANEL_WINDOW_SKILLS:
+					case GUI_PANEL_WINDOW_BATTLE:
+					case GUI_PANEL_WINDOW_VIP:
+					case GUI_PANEL_WINDOW_SPELL_LIST:
+					case GUI_PANEL_WINDOW_UNJUSTIFIED_POINTS:
+					case GUI_PANEL_WINDOW_PREY_WIDGET:
+					case GUI_PANEL_WINDOW_PARTY:
+					case GUI_PANEL_WINDOW_TOURNAMENT_WIDGET:
+					case GUI_PANEL_WINDOW_ANALYTICS_SELECTOR:
+					case GUI_PANEL_WINDOW_ANALYTICS_HUNTING:
+					case GUI_PANEL_WINDOW_ANALYTICS_LOOT:
+					case GUI_PANEL_WINDOW_ANALYTICS_SUPPLY:
+					case GUI_PANEL_WINDOW_ANALYTICS_IMPACT:
+					case GUI_PANEL_WINDOW_ANALYTICS_XP:
+					case GUI_PANEL_WINDOW_ANALYTICS_DROP:
+					case GUI_PANEL_WINDOW_ANALYTICS_QUEST:
+					{
+						m_parentWindows[windowId] = (*it)->getInternalID();
+						m_openDialogs.push_back(windowId);
+					}
+					break;
+				}
+			}
+		}
+	}
+
 	for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 		m_toReleasePanels.push_back((*it));
 	m_panels.clear();
@@ -3806,8 +4373,6 @@ void Engine::checkPanelWindows(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
 		gPanel->setActPanel(pPanel);
 		pPanel->setRect(currentRect);
 		pPanel->setParent(gPanel);
-		m_panels.erase(it);
-		m_panels.push_back(gPanel);
 	}
 }
 
@@ -3826,7 +4391,6 @@ void Engine::processGameStart()
 	g_chat.gameStart();
 	g_game.reset();
 	g_game.resetPlayerExperienceTable();
-	recalculateGameWindow();
 	clearWindows();
 	clearPanels();
 	checkReleaseQueue();
@@ -3835,16 +4399,69 @@ void Engine::processGameStart()
 	g_game.sendPingBack();
 	g_game.sendAttackModes();
 
-	m_panels.push_back(new GUI_Panel(iRect(m_windowW-176, 0, 176, 393), GUI_PANEL_MAIN));
-	m_panels.push_back(new GUI_Panel(iRect(m_windowW-176, 393, 176, m_windowH-393), GUI_PANEL_RIGHT1));
-	UTIL_createMinimapPanel();
-	UTIL_createHealthPanel();
-	UTIL_createInventoryPanel();
-	UTIL_createButtonsPanel();
+	bool haveMinimap = false, haveHealth = false, haveInventory = false, haveButtons = false;
+	m_panels.push_back(new GUI_Panel(iRect(0, 0, GAME_PANEL_FIXED_WIDTH, 1000), GUI_PANEL_MAIN));
+	for(std::vector<Uint32>::iterator it = m_openDialogs.begin(), end = m_openDialogs.end(); it != end; ++it)
+	{
+		Uint32 windowId = (*it);
+		if(!haveMinimap && windowId == GUI_PANEL_WINDOW_MINIMAP)
+		{
+			UTIL_createMinimapPanel();
+			haveMinimap = true;
+		}
+		else if(!haveHealth && windowId == GUI_PANEL_WINDOW_HEALTH)
+		{
+			UTIL_createHealthPanel();
+			haveHealth = true;
+		}
+		else if(!haveInventory && windowId == GUI_PANEL_WINDOW_INVENTORY)
+		{
+			UTIL_createInventoryPanel(false);
+			haveInventory = true;
+		}
+		else if(!haveInventory && windowId == GUI_PANEL_WINDOW_INVENTORY_MINIMIZED)
+		{
+			UTIL_createInventoryPanel(true);
+			haveInventory = true;
+		}
+		else if(!haveButtons && windowId == GUI_PANEL_WINDOW_BUTTONS)
+		{
+			UTIL_createButtonsPanel();
+			haveButtons = true;
+		}
+	}
+	if(!haveMinimap) UTIL_createMinimapPanel();
+	if(!haveHealth) UTIL_createHealthPanel();
+	if(!haveInventory) UTIL_createInventoryPanel();
+	if(!haveButtons) UTIL_createButtonsPanel();
 
-	//UTIL_toggleSkillsWindow();
-	//UTIL_toggleBattleWindow();
-	//UTIL_toggleVipWindow();
+	m_panels.push_back(new GUI_Panel(iRect(0, 0, GAME_PANEL_FIXED_WIDTH, m_windowH - calculateMainHeight()), GUI_PANEL_RIGHT));
+	if(m_rightPanel != GUI_PANEL_MAIN)
+	{
+		Sint32 panels = m_rightPanel - GUI_PANEL_EXTRA_RIGHT_START;
+		for(Sint32 i = 0; i <= panels; ++i)
+			m_panels.push_back(new GUI_Panel(iRect(0, 0, GAME_PANEL_FIXED_WIDTH, m_windowH), GUI_PANEL_EXTRA_RIGHT_START + i));
+	}
+	if(m_leftPanel != GUI_PANEL_RANDOM)
+	{
+		Sint32 panels = m_leftPanel - GUI_PANEL_EXTRA_LEFT_START;
+		for(Sint32 i = 0; i <= panels; ++i)
+			m_panels.push_back(new GUI_Panel(iRect(0, 0, GAME_PANEL_FIXED_WIDTH, m_windowH), GUI_PANEL_EXTRA_LEFT_START + i));
+	}
+	for(std::vector<Uint32>::iterator it = m_openDialogs.begin(), end = m_openDialogs.end(); it != end; ++it)
+	{
+		Uint32 windowId = (*it);
+		switch(windowId)
+		{
+			case GUI_PANEL_WINDOW_SKILLS: UTIL_toggleSkillsWindow(); break;
+			case GUI_PANEL_WINDOW_BATTLE: UTIL_toggleBattleWindow(); break;
+			case GUI_PANEL_WINDOW_VIP: UTIL_toggleVipWindow(); break;
+			case GUI_PANEL_WINDOW_PARTY: UTIL_togglePartyWindow(); break;
+		}
+	}
+
+	recalculateGameWindow();
+	m_parentWindows.clear();
 }
 
 void Engine::processGameEnd()
@@ -3856,6 +4473,25 @@ void Engine::processGameEnd()
 	g_map.changeMap(DIRECTION_INVALID);
 	g_map.resetCreatures();
 
+	clearWindows();
 	clearPanels();
 	checkReleaseQueue();
+}
+
+void Engine::setVipData(Uint32 playerGUID, const std::string& description, Uint32 iconId, bool notifyLogin)
+{
+	VipData vip;
+	vip.iconId = iconId;
+	vip.description = description;
+	vip.notifyLogin = notifyLogin;
+	m_vipData[playerGUID] = vip;
+}
+
+VipData* Engine::getVipData(Uint32 playerGUID)
+{
+	std::map<Uint32, VipData>::iterator it = m_vipData.find(playerGUID);
+	if(it != m_vipData.end())
+		return &it->second;
+
+	return NULL;
 }

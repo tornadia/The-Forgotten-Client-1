@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -31,7 +31,7 @@
 
 #define GRAPHICS_OPTIONS_TITLE "Advanced Graphics Options"
 #define GRAPHICS_OPTIONS_WIDTH 266
-#define GRAPHICS_OPTIONS_HEIGHT 405
+#define GRAPHICS_OPTIONS_HEIGHT 486
 #define GRAPHICS_OPTIONS_CANCEL_EVENTID 1000
 #define GRAPHICS_OPTIONS_OK_EVENTID 1001
 #define GRAPHICS_OPTIONS_HELP_LINK "http://www.tibia.com/gameguides/?subtopic=manual&section=options"
@@ -42,52 +42,62 @@
 #define GRAPHICS_OPTIONS_LISTBOX_ENGINES_H 55
 #define GRAPHICS_OPTIONS_LISTBOX_ENGINES_EVENTID 1003
 #define GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_X 18
-#define GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_Y 173
+#define GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_Y 284
 #define GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_W 230
 #define GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_H 43
 #define GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_EVENTID 1004
+#define GRAPHICS_OPTIONS_LISTBOX_LIGHTS_X 18
+#define GRAPHICS_OPTIONS_LISTBOX_LIGHTS_Y 213
+#define GRAPHICS_OPTIONS_LISTBOX_LIGHTS_W 230
+#define GRAPHICS_OPTIONS_LISTBOX_LIGHTS_H 43
+#define GRAPHICS_OPTIONS_LISTBOX_LIGHTS_EVENTID 1005
 #define GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_X 18
 #define GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_Y 133
 #define GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_W 230
 #define GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_H 12
-#define GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_EVENTID 1005
+#define GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_EVENTID 1006
+#define GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_X 18
+#define GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_Y 173
+#define GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_W 230
+#define GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_H 12
+#define GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_EVENTID 1007
 #define GRAPHICS_OPTIONS_SCROLLBAR_FPS_X 18
-#define GRAPHICS_OPTIONS_SCROLLBAR_FPS_Y 332
+#define GRAPHICS_OPTIONS_SCROLLBAR_FPS_Y 413
 #define GRAPHICS_OPTIONS_SCROLLBAR_FPS_W 230
 #define GRAPHICS_OPTIONS_SCROLLBAR_FPS_H 12
-#define GRAPHICS_OPTIONS_SCROLLBAR_FPS_EVENTID 1006
+#define GRAPHICS_OPTIONS_SCROLLBAR_FPS_EVENTID 1008
 #define GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_TITLE "Game-Screen Sharpening"
 #define GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_X 18
-#define GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_Y 224
+#define GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_Y 335
 #define GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_W 230
 #define GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_H 22
-#define GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_EVENTID 1007
+#define GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_EVENTID 1009
 #define GRAPHICS_OPTIONS_CHECKBOX_VSYNC_TITLE "Vertical Synchronization"
 #define GRAPHICS_OPTIONS_CHECKBOX_VSYNC_X 18
-#define GRAPHICS_OPTIONS_CHECKBOX_VSYNC_Y 254
+#define GRAPHICS_OPTIONS_CHECKBOX_VSYNC_Y 365
 #define GRAPHICS_OPTIONS_CHECKBOX_VSYNC_W 230
 #define GRAPHICS_OPTIONS_CHECKBOX_VSYNC_H 22
-#define GRAPHICS_OPTIONS_CHECKBOX_VSYNC_EVENTID 1008
-#define GRAPHICS_OPTIONS_CHECKBOX_PERF_TITLE "Performance Mode"
-#define GRAPHICS_OPTIONS_CHECKBOX_PERF_X 18
-#define GRAPHICS_OPTIONS_CHECKBOX_PERF_Y 284
-#define GRAPHICS_OPTIONS_CHECKBOX_PERF_W 230
-#define GRAPHICS_OPTIONS_CHECKBOX_PERF_H 22
-#define GRAPHICS_OPTIONS_CHECKBOX_PERF_EVENTID 1009
+#define GRAPHICS_OPTIONS_CHECKBOX_VSYNC_EVENTID 1010
 #define GRAPHICS_OPTIONS_LABEL_ENGINES_TITLE "Select Graphics Engine:"
 #define GRAPHICS_OPTIONS_LABEL_ENGINES_X 18
 #define GRAPHICS_OPTIONS_LABEL_ENGINES_Y 34
 #define GRAPHICS_OPTIONS_LABEL_ANTIALIAS_TITLE "Select Antialiasing Mode:"
 #define GRAPHICS_OPTIONS_LABEL_ANTIALIAS_X 18
-#define GRAPHICS_OPTIONS_LABEL_ANTIALIAS_Y 158
+#define GRAPHICS_OPTIONS_LABEL_ANTIALIAS_Y 269
+#define GRAPHICS_OPTIONS_LABEL_LIGHTS_TITLE "Select Light Mode:"
+#define GRAPHICS_OPTIONS_LABEL_LIGHTS_X 18
+#define GRAPHICS_OPTIONS_LABEL_LIGHTS_Y 198
 #define GRAPHICS_OPTIONS_LABEL_CTRL_LIGHTS_X 18
 #define GRAPHICS_OPTIONS_LABEL_CTRL_LIGHTS_Y 118
-#define GRAPHICS_OPTIONS_LABEL_CTRL_LIGHTS_EVENTID 1010
+#define GRAPHICS_OPTIONS_LABEL_CTRL_LIGHTS_EVENTID 1011
+#define GRAPHICS_OPTIONS_LABEL_CTRL_LEVELSEPARATOR_X 18
+#define GRAPHICS_OPTIONS_LABEL_CTRL_LEVELSEPARATOR_Y 158
+#define GRAPHICS_OPTIONS_LABEL_CTRL_LEVELSEPARATOR_EVENTID 1012
 #define GRAPHICS_OPTIONS_LABEL_CTRL_FPS_X 18
-#define GRAPHICS_OPTIONS_LABEL_CTRL_FPS_Y 317
-#define GRAPHICS_OPTIONS_LABEL_CTRL_FPS_EVENTID 1011
-
+#define GRAPHICS_OPTIONS_LABEL_CTRL_FPS_Y 398
+#define GRAPHICS_OPTIONS_LABEL_CTRL_FPS_EVENTID 1013
 #define GRAPHICS_OPTIONS_LIGHTS_TEXT "Set Ambient Light: %d%%"
+#define GRAPHICS_OPTIONS_LEVELSEPARATOR_TEXT "Set Level Separator: %d%%"
 #define GRAPHICS_OPTIONS_FPS_TEXT "Adjust Framerate Limit: %d"
 #define GRAPHICS_OPTIONS_FPS_MAX_TEXT "Adjust Framerate Limit: max"
 
@@ -124,9 +134,13 @@ void advanced_graphics_options_Events(Uint32 event, Sint32 status)
 					else
 					{
 						g_engine.setUnlimitedFPS(false);
-						SDL_setFramerate(&g_fpsmanager, status+30);
+						SDL_setFramerate(&g_fpsmanager, status + 30);
 					}
 				}
+
+				pScrollBar = SDL_static_cast(GUI_HScrollBar*, pWindow->getChild(GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_EVENTID));
+				if(pScrollBar)
+					g_engine.setLevelSeparator(UTIL_min<Uint8>(100, SDL_static_cast(Uint8, pScrollBar->getScrollPos())));
 				
 				GUI_CheckBox* pCheckBox = SDL_static_cast(GUI_CheckBox*, pWindow->getChild(GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_EVENTID));
 				if(pCheckBox)
@@ -139,16 +153,6 @@ void advanced_graphics_options_Events(Uint32 event, Sint32 status)
 					{
 						g_engine.setVsync(pCheckBox->isChecked());
 						g_inited = false;//ReInit engine so renderer will reset Vsync
-					}
-				}
-
-				pCheckBox = SDL_static_cast(GUI_CheckBox*, pWindow->getChild(GRAPHICS_OPTIONS_CHECKBOX_PERF_EVENTID));
-				if(pCheckBox)
-				{
-					if(pCheckBox->isChecked() != g_engine.hasPerformanceMode())
-					{
-						g_engine.setPerformanceMode(pCheckBox->isChecked());
-						g_inited = false;//ReInit engine so renderer will reset
 					}
 				}
 
@@ -237,6 +241,18 @@ void advanced_graphics_options_Events(Uint32 event, Sint32 status)
 					if(currentAntialiasing != g_engine.getAntialiasing())
 						g_inited = false;//ReInit engine so renderer will reset
 				}
+
+				pListBox = SDL_static_cast(GUI_ListBox*, pWindow->getChild(GRAPHICS_OPTIONS_LISTBOX_LIGHTS_EVENTID));
+				if(pListBox)
+				{
+					Sint32 selectedLightMode = pListBox->getSelect();
+					if(selectedLightMode == 2)
+						g_engine.setLightMode(CLIENT_LIGHT_MODE_NEW);
+					else if(selectedLightMode == 1)
+						g_engine.setLightMode(CLIENT_LIGHT_MODE_OLD);
+					else
+						g_engine.setLightMode(CLIENT_LIGHT_MODE_NONE);
+				}
 				g_engine.removeWindow(pWindow);
 			}
 		}
@@ -255,6 +271,20 @@ void advanced_graphics_options_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
+		case GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_EVENTID:
+		{
+			GUI_Window* pWindow = g_engine.getCurrentWindow();
+			if(pWindow && pWindow->getInternalID() == GUI_WINDOW_ADVANCEDGRAPHICSOPTIONS)
+			{
+				GUI_Label* pLabel = SDL_static_cast(GUI_Label*, pWindow->getChild(GRAPHICS_OPTIONS_LABEL_CTRL_LEVELSEPARATOR_EVENTID));
+				if(pLabel)
+				{
+					SDL_snprintf(g_buffer, sizeof(g_buffer), GRAPHICS_OPTIONS_LEVELSEPARATOR_TEXT, status);
+					pLabel->setName(g_buffer);
+				}
+			}
+		}
+		break;
 		case GRAPHICS_OPTIONS_SCROLLBAR_FPS_EVENTID:
 		{
 			GUI_Window* pWindow = g_engine.getCurrentWindow();
@@ -266,7 +296,7 @@ void advanced_graphics_options_Events(Uint32 event, Sint32 status)
 					if(status == 171)
 						SDL_snprintf(g_buffer, sizeof(g_buffer), GRAPHICS_OPTIONS_FPS_MAX_TEXT);
 					else
-						SDL_snprintf(g_buffer, sizeof(g_buffer), GRAPHICS_OPTIONS_FPS_TEXT, status+30);
+						SDL_snprintf(g_buffer, sizeof(g_buffer), GRAPHICS_OPTIONS_FPS_TEXT, status + 30);
 					
 					pLabel->setName(g_buffer);
 				}
@@ -339,15 +369,15 @@ void UTIL_advancedGraphicsOptions()
 		g_engine.removeWindow(pWindow);
 
 	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, GRAPHICS_OPTIONS_WIDTH, GRAPHICS_OPTIONS_HEIGHT), GRAPHICS_OPTIONS_TITLE, GUI_WINDOW_ADVANCEDGRAPHICSOPTIONS);
-	GUI_Button* newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-56, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH - 56, GRAPHICS_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-109, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH - 109, GRAPHICS_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH-162, GRAPHICS_OPTIONS_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
+	newButton = new GUI_Button(iRect(GRAPHICS_OPTIONS_WIDTH - 162, GRAPHICS_OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Help");
 	newButton->setButtonEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_HELP_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
@@ -378,7 +408,7 @@ void UTIL_advancedGraphicsOptions()
 	newListBox->setSelect(getSelectedAPI());
 	newListBox->startEvents(); 
 	newWindow->addChild(newListBox);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, GRAPHICS_OPTIONS_HEIGHT-40, GRAPHICS_OPTIONS_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, GRAPHICS_OPTIONS_HEIGHT - 40, GRAPHICS_OPTIONS_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	GUI_Label* newLabel = new GUI_Label(iRect(GRAPHICS_OPTIONS_LABEL_ENGINES_X, GRAPHICS_OPTIONS_LABEL_ENGINES_Y, 0, 0), GRAPHICS_OPTIONS_LABEL_ENGINES_TITLE);
 	newWindow->addChild(newLabel);
@@ -392,7 +422,12 @@ void UTIL_advancedGraphicsOptions()
 
 	newLabel = new GUI_Label(iRect(GRAPHICS_OPTIONS_LABEL_CTRL_FPS_X, GRAPHICS_OPTIONS_LABEL_CTRL_FPS_Y, 0, 0), g_buffer, GRAPHICS_OPTIONS_LABEL_CTRL_FPS_EVENTID);
 	newWindow->addChild(newLabel);
+	SDL_snprintf(g_buffer, sizeof(g_buffer), GRAPHICS_OPTIONS_LEVELSEPARATOR_TEXT, g_engine.getLevelSeparator());
+	newLabel = new GUI_Label(iRect(GRAPHICS_OPTIONS_LABEL_CTRL_LEVELSEPARATOR_X, GRAPHICS_OPTIONS_LABEL_CTRL_LEVELSEPARATOR_Y, 0, 0), g_buffer, GRAPHICS_OPTIONS_LABEL_CTRL_LEVELSEPARATOR_EVENTID);
+	newWindow->addChild(newLabel);
 	newLabel = new GUI_Label(iRect(GRAPHICS_OPTIONS_LABEL_ANTIALIAS_X, GRAPHICS_OPTIONS_LABEL_ANTIALIAS_Y, 0, 0), GRAPHICS_OPTIONS_LABEL_ANTIALIAS_TITLE);
+	newWindow->addChild(newLabel);
+	newLabel = new GUI_Label(iRect(GRAPHICS_OPTIONS_LABEL_LIGHTS_X, GRAPHICS_OPTIONS_LABEL_LIGHTS_Y, 0, 0), GRAPHICS_OPTIONS_LABEL_LIGHTS_TITLE);
 	newWindow->addChild(newLabel);
 	newListBox = new GUI_ListBox(iRect(GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_X, GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_Y, GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_W, GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_H), GRAPHICS_OPTIONS_LISTBOX_ANTIALIAS_EVENTID);
 	newListBox->add("None");
@@ -407,21 +442,35 @@ void UTIL_advancedGraphicsOptions()
 		newListBox->setSelect(0);
 
 	newWindow->addChild(newListBox);
+	newListBox = new GUI_ListBox(iRect(GRAPHICS_OPTIONS_LISTBOX_LIGHTS_X, GRAPHICS_OPTIONS_LISTBOX_LIGHTS_Y, GRAPHICS_OPTIONS_LISTBOX_LIGHTS_W, GRAPHICS_OPTIONS_LISTBOX_LIGHTS_H), GRAPHICS_OPTIONS_LISTBOX_LIGHTS_EVENTID);
+	newListBox->add("No Light");
+	newListBox->add("Old Tibia Light");
+	newListBox->add("New Tibia Light (Experimental)");
+	newListBox->startEvents();
+	if(g_engine.getLightMode() == CLIENT_LIGHT_MODE_NEW)
+		newListBox->setSelect(2);
+	else if(g_engine.getLightMode() == CLIENT_LIGHT_MODE_OLD)
+		newListBox->setSelect(1);
+	else
+		newListBox->setSelect(0);
+	
+	newWindow->addChild(newListBox);
 	GUI_CheckBox* newCheckBox = new GUI_CheckBox(iRect(GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_X, GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_Y, GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_W, GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_H), GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_TITLE, g_engine.isSharpening(), GRAPHICS_OPTIONS_CHECKBOX_SHARPEN_EVENTID);
 	newCheckBox->startEvents();
 	newWindow->addChild(newCheckBox);
 	newCheckBox = new GUI_CheckBox(iRect(GRAPHICS_OPTIONS_CHECKBOX_VSYNC_X, GRAPHICS_OPTIONS_CHECKBOX_VSYNC_Y, GRAPHICS_OPTIONS_CHECKBOX_VSYNC_W, GRAPHICS_OPTIONS_CHECKBOX_VSYNC_H), GRAPHICS_OPTIONS_CHECKBOX_VSYNC_TITLE, g_engine.isVsync(), GRAPHICS_OPTIONS_CHECKBOX_VSYNC_EVENTID);
 	newCheckBox->startEvents();
 	newWindow->addChild(newCheckBox);
-	newCheckBox = new GUI_CheckBox(iRect(GRAPHICS_OPTIONS_CHECKBOX_PERF_X, GRAPHICS_OPTIONS_CHECKBOX_PERF_Y, GRAPHICS_OPTIONS_CHECKBOX_PERF_W, GRAPHICS_OPTIONS_CHECKBOX_PERF_H), GRAPHICS_OPTIONS_CHECKBOX_PERF_TITLE, g_engine.hasPerformanceMode(), GRAPHICS_OPTIONS_CHECKBOX_PERF_EVENTID);
-	newCheckBox->startEvents();
-	newWindow->addChild(newCheckBox);
 	GUI_HScrollBar* newHScrollBar = new GUI_HScrollBar(iRect(GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_X, GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_Y, GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_W, GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_H), 100, g_engine.getAmbientLight(), GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_EVENTID);
 	newHScrollBar->setBarEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_SCROLLBAR_LIGHTS_EVENTID);
 	newHScrollBar->startEvents();
 	newWindow->addChild(newHScrollBar);
-	newHScrollBar = new GUI_HScrollBar(iRect(GRAPHICS_OPTIONS_SCROLLBAR_FPS_X, GRAPHICS_OPTIONS_SCROLLBAR_FPS_Y, GRAPHICS_OPTIONS_SCROLLBAR_FPS_W, GRAPHICS_OPTIONS_SCROLLBAR_FPS_H), 171, (g_engine.isUnlimitedFPS() ? 171 : g_fpsmanager.rate-30), GRAPHICS_OPTIONS_SCROLLBAR_FPS_EVENTID);
+	newHScrollBar = new GUI_HScrollBar(iRect(GRAPHICS_OPTIONS_SCROLLBAR_FPS_X, GRAPHICS_OPTIONS_SCROLLBAR_FPS_Y, GRAPHICS_OPTIONS_SCROLLBAR_FPS_W, GRAPHICS_OPTIONS_SCROLLBAR_FPS_H), 171, (g_engine.isUnlimitedFPS() ? 171 : g_fpsmanager.rate - 30), GRAPHICS_OPTIONS_SCROLLBAR_FPS_EVENTID);
 	newHScrollBar->setBarEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_SCROLLBAR_FPS_EVENTID);
+	newHScrollBar->startEvents();
+	newWindow->addChild(newHScrollBar);
+	newHScrollBar = new GUI_HScrollBar(iRect(GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_X, GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_Y, GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_W, GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_H), 100, g_engine.getLevelSeparator(), GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_EVENTID);
+	newHScrollBar->setBarEventCallback(&advanced_graphics_options_Events, GRAPHICS_OPTIONS_SCROLLBAR_LEVELSEPARATOR_EVENTID);
 	newHScrollBar->startEvents();
 	newWindow->addChild(newHScrollBar);
 	g_engine.addWindow(newWindow, true);

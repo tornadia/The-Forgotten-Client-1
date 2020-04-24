@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -51,12 +51,12 @@ void GUI_Log::onTextInput(const char* textInput)
 	m_console->onTextInput(textInput);
 }
 
-void GUI_Log::onKeyDown(SDL_Event event)
+void GUI_Log::onKeyDown(SDL_Event& event)
 {
 	m_console->onKeyDown(event);
 }
 
-void GUI_Log::onKeyUp(SDL_Event event)
+void GUI_Log::onKeyUp(SDL_Event& event)
 {
 	m_console->onKeyUp(event);
 }
@@ -94,7 +94,7 @@ void GUI_Log::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 void GUI_Log::render(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->fillRectangle(x, y, w-12, h, 0, 0, 0, 128);
+	renderer->fillRectangle(x, y, w - 12, h, 0, 0, 0, 128);
 
 	iRect nRect = iRect(x, y, w, h);
 	m_console->setRect(nRect);

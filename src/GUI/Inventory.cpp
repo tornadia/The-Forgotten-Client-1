@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -70,6 +70,10 @@
 #define INVENTORY_SOUL_EVENTID 1014
 #define INVENTORY_CAP_DESCRIPTION "Capacity: The amount of weight you are able to carry."
 #define INVENTORY_CAP_EVENTID 1015
+#define INVENTORY_MINIMIZE_DESCRIPTION "Minimise inventory"
+#define INVENTORY_MINIMIZE_EVENTID 1016
+#define INVENTORY_MAXIMIZE_DESCRIPTION "Maximise inventory"
+#define INVENTORY_MAXIMIZE_EVENTID 1017
 
 extern Engine g_engine;
 extern Map g_map;
@@ -104,66 +108,206 @@ void inventory_Events(Uint32 event, Sint32)
 		case INVENTORY_WHITEHAND_EVENTID: {g_engine.setPvpMode(PVPMODE_WHITE_HAND); g_game.sendAttackModes();} break;
 		case INVENTORY_YELLOWHAND_EVENTID: {g_engine.setPvpMode(PVPMODE_YELLOW_HAND); g_game.sendAttackModes();} break;
 		case INVENTORY_REDFIST_EVENTID: {g_engine.setPvpMode(PVPMODE_RED_FIST); g_game.sendAttackModes();} break;
+		case INVENTORY_MINIMIZE_EVENTID: {UTIL_createInventoryPanel(true); g_engine.recalculateGameWindow();} break;
+		case INVENTORY_MAXIMIZE_EVENTID: {UTIL_createInventoryPanel(false); g_engine.recalculateGameWindow();} break;
 	}
 }
 
-void UTIL_createInventoryPanel()
+void UTIL_createInventoryPanel(bool minimized)
 {
+	bool newWindow;
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_INVENTORY);
+	if(!pPanel)
+		pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_INVENTORY_MINIMIZED);
+
 	if(pPanel)
-		g_engine.removePanelWindow(pPanel);
-
-	bool minimized = false;
-	if(minimized)
 	{
-
+		newWindow = false;
+		pPanel->clearChilds();
+		if(minimized)
+		{
+			iRect rect = pPanel->getRect(); rect.y2 = 64;
+			pPanel->setRect(rect, true);
+			pPanel->setInternalID(GUI_PANEL_WINDOW_INVENTORY_MINIMIZED);
+		}
+		else
+		{
+			iRect rect = pPanel->getRect(); rect.y2 = 170;
+			pPanel->setRect(rect, true);
+			pPanel->setInternalID(GUI_PANEL_WINDOW_INVENTORY);
+		}
 	}
 	else
 	{
-		GUI_PanelWindow* newWindow = new GUI_PanelWindow(iRect(0, 0, 172, 170), false, GUI_PANEL_WINDOW_INVENTORY);
+		newWindow = true;
+		if(minimized)
+			pPanel = new GUI_PanelWindow(iRect(0, 0, GAME_PANEL_FIXED_WIDTH - 4, 64), false, GUI_PANEL_WINDOW_INVENTORY_MINIMIZED);
+		else
+			pPanel = new GUI_PanelWindow(iRect(0, 0, GAME_PANEL_FIXED_WIDTH - 4, 170), false, GUI_PANEL_WINDOW_INVENTORY);
+	}
+
+	if(minimized)
+	{
+		if(g_clientVersion >= 1000)
+		{
+			if(g_game.getExpertPvpMode())
+			{
+				GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(124, 4, GUI_UI_ICON_COMBAT_DOVE_UP_W, GUI_UI_ICON_COMBAT_DOVE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_DOVE_UP_X, GUI_UI_ICON_COMBAT_DOVE_UP_Y, GUI_UI_ICON_COMBAT_DOVE_DOWN_X, GUI_UI_ICON_COMBAT_DOVE_DOWN_Y, 0, INVENTORY_DOVE_DESCRIPTION);
+				newRadioIcon->setRadioEventCallback(&CheckDoveIcon);
+				newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_DOVE_EVENTID);
+				newRadioIcon->startEvents();
+				pPanel->addChild(newRadioIcon);
+				newRadioIcon = new GUI_RadioIcon(iRect(147, 4, GUI_UI_ICON_COMBAT_WHITEHAND_UP_W, GUI_UI_ICON_COMBAT_WHITEHAND_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_WHITEHAND_UP_X, GUI_UI_ICON_COMBAT_WHITEHAND_UP_Y, GUI_UI_ICON_COMBAT_WHITEHAND_DOWN_X, GUI_UI_ICON_COMBAT_WHITEHAND_DOWN_Y, 0, INVENTORY_WHITEHAND_DESCRIPTION);
+				newRadioIcon->setRadioEventCallback(&CheckWhiteHandIcon);
+				newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_WHITEHAND_EVENTID);
+				newRadioIcon->startEvents();
+				pPanel->addChild(newRadioIcon);
+				newRadioIcon = new GUI_RadioIcon(iRect(124, 26, GUI_UI_ICON_COMBAT_YELLOWHAND_UP_W, GUI_UI_ICON_COMBAT_YELLOWHAND_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_YELLOWHAND_UP_X, GUI_UI_ICON_COMBAT_YELLOWHAND_UP_Y, GUI_UI_ICON_COMBAT_YELLOWHAND_DOWN_X, GUI_UI_ICON_COMBAT_YELLOWHAND_DOWN_Y, 0, INVENTORY_YELLOWHAND_DESCRIPTION);
+				newRadioIcon->setRadioEventCallback(&CheckYellowHandIcon);
+				newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_YELLOWHAND_EVENTID);
+				newRadioIcon->startEvents();
+				pPanel->addChild(newRadioIcon);
+				newRadioIcon = new GUI_RadioIcon(iRect(147, 26, GUI_UI_ICON_COMBAT_REDFIST_UP_W, GUI_UI_ICON_COMBAT_REDFIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_REDFIST_UP_X, GUI_UI_ICON_COMBAT_REDFIST_UP_Y, GUI_UI_ICON_COMBAT_REDFIST_DOWN_X, GUI_UI_ICON_COMBAT_REDFIST_DOWN_Y, 0, INVENTORY_REDFIST_DESCRIPTION);
+				newRadioIcon->setRadioEventCallback(&CheckRedFistIcon);
+				newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_REDFIST_EVENTID);
+				newRadioIcon->startEvents();
+				pPanel->addChild(newRadioIcon);
+			}
+			else
+			{
+				GUI_StaticImage* newImage = new GUI_StaticImage(iRect(124, 4, GUI_UI_ICON_COMBAT_DOVE_DISABLED_W, GUI_UI_ICON_COMBAT_DOVE_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_DOVE_DISABLED_X, GUI_UI_ICON_COMBAT_DOVE_DISABLED_Y, 0, INVENTORY_DOVE_DESCRIPTION);
+				newImage->startEvents();
+				pPanel->addChild(newImage);
+				newImage = new GUI_StaticImage(iRect(147, 4, GUI_UI_ICON_COMBAT_WHITEHAND_DISABLED_W, GUI_UI_ICON_COMBAT_WHITEHAND_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_WHITEHAND_DISABLED_X, GUI_UI_ICON_COMBAT_WHITEHAND_DISABLED_Y, 0, INVENTORY_WHITEHAND_DESCRIPTION);
+				newImage->startEvents();
+				pPanel->addChild(newImage);
+				newImage = new GUI_StaticImage(iRect(124, 26, GUI_UI_ICON_COMBAT_YELLOWHAND_DISABLED_W, GUI_UI_ICON_COMBAT_YELLOWHAND_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_YELLOWHAND_DISABLED_X, GUI_UI_ICON_COMBAT_YELLOWHAND_DISABLED_Y, 0, INVENTORY_YELLOWHAND_DESCRIPTION);
+				newImage->startEvents();
+				pPanel->addChild(newImage);
+				newImage = new GUI_StaticImage(iRect(147, 26, GUI_UI_ICON_COMBAT_REDFIST_DISABLED_W, GUI_UI_ICON_COMBAT_REDFIST_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_REDFIST_DISABLED_X, GUI_UI_ICON_COMBAT_REDFIST_DISABLED_Y, 0, INVENTORY_REDFIST_DESCRIPTION);
+				newImage->startEvents();
+				pPanel->addChild(newImage);
+			}
+		}
+		else
+		{
+			GUI_Button* newButton = new GUI_Button(iRect(124, 4, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_STOP_TITLE, 0, INVENTORY_STOP_DESCRIPTION);
+			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_STOP_EVENTID);
+			newButton->startEvents();
+			pPanel->addChild(newButton);
+			GUI_Icon* newIcon = new GUI_Icon(iRect(124, 26, GUI_UI_ICON_OPTIONS_LEGACY_UP_W, GUI_UI_ICON_OPTIONS_LEGACY_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_OPTIONS_LEGACY_UP_X, GUI_UI_ICON_OPTIONS_LEGACY_UP_Y, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_X, GUI_UI_ICON_OPTIONS_LEGACY_DOWN_Y, 0, INVENTORY_OPTIONS_DESCRIPTION);
+			newIcon->setButtonEventCallback(&inventory_Events, INVENTORY_OPTIONS_EVENTID);
+			newIcon->startEvents();
+			pPanel->addChild(newIcon);
+			newIcon = new GUI_Icon(iRect(147, 26, GUI_UI_ICON_HELP_UP_W, GUI_UI_ICON_HELP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_HELP_UP_X, GUI_UI_ICON_HELP_UP_Y, GUI_UI_ICON_HELP_DOWN_X, GUI_UI_ICON_HELP_DOWN_Y, 0, INVENTORY_HELP_DESCRIPTION);
+			newIcon->setButtonEventCallback(&inventory_Events, INVENTORY_HELP_EVENTID);
+			newIcon->startEvents();
+			pPanel->addChild(newIcon);
+		}
+		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(56, 4, GUI_UI_ICON_COMBAT_OFFENSIVE_UP_W, GUI_UI_ICON_COMBAT_OFFENSIVE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_OFFENSIVE_UP_X, GUI_UI_ICON_COMBAT_OFFENSIVE_UP_Y, GUI_UI_ICON_COMBAT_OFFENSIVE_DOWN_X, GUI_UI_ICON_COMBAT_OFFENSIVE_DOWN_Y, 0, INVENTORY_OFFENSIVE_DESCRIPTION);
+		newRadioIcon->setRadioEventCallback(&CheckOffensiveIcon);
+		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_OFFENSIVE_EVENTID);
+		newRadioIcon->startEvents();
+		pPanel->addChild(newRadioIcon);
+		newRadioIcon = new GUI_RadioIcon(iRect(76, 4, GUI_UI_ICON_COMBAT_BALANCED_UP_W, GUI_UI_ICON_COMBAT_BALANCED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_BALANCED_UP_X, GUI_UI_ICON_COMBAT_BALANCED_UP_Y, GUI_UI_ICON_COMBAT_BALANCED_DOWN_X, GUI_UI_ICON_COMBAT_BALANCED_DOWN_Y, 0, INVENTORY_BALANCED_DESCRIPTION);
+		newRadioIcon->setRadioEventCallback(&CheckBalancedIcon);
+		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_BALANCED_EVENTID);
+		newRadioIcon->startEvents();
+		pPanel->addChild(newRadioIcon);
+		newRadioIcon = new GUI_RadioIcon(iRect(96, 4, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_W, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_X, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_Y, GUI_UI_ICON_COMBAT_DEFENSIVE_DOWN_X, GUI_UI_ICON_COMBAT_DEFENSIVE_DOWN_Y, 0, INVENTORY_DEFENSIVE_DESCRIPTION);
+		newRadioIcon->setRadioEventCallback(&CheckDefensiveIcon);
+		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_DEFENSIVE_EVENTID);
+		newRadioIcon->startEvents();
+		pPanel->addChild(newRadioIcon);
+		newRadioIcon = new GUI_RadioIcon(iRect(56, 26, GUI_UI_ICON_STAND_UP_W, GUI_UI_ICON_STAND_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_STAND_UP_X, GUI_UI_ICON_STAND_UP_Y, GUI_UI_ICON_STAND_DOWN_X, GUI_UI_ICON_STAND_DOWN_Y, 0, INVENTORY_STAND_DESCRIPTION);
+		newRadioIcon->setRadioEventCallback(&CheckStandIcon);
+		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_STAND_EVENTID);
+		newRadioIcon->startEvents();
+		pPanel->addChild(newRadioIcon);
+		newRadioIcon = new GUI_RadioIcon(iRect(76, 26, GUI_UI_ICON_FOLLOW_UP_W, GUI_UI_ICON_FOLLOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_FOLLOW_UP_X, GUI_UI_ICON_FOLLOW_UP_Y, GUI_UI_ICON_FOLLOW_DOWN_X, GUI_UI_ICON_FOLLOW_DOWN_Y, 0, INVENTORY_FOLLOW_DESCRIPTION);
+		newRadioIcon->setRadioEventCallback(&CheckFollowIcon);
+		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_FOLLOW_EVENTID);
+		newRadioIcon->startEvents();
+		pPanel->addChild(newRadioIcon);
+		newRadioIcon = new GUI_RadioIcon(iRect(96, 26, GUI_UI_ICON_COMBAT_PVP_UP_W, GUI_UI_ICON_COMBAT_PVP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_PVP_UP_X, GUI_UI_ICON_COMBAT_PVP_UP_Y, GUI_UI_ICON_COMBAT_PVP_DOWN_X, GUI_UI_ICON_COMBAT_PVP_DOWN_Y, 0, INVENTORY_PVP_DESCRIPTION1);
+		newRadioIcon->setRadioEventCallback(&CheckPvPIcon, INVENTORY_PVP_DESCRIPTION2);
+		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_PVP_EVENTID);
+		newRadioIcon->startEvents();
+		pPanel->addChild(newRadioIcon);
+		GUI_Icon* newIcon = new GUI_RadioIcon(iRect(8, 4, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_W, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_X, GUI_UI_ICON_MAXIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MAXIMIZE_WINDOW_DOWN_Y, 0, INVENTORY_MAXIMIZE_DESCRIPTION);
+		newIcon->setButtonEventCallback(&inventory_Events, INVENTORY_MAXIMIZE_EVENTID);
+		newIcon->startEvents();
+		pPanel->addChild(newIcon);
+		GUI_StaticImage* newImage = new GUI_StaticImage(iRect(22, 4, GUI_UI_STATUS_BACKGROUND_BIG_W, GUI_UI_STATUS_BACKGROUND_H), GUI_UI_IMAGE, GUI_UI_STATUS_BACKGROUND_BIG_X, GUI_UI_STATUS_BACKGROUND_BIG_Y, 0, INVENTORY_SOUL_DESCRIPTION);
+		pPanel->addChild(newImage);
+		newImage = new GUI_StaticImage(iRect(22, 25, GUI_UI_STATUS_BACKGROUND_BIG_W, GUI_UI_STATUS_BACKGROUND_H), GUI_UI_IMAGE, GUI_UI_STATUS_BACKGROUND_BIG_X, GUI_UI_STATUS_BACKGROUND_BIG_Y + GUI_UI_STATUS_BACKGROUND_H, 0, INVENTORY_CAP_DESCRIPTION);
+		pPanel->addChild(newImage);
+		GUI_Icons* newIcons = new GUI_Icons(iRect(15, 48, GUI_UI_ICON_STATUS_BAR_W, GUI_UI_ICON_STATUS_BAR_H));
+		pPanel->addChild(newIcons);
+		GUI_Label* newLabel = new GUI_Label(iRect(38, 6, 0, 0), "Soul:", 0, 255, 255, 255);
+		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
+		newLabel->setFont(CLIENT_FONT_SMALL);
+		pPanel->addChild(newLabel);
+		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, g_game.getPlayerSoul()));
+		newLabel = new GUI_Label(iRect(38, 15, 0, 0), UTIL_formatStringCommas(std::string(g_buffer, SDL_static_cast(size_t, len))), INVENTORY_SOUL_EVENTID, 255, 255, 255);
+		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
+		newLabel->setFont(CLIENT_FONT_SMALL);
+		pPanel->addChild(newLabel);
+		newLabel = new GUI_Label(iRect(38, 27, 0, 0), "Cap:", 0, 255, 255, 255);
+		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
+		newLabel->setFont(CLIENT_FONT_SMALL);
+		pPanel->addChild(newLabel);
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, g_game.getPlayerCapacity()));
+		newLabel = new GUI_Label(iRect(38, 36, 0, 0), UTIL_formatStringCommas(std::string(g_buffer, SDL_static_cast(size_t, len))), INVENTORY_CAP_EVENTID, 255, 255, 255);
+		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
+		newLabel->setFont(CLIENT_FONT_SMALL);
+		pPanel->addChild(newLabel);
+	}
+	else
+	{
 		if(g_clientVersion >= 1000)
 		{
 			GUI_Button* newButton = new GUI_Button(iRect(124, 149, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_STOP_TITLE, 0, INVENTORY_STOP_DESCRIPTION);
 			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_STOP_EVENTID);
 			newButton->startEvents();
-			newWindow->addChild(newButton);
+			pPanel->addChild(newButton);
 			if(g_game.getExpertPvpMode())
 			{
 				GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(124, 94, GUI_UI_ICON_COMBAT_DOVE_UP_W, GUI_UI_ICON_COMBAT_DOVE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_DOVE_UP_X, GUI_UI_ICON_COMBAT_DOVE_UP_Y, GUI_UI_ICON_COMBAT_DOVE_DOWN_X, GUI_UI_ICON_COMBAT_DOVE_DOWN_Y, 0, INVENTORY_DOVE_DESCRIPTION);
 				newRadioIcon->setRadioEventCallback(&CheckDoveIcon);
 				newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_DOVE_EVENTID);
 				newRadioIcon->startEvents();
-				newWindow->addChild(newRadioIcon);
+				pPanel->addChild(newRadioIcon);
 				newRadioIcon = new GUI_RadioIcon(iRect(147, 94, GUI_UI_ICON_COMBAT_WHITEHAND_UP_W, GUI_UI_ICON_COMBAT_WHITEHAND_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_WHITEHAND_UP_X, GUI_UI_ICON_COMBAT_WHITEHAND_UP_Y, GUI_UI_ICON_COMBAT_WHITEHAND_DOWN_X, GUI_UI_ICON_COMBAT_WHITEHAND_DOWN_Y, 0, INVENTORY_WHITEHAND_DESCRIPTION);
 				newRadioIcon->setRadioEventCallback(&CheckWhiteHandIcon);
 				newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_WHITEHAND_EVENTID);
 				newRadioIcon->startEvents();
-				newWindow->addChild(newRadioIcon);
+				pPanel->addChild(newRadioIcon);
 				newRadioIcon = new GUI_RadioIcon(iRect(124, 114, GUI_UI_ICON_COMBAT_YELLOWHAND_UP_W, GUI_UI_ICON_COMBAT_YELLOWHAND_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_YELLOWHAND_UP_X, GUI_UI_ICON_COMBAT_YELLOWHAND_UP_Y, GUI_UI_ICON_COMBAT_YELLOWHAND_DOWN_X, GUI_UI_ICON_COMBAT_YELLOWHAND_DOWN_Y, 0, INVENTORY_YELLOWHAND_DESCRIPTION);
 				newRadioIcon->setRadioEventCallback(&CheckYellowHandIcon);
 				newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_YELLOWHAND_EVENTID);
 				newRadioIcon->startEvents();
-				newWindow->addChild(newRadioIcon);
+				pPanel->addChild(newRadioIcon);
 				newRadioIcon = new GUI_RadioIcon(iRect(147, 114, GUI_UI_ICON_COMBAT_REDFIST_UP_W, GUI_UI_ICON_COMBAT_REDFIST_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_REDFIST_UP_X, GUI_UI_ICON_COMBAT_REDFIST_UP_Y, GUI_UI_ICON_COMBAT_REDFIST_DOWN_X, GUI_UI_ICON_COMBAT_REDFIST_DOWN_Y, 0, INVENTORY_REDFIST_DESCRIPTION);
 				newRadioIcon->setRadioEventCallback(&CheckRedFistIcon);
 				newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_REDFIST_EVENTID);
 				newRadioIcon->startEvents();
-				newWindow->addChild(newRadioIcon);
+				pPanel->addChild(newRadioIcon);
 			}
 			else
 			{
 				GUI_StaticImage* newImage = new GUI_StaticImage(iRect(124, 94, GUI_UI_ICON_COMBAT_DOVE_DISABLED_W, GUI_UI_ICON_COMBAT_DOVE_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_DOVE_DISABLED_X, GUI_UI_ICON_COMBAT_DOVE_DISABLED_Y, 0, INVENTORY_DOVE_DESCRIPTION);
 				newImage->startEvents();
-				newWindow->addChild(newImage);
+				pPanel->addChild(newImage);
 				newImage = new GUI_StaticImage(iRect(147, 94, GUI_UI_ICON_COMBAT_WHITEHAND_DISABLED_W, GUI_UI_ICON_COMBAT_WHITEHAND_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_WHITEHAND_DISABLED_X, GUI_UI_ICON_COMBAT_WHITEHAND_DISABLED_Y, 0, INVENTORY_WHITEHAND_DESCRIPTION);
 				newImage->startEvents();
-				newWindow->addChild(newImage);
+				pPanel->addChild(newImage);
 				newImage = new GUI_StaticImage(iRect(124, 114, GUI_UI_ICON_COMBAT_YELLOWHAND_DISABLED_W, GUI_UI_ICON_COMBAT_YELLOWHAND_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_YELLOWHAND_DISABLED_X, GUI_UI_ICON_COMBAT_YELLOWHAND_DISABLED_Y, 0, INVENTORY_YELLOWHAND_DESCRIPTION);
 				newImage->startEvents();
-				newWindow->addChild(newImage);
+				pPanel->addChild(newImage);
 				newImage = new GUI_StaticImage(iRect(147, 114, GUI_UI_ICON_COMBAT_REDFIST_DISABLED_W, GUI_UI_ICON_COMBAT_REDFIST_DISABLED_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_REDFIST_DISABLED_X, GUI_UI_ICON_COMBAT_REDFIST_DISABLED_Y, 0, INVENTORY_REDFIST_DESCRIPTION);
 				newImage->startEvents();
-				newWindow->addChild(newImage);
+				pPanel->addChild(newImage);
 			}
 		}
 		else if(g_clientVersion >= 790)
@@ -171,130 +315,136 @@ void UTIL_createInventoryPanel()
 			GUI_Button* newButton = new GUI_Button(iRect(124, 81, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_STOP_TITLE, 0, INVENTORY_STOP_DESCRIPTION);
 			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_STOP_EVENTID);
 			newButton->startEvents();
-			newWindow->addChild(newButton);
+			pPanel->addChild(newButton);
 			newButton = new GUI_Button(iRect(124, 105, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_QUESTS_TITLE, 0, INVENTORY_QUESTS_DESCRIPTION);
 			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_QUESTS_EVENTID);
 			newButton->startEvents();
-			newWindow->addChild(newButton);
+			pPanel->addChild(newButton);
 			newButton = new GUI_Button(iRect(124, 127, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_OPTIONS_TITLE, 0, INVENTORY_OPTIONS_DESCRIPTION);
 			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_OPTIONS_EVENTID);
 			newButton->startEvents();
-			newWindow->addChild(newButton);
+			pPanel->addChild(newButton);
 			newButton = new GUI_Button(iRect(124, 149, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_HELP_TITLE, 0, INVENTORY_HELP_DESCRIPTION);
 			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_HELP_EVENTID);
 			newButton->startEvents();
-			newWindow->addChild(newButton);
+			pPanel->addChild(newButton);
 		}
 		else
 		{
 			GUI_Button* newButton = new GUI_Button(iRect(124, 81, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_STOP_TITLE, 0, INVENTORY_STOP_DESCRIPTION);
 			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_STOP_EVENTID);
 			newButton->startEvents();
-			newWindow->addChild(newButton);
+			pPanel->addChild(newButton);
 			newButton = new GUI_Button(iRect(124, 105, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_OPTIONS_TITLE, 0, INVENTORY_OPTIONS_DESCRIPTION);
 			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_OPTIONS_EVENTID);
 			newButton->startEvents();
-			newWindow->addChild(newButton);
+			pPanel->addChild(newButton);
 			newButton = new GUI_Button(iRect(124, 127, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), INVENTORY_HELP_TITLE, 0, INVENTORY_HELP_DESCRIPTION);
 			newButton->setButtonEventCallback(&inventory_Events, INVENTORY_HELP_EVENTID);
 			newButton->startEvents();
-			newWindow->addChild(newButton);
+			pPanel->addChild(newButton);
 		}
 		GUI_RadioIcon* newRadioIcon = new GUI_RadioIcon(iRect(124, 19, GUI_UI_ICON_COMBAT_OFFENSIVE_UP_W, GUI_UI_ICON_COMBAT_OFFENSIVE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_OFFENSIVE_UP_X, GUI_UI_ICON_COMBAT_OFFENSIVE_UP_Y, GUI_UI_ICON_COMBAT_OFFENSIVE_DOWN_X, GUI_UI_ICON_COMBAT_OFFENSIVE_DOWN_Y, 0, INVENTORY_OFFENSIVE_DESCRIPTION);
 		newRadioIcon->setRadioEventCallback(&CheckOffensiveIcon);
 		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_OFFENSIVE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(124, 39, GUI_UI_ICON_COMBAT_BALANCED_UP_W, GUI_UI_ICON_COMBAT_BALANCED_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_BALANCED_UP_X, GUI_UI_ICON_COMBAT_BALANCED_UP_Y, GUI_UI_ICON_COMBAT_BALANCED_DOWN_X, GUI_UI_ICON_COMBAT_BALANCED_DOWN_Y, 0, INVENTORY_BALANCED_DESCRIPTION);
 		newRadioIcon->setRadioEventCallback(&CheckBalancedIcon);
 		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_BALANCED_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(124, 59, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_W, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_X, GUI_UI_ICON_COMBAT_DEFENSIVE_UP_Y, GUI_UI_ICON_COMBAT_DEFENSIVE_DOWN_X, GUI_UI_ICON_COMBAT_DEFENSIVE_DOWN_Y, 0, INVENTORY_DEFENSIVE_DESCRIPTION);
 		newRadioIcon->setRadioEventCallback(&CheckDefensiveIcon);
 		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_DEFENSIVE_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(147, 19, GUI_UI_ICON_STAND_UP_W, GUI_UI_ICON_STAND_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_STAND_UP_X, GUI_UI_ICON_STAND_UP_Y, GUI_UI_ICON_STAND_DOWN_X, GUI_UI_ICON_STAND_DOWN_Y, 0, INVENTORY_STAND_DESCRIPTION);
 		newRadioIcon->setRadioEventCallback(&CheckStandIcon);
 		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_STAND_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(147, 39, GUI_UI_ICON_FOLLOW_UP_W, GUI_UI_ICON_FOLLOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_FOLLOW_UP_X, GUI_UI_ICON_FOLLOW_UP_Y, GUI_UI_ICON_FOLLOW_DOWN_X, GUI_UI_ICON_FOLLOW_DOWN_Y, 0, INVENTORY_FOLLOW_DESCRIPTION);
 		newRadioIcon->setRadioEventCallback(&CheckFollowIcon);
 		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_FOLLOW_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
+		pPanel->addChild(newRadioIcon);
 		newRadioIcon = new GUI_RadioIcon(iRect(147, 59, GUI_UI_ICON_COMBAT_PVP_UP_W, GUI_UI_ICON_COMBAT_PVP_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_COMBAT_PVP_UP_X, GUI_UI_ICON_COMBAT_PVP_UP_Y, GUI_UI_ICON_COMBAT_PVP_DOWN_X, GUI_UI_ICON_COMBAT_PVP_DOWN_Y, 0, INVENTORY_PVP_DESCRIPTION1);
 		newRadioIcon->setRadioEventCallback(&CheckPvPIcon, INVENTORY_PVP_DESCRIPTION2);
 		newRadioIcon->setButtonEventCallback(&inventory_Events, INVENTORY_PVP_EVENTID);
 		newRadioIcon->startEvents();
-		newWindow->addChild(newRadioIcon);
-		GUI_StaticImage* newImage = new GUI_StaticImage(iRect(8, 4, GUI_UI_ICON_MINIMIZE_WINDOW_UP_W, GUI_UI_ICON_MINIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y);
-		newWindow->addChild(newImage);
-		newImage = new GUI_StaticImage(iRect(8, 128, GUI_UI_STATUS_BACKGROUND_W, GUI_UI_STATUS_BACKGROUND_H), GUI_UI_IMAGE, GUI_UI_STATUS_BACKGROUND_X, GUI_UI_STATUS_BACKGROUND_Y, 0, INVENTORY_SOUL_DESCRIPTION);
-		newWindow->addChild(newImage);
+		pPanel->addChild(newRadioIcon);
+		GUI_Icon* newIcon = new GUI_RadioIcon(iRect(8, 4, GUI_UI_ICON_MINIMIZE_WINDOW_UP_W, GUI_UI_ICON_MINIMIZE_WINDOW_UP_H), GUI_UI_IMAGE, GUI_UI_ICON_MINIMIZE_WINDOW_UP_X, GUI_UI_ICON_MINIMIZE_WINDOW_UP_Y, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_X, GUI_UI_ICON_MINIMIZE_WINDOW_DOWN_Y, 0, INVENTORY_MINIMIZE_DESCRIPTION);
+		newIcon->setButtonEventCallback(&inventory_Events, INVENTORY_MINIMIZE_EVENTID);
+		newIcon->startEvents();
+		pPanel->addChild(newIcon);
+		GUI_StaticImage* newImage = new GUI_StaticImage(iRect(8, 128, GUI_UI_STATUS_BACKGROUND_W, GUI_UI_STATUS_BACKGROUND_H), GUI_UI_IMAGE, GUI_UI_STATUS_BACKGROUND_X, GUI_UI_STATUS_BACKGROUND_Y, 0, INVENTORY_SOUL_DESCRIPTION);
+		pPanel->addChild(newImage);
 		newImage = new GUI_StaticImage(iRect(82, 128, GUI_UI_STATUS_BACKGROUND_W, GUI_UI_STATUS_BACKGROUND_H), GUI_UI_IMAGE, GUI_UI_STATUS_BACKGROUND_X, GUI_UI_STATUS_BACKGROUND_Y, 0, INVENTORY_CAP_DESCRIPTION);
-		newWindow->addChild(newImage);
+		pPanel->addChild(newImage);
 		GUI_InventoryItem* newInventoryItem = new GUI_InventoryItem(iRect(46, 5, 32, 32), GUI_UI_INVENTORY_HEAD_X, GUI_UI_INVENTORY_HEAD_Y, SLOT_HEAD);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(9, 19, 32, 32), GUI_UI_INVENTORY_NECKLACE_X, GUI_UI_INVENTORY_NECKLACE_Y, SLOT_NECKLACE);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(83, 19, 32, 32), GUI_UI_INVENTORY_BACKPACK_X, GUI_UI_INVENTORY_BACKPACK_Y, SLOT_BACKPACK);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(46, 42, 32, 32), GUI_UI_INVENTORY_ARMOR_X, GUI_UI_INVENTORY_ARMOR_Y, SLOT_ARMOR);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(9, 56, 32, 32), GUI_UI_INVENTORY_LEFT_X, GUI_UI_INVENTORY_LEFT_Y, SLOT_LEFT);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(83, 56, 32, 32), GUI_UI_INVENTORY_RIGHT_X, GUI_UI_INVENTORY_RIGHT_Y, SLOT_RIGHT);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(46, 79, 32, 32), GUI_UI_INVENTORY_LEGS_X, GUI_UI_INVENTORY_LEGS_Y, SLOT_LEGS);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(46, 116, 32, 32), GUI_UI_INVENTORY_FEET_X, GUI_UI_INVENTORY_FEET_Y, SLOT_FEET);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(9, 93, 32, 32), GUI_UI_INVENTORY_RING_X, GUI_UI_INVENTORY_RING_Y, SLOT_RING);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		newInventoryItem = new GUI_InventoryItem(iRect(83, 93, 32, 32), GUI_UI_INVENTORY_AMMO_X, GUI_UI_INVENTORY_AMMO_Y, SLOT_AMMO);
 		newInventoryItem->startEvents();
-		newWindow->addChild(newInventoryItem);
+		pPanel->addChild(newInventoryItem);
 		GUI_Icons* newIcons = new GUI_Icons(iRect(8, 151, GUI_UI_ICON_STATUS_BAR_W, GUI_UI_ICON_STATUS_BAR_H));
-		newWindow->addChild(newIcons);
+		pPanel->addChild(newIcons);
 		GUI_Label* newLabel = new GUI_Label(iRect(25, 130, 0, 0), "Soul:", 0, 255, 255, 255);
 		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
 		newLabel->setFont(CLIENT_FONT_SMALL);
-		newWindow->addChild(newLabel);
+		pPanel->addChild(newLabel);
 		Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, g_game.getPlayerSoul()));
 		newLabel = new GUI_Label(iRect(25, 140, 0, 0), UTIL_formatStringCommas(std::string(g_buffer, SDL_static_cast(size_t, len))), INVENTORY_SOUL_EVENTID, 255, 255, 255);
 		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
 		newLabel->setFont(CLIENT_FONT_SMALL);
-		newWindow->addChild(newLabel);
+		pPanel->addChild(newLabel);
 		newLabel = new GUI_Label(iRect(99, 130, 0, 0), "Cap:", 0, 255, 255, 255);
 		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
 		newLabel->setFont(CLIENT_FONT_SMALL);
-		newWindow->addChild(newLabel);
+		pPanel->addChild(newLabel);
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%u", SDL_static_cast(Uint32, g_game.getPlayerCapacity()));
 		newLabel = new GUI_Label(iRect(99, 140, 0, 0), UTIL_formatStringCommas(std::string(g_buffer, SDL_static_cast(size_t, len))), INVENTORY_CAP_EVENTID, 255, 255, 255);
 		newLabel->setAlign(CLIENT_FONT_ALIGN_CENTER);
 		newLabel->setFont(CLIENT_FONT_SMALL);
-		newWindow->addChild(newLabel);
-		g_engine.addToPanel(newWindow, GUI_PANEL_MAIN);
+		pPanel->addChild(newLabel);
 	}
+	
+	if(newWindow)
+		g_engine.addToPanel(pPanel, GUI_PANEL_MAIN);
+	else
+		pPanel->checkPanels();
 }
 
 void UTIL_updateInventoryPanel()
 {
 	GUI_PanelWindow* pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_INVENTORY);
 	if(!pPanel)
-		pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_INVENTORY_HIDDEN);
+		pPanel = g_engine.getPanel(GUI_PANEL_WINDOW_INVENTORY_MINIMIZED);
 
 	if(pPanel)
 	{
@@ -342,7 +492,7 @@ void GUI_Icons::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 	if(isInsideParent && m_tRect.isPointInside(x, y))
 	{
 		Uint32 playerIcons = g_game.getIcons();
-		iRect rect = iRect(m_tRect.x1+2, m_tRect.y1+2, 9, 9);
+		iRect rect = iRect(m_tRect.x1 + 2, m_tRect.y1 + 2, 9, 9);
 		if(playerIcons & ICON_POISON)
 		{
 			if(rect.isPointInside(x, y))
@@ -613,8 +763,8 @@ void GUI_Icons::render()
 	Surface* renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_STATUS_BAR_X, GUI_UI_ICON_STATUS_BAR_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 	
-	Sint32 posX = m_tRect.x1+2;
-	Sint32 posY = m_tRect.y1+2;
+	Sint32 posX = m_tRect.x1 + 2;
+	Sint32 posY = m_tRect.y1 + 2;
 	Uint32 playerIcons = g_game.getIcons();
 	if(playerIcons & ICON_POISON)
 	{
@@ -819,7 +969,7 @@ void GUI_InventoryItem::onLMouseUp(Sint32, Sint32)
 {
 	if(g_engine.getAction() == CLIENT_ACTION_MOVEITEM && m_selected)
 	{
-		g_engine.initMove(0xFFFF, SDL_static_cast(Uint16, m_slot)+1, 0);
+		g_engine.initMove(0xFFFF, SDL_static_cast(Uint16, m_slot) + 1, 0);
 		g_engine.setAction(CLIENT_ACTION_NONE);
 	}
 }
@@ -832,7 +982,7 @@ void GUI_InventoryItem::onRMouseDown(Sint32, Sint32)
 void GUI_InventoryItem::render()
 {
 	Surface* renderer = g_engine.getRender();
-	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2);
+	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2);
 
 	ItemUI* item = g_game.getInventoryItem(m_slot);
 	if(item)
@@ -848,6 +998,6 @@ void GUI_InventoryItem::render()
 			return;
 		}
 
-		renderer->drawRectangle(m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2, 255, 255, 255, 255);
+		renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 255, 255, 255, 255);
 	}
 }

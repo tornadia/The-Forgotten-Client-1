@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -125,13 +125,13 @@ void GUI_Window::onReshape(Sint32 w, Sint32 h)
 		case GUI_WINDOW_MAIN:
 		{
 			newRect.x1 = 60;
-			newRect.y1 = h-60-m_tRect.y2;
+			newRect.y1 = h - 60 - m_tRect.y2;
 		}
 		break;
 		default:
 		{
-			newRect.x1 = w/2-m_tRect.x2/2;
-			newRect.y1 = h/2-m_tRect.y2/2;
+			newRect.x1 = w / 2 - m_tRect.x2 / 2;
+			newRect.y1 = h / 2 - m_tRect.y2 / 2;
 		}
 		break;
 	}
@@ -144,7 +144,7 @@ void GUI_Window::onTextInput(const char* textInput)
 		m_actElement->onTextInput(textInput);
 }
 
-void GUI_Window::onKeyDown(SDL_Event event)
+void GUI_Window::onKeyDown(SDL_Event& event)
 {
 	if(event.key.keysym.mod == KMOD_NONE)
 	{
@@ -182,7 +182,7 @@ void GUI_Window::onKeyDown(SDL_Event event)
 				GUI_Element* elementEnt = getChild(CLIENT_GUI_TAB_START);
 				if(m_actElement && m_actElement->getInternalID() >= CLIENT_GUI_TAB_START && m_actElement->getInternalID() <= CLIENT_GUI_TAB_END)
 				{
-					GUI_Element* elementTest = getChild(m_actElement->getInternalID()+1);
+					GUI_Element* elementTest = getChild(m_actElement->getInternalID() + 1);
 					if(elementTest)
 						elementEnt = elementTest;
 				}
@@ -196,7 +196,7 @@ void GUI_Window::onKeyDown(SDL_Event event)
 		m_actElement->onKeyDown(event);
 }
 
-void GUI_Window::onKeyUp(SDL_Event event)
+void GUI_Window::onKeyUp(SDL_Event& event)
 {
 	if(m_actElement)
 		m_actElement->onKeyUp(event);
@@ -220,8 +220,8 @@ void GUI_Window::onLMouseDown(Sint32 x, Sint32 y)
 		if(dragWindow.isPointInside(x, y))
 		{
 			m_bMouseDragging = true;
-			m_mouseEvent.x1 = x-m_tRect.x1;
-			m_mouseEvent.y1 = y-m_tRect.y1;
+			m_mouseEvent.x1 = x - m_tRect.x1;
+			m_mouseEvent.y1 = y - m_tRect.y1;
 		}
 	}
 }
@@ -277,7 +277,7 @@ void GUI_Window::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
 	if(m_bMouseDragging)
 	{
-		onMove(x-m_mouseEvent.x1, y-m_mouseEvent.y1);
+		onMove(x - m_mouseEvent.x1, y - m_mouseEvent.y1);
 		return;
 	}
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
@@ -293,10 +293,10 @@ void GUI_Window::onMove(Sint32 x, Sint32 y)
 	#if !defined(__ALLOW_WINDOWS_OUTBOUNDS__)
 	Sint32 maxX = g_engine.getWindowWidth();
 	Sint32 maxY = g_engine.getWindowHeight();
-	if(newRect.x1+newRect.x2 > maxX)
-		newRect.x1 = maxX-newRect.x2;
-    if(newRect.y1+newRect.y2 > maxY)
-		newRect.y1 = maxY-newRect.y2;
+	if(newRect.x1 + newRect.x2 > maxX)
+		newRect.x1 = maxX - newRect.x2;
+    if(newRect.y1 + newRect.y2 > maxY)
+		newRect.y1 = maxY - newRect.y2;
 	if(newRect.x1 < 0)
 		newRect.x1 = 0;
 	if(newRect.y1 < 0)
@@ -313,27 +313,27 @@ void GUI_Window::render()
 	{
 		case GUI_WINDOW_MAIN:
 		{
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BACKGROUND_X, GUI_UI_ICON_DITHER_BACKGROUND_Y, GUI_UI_ICON_DITHER_BACKGROUND_W, GUI_UI_ICON_DITHER_BACKGROUND_H, m_tRect.x1+6, m_tRect.y1+6, m_tRect.x2-12, m_tRect.y2-12);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BACKGROUND_X, GUI_UI_ICON_DITHER_BACKGROUND_Y, GUI_UI_ICON_DITHER_BACKGROUND_W, GUI_UI_ICON_DITHER_BACKGROUND_H, m_tRect.x1 + 6, m_tRect.y1 + 6, m_tRect.x2 - 12, m_tRect.y2 - 12);
 			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_TOPLEFT_BORDER_X, GUI_UI_ICON_DITHER_TOPLEFT_BORDER_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_DITHER_TOPLEFT_BORDER_W, GUI_UI_ICON_DITHER_TOPLEFT_BORDER_H);
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_X, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_Y, m_tRect.x1+m_tRect.x2-5, m_tRect.y1, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_W, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_H);
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_X, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_Y, m_tRect.x1, m_tRect.y1+m_tRect.y2-5, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_W, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_H);
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_X, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_Y, m_tRect.x1+m_tRect.x2-5, m_tRect.y1+m_tRect.y2-5, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_W, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_H);
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_TOP_SLIDER_X, GUI_UI_ICON_DITHER_TOP_SLIDER_Y, GUI_UI_ICON_DITHER_TOP_SLIDER_W, GUI_UI_ICON_DITHER_TOP_SLIDER_H, m_tRect.x1+5, m_tRect.y1, m_tRect.x2-10, 6);
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_LEFT_SLIDER_X, GUI_UI_ICON_DITHER_LEFT_SLIDER_Y, GUI_UI_ICON_DITHER_LEFT_SLIDER_W, GUI_UI_ICON_DITHER_LEFT_SLIDER_H, m_tRect.x1, m_tRect.y1+5, 6, m_tRect.y2-10);
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_RIGHT_SLIDER_X, GUI_UI_ICON_DITHER_RIGHT_SLIDER_Y, GUI_UI_ICON_DITHER_RIGHT_SLIDER_W, GUI_UI_ICON_DITHER_RIGHT_SLIDER_H, m_tRect.x1+m_tRect.x2-6, m_tRect.y1+5, 6, m_tRect.y2-10);
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_X, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_Y, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_W, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_H, m_tRect.x1+5, m_tRect.y1+m_tRect.y2-6, m_tRect.x2-10, 6);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_X, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_Y, m_tRect.x1 + m_tRect.x2 - 5, m_tRect.y1, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_W, GUI_UI_ICON_DITHER_TOPRIGHT_BORDER_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_X, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_Y, m_tRect.x1, m_tRect.y1 + m_tRect.y2 - 5, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_W, GUI_UI_ICON_DITHER_BOTLEFT_BORDER_H);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_X, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_Y, m_tRect.x1 + m_tRect.x2 - 5, m_tRect.y1 + m_tRect.y2 - 5, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_W, GUI_UI_ICON_DITHER_BOTRIGHT_BORDER_H);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_TOP_SLIDER_X, GUI_UI_ICON_DITHER_TOP_SLIDER_Y, GUI_UI_ICON_DITHER_TOP_SLIDER_W, GUI_UI_ICON_DITHER_TOP_SLIDER_H, m_tRect.x1 + 5, m_tRect.y1, m_tRect.x2 - 10, 6);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_LEFT_SLIDER_X, GUI_UI_ICON_DITHER_LEFT_SLIDER_Y, GUI_UI_ICON_DITHER_LEFT_SLIDER_W, GUI_UI_ICON_DITHER_LEFT_SLIDER_H, m_tRect.x1, m_tRect.y1 + 5, 6, m_tRect.y2 - 10);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_RIGHT_SLIDER_X, GUI_UI_ICON_DITHER_RIGHT_SLIDER_Y, GUI_UI_ICON_DITHER_RIGHT_SLIDER_W, GUI_UI_ICON_DITHER_RIGHT_SLIDER_H, m_tRect.x1 + m_tRect.x2 - 6, m_tRect.y1 + 5, 6, m_tRect.y2 - 10);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_X, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_Y, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_W, GUI_UI_ICON_DITHER_BOTTOM_SLIDER_H, m_tRect.x1 + 5, m_tRect.y1 + m_tRect.y2 - 6, m_tRect.x2 - 10, 6);
 		}
 		break;
 		default:
 		{
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1+4, m_tRect.y1+17, m_tRect.x2-8, m_tRect.y2-21);
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_WINDOW_TOP_CENTER_X, GUI_UI_ICON_WINDOW_TOP_CENTER_Y, GUI_UI_ICON_WINDOW_TOP_CENTER_W, GUI_UI_ICON_WINDOW_TOP_CENTER_H, m_tRect.x1+4, m_tRect.y1, m_tRect.x2-8, 17);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1 + 4, m_tRect.y1 + 17, m_tRect.x2 - 8, m_tRect.y2 - 21);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_WINDOW_TOP_CENTER_X, GUI_UI_ICON_WINDOW_TOP_CENTER_Y, GUI_UI_ICON_WINDOW_TOP_CENTER_W, GUI_UI_ICON_WINDOW_TOP_CENTER_H, m_tRect.x1 + 4, m_tRect.y1, m_tRect.x2 - 8, 17);
 			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_WINDOW_LEFT_CENTER_X, GUI_UI_ICON_WINDOW_LEFT_CENTER_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_WINDOW_LEFT_CENTER_W, GUI_UI_ICON_WINDOW_LEFT_CENTER_H);
-			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_WINDOW_RIGHT_CENTER_X, GUI_UI_ICON_WINDOW_RIGHT_CENTER_Y, m_tRect.x1+m_tRect.x2-4, m_tRect.y1, GUI_UI_ICON_WINDOW_RIGHT_CENTER_W, GUI_UI_ICON_WINDOW_RIGHT_CENTER_H);
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_LEFT_SLIDER_X, GUI_UI_ICON_LEFT_SLIDER_Y, GUI_UI_ICON_LEFT_SLIDER_W, GUI_UI_ICON_LEFT_SLIDER_H, m_tRect.x1, m_tRect.y1+17, 4, m_tRect.y2-17);
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_BOTTOM_SLIDER_X, GUI_UI_ICON_BOTTOM_SLIDER_Y, GUI_UI_ICON_BOTTOM_SLIDER_W, GUI_UI_ICON_BOTTOM_SLIDER_H, m_tRect.x1+4, m_tRect.y1+m_tRect.y2-4, m_tRect.x2-4, 4);
-			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_RIGHT_SLIDER_X, GUI_UI_ICON_RIGHT_SLIDER_Y, GUI_UI_ICON_RIGHT_SLIDER_W, GUI_UI_ICON_RIGHT_SLIDER_H, m_tRect.x1+m_tRect.x2-4, m_tRect.y1+17, 4, m_tRect.y2-20);
-			g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1+(m_tRect.x2/2), m_tRect.y1+4, m_Title, 143, 143, 143, CLIENT_FONT_ALIGN_CENTER);
+			renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_WINDOW_RIGHT_CENTER_X, GUI_UI_ICON_WINDOW_RIGHT_CENTER_Y, m_tRect.x1 + m_tRect.x2 - 4, m_tRect.y1, GUI_UI_ICON_WINDOW_RIGHT_CENTER_W, GUI_UI_ICON_WINDOW_RIGHT_CENTER_H);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_LEFT_SLIDER_X, GUI_UI_ICON_LEFT_SLIDER_Y, GUI_UI_ICON_LEFT_SLIDER_W, GUI_UI_ICON_LEFT_SLIDER_H, m_tRect.x1, m_tRect.y1 + 17, 4, m_tRect.y2 - 17);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_BOTTOM_SLIDER_X, GUI_UI_ICON_BOTTOM_SLIDER_Y, GUI_UI_ICON_BOTTOM_SLIDER_W, GUI_UI_ICON_BOTTOM_SLIDER_H, m_tRect.x1 + 4, m_tRect.y1 + m_tRect.y2 - 4, m_tRect.x2 - 4, 4);
+			renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_RIGHT_SLIDER_X, GUI_UI_ICON_RIGHT_SLIDER_Y, GUI_UI_ICON_RIGHT_SLIDER_W, GUI_UI_ICON_RIGHT_SLIDER_H, m_tRect.x1 + m_tRect.x2 - 4, m_tRect.y1 + 17, 4, m_tRect.y2 - 20);
+			g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1 + (m_tRect.x2 / 2), m_tRect.y1 + 4, m_Title, 143, 143, 143, CLIENT_FONT_ALIGN_CENTER);
 		}
 		break;
 	}

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -50,11 +50,11 @@ GUI_Container::~GUI_Container()
 
 void GUI_Container::setRect(iRect& NewRect)
 {
-	iRect nRect = iRect(NewRect.x1+NewRect.x2-12, NewRect.y1, 12, NewRect.y2);
+	iRect nRect = iRect(NewRect.x1 + NewRect.x2 - 12, NewRect.y1, 12, NewRect.y2);
 	m_scrollBar->setRect(nRect);
 	m_tRect = NewRect;
-	m_maxDisplay = (m_tRect.y2+3)/4;
-	m_scrollBar->setScrollSize(((m_contentSize+23)/4)-m_maxDisplay);
+	m_maxDisplay = (m_tRect.y2 + 3) / 4;
+	m_scrollBar->setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
 	m_resetPosition = true;
 }
 
@@ -71,7 +71,12 @@ void GUI_Container::setActiveElement(GUI_Element* actElement)
         m_actElement->activate();
 }
 
-void GUI_Container::clearChilds()
+void GUI_Container::validateScrollBar()
+{
+	m_scrollBar->setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
+}
+
+void GUI_Container::clearChilds(bool resetScrollBar)
 {
 	setActiveElement(NULL);
 	m_contentSize = 0;
@@ -80,22 +85,28 @@ void GUI_Container::clearChilds()
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
 		delete (*it);
 	m_childs.clear();
+	if(resetScrollBar)
+		m_scrollBar->setScrollSize(0);
 }
 
-void GUI_Container::addChild(GUI_Element* pChild)
+void GUI_Container::addChild(GUI_Element* pChild, bool resetScrollBar)
 {
 	m_childs.push_back(pChild);
 
-	Sint32 posY = pChild->getRect().y1+pChild->getRect().y2;
+	iRect& childRect = pChild->getRect();
+	Sint32 posY = childRect.y1 + childRect.y2;
+	childRect.x1 += m_lastPosX;
+	childRect.y1 += m_lastPosY;
 	if(posY > m_contentSize)
 	{
 		m_contentSize = posY;
-		m_scrollBar->setScrollSize(((m_contentSize+23)/4)-(m_tRect.y2+3)/4);
+		if(resetScrollBar)
+			m_scrollBar->setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
 	}
 	m_resetPosition = true;
 }
 
-void GUI_Container::removeChild(GUI_Element* pChild)
+void GUI_Container::removeChild(GUI_Element* pChild, bool resetScrollBar)
 {
 	if(pChild == m_actElement)
 		setActiveElement(NULL);
@@ -110,6 +121,16 @@ void GUI_Container::removeChild(GUI_Element* pChild)
 	}
 	delete pChild;
 	m_resetPosition = true;
+	if(resetScrollBar)
+	{
+		m_contentSize = 0;
+		for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
+		{
+			iRect& childRect = pChild->getRect();
+			m_contentSize = UTIL_max<Sint32>(m_contentSize, childRect.y1 + childRect.y2);
+		}
+		m_scrollBar->setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
+	}
 }
 
 GUI_Element* GUI_Container::getChild(Uint32 internalID)
@@ -125,7 +146,7 @@ GUI_Element* GUI_Container::getChild(Uint32 internalID)
 void GUI_Container::setAsMaxHeight()
 {
 	if(m_parent)
-		m_parent->setMaxHeight(m_contentSize+40);
+		m_parent->setMaxHeight(m_contentSize + 40);
 }
 
 void* GUI_Container::onAction(Sint32 x, Sint32 y)
@@ -242,9 +263,9 @@ void GUI_Container::onWheel(Sint32 x, Sint32 y, bool wheelUP)
 	}*/
 
 	if(wheelUP)
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos()-1);
+		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() - 1);
 	else
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos()+1);
+		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() + 1);
 }
 
 void GUI_Container::render()
@@ -253,9 +274,9 @@ void GUI_Container::render()
 		return;
 
 	Surface* renderer = g_engine.getRender();
-	renderer->setClipRect(m_tRect.x1, m_tRect.y1, m_tRect.x2-12, m_tRect.y2);
+	renderer->setClipRect(m_tRect.x1, m_tRect.y1, m_tRect.x2 - 12, m_tRect.y2);
 
-	Sint32 posY = m_tRect.y1-(m_scrollBar->getScrollPos()*4)+10;
+	Sint32 posY = m_tRect.y1 - (m_scrollBar->getScrollPos() * 4) + 10;
 	if(m_resetPosition || posY != m_lastPosY || m_tRect.x1 != m_lastPosX)
 	{
 		m_drawns.clear();
@@ -264,14 +285,14 @@ void GUI_Container::render()
 			iRect childRect = (*it)->getRect();
 			iRect newChildRect;
 
-			newChildRect.x1 = m_tRect.x1+(childRect.x1-m_lastPosX);
-			newChildRect.y1 = posY+(childRect.y1-m_lastPosY);
+			newChildRect.x1 = m_tRect.x1 + (childRect.x1 - m_lastPosX);
+			newChildRect.y1 = posY + (childRect.y1 - m_lastPosY);
 			newChildRect.x2 = childRect.x2;
 			newChildRect.y2 = childRect.y2;
 			(*it)->setRect(newChildRect);
 
-			Sint32 npy = newChildRect.y1+newChildRect.y2;
-			if((newChildRect.y1 >= m_tRect.y1 && newChildRect.y1 <= m_tRect.y1+m_tRect.y2) || (npy >= m_tRect.y1 && npy <= m_tRect.y1+m_tRect.y2))
+			Sint32 npy = newChildRect.y1 + newChildRect.y2;
+			if((newChildRect.y1 >= m_tRect.y1 && newChildRect.y1 <= m_tRect.y1 + m_tRect.y2) || (npy >= m_tRect.y1 && npy <= m_tRect.y1 + m_tRect.y2))
 				m_drawns.push_back((*it));
 		}
 		m_lastPosX = m_tRect.x1;

@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -73,7 +73,7 @@ void item_move_Events(Uint32 event, Sint32 status)
 				Uint16 itemCount = 1;
 				GUI_HScrollBar* pHScrollBar = SDL_static_cast(GUI_HScrollBar*, pWindow->getChild(ITEM_MOVE_SCROLLBAR_EVENTID));
 				if(pHScrollBar)
-					itemCount = SDL_static_cast(Uint16, pHScrollBar->getScrollPos())+1;
+					itemCount = SDL_static_cast(Uint16, pHScrollBar->getScrollPos()) + 1;
 
 				ClientActionData& actionDataFirst = g_engine.getActionData(CLIENT_ACTION_FIRST);
 				ClientActionData& actionDataSecond = g_engine.getActionData(CLIENT_ACTION_SECOND);
@@ -101,7 +101,7 @@ void item_move_Events(Uint32 event, Sint32 status)
 			{
 				GUI_ItemMove* pItemMove = SDL_static_cast(GUI_ItemMove*, pWindow->getChild(ITEM_MOVE_ITEM_EVENTID));
 				if(pItemMove)
-					pItemMove->setItemCount(SDL_static_cast(Uint16, status)+1);
+					pItemMove->setItemCount(SDL_static_cast(Uint16, status) + 1);
 			}
 		}
 		break;
@@ -131,21 +131,21 @@ void UTIL_createItemMove()
 	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, ITEM_MOVE_WIDTH, ITEM_MOVE_HEIGHT), ITEM_MOVE_TITLE, GUI_WINDOW_ITEMMOVE);
 	GUI_ItemMove* newItemMove = new GUI_ItemMove(iRect(ITEM_MOVE_ITEM_X, ITEM_MOVE_ITEM_Y, ITEM_MOVE_ITEM_W, ITEM_MOVE_ITEM_H), actionDataFirst.itemId, actionDataSecond.itemId, ITEM_MOVE_ITEM_EVENTID);
 	newWindow->addChild(newItemMove);
-	GUI_HScrollBar* newHScrollBar = new GUI_HScrollBar(iRect(ITEM_MOVE_SCROLLBAR_X, ITEM_MOVE_SCROLLBAR_Y, ITEM_MOVE_SCROLLBAR_W, ITEM_MOVE_SCROLLBAR_H), SDL_static_cast(Sint32, actionDataSecond.itemId)-1, SDL_static_cast(Sint32, actionDataSecond.itemId)-1, ITEM_MOVE_SCROLLBAR_EVENTID);
+	GUI_HScrollBar* newHScrollBar = new GUI_HScrollBar(iRect(ITEM_MOVE_SCROLLBAR_X, ITEM_MOVE_SCROLLBAR_Y, ITEM_MOVE_SCROLLBAR_W, ITEM_MOVE_SCROLLBAR_H), SDL_static_cast(Sint32, actionDataSecond.itemId) - 1, SDL_static_cast(Sint32, actionDataSecond.itemId) - 1, ITEM_MOVE_SCROLLBAR_EVENTID);
 	newHScrollBar->setBarEventCallback(&item_move_Events, ITEM_MOVE_SCROLLBAR_EVENTID);
 	newHScrollBar->startEvents();
 	newWindow->addChild(newHScrollBar);
 	GUI_Label* newLabel = new GUI_Label(iRect(ITEM_MOVE_LABEL_X, ITEM_MOVE_LABEL_Y, 0, 0), ITEM_MOVE_LABEL_TITLE);
 	newWindow->addChild(newLabel);
-	GUI_Button* newButton = new GUI_Button(iRect(ITEM_MOVE_WIDTH-56, ITEM_MOVE_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
+	GUI_Button* newButton = new GUI_Button(iRect(ITEM_MOVE_WIDTH - 56, ITEM_MOVE_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Cancel", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&item_move_Events, ITEM_MOVE_CANCEL_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(ITEM_MOVE_WIDTH-109, ITEM_MOVE_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(ITEM_MOVE_WIDTH - 109, ITEM_MOVE_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&item_move_Events, ITEM_MOVE_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, ITEM_MOVE_HEIGHT-40, ITEM_MOVE_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, ITEM_MOVE_HEIGHT - 40, ITEM_MOVE_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow, true);
 }
@@ -168,7 +168,7 @@ GUI_ItemMove::~GUI_ItemMove()
 		delete m_item;
 }
 
-void GUI_ItemMove::onKeyDown(SDL_Event event)
+void GUI_ItemMove::onKeyDown(SDL_Event& event)
 {
 	if(event.key.keysym.mod == KMOD_NONE)
 	{
@@ -185,17 +185,17 @@ void GUI_ItemMove::onKeyDown(SDL_Event event)
 			case SDLK_8:
 			case SDLK_9:
 			{
-				if(g_frameTime-m_lastKey >= 500)
+				if(g_frameTime - m_lastKey >= 500)
 					m_calculate = 0;
 				else
 					m_calculate *= 10;
 
 				m_lastKey = g_frameTime;
-				m_calculate += SDL_static_cast(Uint32, event.key.keysym.sym-SDLK_0);
+				m_calculate += SDL_static_cast(Uint32, event.key.keysym.sym - SDLK_0);
 				if(m_calculate >= 100000)//Make sure we don't overflow our value
 					m_calculate = 99990;
 
-				UTIL_SafeEventHandler(&item_move_Events, ITEM_MOVE_SCROLLBAR_SET_EVENTID, SDL_static_cast(Sint32, m_calculate)-1);
+				UTIL_SafeEventHandler(&item_move_Events, ITEM_MOVE_SCROLLBAR_SET_EVENTID, SDL_static_cast(Sint32, m_calculate) - 1);
 			}
 			break;
 		}
@@ -213,7 +213,7 @@ void GUI_ItemMove::render()
 	if(!isActive())
 		UTIL_SafeEventHandler(&item_move_Events, ITEM_MOVE_ACTIVATE_EVENTID, 1);
 
-	g_engine.getRender()->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1-1, m_tRect.y1-1, m_tRect.x2+2, m_tRect.y2+2);
+	g_engine.getRender()->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2);
 	if(m_item)
 		m_item->render(m_tRect.x1, m_tRect.y1, m_tRect.y2);
 }

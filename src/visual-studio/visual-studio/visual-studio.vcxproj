@@ -46,13 +46,16 @@
     <ClCompile Include="..\..\GUI\Health.cpp" />
     <ClCompile Include="..\..\GUI\Help.cpp" />
     <ClCompile Include="..\..\GUI\Hotkeys.cpp" />
+    <ClCompile Include="..\..\GUI\IgnoreList.cpp" />
     <ClCompile Include="..\..\GUI\Info.cpp" />
     <ClCompile Include="..\..\GUI\Inventory.cpp" />
     <ClCompile Include="..\..\GUI\ItemMove.cpp" />
     <ClCompile Include="..\..\GUI\itemUI.cpp" />
+    <ClCompile Include="..\..\GUI\Logout.cpp" />
     <ClCompile Include="..\..\GUI\MainWindow.cpp" />
     <ClCompile Include="..\..\GUI\Messagebox.cpp" />
     <ClCompile Include="..\..\GUI\Minimap.cpp" />
+    <ClCompile Include="..\..\GUI\ModalDialog.cpp" />
     <ClCompile Include="..\..\GUI\Motd.cpp" />
     <ClCompile Include="..\..\GUI\Options.cpp" />
     <ClCompile Include="..\..\GUI\Outfits.cpp" />
@@ -156,7 +159,10 @@
     <ClInclude Include="..\..\GUI\Minimap.h" />
     <ClInclude Include="..\..\GUI\Outfits.h" />
     <ClInclude Include="..\..\GUI\ReadWrite.h" />
+    <ClInclude Include="..\..\GUI\ShopWindow.h" />
     <ClInclude Include="..\..\GUI\SkillsWindow.h" />
+    <ClInclude Include="..\..\GUI\TradeWindow.h" />
+    <ClInclude Include="..\..\GUI\VipWindow.h" />
     <ClInclude Include="..\..\gui_const.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_Button.h" />
     <ClInclude Include="..\..\GUI_Elements\GUI_CharacterView.h" />
@@ -353,7 +359,7 @@
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>__WIN32__;WIN32;NDEBUG;_WINDOWS;CURL_STATICLIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

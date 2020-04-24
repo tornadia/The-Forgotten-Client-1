@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -194,11 +194,11 @@ void UTIL_help()
 	newButton->setButtonEventCallback(&help_Events, HELP_FAQ_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(HELP_WIDTH-56, HELP_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+	newButton = new GUI_Button(iRect(HELP_WIDTH - 56, HELP_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
 	newButton->setButtonEventCallback(&help_Events, HELP_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(HELP_WIDTH-56, HELP_HEIGHT-30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
+	newButton = new GUI_Button(iRect(HELP_WIDTH - 56, HELP_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
 	newButton->setButtonEventCallback(&help_Events, HELP_OK_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
@@ -214,7 +214,7 @@ void UTIL_help()
 	newWindow->addChild(newLabel);
 	newLabel = new GUI_Label(iRect(HELP_FAQ_LABEL_X, HELP_FAQ_LABEL_Y, 0, 0), HELP_FAQ_LABEL_TEXT);
 	newWindow->addChild(newLabel);
-	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, HELP_HEIGHT-40, HELP_WIDTH-26, 2));
+	GUI_Separator* newSeparator = new GUI_Separator(iRect(13, HELP_HEIGHT - 40, HELP_WIDTH - 26, 2));
 	newWindow->addChild(newSeparator);
 	g_engine.addWindow(newWindow);
 }

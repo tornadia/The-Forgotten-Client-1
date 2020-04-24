@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -36,6 +36,7 @@ enum ConnectionState
 	CONNECTION_STATE_INIT,
 	CONNECTION_STATE_CONNECTING,
 	CONNECTION_STATE_CONNECTED,
+	CONNECTION_STATE_SEND_ERROR,
 	CONNECTION_STATE_CLOSED,
 	CONNECTION_STATE_ERROR
 };
@@ -43,8 +44,6 @@ enum ConnectionState
 enum ConnectionError
 {
 	CONNECTION_ERROR_RESOLVE_HOST,
-	CONNECTION_ERROR_CREATE_SOCKET,
-	CONNECTION_ERROR_SET_NONBLOCKING_SOCKET,
 	CONNECTION_ERROR_CANNOT_CONNECT,
 	CONNECTION_ERROR_FAIL_CONNECT,
 	CONNECTION_ERROR_REFUSED_CONNECT,

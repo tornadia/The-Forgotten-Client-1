@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -21,7 +21,7 @@
 
 #include "softwareDrawning.h"
 
-static const float inv255f = (1.0f/255.0f);
+static const float inv255f = (1.0f / 255.0f);
 
 LPSDL_DrawTriangle_MOD SDL_DrawTriangle_MOD;
 LPSDL_SmoothStretch SDL_SmoothStretch;
@@ -38,7 +38,7 @@ struct SOFTWARE_threadData {
 	bool waiting;
 	bool drawning;
 	bool exiting;
-	bool lightning;
+	Uint8 lightning;
 };
 
 SOFTWARE_threadData threadDatas[4];
@@ -113,7 +113,7 @@ void DrawSpan_SSE(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_SSE &span, S
 	__m128 colordiff = _mm_sub_ps(span.Color2, span.Color1);
 
 	SDL_PixelFormat* dpf = dst->format;
-	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (y*dst->w + span.X1) * 4);
+	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (y * dst->w + span.X1) * 4);
 
 	float factor = 0.0f;
 	float factorStep = 1.0f / xdiff;
@@ -121,7 +121,7 @@ void DrawSpan_SSE(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_SSE &span, S
 	{
 		for(Sint32 x = span.X1; x < span.X2; ++x)
 		{
-			if(SDL_static_cast(Uint32, x-clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
+			if(SDL_static_cast(Uint32, x - clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
 			{
 				__m128 c = _mm_mul_ps(_mm_add_ps(span.Color1, _mm_mul_ps(colordiff, _mm_set_ps1(factor))), _mm_set_ps1(255.0f));
 				Uint32 dstR = _mm_cvtt_ss2si(c) * ((*dp >> dpf->Rshift) & 0xFF) >> 8;
@@ -137,7 +137,7 @@ void DrawSpan_SSE(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_SSE &span, S
 	{
 		for(Sint32 x = span.X1; x < span.X2; ++x)
 		{
-			if(SDL_static_cast(Uint32, x-clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
+			if(SDL_static_cast(Uint32, x - clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
 			{
 				__m128 c = _mm_mul_ps(_mm_add_ps(span.Color1, _mm_mul_ps(colordiff, _mm_set_ps1(factor))), _mm_set_ps1(255.0f));
 				Uint32 dstR = _mm_cvtt_ss2si(c) * ((*dp >> dpf->Rshift) & 0xFF) >> 8;
@@ -172,7 +172,7 @@ void DrawSpansBetweenEdges_SSE(SDL_Surface* dst, SDL_Rect* clip_rect, const Edge
 	float factorStep2 = 1.0f / e2ydiff;
 	for(Sint32 y = e2.Y1; y < e2.Y2; ++y)
 	{
-		if(SDL_static_cast(Uint32, y-clip_rect->y) < SDL_static_cast(Uint32, clip_rect->h))
+		if(SDL_static_cast(Uint32, y - clip_rect->y) < SDL_static_cast(Uint32, clip_rect->h))
 		{
 			__m128 c1 = _mm_add_ps(e1.Color1, _mm_mul_ps(e1colordiff, _mm_set_ps1(factor1)));
 			__m128 c2 = _mm_add_ps(e2.Color1, _mm_mul_ps(e2colordiff, _mm_set_ps1(factor2)));
@@ -185,6 +185,238 @@ void DrawSpansBetweenEdges_SSE(SDL_Surface* dst, SDL_Rect* clip_rect, const Edge
 }
 
 void DrawTriangle_SSE(SDL_Surface* dst, const float colors[3][3], Sint32 vertices[3][2])
+{
+	__m128 c1 = _mm_setr_ps(colors[0][0], colors[0][1], colors[0][2], 1.0f);
+	__m128 c2 = _mm_setr_ps(colors[1][0], colors[1][1], colors[1][2], 1.0f);
+	__m128 c3 = _mm_setr_ps(colors[2][0], colors[2][1], colors[2][2], 1.0f);
+	Edge_SSE edges[3] = {
+		Edge_SSE(c1, vertices[0][0], vertices[0][1], c2, vertices[1][0], vertices[1][1]),
+		Edge_SSE(c2, vertices[1][0], vertices[1][1], c3, vertices[2][0], vertices[2][1]),
+		Edge_SSE(c3, vertices[2][0], vertices[2][1], c1, vertices[0][0], vertices[0][1])
+	};
+
+	Sint32 maxLength = (edges[0].Y2 - edges[0].Y1);
+	Sint32 longEdge = 0;
+
+	Sint32 length = (edges[1].Y2 - edges[1].Y1);
+	if(length > maxLength)
+	{
+		maxLength = length;
+		longEdge = 1;
+	}
+	length = (edges[2].Y2 - edges[2].Y1);
+	if(length > maxLength)
+	{
+		maxLength = length;
+		longEdge = 2;
+	}
+
+	SDL_Rect clip_rect;
+	SDL_GetClipRect(dst, &clip_rect);
+
+	Sint32 shortEdge1 = (longEdge + 1) % 3;
+	Sint32 shortEdge2 = (longEdge + 2) % 3;
+	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge1]);
+	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge2]);
+}
+
+void DrawSpan_FMA3(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_SSE &span, Sint32 y)
+{
+	Sint32 xdiff = (span.X2 - span.X1);
+	if(xdiff == 0)
+		return;
+
+	__m128 colordiff = _mm_sub_ps(span.Color2, span.Color1);
+
+	SDL_PixelFormat* dpf = dst->format;
+	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (y * dst->w + span.X1) * 4);
+
+	float factor = 0.0f;
+	float factorStep = 1.0f / xdiff;
+	if(dpf->Amask)
+	{
+		for(Sint32 x = span.X1; x < span.X2; ++x)
+		{
+			if(SDL_static_cast(Uint32, x - clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
+			{
+				__m128 c = _mm_mul_ps(_mm_fmadd_ps(colordiff, _mm_set_ps1(factor), span.Color1), _mm_set_ps1(255.0f));
+				Uint32 dstR = _mm_cvtt_ss2si(c) * ((*dp >> dpf->Rshift) & 0xFF) >> 8;
+				Uint32 dstG = _mm_cvtt_ss2si(_mm_shuffle_ps(c, c, _MM_SHUFFLE(1, 1, 1, 1))) * ((*dp >> dpf->Gshift) & 0xFF) >> 8;
+				Uint32 dstB = _mm_cvtt_ss2si(_mm_shuffle_ps(c, c, _MM_SHUFFLE(2, 2, 2, 2))) * ((*dp >> dpf->Bshift) & 0xFF) >> 8;
+				*dp = (dstR << dpf->Rshift) | (dstG << dpf->Gshift) | (dstB << dpf->Bshift) | (0xFF << dpf->Ashift);
+			}
+			factor += factorStep;
+			++dp;
+		}
+	}
+	else
+	{
+		for(Sint32 x = span.X1; x < span.X2; ++x)
+		{
+			if(SDL_static_cast(Uint32, x - clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
+			{
+				__m128 c = _mm_mul_ps(_mm_fmadd_ps(colordiff, _mm_set_ps1(factor), span.Color1), _mm_set_ps1(255.0f));
+				Uint32 dstR = _mm_cvtt_ss2si(c) * ((*dp >> dpf->Rshift) & 0xFF) >> 8;
+				Uint32 dstG = _mm_cvtt_ss2si(_mm_shuffle_ps(c, c, _MM_SHUFFLE(1, 1, 1, 1))) * ((*dp >> dpf->Gshift) & 0xFF) >> 8;
+				Uint32 dstB = _mm_cvtt_ss2si(_mm_shuffle_ps(c, c, _MM_SHUFFLE(2, 2, 2, 2))) * ((*dp >> dpf->Bshift) & 0xFF) >> 8;
+				*dp = (dstR << dpf->Rshift) | (dstG << dpf->Gshift) | (dstB << dpf->Bshift);
+			}
+			factor += factorStep;
+			++dp;
+		}
+	}
+}
+
+void DrawSpansBetweenEdges_FMA3(SDL_Surface* dst, SDL_Rect* clip_rect, const Edge_SSE &e1, const Edge_SSE &e2)
+{
+	float e1ydiff = SDL_static_cast(float, e1.Y2 - e1.Y1);
+	if(e1ydiff == 0.0f)
+		return;
+
+	float e2ydiff = SDL_static_cast(float, e2.Y2 - e2.Y1);
+	if(e2ydiff == 0.0f)
+		return;
+
+	float e1xdiff = SDL_static_cast(float, e1.X2 - e1.X1);
+	float e2xdiff = SDL_static_cast(float, e2.X2 - e2.X1);
+	__m128 e1colordiff = _mm_sub_ps(e1.Color2, e1.Color1);
+	__m128 e2colordiff = _mm_sub_ps(e2.Color2, e2.Color1);
+
+	float factor1 = SDL_static_cast(float, e2.Y1 - e1.Y1) / e1ydiff;
+	float factorStep1 = 1.0f / e1ydiff;
+	float factor2 = 0.0f;
+	float factorStep2 = 1.0f / e2ydiff;
+	for(Sint32 y = e2.Y1; y < e2.Y2; ++y)
+	{
+		if(SDL_static_cast(Uint32, y - clip_rect->y) < SDL_static_cast(Uint32, clip_rect->h))
+		{
+			__m128 c1 = _mm_fmadd_ps(e1colordiff, _mm_set_ps1(factor1), e1.Color1);
+			__m128 c2 = _mm_fmadd_ps(e2colordiff, _mm_set_ps1(factor2), e2.Color1);
+			Span_SSE span(c1, e1.X1 + SDL_static_cast(Sint32, e1xdiff * factor1), c2, e2.X1 + SDL_static_cast(Sint32, e2xdiff * factor2));
+			DrawSpan_SSE(dst, clip_rect, span, y);
+		}
+		factor1 += factorStep1;
+		factor2 += factorStep2;
+	}
+}
+
+void DrawTriangle_FMA3(SDL_Surface* dst, const float colors[3][3], Sint32 vertices[3][2])
+{
+	__m128 c1 = _mm_setr_ps(colors[0][0], colors[0][1], colors[0][2], 1.0f);
+	__m128 c2 = _mm_setr_ps(colors[1][0], colors[1][1], colors[1][2], 1.0f);
+	__m128 c3 = _mm_setr_ps(colors[2][0], colors[2][1], colors[2][2], 1.0f);
+	Edge_SSE edges[3] = {
+		Edge_SSE(c1, vertices[0][0], vertices[0][1], c2, vertices[1][0], vertices[1][1]),
+		Edge_SSE(c2, vertices[1][0], vertices[1][1], c3, vertices[2][0], vertices[2][1]),
+		Edge_SSE(c3, vertices[2][0], vertices[2][1], c1, vertices[0][0], vertices[0][1])
+	};
+
+	Sint32 maxLength = (edges[0].Y2 - edges[0].Y1);
+	Sint32 longEdge = 0;
+
+	Sint32 length = (edges[1].Y2 - edges[1].Y1);
+	if(length > maxLength)
+	{
+		maxLength = length;
+		longEdge = 1;
+	}
+	length = (edges[2].Y2 - edges[2].Y1);
+	if(length > maxLength)
+	{
+		maxLength = length;
+		longEdge = 2;
+	}
+
+	SDL_Rect clip_rect;
+	SDL_GetClipRect(dst, &clip_rect);
+
+	Sint32 shortEdge1 = (longEdge + 1) % 3;
+	Sint32 shortEdge2 = (longEdge + 2) % 3;
+	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge1]);
+	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge2]);
+}
+
+void DrawSpan_FMA4(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_SSE &span, Sint32 y)
+{
+	Sint32 xdiff = (span.X2 - span.X1);
+	if(xdiff == 0)
+		return;
+
+	__m128 colordiff = _mm_sub_ps(span.Color2, span.Color1);
+
+	SDL_PixelFormat* dpf = dst->format;
+	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (y * dst->w + span.X1) * 4);
+
+	float factor = 0.0f;
+	float factorStep = 1.0f / xdiff;
+	if(dpf->Amask)
+	{
+		for(Sint32 x = span.X1; x < span.X2; ++x)
+		{
+			if(SDL_static_cast(Uint32, x - clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
+			{
+				__m128 c = _mm_mul_ps(_mm_macc_ps(colordiff, _mm_set_ps1(factor), span.Color1), _mm_set_ps1(255.0f));
+				Uint32 dstR = _mm_cvtt_ss2si(c) * ((*dp >> dpf->Rshift) & 0xFF) >> 8;
+				Uint32 dstG = _mm_cvtt_ss2si(_mm_shuffle_ps(c, c, _MM_SHUFFLE(1, 1, 1, 1))) * ((*dp >> dpf->Gshift) & 0xFF) >> 8;
+				Uint32 dstB = _mm_cvtt_ss2si(_mm_shuffle_ps(c, c, _MM_SHUFFLE(2, 2, 2, 2))) * ((*dp >> dpf->Bshift) & 0xFF) >> 8;
+				*dp = (dstR << dpf->Rshift) | (dstG << dpf->Gshift) | (dstB << dpf->Bshift) | (0xFF << dpf->Ashift);
+			}
+			factor += factorStep;
+			++dp;
+		}
+	}
+	else
+	{
+		for(Sint32 x = span.X1; x < span.X2; ++x)
+		{
+			if(SDL_static_cast(Uint32, x - clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
+			{
+				__m128 c = _mm_mul_ps(_mm_macc_ps(colordiff, _mm_set_ps1(factor), span.Color1), _mm_set_ps1(255.0f));
+				Uint32 dstR = _mm_cvtt_ss2si(c) * ((*dp >> dpf->Rshift) & 0xFF) >> 8;
+				Uint32 dstG = _mm_cvtt_ss2si(_mm_shuffle_ps(c, c, _MM_SHUFFLE(1, 1, 1, 1))) * ((*dp >> dpf->Gshift) & 0xFF) >> 8;
+				Uint32 dstB = _mm_cvtt_ss2si(_mm_shuffle_ps(c, c, _MM_SHUFFLE(2, 2, 2, 2))) * ((*dp >> dpf->Bshift) & 0xFF) >> 8;
+				*dp = (dstR << dpf->Rshift) | (dstG << dpf->Gshift) | (dstB << dpf->Bshift);
+			}
+			factor += factorStep;
+			++dp;
+		}
+	}
+}
+
+void DrawSpansBetweenEdges_FMA4(SDL_Surface* dst, SDL_Rect* clip_rect, const Edge_SSE &e1, const Edge_SSE &e2)
+{
+	float e1ydiff = SDL_static_cast(float, e1.Y2 - e1.Y1);
+	if(e1ydiff == 0.0f)
+		return;
+
+	float e2ydiff = SDL_static_cast(float, e2.Y2 - e2.Y1);
+	if(e2ydiff == 0.0f)
+		return;
+
+	float e1xdiff = SDL_static_cast(float, e1.X2 - e1.X1);
+	float e2xdiff = SDL_static_cast(float, e2.X2 - e2.X1);
+	__m128 e1colordiff = _mm_sub_ps(e1.Color2, e1.Color1);
+	__m128 e2colordiff = _mm_sub_ps(e2.Color2, e2.Color1);
+
+	float factor1 = SDL_static_cast(float, e2.Y1 - e1.Y1) / e1ydiff;
+	float factorStep1 = 1.0f / e1ydiff;
+	float factor2 = 0.0f;
+	float factorStep2 = 1.0f / e2ydiff;
+	for(Sint32 y = e2.Y1; y < e2.Y2; ++y)
+	{
+		if(SDL_static_cast(Uint32, y - clip_rect->y) < SDL_static_cast(Uint32, clip_rect->h))
+		{
+			__m128 c1 = _mm_macc_ps(e1colordiff, _mm_set_ps1(factor1), e1.Color1);
+			__m128 c2 = _mm_macc_ps(e2colordiff, _mm_set_ps1(factor2), e2.Color1);
+			Span_SSE span(c1, e1.X1 + SDL_static_cast(Sint32, e1xdiff * factor1), c2, e2.X1 + SDL_static_cast(Sint32, e2xdiff * factor2));
+			DrawSpan_SSE(dst, clip_rect, span, y);
+		}
+		factor1 += factorStep1;
+		factor2 += factorStep2;
+	}
+}
+
+void DrawTriangle_FMA4(SDL_Surface* dst, const float colors[3][3], Sint32 vertices[3][2])
 {
 	__m128 c1 = _mm_setr_ps(colors[0][0], colors[0][1], colors[0][2], 1.0f);
 	__m128 c2 = _mm_setr_ps(colors[1][0], colors[1][1], colors[1][2], 1.0f);
@@ -301,7 +533,7 @@ void DrawSpan_Scalar(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_Scalar &s
 	colordiff[2] = (span.Color2[2] - span.Color1[2]);
 
 	SDL_PixelFormat* dpf = dst->format;
-	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (y*dst->w + span.X1) * 4);
+	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (y * dst->w + span.X1) * 4);
 
 	float factor = 0.0f;
 	float factorStep = 1.0f / xdiff;
@@ -309,7 +541,7 @@ void DrawSpan_Scalar(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_Scalar &s
 	{
 		for(Sint32 x = span.X1; x < span.X2; ++x)
 		{
-			if(SDL_static_cast(Uint32, x-clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
+			if(SDL_static_cast(Uint32, x - clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
 			{
 				Uint32 dstR = SDL_static_cast(Sint32, (span.Color1[0] + (colordiff[0] * factor)) * 255.0f) * ((*dp >> dpf->Rshift) & 0xFF) >> 8;
 				Uint32 dstG = SDL_static_cast(Sint32, (span.Color1[1] + (colordiff[1] * factor)) * 255.0f) * ((*dp >> dpf->Gshift) & 0xFF) >> 8;
@@ -324,7 +556,7 @@ void DrawSpan_Scalar(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_Scalar &s
 	{
 		for(Sint32 x = span.X1; x < span.X2; ++x)
 		{
-			if(SDL_static_cast(Uint32, x-clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
+			if(SDL_static_cast(Uint32, x - clip_rect->x) < SDL_static_cast(Uint32, clip_rect->w))
 			{
 				Uint32 dstR = SDL_static_cast(Sint32, (span.Color1[0] + (colordiff[0] * factor)) * 255.0f) * ((*dp >> dpf->Rshift) & 0xFF) >> 8;
 				Uint32 dstG = SDL_static_cast(Sint32, (span.Color1[1] + (colordiff[1] * factor)) * 255.0f) * ((*dp >> dpf->Gshift) & 0xFF) >> 8;
@@ -364,7 +596,7 @@ void DrawSpansBetweenEdges_Scalar(SDL_Surface* dst, SDL_Rect* clip_rect, const E
 	float factorStep2 = 1.0f / e2ydiff;
 	for(Sint32 y = e2.Y1; y < e2.Y2; ++y)
 	{
-		if(SDL_static_cast(Uint32, y-clip_rect->y) < SDL_static_cast(Uint32, clip_rect->h))
+		if(SDL_static_cast(Uint32, y - clip_rect->y) < SDL_static_cast(Uint32, clip_rect->h))
 		{
 			float c1[3];
 			c1[0] = e1.Color1[0] + (e1colordiff[0] * factor1);
@@ -455,11 +687,11 @@ Sint32 SDL_FillRect_BLEND(SDL_Surface* dst, SDL_Rect* dstrect, Uint32 RGBA, Uint
 	}
 
 	SDL_PixelFormat* dpf = dst->format;
-	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
+	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y * dst->w + dstrect->x) * 4);
 	Sint32 dgap = (dst->pitch / 4) - dstrect->w;
 
 	Sint32 xEnd = dstrect->w, yEnd = dstrect->h;
-	if((dpf->Rmask|dpf->Gmask|dpf->Bmask) == 0x00ffffff)//We can go faster patch
+	if((dpf->Rmask|dpf->Gmask|dpf->Bmask) == 0x00FFFFFF)//We can go faster patch
 	{
 		if(A == 128)//Greatly optimized 50% semi-transparency
 		{
@@ -575,7 +807,7 @@ Sint32 SDL_FillRect_MOD(SDL_Surface* dst, SDL_Rect* dstrect, Uint32 R, Uint32 G,
 	}
 
 	SDL_PixelFormat* dpf = dst->format;
-	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
+	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y * dst->w + dstrect->x) * 4);
 	Sint32 dgap = (dst->pitch / 4) - dstrect->w;
 
 	Sint32 xEnd = dstrect->w, yEnd = dstrect->h;
@@ -627,7 +859,7 @@ Sint32 SDL_SmoothStretch_SSE2(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* 
 	}
 	else
 	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
+		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x + srcrect->w > src->w || srcrect->y + srcrect->h > src->h)
 			return -1;
 	}
 
@@ -638,7 +870,7 @@ Sint32 SDL_SmoothStretch_SSE2(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* 
 	}
 	else
 	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
+		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x + dstrect->w > dst->w || dstrect->y + dstrect->h > dst->h)
 			return -1;
 	}
 
@@ -653,8 +885,8 @@ Sint32 SDL_SmoothStretch_SSE2(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* 
 	Sint32 ssx = (srcrect->w << 16) - 1;
 	Sint32 ssy = (srcrect->h << 16) - 1;
 
-	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y*src->w + srcrect->x) * 4);
-	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
+	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y * src->w + srcrect->x) * 4);
+	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y * dst->w + dstrect->x) * 4);
 
 	Sint32 dgap = dst->pitch / 4;
 	Sint32 spixelgap = src->pitch / 4;
@@ -672,7 +904,7 @@ Sint32 SDL_SmoothStretch_SSE2(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* 
 			Sint32 ey = (csay & 0xFFFF);
 			Sint32 cx = (csax >> 16);
 			Sint32 cy = (csay >> 16);
-			bool sstepx = cx < spixelw;
+			bool sstepx = (cx < spixelw);
 			Uint32* c00 = sp;
 			Uint32* c01 = (sstepx ? c00 + 1 : c00);
 			Uint32* c10 = (cy < spixelh ? c00 + spixelgap : c00);
@@ -716,7 +948,7 @@ Sint32 SDL_SmoothStretch_SSSE3(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 	}
 	else
 	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
+		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x + srcrect->w > src->w || srcrect->y + srcrect->h > src->h)
 			return -1;
 	}
 
@@ -727,7 +959,7 @@ Sint32 SDL_SmoothStretch_SSSE3(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 	}
 	else
 	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
+		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x + dstrect->w > dst->w || dstrect->y + dstrect->h > dst->h)
 			return -1;
 	}
 
@@ -744,8 +976,8 @@ Sint32 SDL_SmoothStretch_SSSE3(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 	Sint32 ssx = (srcrect->w << 16) - 1;
 	Sint32 ssy = (srcrect->h << 16) - 1;
 
-	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y*src->w + srcrect->x) * 4);
-	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
+	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y * src->w + srcrect->x) * 4);
+	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y * dst->w + dstrect->x) * 4);
 
 	Sint32 dgap = dst->pitch / 4;
 	Sint32 spixelgap = src->pitch / 4;
@@ -763,7 +995,7 @@ Sint32 SDL_SmoothStretch_SSSE3(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 			Sint32 ey = (csay & 0xFFFF);
 			Sint32 cx = (csax >> 16);
 			Sint32 cy = (csay >> 16);
-			bool sstepx = cx < spixelw;
+			bool sstepx = (cx < spixelw);
 			Uint32* c00 = sp;
 			Uint32* c01 = (sstepx ? c00 + 1 : c00);
 			Uint32* c10 = (cy < spixelh ? c00 + spixelgap : c00);
@@ -806,7 +1038,7 @@ Sint32 SDL_SmoothStretch_SSE41(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 	}
 	else
 	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
+		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x + srcrect->w > src->w || srcrect->y + srcrect->h > src->h)
 			return -1;
 	}
 
@@ -817,7 +1049,7 @@ Sint32 SDL_SmoothStretch_SSE41(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 	}
 	else
 	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
+		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x + dstrect->w > dst->w || dstrect->y + dstrect->h > dst->h)
 			return -1;
 	}
 
@@ -833,8 +1065,8 @@ Sint32 SDL_SmoothStretch_SSE41(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 	Sint32 ssx = (srcrect->w << 16) - 1;
 	Sint32 ssy = (srcrect->h << 16) - 1;
 
-	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y*src->w + srcrect->x) * 4);
-	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
+	Uint32* sp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y * src->w + srcrect->x) * 4);
+	Sint32* dp = SDL_reinterpret_cast(Sint32*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y * dst->w + dstrect->x) * 4);
 
 	Sint32 dgap = dst->pitch / 4;
 	Sint32 spixelgap = src->pitch / 4;
@@ -852,7 +1084,7 @@ Sint32 SDL_SmoothStretch_SSE41(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface*
 			Sint32 ey = (csay & 0xFFFF);
 			Sint32 cx = (csax >> 16);
 			Sint32 cy = (csay >> 16);
-			bool sstepx = cx < spixelw;
+			bool sstepx = (cx < spixelw);
 			Uint32* c00 = sp;
 			Uint32* c01 = (sstepx ? c00 + 1 : c00);
 			Uint32* c10 = (cy < spixelh ? c00 + spixelgap : c00);
@@ -894,7 +1126,7 @@ Sint32 SDL_SmoothStretch_scalar(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface
 	}
 	else
 	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
+		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x + srcrect->w > src->w || srcrect->y + srcrect->h > src->h)
 			return -1;
 	}
 
@@ -905,7 +1137,7 @@ Sint32 SDL_SmoothStretch_scalar(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface
 	}
 	else
 	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
+		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x + dstrect->w > dst->w || dstrect->y + dstrect->h > dst->h)
 			return -1;
 	}
 
@@ -918,8 +1150,8 @@ Sint32 SDL_SmoothStretch_scalar(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface
 	Sint32 ssx = (srcrect->w << 16) - 1;
 	Sint32 ssy = (srcrect->h << 16) - 1;
 
-	tColorRGBA* sp = SDL_reinterpret_cast(tColorRGBA*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y*src->w + srcrect->x) * 4);
-	tColorRGBA* dp = SDL_reinterpret_cast(tColorRGBA*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y*dst->w + dstrect->x) * 4);
+	tColorRGBA* sp = SDL_reinterpret_cast(tColorRGBA*, SDL_reinterpret_cast(Uint8*, src->pixels) + (srcrect->y * src->w + srcrect->x) * 4);
+	tColorRGBA* dp = SDL_reinterpret_cast(tColorRGBA*, SDL_reinterpret_cast(Uint8*, dst->pixels) + (dstrect->y * dst->w + dstrect->x) * 4);
 
 	Sint32 dgap = dst->pitch / 4;
 	Sint32 spixelgap = src->pitch / 4;
@@ -937,7 +1169,7 @@ Sint32 SDL_SmoothStretch_scalar(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface
 			Sint32 ey = (csay & 0xFFFF);
 			Sint32 cx = (csax >> 16);
 			Sint32 cy = (csay >> 16);
-			bool sstepx = cx < spixelw;
+			bool sstepx = (cx < spixelw);
 			tColorRGBA* c00 = sp;
 			tColorRGBA* c01 = (sstepx ? c00 + 1 : c00);
 			tColorRGBA* c10 = (cy < spixelh ? c00 + spixelgap : c00);
@@ -971,31 +1203,198 @@ Sint32 SDL_SmoothStretch_scalar(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface
 	return 0;
 }
 
-void SDL_DrawLightMap(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 start, Sint32 end)
+void SDL_DrawLightMap_old(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 start, Sint32 end)
 {
 	float colors[3][3];
 	Sint32 vertices[3][2];
 
-	Sint32 drawY = y-(scale/2);
+	Sint32 drawY = y - (scale / 2);
 	for(Sint32 j = start; j < end; ++j)
 	{
 		Sint32 offset1 = (j + 1) * width;
 		Sint32 offset2 = UTIL_max<Sint32>(j, 0) * width;
-		Sint32 drawX = x-scale-(scale/2);
-		for(Sint32 k = -1; k < width-1; ++k)
+		Sint32 drawX = x - scale - (scale / 2);
+		for(Sint32 k = -1; k < width - 1; ++k)
 		{
 			Sint32 offset = UTIL_max<Sint32>(k, 0);
-			vertices[0][0] = drawX; vertices[0][1] = (drawY+scale);
-			colors[0][0] = lightmap[offset1+offset].r*inv255f; colors[0][1] = lightmap[offset1+offset].g*inv255f; colors[0][2] = lightmap[offset1+offset].b*inv255f;
+			vertices[0][0] = drawX; vertices[0][1] = (drawY + scale);
+			colors[0][0] = lightmap[offset1 + offset].r * inv255f; colors[0][1] = lightmap[offset1 + offset].g * inv255f; colors[0][2] = lightmap[offset1 + offset].b * inv255f;
 			vertices[1][0] = drawX; vertices[1][1] = drawY;
-			colors[1][0] = lightmap[offset2+offset].r*inv255f; colors[1][1] = lightmap[offset2+offset].g*inv255f; colors[1][2] = lightmap[offset2+offset].b*inv255f;
+			colors[1][0] = lightmap[offset2 + offset].r * inv255f; colors[1][1] = lightmap[offset2 + offset].g * inv255f; colors[1][2] = lightmap[offset2 + offset].b * inv255f;
 			drawX += scale;
-			vertices[2][0] = drawX; vertices[2][1] = (drawY+scale);
-			colors[2][0] = lightmap[offset1+k+1].r*inv255f; colors[2][1] = lightmap[offset1+k+1].g*inv255f; colors[2][2] = lightmap[offset1+k+1].b*inv255f;
+			vertices[2][0] = drawX; vertices[2][1] = (drawY + scale);
+			colors[2][0] = lightmap[offset1 + k + 1].r * inv255f; colors[2][1] = lightmap[offset1 + k + 1].g * inv255f; colors[2][2] = lightmap[offset1 + k + 1].b * inv255f;
 			SDL_DrawTriangle_MOD(src, colors, vertices);
 			vertices[0][0] = drawX; vertices[0][1] = drawY;
-			colors[0][0] = lightmap[offset2+k+1].r*inv255f; colors[0][1] = lightmap[offset2+k+1].g*inv255f; colors[0][2] = lightmap[offset2+k+1].b*inv255f;
+			colors[0][0] = lightmap[offset2 + k + 1].r * inv255f; colors[0][1] = lightmap[offset2 + k + 1].g * inv255f; colors[0][2] = lightmap[offset2 + k + 1].b * inv255f;
 			SDL_DrawTriangle_MOD(src, colors, vertices);
+		}
+		drawY += scale;
+	}
+}
+
+void SDL_DrawLightMap_new(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 start, Sint32 end)
+{
+	float colors[3][3];
+	Sint32 vertices[3][2];
+
+	Sint32 halfScale = (scale / 2);
+	Sint32 drawY = y - halfScale;
+	for(Sint32 j = start; j < end; ++j)
+	{
+		Sint32 offset1 = (j + 1) * width;
+		Sint32 offset2 = UTIL_max<Sint32>(j, 0) * width;
+		Sint32 drawX = x - scale - halfScale;
+		for(Sint32 k = -1; k < width - 1; ++k)
+		{
+			Sint32 offset = UTIL_max<Sint32>(k, 0);
+
+			//Get the colors of tile corners
+			float topCenter[2][3], leftCenter[2][3], bottomCenter[2][3], rightCenter[2][3], center[2][3], topLeft[2][3], topRight[2][3], bottomLeft[2][3], bottomRight[2][3];
+			topLeft[0][0] = lightmap[offset2 + offset].r * inv255f;
+			topLeft[0][1] = lightmap[offset2 + offset].g * inv255f;
+			topLeft[0][2] = lightmap[offset2 + offset].b * inv255f;
+			topRight[0][0] = lightmap[offset2 + k + 1].r * inv255f;
+			topRight[0][1] = lightmap[offset2 + k + 1].g * inv255f;
+			topRight[0][2] = lightmap[offset2 + k + 1].b * inv255f;
+			bottomLeft[0][0] = lightmap[offset1 + offset].r * inv255f;
+			bottomLeft[0][1] = lightmap[offset1 + offset].g * inv255f;
+			bottomLeft[0][2] = lightmap[offset1 + offset].b * inv255f;
+			bottomRight[0][0] = lightmap[offset1 + k + 1].r * inv255f;
+			bottomRight[0][1] = lightmap[offset1 + k + 1].g * inv255f;
+			bottomRight[0][2] = lightmap[offset1 + k + 1].b * inv255f;
+
+			//Get the colors of first triangle
+			float v[3][2], p[2];
+			v[0][0] = SDL_static_cast(float, drawX);
+			v[0][1] = SDL_static_cast(float, drawY);
+			v[1][0] = SDL_static_cast(float, drawX + scale);
+			v[1][1] = SDL_static_cast(float, drawY);
+			v[2][0] = SDL_static_cast(float, drawX);
+			v[2][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, topRight[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, topCenter[0]);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, leftCenter[0]);
+			p[0] = SDL_static_cast(float, drawX + halfScale) - 0.5f;
+			p[1] = SDL_static_cast(float, drawY + halfScale) - 0.5f;
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, center[0]);
+			v[0][0] = SDL_static_cast(float, drawX + scale);
+			v[0][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, bottomLeft[1]);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, rightCenter[0]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, bottomCenter[0]);
+
+			//Get the colors of second triangle
+			v[0][0] = SDL_static_cast(float, drawX);
+			v[0][1] = SDL_static_cast(float, drawY + scale);
+			v[1][0] = SDL_static_cast(float, drawX);
+			v[1][1] = SDL_static_cast(float, drawY);
+			v[2][0] = SDL_static_cast(float, drawX + scale);
+			v[2][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, topLeft[1]);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, leftCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, bottomCenter[1]);
+			v[0][0] = SDL_static_cast(float, drawX + scale);
+			v[0][1] = SDL_static_cast(float, drawY);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, bottomRight[1]);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, rightCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, topCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale) + 0.5f;
+			p[1] = SDL_static_cast(float, drawY + halfScale) + 0.5f;
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, center[1]);
+
+			//Use brighter color from triangles for our square
+			#define VEC_MAX(a)										\
+				do {												\
+					a[0][0] = UTIL_max<float>(a[0][0], a[1][0]);	\
+					a[0][1] = UTIL_max<float>(a[0][1], a[1][1]);	\
+					a[0][2] = UTIL_max<float>(a[0][2], a[1][2]);	\
+				} while(0)
+
+			VEC_MAX(topLeft);
+			VEC_MAX(topRight);
+			VEC_MAX(bottomLeft);
+			VEC_MAX(bottomRight);
+			VEC_MAX(leftCenter);
+			VEC_MAX(bottomCenter);
+			VEC_MAX(rightCenter);
+			VEC_MAX(topCenter);
+			VEC_MAX(center);
+			#undef VEC_MAX
+			
+			//Draw Top-Left square
+			vertices[0][0] = drawX; vertices[0][1] = (drawY + halfScale);
+			colors[0][0] = leftCenter[0][0]; colors[0][1] = leftCenter[0][1]; colors[0][2] = leftCenter[0][2];
+			vertices[1][0] = drawX; vertices[1][1] = drawY;
+			colors[1][0] = topLeft[0][0]; colors[1][1] = topLeft[0][1]; colors[1][2] = topLeft[0][2];
+			vertices[2][0] = (drawX + halfScale); vertices[2][1] = (drawY + halfScale);
+			colors[2][0] = center[0][0]; colors[2][1] = center[0][1]; colors[2][2] = center[0][2];
+			SDL_DrawTriangle_MOD(src, colors, vertices);
+			vertices[0][0] = (drawX + halfScale); vertices[0][1] = drawY;
+			colors[0][0] = topCenter[0][0]; colors[0][1] = topCenter[0][1]; colors[0][2] = topCenter[0][2];
+			SDL_DrawTriangle_MOD(src, colors, vertices);
+
+			//Draw Bottom-Left square
+			vertices[0][0] = drawX; vertices[0][1] = (drawY + halfScale);
+			colors[0][0] = leftCenter[0][0]; colors[0][1] = leftCenter[0][1]; colors[0][2] = leftCenter[0][2];
+			vertices[1][0] = drawX; vertices[1][1] = (drawY + scale);
+			colors[1][0] = bottomLeft[0][0]; colors[1][1] = bottomLeft[0][1]; colors[1][2] = bottomLeft[0][2];
+			vertices[2][0] = (drawX + halfScale); vertices[2][1] = (drawY + halfScale);
+			colors[2][0] = center[0][0]; colors[2][1] = center[0][1]; colors[2][2] = center[0][2];
+			SDL_DrawTriangle_MOD(src, colors, vertices);
+			vertices[0][0] = (drawX + halfScale); vertices[0][1] = (drawY + scale);
+			colors[0][0] = bottomCenter[0][0]; colors[0][1] = bottomCenter[0][1]; colors[0][2] = bottomCenter[0][2];
+			SDL_DrawTriangle_MOD(src, colors, vertices);
+
+			//Draw Top-Right square
+			vertices[0][0] = (drawX + halfScale); vertices[0][1] = drawY;
+			colors[0][0] = topCenter[0][0]; colors[0][1] = topCenter[0][1]; colors[0][2] = topCenter[0][2];
+			vertices[1][0] = (drawX + halfScale); vertices[1][1] = (drawY + halfScale);
+			colors[1][0] = center[0][0]; colors[1][1] = center[0][1]; colors[1][2] = center[0][2];
+			vertices[2][0] = (drawX + scale); vertices[2][1] = drawY;
+			colors[2][0] = topRight[0][0]; colors[2][1] = topRight[0][1]; colors[2][2] = topRight[0][2];
+			SDL_DrawTriangle_MOD(src, colors, vertices);
+			vertices[0][0] = (drawX + scale); vertices[0][1] = (drawY + halfScale);
+			colors[0][0] = rightCenter[0][0]; colors[0][1] = rightCenter[0][1]; colors[0][2] = rightCenter[0][2];
+			SDL_DrawTriangle_MOD(src, colors, vertices);
+
+			//Draw Bottom-Right square
+			vertices[0][0] = (drawX + halfScale); vertices[0][1] = (drawY + scale);
+			colors[0][0] = bottomCenter[0][0]; colors[0][1] = bottomCenter[0][1]; colors[0][2] = bottomCenter[0][2];
+			vertices[1][0] = (drawX + halfScale); vertices[1][1] = (drawY + halfScale);
+			colors[1][0] = center[0][0]; colors[1][1] = center[0][1]; colors[1][2] = center[0][2];
+			vertices[2][0] = (drawX + scale); vertices[2][1] = (drawY + scale);
+			colors[2][0] = bottomRight[0][0]; colors[2][1] = bottomRight[0][1]; colors[2][2] = bottomRight[0][2];
+			SDL_DrawTriangle_MOD(src, colors, vertices);
+			vertices[0][0] = (drawX + scale); vertices[0][1] = (drawY + halfScale);
+			colors[0][0] = rightCenter[0][0]; colors[0][1] = rightCenter[0][1]; colors[0][2] = rightCenter[0][2];
+			SDL_DrawTriangle_MOD(src, colors, vertices);
+
+			drawX += scale;
 		}
 		drawY += scale;
 	}
@@ -1015,8 +1414,10 @@ static int SOFTWARE_drawthread(void* data)
 			return 0;
 		}
 
-		if(thread->lightning)
-			SDL_DrawLightMap(thread->src, SDL_reinterpret_cast(LightMap*, thread->dst), thread->sr.x, thread->sr.y, thread->sr.w, thread->dr.x, thread->dr.w, thread->dr.h);
+		if(thread->lightning == 2)
+			SDL_DrawLightMap_new(thread->src, SDL_reinterpret_cast(LightMap*, thread->dst), thread->sr.x, thread->sr.y, thread->sr.w, thread->dr.x, thread->dr.w, thread->dr.h);
+		else if(thread->lightning == 1)
+			SDL_DrawLightMap_old(thread->src, SDL_reinterpret_cast(LightMap*, thread->dst), thread->sr.x, thread->sr.y, thread->sr.w, thread->dr.x, thread->dr.w, thread->dr.h);
 		else
 			SDL_SmoothStretch(thread->src, &thread->sr, thread->dst, &thread->dr);
 
@@ -1027,19 +1428,19 @@ static int SOFTWARE_drawthread(void* data)
 	return 0;
 }
 
-void SDL_DrawLightMap_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
+void SDL_DrawLightMap_old_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
 	if(threadCores == 1)
-		return SDL_DrawLightMap(src, lightmap, x, y, scale, width, 0, height-1);
+		return SDL_DrawLightMap_old(src, lightmap, x, y, scale, width, 0, height - 1);
 
 	#define QUEUE_WORK(tr, start, end)									\
 		do {															\
 			thread = &threadDatas[tr];									\
 			thread->src = src;											\
 			thread->dst = SDL_reinterpret_cast(SDL_Surface*, lightmap);	\
-			thread->lightning = true;									\
+			thread->lightning = 1;										\
 			thread->drawning = true;									\
-			thread->sr = {x, y+(start*scale), scale, scale};			\
+			thread->sr = {x, y + (start * scale), scale, scale};		\
 			thread->dr = {width, height, start, end};					\
 			SDL_CondSignal(thread->drawCond);							\
 		} while(0)
@@ -1047,15 +1448,15 @@ void SDL_DrawLightMap_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 
 	SOFTWARE_threadData* thread;
 	if(threadCores == 4)
 	{
-		Sint32 trHeight = (height+3)/4;
+		Sint32 trHeight = (height + 3) / 4;
 		Sint32 firstStart = -1;
-		Sint32 firstEnd = firstStart+trHeight;
-		Sint32 secondStart = firstStart+trHeight;
-		Sint32 secondEnd = secondStart+trHeight;
-		Sint32 thirdStart = secondStart+trHeight;
-		Sint32 thirdEnd = thirdStart+trHeight;
-		Sint32 fourthStart = thirdStart+trHeight;
-		Sint32 fourthEnd = height-1;
+		Sint32 firstEnd = firstStart + trHeight;
+		Sint32 secondStart = firstStart + trHeight;
+		Sint32 secondEnd = secondStart + trHeight;
+		Sint32 thirdStart = secondStart + trHeight;
+		Sint32 thirdEnd = thirdStart + trHeight;
+		Sint32 fourthStart = thirdStart + trHeight;
+		Sint32 fourthEnd = height - 1;
 		QUEUE_WORK(0, firstStart, firstEnd);
 		QUEUE_WORK(1, secondStart, secondEnd);
 		QUEUE_WORK(2, thirdStart, thirdEnd);
@@ -1063,11 +1464,71 @@ void SDL_DrawLightMap_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 
 	}
 	else
 	{
-		Sint32 trHeight = (height+1)/2;
+		Sint32 trHeight = (height + 1) / 2;
 		Sint32 firstStart = -1;
-		Sint32 firstEnd = firstStart+trHeight;
-		Sint32 secondStart = firstStart+trHeight;
-		Sint32 secondEnd = height-1;
+		Sint32 firstEnd = firstStart + trHeight;
+		Sint32 secondStart = firstStart + trHeight;
+		Sint32 secondEnd = height - 1;
+		QUEUE_WORK(0, firstStart, firstEnd);
+		QUEUE_WORK(1, secondStart, secondEnd);
+	}
+
+	for(Sint32 i = 0; i < threadCores; ++i)
+	{
+		thread = &threadDatas[i];
+		SDL_LockMutex(thread->drawMutex);
+		if(thread->drawning)
+		{
+			thread->waiting = true;
+			SDL_CondWait(thread->waitCond, thread->drawMutex);
+			thread->waiting = false;
+		}
+		SDL_UnlockMutex(thread->drawMutex);
+	}
+	#undef QUEUE_WORK
+}
+
+void SDL_DrawLightMap_new_MT(SDL_Surface* src, LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
+{
+	if(threadCores == 1)
+		return SDL_DrawLightMap_new(src, lightmap, x, y, scale, width, 0, height - 1);
+
+	#define QUEUE_WORK(tr, start, end)									\
+		do {															\
+			thread = &threadDatas[tr];									\
+			thread->src = src;											\
+			thread->dst = SDL_reinterpret_cast(SDL_Surface*, lightmap);	\
+			thread->lightning = 2;										\
+			thread->drawning = true;									\
+			thread->sr = {x, y + (start * scale), scale, scale};		\
+			thread->dr = {width, height, start, end};					\
+			SDL_CondSignal(thread->drawCond);							\
+		} while(0)
+
+	SOFTWARE_threadData* thread;
+	if(threadCores == 4)
+	{
+		Sint32 trHeight = (height + 3) / 4;
+		Sint32 firstStart = -1;
+		Sint32 firstEnd = firstStart + trHeight;
+		Sint32 secondStart = firstStart + trHeight;
+		Sint32 secondEnd = secondStart + trHeight;
+		Sint32 thirdStart = secondStart + trHeight;
+		Sint32 thirdEnd = thirdStart + trHeight;
+		Sint32 fourthStart = thirdStart + trHeight;
+		Sint32 fourthEnd = height - 1;
+		QUEUE_WORK(0, firstStart, firstEnd);
+		QUEUE_WORK(1, secondStart, secondEnd);
+		QUEUE_WORK(2, thirdStart, thirdEnd);
+		QUEUE_WORK(3, fourthStart, fourthEnd);
+	}
+	else
+	{
+		Sint32 trHeight = (height + 1) / 2;
+		Sint32 firstStart = -1;
+		Sint32 firstEnd = firstStart + trHeight;
+		Sint32 secondStart = firstStart + trHeight;
+		Sint32 secondEnd = height - 1;
 		QUEUE_WORK(0, firstStart, firstEnd);
 		QUEUE_WORK(1, secondStart, secondEnd);
 	}
@@ -1099,7 +1560,7 @@ Sint32 SDL_SmoothStretch_MT(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* ds
 	}
 	else
 	{
-		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x+srcrect->w > src->w || srcrect->y+srcrect->h > src->h)
+		if(srcrect->x < 0 || srcrect->y < 0 || srcrect->x + srcrect->w > src->w || srcrect->y + srcrect->h > src->h)
 			return -1;
 	}
 
@@ -1110,7 +1571,7 @@ Sint32 SDL_SmoothStretch_MT(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* ds
 	}
 	else
 	{
-		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x+dstrect->w > dst->w || dstrect->y+dstrect->h > dst->h)
+		if(dstrect->x < 0 || dstrect->y < 0 || dstrect->x + dstrect->w > dst->w || dstrect->y + dstrect->h > dst->h)
 			return -1;
 	}
 
@@ -1119,7 +1580,7 @@ Sint32 SDL_SmoothStretch_MT(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* ds
 			thread = &threadDatas[tr];						\
 			thread->src = src;								\
 			thread->dst = dst;								\
-			thread->lightning = false;						\
+			thread->lightning = 0;							\
 			thread->drawning = true;						\
 			thread->sr = {sx, sy, sw, sh};				    \
 			thread->dr = {dx, dy, dw, dh};				    \
@@ -1129,21 +1590,21 @@ Sint32 SDL_SmoothStretch_MT(SDL_Surface* src, SDL_Rect* srcrect, SDL_Surface* ds
 	SOFTWARE_threadData* thread;
 	if(threadCores == 4)
 	{
-		Sint32 halfSrcWidth = srcrect->w/2;
-		Sint32 halfSrcHeight = srcrect->h/2;
-		Sint32 halfDstWidth = dstrect->w/2;
-		Sint32 halfDstHeight = dstrect->h/2;
-		QUEUE_WORK(0, srcrect->x, srcrect->y, halfSrcWidth+1, halfSrcHeight+1, dstrect->x, dstrect->y, halfDstWidth, halfDstHeight);
-		QUEUE_WORK(1, srcrect->x+halfSrcWidth, srcrect->y, srcrect->w-halfSrcWidth, halfSrcHeight+1, dstrect->x+halfDstWidth, dstrect->y, dstrect->w-halfDstWidth, halfDstHeight);
-		QUEUE_WORK(2, srcrect->x, srcrect->y+halfSrcHeight, halfSrcWidth+1, srcrect->h-halfSrcHeight, dstrect->x, dstrect->y+halfDstHeight, halfDstWidth, dstrect->h-halfDstHeight);
+		Sint32 halfSrcWidth = srcrect->w / 2;
+		Sint32 halfSrcHeight = srcrect->h / 2;
+		Sint32 halfDstWidth = dstrect->w / 2;
+		Sint32 halfDstHeight = dstrect->h / 2;
+		QUEUE_WORK(0, srcrect->x, srcrect->y, halfSrcWidth + 1, halfSrcHeight + 1, dstrect->x, dstrect->y, halfDstWidth, halfDstHeight);
+		QUEUE_WORK(1, srcrect->x + halfSrcWidth, srcrect->y, srcrect->w - halfSrcWidth, halfSrcHeight + 1, dstrect->x + halfDstWidth, dstrect->y, dstrect->w - halfDstWidth, halfDstHeight);
+		QUEUE_WORK(2, srcrect->x, srcrect->y + halfSrcHeight, halfSrcWidth + 1, srcrect->h - halfSrcHeight, dstrect->x, dstrect->y + halfDstHeight, halfDstWidth, dstrect->h - halfDstHeight);
 		QUEUE_WORK(3, threadDatas[1].sr.x, threadDatas[2].sr.y, threadDatas[1].sr.w, threadDatas[2].sr.h, threadDatas[1].dr.x, threadDatas[2].dr.y, threadDatas[1].dr.w, threadDatas[2].dr.h);
 	}
 	else
 	{
-		Sint32 halfSrcHeight = srcrect->h/2;
-		Sint32 halfDstHeight = dstrect->h/2;
-		QUEUE_WORK(0, srcrect->x, srcrect->y, srcrect->w, halfSrcHeight+1, dstrect->x, dstrect->y, dstrect->w, halfDstHeight);
-		QUEUE_WORK(1, srcrect->x, srcrect->y+halfSrcHeight, srcrect->w, srcrect->h-halfSrcHeight, dstrect->x, dstrect->y+halfDstHeight, dstrect->w, dstrect->h-halfDstHeight);
+		Sint32 halfSrcHeight = srcrect->h / 2;
+		Sint32 halfDstHeight = dstrect->h / 2;
+		QUEUE_WORK(0, srcrect->x, srcrect->y, srcrect->w, halfSrcHeight + 1, dstrect->x, dstrect->y, dstrect->w, halfDstHeight);
+		QUEUE_WORK(1, srcrect->x, srcrect->y + halfSrcHeight, srcrect->w, srcrect->h - halfSrcHeight, dstrect->x, dstrect->y + halfDstHeight, dstrect->w, dstrect->h - halfDstHeight);
 	}
 
 	for(Sint32 i = 0; i < threadCores; ++i)
@@ -1187,7 +1648,12 @@ void SDL_SmoothStretch_init()
 
 	SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_Scalar);
 	#ifdef __USE_SSE__
-	if(SDL_HasSSE())
+	//need to test if fma4 is faster on amd processors to determine proper check order
+	if(SDL_HasFMA3())
+		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_FMA3);
+	else if(SDL_HasFMA4())
+		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_FMA4);
+	else if(SDL_HasSSE())
 		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_SSE);
 	#endif
 	
@@ -1196,26 +1662,29 @@ void SDL_SmoothStretch_init()
 	{
 		//_mm_mullo_epi32 - to make calculations a bit faster
 		SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_SSE41);
-		return;
 	}
+	else
 	#endif
 	#ifdef __USE_SSSE3__
 	if(SDL_HasSSSE3())
 	{
 		//_mm_shuffle_epi8 - to avoid unnecesary packing/unpacking
 		SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_SSSE3);
-		return;
 	}
+	else
 	#endif
 	#ifdef __USE_SSE2__
 	if(SDL_HasSSE2())
 	{
+		//Use sse2 to vectorize most calculations
 		SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_SSE2);
-		return;
 	}
+	else
 	#endif
-
-	SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_scalar);
+	{
+		//Standard scalar function - the slowest approach
+		SDL_SmoothStretch = SDL_reinterpret_cast(LPSDL_SmoothStretch, SDL_SmoothStretch_scalar);
+	}
 }
 
 void SDL_SmoothStretch_shutdown()

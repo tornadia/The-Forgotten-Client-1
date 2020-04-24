@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,6 +34,7 @@ LightSystem::LightSystem()
 	m_lightRed = 255;
 	m_lightGreen = 255;
 	m_lightBlue = 255;
+	m_lightAmbient = 0;
 }
 
 void LightSystem::setGlobalLight(Uint16 intensity, Uint16 color, Uint8 z)
@@ -45,25 +46,38 @@ void LightSystem::setGlobalLight(Uint16 intensity, Uint16 color, Uint8 z)
 
 void LightSystem::changeFloor(Uint8 z)
 {
+	static const float inv255f = (1.0f / 255.0f);
+	Sint32 red, green, blue, staticRed, staticGreen, staticBlue;
 	if(z <= GAME_PLAYER_FLOOR)
 	{
 		colorFrom8bit(SDL_static_cast(Uint8, m_light[1]), m_lightRed, m_lightGreen, m_lightBlue);
-		float ambientBrightness = (g_engine.getAmbientLight()/200.0f)+1.0f;
-		float brightness = (m_light[0]/255.0f);
-		Sint32 r = SDL_static_cast(Sint32, (m_lightRed*brightness*ambientBrightness));
-		Sint32 g = SDL_static_cast(Sint32, (m_lightGreen*brightness*ambientBrightness));
-		Sint32 b = SDL_static_cast(Sint32, (m_lightBlue*brightness*ambientBrightness));
-		m_lightRed = (r > 255 ? 255 : SDL_static_cast(Uint8, r));
-		m_lightGreen = (g > 255 ? 255 : SDL_static_cast(Uint8, g));
-		m_lightBlue = (b > 255 ? 255 : SDL_static_cast(Uint8, b));
+		float ambientBrightness = (m_light[0] * inv255f);
+		red = SDL_static_cast(Sint32, m_lightRed * ambientBrightness);
+		green = SDL_static_cast(Sint32, m_lightGreen * ambientBrightness);
+		blue = SDL_static_cast(Sint32, m_lightBlue * ambientBrightness);
+		staticRed = 200;
+		staticGreen = 200;
+		staticBlue = 255;
 	}
 	else
 	{
-		float ambientBrightness = (g_engine.getAmbientLight()/100.0f);
-		m_lightRed = SDL_static_cast(Uint8, (40*ambientBrightness));
-		m_lightGreen = SDL_static_cast(Uint8, (40*ambientBrightness));
-		m_lightBlue = SDL_static_cast(Uint8, (40*ambientBrightness));
+		red = 0;
+		green = 0;
+		blue = 0;
+		staticRed = 255;
+		staticGreen = 255;
+		staticBlue = 255;
 	}
+
+	float ambientLight = g_engine.getAmbientLight() * (1.0f - ((((red + green + blue) * 342) >> 10) * inv255f)) * inv255f;
+	red += SDL_static_cast(Sint32, staticRed * ambientLight);
+	green += SDL_static_cast(Sint32, staticGreen * ambientLight);
+	blue += SDL_static_cast(Sint32, staticBlue * ambientLight);
+
+	m_lightRed = SDL_static_cast(Uint8, UTIL_min<Sint32>(red, 255));
+	m_lightGreen = SDL_static_cast(Uint8, UTIL_min<Sint32>(red, 255));
+	m_lightBlue = SDL_static_cast(Uint8, UTIL_min<Sint32>(red, 255));
+	m_lightAmbient = g_engine.getAmbientLight();
 }
 
 void LightSystem::addLightSource(Sint32 x, Sint32 y, Uint16 light[2])
@@ -73,68 +87,81 @@ void LightSystem::addLightSource(Sint32 x, Sint32 y, Uint16 light[2])
 	Uint8 r, g, b;
 	colorFrom8bit(SDL_static_cast(Uint8, light[1]), r, g, b);
 
-	float brightness = 0.5f+(radius/8.f)*0.5f;
-	r = SDL_static_cast(Uint8, UTIL_min<Sint32>(SDL_static_cast(Sint32, r*brightness), 255));
-	g = SDL_static_cast(Uint8, UTIL_min<Sint32>(SDL_static_cast(Sint32, g*brightness), 255));
-	b = SDL_static_cast(Uint8, UTIL_min<Sint32>(SDL_static_cast(Sint32, b*brightness), 255));
-
 	//Adjust with local creature offset
 	x -= m_offsetX;
 	y -= m_offsetY;
 
-	Sint32 offsetX = (x%32);
-	Sint32 offsetY = (y%32);
-	x = (x/32)+1;
-	y = (y/32)+1;
+	Sint32 offsetX = (x % 32);
+	Sint32 offsetY = (y % 32);
+	x = (x / 32) + 1;
+	y = (y / 32) + 1;
 
-	float Xinfluence = offsetX*0.03125f;
-	float Yinfluence = offsetY*0.03125f;
+	float Xinfluence = offsetX * 0.03125f;
+	float Yinfluence = offsetY * 0.03125f;
 
-	Sint32 x_start = UTIL_max<Sint32>(x-rad, 0);
-	Sint32 x_end = UTIL_min<Sint32>(x+rad+(offsetX > 0 ? 1 : 0), GAME_MAP_WIDTH);
-	Sint32 y_start = UTIL_max<Sint32>(y-rad, 0);
-	Sint32 y_end = UTIL_min<Sint32>(y+rad+(offsetY > 0 ? 1 : 0), GAME_MAP_HEIGHT);
+	Sint32 x_start = UTIL_max<Sint32>(x - rad, 0);
+	Sint32 x_end = UTIL_min<Sint32>(x + rad + (offsetX > 0 ? 1 : 0), GAME_MAP_WIDTH);
+	Sint32 y_start = UTIL_max<Sint32>(y - rad, 0);
+	Sint32 y_end = UTIL_min<Sint32>(y + rad + (offsetY > 0 ? 1 : 0), GAME_MAP_HEIGHT);
 	for(Sint32 j = y_start; j < y_end; ++j)
 	{
-		float y_res = (j-y)-Yinfluence;
+		float y_res = (j - y) - Yinfluence;
 		y_res *= y_res;
 
 		Sint32 index = ((j * GAME_MAP_WIDTH) + x_start);
 		for(Sint32 i = x_start; i < x_end; ++i)
 		{
-			float x_res = (i-x)-Xinfluence;
-			float distance = UTIL_sqrtf(SDL_static_cast(float, x_res*x_res + y_res));
-			if(distance <= radius)
+			float x_res = (i - x) - Xinfluence;
+			#ifdef __USE_SSE__
+			float distance = (radius - _mm_cvtss_f32(_mm_rcp_ss(_mm_rsqrt_ss(_mm_set_ss(SDL_static_cast(float, (x_res * x_res) + y_res)))))) / 5.f;
+			#else
+			float distance = (radius - SDL_sqrtf(SDL_static_cast(float, (x_res * x_res) + y_res))) / 5.f;
+			#endif
+			if(distance > 0.0f)
 			{
-				float influence = 1.0f-(distance/radius);
-				m_lightMap[index].r = UTIL_max<Sint32>(m_lightMap[index].r, SDL_static_cast(Sint32, r*influence));
-				m_lightMap[index].g = UTIL_max<Sint32>(m_lightMap[index].g, SDL_static_cast(Sint32, g*influence));
-				m_lightMap[index].b = UTIL_max<Sint32>(m_lightMap[index].b, SDL_static_cast(Sint32, b*influence));
+				distance = UTIL_min<float>(distance, 1.0f);
+				m_lightMap[index].r = UTIL_max<Uint8>(m_lightMap[index].r, SDL_static_cast(Uint8, r * distance));
+				m_lightMap[index].g = UTIL_max<Uint8>(m_lightMap[index].g, SDL_static_cast(Uint8, g * distance));
+				m_lightMap[index].b = UTIL_max<Uint8>(m_lightMap[index].b, SDL_static_cast(Uint8, b * distance));
 			}
 			++index;
 		}
 	}
 }
 
+void LightSystem::setLightSource(Sint32 x, Sint32 y, float brightness)
+{
+	Sint32 index = ((y * GAME_MAP_WIDTH) + x);
+	m_lightMap[index].r = SDL_static_cast(Uint8, m_lightMap[index].r * brightness);
+	m_lightMap[index].g = SDL_static_cast(Uint8, m_lightMap[index].g * brightness);
+	m_lightMap[index].b = SDL_static_cast(Uint8, m_lightMap[index].b * brightness);
+}
+
 void LightSystem::resetLightSource(Sint32 x, Sint32 y)
 {
 	Sint32 index = ((y * GAME_MAP_WIDTH) + x);
-	m_lightMap[index].r = SDL_static_cast(Sint32, m_lightRed);
-	m_lightMap[index].g = SDL_static_cast(Sint32, m_lightGreen);
-	m_lightMap[index].b = SDL_static_cast(Sint32, m_lightBlue);
+	m_lightMap[index].r = m_lightRed;
+	m_lightMap[index].g = m_lightGreen;
+	m_lightMap[index].b = m_lightBlue;
 }
 
-void LightSystem::initLightMap(Sint32 offsetX, Sint32 offsetY)
+void LightSystem::initLightMap(Sint32 offsetX, Sint32 offsetY, Uint8 floorZ)
 {
-	Sint32 R = SDL_static_cast(Sint32, m_lightRed);
-	Sint32 G = SDL_static_cast(Sint32, m_lightGreen);
-	Sint32 B = SDL_static_cast(Sint32, m_lightBlue);
-	for(Sint32 i = 0; i < GAME_MAP_WIDTH*GAME_MAP_HEIGHT; ++i)
+	if(g_engine.getAmbientLight() != m_lightAmbient)
+		changeFloor(floorZ);
+
+	for(Sint32 i = 0; i < (GAME_MAP_WIDTH * GAME_MAP_HEIGHT); ++i)
 	{
-		m_lightMap[i].r = R;
-		m_lightMap[i].g = G;
-		m_lightMap[i].b = B;
+		m_lightMap[i].r = m_lightRed;
+		m_lightMap[i].g = m_lightGreen;
+		m_lightMap[i].b = m_lightBlue;
 	}
 	m_offsetX = offsetX;
 	m_offsetY = offsetY;
+}
+
+Uint8 LightSystem::getLightSourceAverage(Sint32 x, Sint32 y)
+{
+	Sint32 index = ((y * GAME_MAP_WIDTH) + x);
+	return SDL_static_cast(Uint8, ((SDL_static_cast(Sint32, m_lightMap[index].r) + SDL_static_cast(Sint32, m_lightMap[index].g) + SDL_static_cast(Sint32, m_lightMap[index].b)) * 342) >> 10);
 }

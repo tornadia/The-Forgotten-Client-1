@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -45,8 +45,8 @@ class GUI_Element
 
 		virtual void* onAction(Sint32, Sint32) {return NULL;}
 		virtual void onTextInput(const char*) {};
-		virtual void onKeyDown(SDL_Event) {};
-		virtual void onKeyUp(SDL_Event) {};
+		virtual void onKeyDown(SDL_Event&) {};
+		virtual void onKeyUp(SDL_Event&) {};
 		virtual void onMouseMove(Sint32, Sint32, bool) {};
 		virtual void onLMouseDown(Sint32, Sint32) {};
 		virtual void onLMouseUp(Sint32, Sint32) {};

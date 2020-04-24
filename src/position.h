@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -179,7 +179,7 @@ struct Position
 
 	bool up(Sint32 n = 1)
 	{
-		Sint32 nz = SDL_static_cast(Sint32, z)-n;
+		Sint32 nz = SDL_static_cast(Sint32, z) - n;
 		if(nz >= 0)
 		{
 			z = SDL_static_cast(Uint8, nz);
@@ -190,7 +190,7 @@ struct Position
 
 	bool down(Sint32 n = 1)
 	{
-		Sint32 nz = SDL_static_cast(Sint32, z)+n;
+		Sint32 nz = SDL_static_cast(Sint32, z) + n;
 		if(nz <= GAME_MAP_FLOORS)
 		{
 			z = SDL_static_cast(Uint8, nz);
@@ -201,7 +201,7 @@ struct Position
 
 	bool coveredUp(Sint32 n = 1)
 	{
-		Sint32 nx = SDL_static_cast(Sint32, x)+n, ny = SDL_static_cast(Sint32, y)+n, nz = SDL_static_cast(Sint32, z)-n;
+		Sint32 nx = SDL_static_cast(Sint32, x) + n, ny = SDL_static_cast(Sint32, y) + n, nz = SDL_static_cast(Sint32, z) - n;
 		if(nx >= 0 && nx <= 65535 && ny >= 0 && ny <= 65535 && nz >= 0 && nz <= GAME_MAP_FLOORS)
 		{
 			x = SDL_static_cast(Uint16, nx); y = SDL_static_cast(Uint16, ny); z = SDL_static_cast(Uint8, nz);
@@ -212,7 +212,7 @@ struct Position
 
 	bool coveredDown(Sint32 n = 1)
 	{
-		Sint32 nx = SDL_static_cast(Sint32, x)-n, ny = SDL_static_cast(Sint32, y)-n, nz = SDL_static_cast(Sint32, z)+n;
+		Sint32 nx = SDL_static_cast(Sint32, x) - n, ny = SDL_static_cast(Sint32, y) - n, nz = SDL_static_cast(Sint32, z) + n;
 		if(nx >= 0 && nx <= 65535 && ny >= 0 && ny <= 65535 && nz >= 0 && nz <= GAME_MAP_FLOORS)
 		{
 			x = SDL_static_cast(Uint16, nx); y = SDL_static_cast(Uint16, ny); z = SDL_static_cast(Uint8, nz);

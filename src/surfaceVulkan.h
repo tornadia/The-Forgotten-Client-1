@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -86,8 +86,18 @@ struct PushConstant_Sharpen
 	float pxHeight;
 };
 
+struct VulkanSpriteData
+{
+	VulkanSpriteData() : m_xOffset(0), m_yOffset(0), m_surface(0), m_lastUsage(0) {}
+
+	Uint32 m_xOffset;
+	Uint32 m_yOffset;
+	Uint32 m_surface;
+	Uint32 m_lastUsage;
+};
+
 typedef std::unordered_map<Uint32, VulkanTexture*> U32BImages;
-typedef std::unordered_map<Uint64, VulkanTexture*> U64BImages;
+typedef std::unordered_map<Uint64, VulkanSpriteData> U64BImages;
 
 class SurfaceVulkan : public Surface
 {
@@ -123,6 +133,9 @@ class SurfaceVulkan : public Surface
 		virtual const char* getHardware() {return m_hardware;}
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
+		void generateSpriteAtlases();
+		void checkScheduledSprites();
+
 		virtual void renderTargetsRecreate();
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
@@ -133,7 +146,8 @@ class SurfaceVulkan : public Surface
 		virtual void endScene();
 
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
-		virtual void drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
+		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void beginGameScene();
 		virtual void endGameScene();
@@ -149,9 +163,10 @@ class SurfaceVulkan : public Surface
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
-		VulkanTexture* loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor);
-		virtual void drawSprite(Uint32, Sint32, Sint32) {;}
-		virtual void drawSprite(Uint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32, Sint32) {;}
+		bool loadSprite(Uint32 spriteId, VulkanTexture* texture, Uint32 xoff, Uint32 yoff);
+		bool loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, VulkanTexture* texture, Uint32 xoff, Uint32 yoff);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
+		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
 		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor);
 
@@ -160,11 +175,13 @@ class SurfaceVulkan : public Surface
 		virtual void drawAutomapTile(Uint32 m_currentArea, bool& m_recreate, Uint8 m_color[256][256], Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 
 	protected:
+		std::vector<VulkanTexture*> m_spritesAtlas;
 		U32BImages m_automapTiles;
-		U64BImages m_spriteMasks;
+		U64BImages m_sprites;
 		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesMaskIds;
+		std::circular_buffer<Uint64> m_spritesIds;
 
+		VulkanTexture* m_spriteAtlas;
 		VulkanTexture** m_pictures;
 		VulkanTexture* m_gameWindow;
 		VulkanTexture* m_scaled_gameWindow;
@@ -194,6 +211,8 @@ class SurfaceVulkan : public Surface
 		std::vector<VkImageView> m_swapChainImageViews;
 		std::vector<VkFramebuffer> m_swapChainFrameBuffer;
 		std::vector<VulkanTexture*> m_texturesToDelete[VULKAN_INFLIGHT_FRAMES];
+		std::vector<VkBuffer> m_buffersToDelete[VULKAN_INFLIGHT_FRAMES];
+		std::vector<VkDeviceMemory> m_buffersMemoryToDelete[VULKAN_INFLIGHT_FRAMES];
 
 		VkBuffer m_staggingBuffer[VULKAN_INFLIGHT_FRAMES];
 		VkDeviceMemory m_staggingBufferMemory[VULKAN_INFLIGHT_FRAMES];
@@ -215,13 +234,19 @@ class SurfaceVulkan : public Surface
 		VkCommandBuffer m_commandBuffers[VULKAN_INFLIGHT_FRAMES];
 
 		Uint32 m_totalVRAM;
-		Uint32 m_spritesCache;
+		Uint32 m_spriteChecker;
+		Uint32 m_currentFrame;
 
+		Uint32 m_spriteAtlases;
+		Uint32 m_spritesPerAtlas;
+		Uint32 m_spritesPerModulo;
+
+		Uint32 m_gameVertices;
 		Uint32 m_graphicsQueuePresentIndex;
 		Uint32 m_graphicsQueueNodeIndex;
 		Uint32 m_imageCount;
 		Uint32 m_imageIndex;
-		Uint32 m_currentFrame;
+		Uint32 m_renderFrame;
 
 		float m_vkWidth;
 		float m_vkHeight;
@@ -324,62 +349,6 @@ class SurfaceVulkan : public Surface
 		PFN_vkFlushMappedMemoryRanges vkFlushMappedMemoryRanges;
 
 		bool m_haveSharpening;
-};
-
-class SurfaceVulkanComp : public SurfaceVulkan
-{
-	public:
-		SurfaceVulkanComp();
-		virtual ~SurfaceVulkanComp();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-
-		VulkanTexture* loadSprite(Uint32 spriteId);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-
-	protected:
-		VulkanTexture** m_sprites;
-};
-
-class SurfaceVulkanPerf : public SurfaceVulkan
-{
-	public:
-		SurfaceVulkanPerf();
-		virtual ~SurfaceVulkanPerf();
-
-		void generateSpriteAtlases();
-		void checkScheduledSprites();
-
-		virtual void init();
-		virtual void spriteManagerReset();
-
-		virtual void beginScene();
-		virtual void beginGameScene();
-		virtual void endGameScene();
-
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
-
-		bool loadSprite(Uint32 spriteId, VulkanTexture* texture, Uint32 xoff, Uint32 yoff);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y);
-		virtual void drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
-		virtual void drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor);
-
-	protected:
-		std::vector<VulkanTexture*> m_spritesAtlas;
-		VulkanTexture* m_spriteAtlas;
-
-		VkBuffer m_stagingBuffer;
-		VkDeviceMemory m_stagingBufferMemory;
-		Uint32 m_gameVertices;
-
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
-
-		bool* m_sprites;
 		bool m_scheduleSpriteDraw;
 };
 
@@ -396,17 +365,14 @@ class SurfaceVulkanPerf : public SurfaceVulkan
 "#version 400\n"                                                             \
 "#extension GL_ARB_separate_shader_objects : enable\n\n"                     \
 "layout(push_constant) uniform UniformBufferObject {\n"                      \
-"	float vkWidth;\n"                                                        \
-"	float vkHeight;\n"                                                       \
+"	vec2 vkSize;\n"                                                          \
 "} ubo;\n\n"                                                                 \
 "layout(location = 0) in vec2 inPosition;\n"                                 \
 "layout(location = 1) in vec2 inTexcoord;\n"                                 \
 "layout(location = 2) in vec4 inColor;\n\n"                                  \
 "layout(location = 0) out vec4 fragColor;\n\n"                               \
 "void main() {\n"                                                            \
-"	float x = fma(inPosition.x, ubo.vkWidth, -1.0);\n"                       \
-"	float y = fma(inPosition.y, ubo.vkHeight, -1.0);\n"                      \
-"	gl_Position = vec4(x, y, 0.0, 1.0);\n"                                   \
+"	gl_Position = vec4(inPosition.xy * ubo.vkSize.xy - 1.0, 0.0, 1.0);\n"    \
 "	fragColor = inColor;\n"                                                  \
 "}"                                                                          \
 
@@ -426,8 +392,7 @@ class SurfaceVulkanPerf : public SurfaceVulkan
 "#version 400\n"                                                             \
 "#extension GL_ARB_separate_shader_objects : enable\n\n"                     \
 "layout(push_constant) uniform UniformBufferObject {\n"                      \
-"	float vkWidth;\n"                                                        \
-"	float vkHeight;\n"                                                       \
+"	vec2 vkSize;\n"                                                          \
 "} ubo;\n\n"                                                                 \
 "layout(location = 0) in vec2 inPosition;\n"                                 \
 "layout(location = 1) in vec2 inTexcoord;\n"                                 \
@@ -435,9 +400,7 @@ class SurfaceVulkanPerf : public SurfaceVulkan
 "layout(location = 0) out vec4 fragColor;\n"                                 \
 "layout(location = 1) out vec2 fragTexcoord;\n\n"                            \
 "void main() {\n"                                                            \
-"	float x = fma(inPosition.x, ubo.vkWidth, -1.0);\n"                       \
-"	float y = fma(inPosition.y, ubo.vkHeight, -1.0);\n"                      \
-"	gl_Position = vec4(x, y, 0.0, 1.0);\n"                                   \
+"	gl_Position = vec4(inPosition.xy * ubo.vkSize.xy - 1.0, 0.0, 1.0);\n"    \
 "	fragColor = inColor;\n"                                                  \
 "	fragTexcoord = inTexcoord;\n"                                            \
 "}"                                                                          \
@@ -475,10 +438,8 @@ class SurfaceVulkanPerf : public SurfaceVulkan
 "#version 400\n"                                                             \
 "#extension GL_ARB_separate_shader_objects : enable\n\n"                     \
 "layout(push_constant) uniform UniformBufferObject {\n"                      \
-"	float vkWidth;\n"                                                        \
-"	float vkHeight;\n"                                                       \
-"	float pxWidth;\n"                                                        \
-"	float pxHeight;\n"                                                       \
+"	vec2 vkSize;\n"                                                          \
+"	vec2 pxSize;\n"                                                          \
 "} ubo;\n\n"                                                                 \
 "layout(location = 0) in vec2 inPosition;\n"                                 \
 "layout(location = 1) in vec2 inTexcoord;\n"                                 \
@@ -486,10 +447,8 @@ class SurfaceVulkanPerf : public SurfaceVulkan
 "layout(location = 0) out vec2 textureSize;\n"                               \
 "layout(location = 1) out vec2 fragTexCoord;\n\n"                            \
 "void main() {\n"                                                            \
-"	float x = fma(inPosition.x, ubo.vkWidth, -1.0);\n"                       \
-"	float y = fma(inPosition.y, ubo.vkHeight, -1.0);\n"                      \
-"	gl_Position = vec4(x, y, 0.0, 1.0);\n"                                   \
-"	textureSize = vec2(ubo.pxWidth, ubo.pxHeight);\n"                        \
+"	gl_Position = vec4(inPosition.xy * ubo.vkSize.xy - 1.0, 0.0, 1.0);\n"    \
+"	textureSize = ubo.pxSize;\n"                                             \
 "	fragTexCoord = inTexcoord;\n"                                            \
 "}"                                                                          \
 

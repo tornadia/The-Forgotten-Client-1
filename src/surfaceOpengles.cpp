@@ -1,6 +1,6 @@
 /*
-  Tibia CLient
-  Copyright (C) 2019 Saiyans King
+  The Forgotten Client
+  Copyright (C) 2020 Saiyans King
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -74,13 +74,13 @@
 #define OPENGL_CONTEXT_MAJOR 1
 #define OPENGL_CONTEXT_MINOR 1
 
-static const float inv255f = (1.0f/255.0f);
+static const float inv255f = (1.0f / 255.0f);
 
 extern Engine g_engine;
 extern Uint32 g_spriteCounts;
 extern Uint16 g_pictureCounts;
 
-SurfaceOpenglES::SurfaceOpenglES() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAPTILES), m_spritesMaskIds(HARDWARE_MAX_SPRITEMASKS)
+SurfaceOpenglES::SurfaceOpenglES() : m_automapTilesBuff(MAX_AUTOMAPTILES), m_spritesIds(MAX_SPRITES)
 {
 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -95,6 +95,7 @@ SurfaceOpenglES::SurfaceOpenglES() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAPTILE
 	m_scaled_gameWindow = NULL;
 	m_backup = NULL;
 
+	m_spriteAtlas = NULL;
 	m_pictures = NULL;
 	m_software = NULL;
 	m_hardware = NULL;
@@ -111,15 +112,24 @@ SurfaceOpenglES::SurfaceOpenglES() : m_automapTilesBuff(HARDWARE_MAX_AUTOMAPTILE
 	window_framebuffer = 0;
 
 	m_totalVRAM = 0;
-	m_spritesCache = 0;
+	m_spriteChecker = 0;
+	m_currentFrame = 0;
+
+	m_spriteAtlases = 0;
+	m_spritesPerAtlas = 0;
+	m_spritesPerModulo = 0;
 
 	m_useFBO = false;
 	m_useNonPower2 = false;
 	m_useAlphaBlending = false;
 	m_useBlendEquation = false;
+	m_scheduleSpriteDraw = false;
 
-	m_spriteMasks.reserve(HARDWARE_MAX_SPRITEMASKS);
-	m_automapTiles.reserve(HARDWARE_MAX_AUTOMAPTILES);
+	m_vertices.reserve(61440);
+	m_texCoords.reserve(61440);
+
+	m_sprites.reserve(MAX_SPRITES);
+	m_automapTiles.reserve(MAX_AUTOMAPTILES);
 }
 
 SurfaceOpenglES::~SurfaceOpenglES()
@@ -144,11 +154,12 @@ SurfaceOpenglES::~SurfaceOpenglES()
 	for(U32BGLESTextures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseOpenGLESTexture(it->second);
 
-	for(U64BGLESTextures::iterator it = m_spriteMasks.begin(), end = m_spriteMasks.end(); it != end; ++it)
-		releaseOpenGLESTexture(it->second);
+	for(std::vector<OpenglESTexture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+		releaseOpenGLESTexture((*it));
 
-	m_spriteMasks.clear();
-	m_spritesMaskIds.clear();
+	m_sprites.clear();
+	m_spritesAtlas.clear();
+	m_spritesIds.clear();
 	m_automapTilesBuff.clear();
 	m_automapTiles.clear();
 	if(m_scaled_gameWindow)
@@ -178,15 +189,15 @@ OpenglESTexture* SurfaceOpenglES::createOpenGLESTexture(Uint32 width, Uint32 hei
 	OglGenTextures(1, &texture->m_texture);
 	if(m_useNonPower2)
 	{
-		texture->m_scaleW = 1.0f/width;
-		texture->m_scaleH = 1.0f/height;
+		texture->m_scaleW = 1.0f / width;
+		texture->m_scaleH = 1.0f / height;
 	}
 	else
 	{
 		width = UTIL_power_of_2(width);
 		height = UTIL_power_of_2(height);
-		texture->m_scaleW = 1.0f/width;
-		texture->m_scaleH = 1.0f/height;
+		texture->m_scaleW = 1.0f / width;
+		texture->m_scaleH = 1.0f / height;
 	}
 
 	OglBindTexture(GL_TEXTURE_2D, texture->m_texture);
@@ -238,15 +249,15 @@ void SurfaceOpenglES::releaseOpenGLESTexture(OpenglESTexture* texture)
 
 void SurfaceOpenglES::drawTriangles(std::vector<float>& vertices, std::vector<float>& texCoords)
 {
-	int verticesSize = SDL_static_cast(int, vertices.size()/2);
+	int verticesSize = SDL_static_cast(int, vertices.size() / 2);
 	if(verticesSize > 2046)
 	{
 		int verticeIndex = 0;
 		while(verticeIndex < verticesSize)
 		{
-			int drawSize = UTIL_min<int>(verticesSize-verticeIndex, 2046);
-			OglVertexPointer(2, GL_FLOAT, 0, &vertices[verticeIndex*2]);
-			OglTexCoordPointer(2, GL_FLOAT, 0, &texCoords[verticeIndex*2]);
+			int drawSize = UTIL_min<int>(verticesSize - verticeIndex, 2046);
+			OglVertexPointer(2, GL_FLOAT, 0, &vertices[verticeIndex * 2]);
+			OglTexCoordPointer(2, GL_FLOAT, 0, &texCoords[verticeIndex * 2]);
 			OglDrawArrays(GL_TRIANGLES, 0, drawSize);
 			verticeIndex += drawSize;
 		}
@@ -275,7 +286,7 @@ void SurfaceOpenglES::updateViewport()
 	{
 		Sint32 w_w, w_h;
 		SDL_GL_GetDrawableSize(g_engine.m_window, &w_w, &w_h);
-		OglViewport(m_viewPortX, (w_h-m_viewPortY-m_viewPortH), m_viewPortW, m_viewPortH);
+		OglViewport(m_viewPortX, (w_h - m_viewPortY - m_viewPortH), m_viewPortW, m_viewPortH);
 	}
 
 	OglMatrixMode(GL_PROJECTION);
@@ -516,12 +527,12 @@ bool SurfaceOpenglES::isSupported()
 	char* version = SDL_reinterpret_cast(char*, OglGetString(GL_VERSION));
 	SDL_snprintf(g_buffer, sizeof(g_buffer), "OpenGL ES %c.%c", version[0], version[2]);
 	m_software = SDL_strdup(g_buffer);
-	m_hardware = SDL_strdup(SDL_reinterpret_cast(char*, OglGetString(GL_VERSION-1)));
+	m_hardware = SDL_strdup(SDL_reinterpret_cast(char*, OglGetString(GL_VERSION - 1)));
 	if(SDL_GL_ExtensionSupported("GL_NVX_gpu_memory_info"))
 	{
 		int vram = 0;
 		OglGetIntegerv(0x9047, &vram);
-		m_totalVRAM = UTIL_power_of_2(SDL_static_cast(Uint32, vram)/1024);
+		m_totalVRAM = UTIL_power_of_2(SDL_static_cast(Uint32, vram) / 1024);
 	}
 	#ifdef SDL_VIDEO_DRIVER_WINDOWS
 	else if(SDL_GL_ExtensionSupported("WGL_AMD_gpu_association"))
@@ -564,9 +575,67 @@ bool SurfaceOpenglES::isSupported()
 	{
 		int vram = 0;
 		OglGetIntegerv(0x87FC, &vram);
-		m_totalVRAM = UTIL_power_of_2(SDL_static_cast(Uint32, vram)/1024);
+		m_totalVRAM = UTIL_power_of_2(SDL_static_cast(Uint32, vram) / 1024);
 	}
 	return true;
+}
+
+void SurfaceOpenglES::generateSpriteAtlases()
+{
+	if(m_maxTextureSize >= 16384 && MAX_SPRITES > 65536)
+	{
+		m_spriteAtlases = (MAX_SPRITES + 262143) / 262144;
+		m_spritesPerAtlas = 262144;
+		m_spritesPerModulo = 16384;
+	}
+	else if(m_maxTextureSize >= 8192 && MAX_SPRITES > 16384)
+	{
+		m_spriteAtlases = (MAX_SPRITES + 65535) / 65536;
+		m_spritesPerAtlas = 65536;
+		m_spritesPerModulo = 8192;
+	}
+	else if(m_maxTextureSize >= 4096 && MAX_SPRITES > 4096)
+	{
+		m_spriteAtlases = (MAX_SPRITES + 16383) / 16384;
+		m_spritesPerAtlas = 16384;
+		m_spritesPerModulo = 4096;
+	}
+	else if(m_maxTextureSize >= 2048 && MAX_SPRITES > 1024)
+	{
+		m_spriteAtlases = (MAX_SPRITES + 4095) / 4096;
+		m_spritesPerAtlas = 4096;
+		m_spritesPerModulo = 2048;
+	}
+	else
+	{
+		m_spriteAtlases = (MAX_SPRITES + 1023) / 1024;
+		m_spritesPerAtlas = 1024;
+		m_spritesPerModulo = 1024;
+	}
+	
+	for(Uint32 i = 0; i < m_spriteAtlases; ++i)
+	{
+		OpenglESTexture* texture = createOpenGLESTexture(m_spritesPerModulo, m_spritesPerModulo, false);
+		if(!texture)
+		{
+			UTIL_MessageBox(true, "OpenGL ES: Out of video memory.");
+			exit(-1);
+			return;
+		}
+		m_spritesAtlas.push_back(texture);
+	}
+}
+
+void SurfaceOpenglES::checkScheduledSprites()
+{
+	size_t vertices = m_vertices.size();
+	if(vertices > 0)
+	{
+		OglBindTexture(GL_TEXTURE_2D, m_spriteAtlas->m_texture);
+		drawTriangles(m_vertices, m_texCoords);
+		m_vertices.clear();
+		m_texCoords.clear();
+	}
 }
 
 void SurfaceOpenglES::init()
@@ -604,13 +673,15 @@ void SurfaceOpenglES::spriteManagerReset()
 	for(U32BGLESTextures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseOpenGLESTexture(it->second);
 
-	for(U64BGLESTextures::iterator it = m_spriteMasks.begin(), end = m_spriteMasks.end(); it != end; ++it)
-		releaseOpenGLESTexture(it->second);
+	for(std::vector<OpenglESTexture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+		releaseOpenGLESTexture((*it));
 
-	m_spriteMasks.clear();
-	m_spritesMaskIds.clear();
+	m_sprites.clear();
+	m_spritesAtlas.clear();
+	m_spritesIds.clear();
 	m_automapTilesBuff.clear();
 	m_automapTiles.clear();
+	generateSpriteAtlases();
 }
 
 unsigned char* SurfaceOpenglES::getScreenPixels(Sint32& width, Sint32& height, bool& bgra)
@@ -622,7 +693,7 @@ unsigned char* SurfaceOpenglES::getScreenPixels(Sint32& width, Sint32& height, b
 	while(OglGetError() != 0)
 		continue;
 
-	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(width*height*4));
+	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(width * height * 4));
 	if(!pixels)
 		return NULL;
 
@@ -636,11 +707,11 @@ unsigned char* SurfaceOpenglES::getScreenPixels(Sint32& width, Sint32& height, b
 	}
 
 	//Flip y-axis of screen as fast as possible
-	Sint32 temp_pitch = width*4;
-	Uint8* src = SDL_reinterpret_cast(Uint8*, pixels+(height-1)*temp_pitch);
+	Sint32 temp_pitch = width * 4;
+	Uint8* src = SDL_reinterpret_cast(Uint8*, pixels + (height - 1) * temp_pitch);
 	Uint8* dst = SDL_reinterpret_cast(Uint8*, pixels);
 	Uint8* tmp = SDL_stack_alloc(Uint8, temp_pitch);
-	Sint32 rows = height/2;
+	Sint32 rows = height / 2;
 	while(rows--)
 	{
 		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, tmp), SDL_reinterpret_cast(const Uint8*, dst), SDL_static_cast(size_t, temp_pitch));
@@ -656,11 +727,14 @@ unsigned char* SurfaceOpenglES::getScreenPixels(Sint32& width, Sint32& height, b
 
 void SurfaceOpenglES::beginScene()
 {
+	m_spriteChecker = 0;
+	++m_currentFrame;
 	if(SDL_GL_GetCurrentContext() != m_oglContext)
 	{
 		SDL_GL_MakeCurrent(g_engine.m_window, m_oglContext);
 		updateRenderer();
 	}
+	m_scheduleSpriteDraw = false;
 }
 
 void SurfaceOpenglES::endScene()
@@ -683,7 +757,7 @@ void SurfaceOpenglES::copyFromScreen(Sint32 x, Sint32 y, Uint32 w, Uint32 h)
 			return;
 	}
 	OglBindTexture(GL_TEXTURE_2D, m_backup->m_texture);
-	OglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, m_viewPortH-y-SDL_static_cast(Sint32, h), SDL_static_cast(Sint32, w), SDL_static_cast(Sint32, h));
+	OglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, m_viewPortH - y - SDL_static_cast(Sint32, h), SDL_static_cast(Sint32, w), SDL_static_cast(Sint32, h));
 }
 
 void SurfaceOpenglES::drawBackup(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -692,14 +766,14 @@ void SurfaceOpenglES::drawBackup(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 		return;
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float maxy = SDL_static_cast(float, y);
-	float miny = SDL_static_cast(float, y+h);
+	float miny = SDL_static_cast(float, y + h);
 
 	float minu = 0.0f;
-	float maxu = w*m_backup->m_scaleW;
+	float maxu = w * m_backup->m_scaleW;
 	float minv = 0.0f;
-	float maxv = h*m_backup->m_scaleH;
+	float maxv = h * m_backup->m_scaleH;
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -726,7 +800,7 @@ bool SurfaceOpenglES::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 	Sint32 width = RENDERTARGET_WIDTH;
 	Sint32 height = RENDERTARGET_HEIGHT;
 	UTIL_integer_scale(width, height, w, h, m_maxTextureSize, m_maxTextureSize);
-	if(m_integer_scaling_width != width || m_integer_scaling_height != height || !m_scaled_gameWindow)
+	if(m_integer_scaling_width < width || m_integer_scaling_height < height || !m_scaled_gameWindow)
 	{
 		if(m_scaled_gameWindow)
 		{
@@ -755,10 +829,10 @@ bool SurfaceOpenglES::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 	float miny = 0.0f;
 	float maxy = SDL_static_cast(float, height);
 
-	float minu = sx*m_gameWindow->m_scaleW;
-	float maxu = (sx+sw)*m_gameWindow->m_scaleW;
-	float minv = sy*m_gameWindow->m_scaleH;
-	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
+	float minu = sx * m_gameWindow->m_scaleW;
+	float maxu = (sx + sw) * m_gameWindow->m_scaleW;
+	float minv = sy * m_gameWindow->m_scaleH;
+	float maxv = (sy + sh) * m_gameWindow->m_scaleH;
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -787,14 +861,14 @@ bool SurfaceOpenglES::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 	updateViewport();
 
 	minx = SDL_static_cast(float, x);
-	maxx = SDL_static_cast(float, x+w);
+	maxx = SDL_static_cast(float, x + w);
 	miny = SDL_static_cast(float, y);
-	maxy = SDL_static_cast(float, y+h);
+	maxy = SDL_static_cast(float, y + h);
 
 	minu = 0.0f;
-	maxu = m_scaled_gameWindow->m_width*m_scaled_gameWindow->m_scaleW;
+	maxu = width * m_scaled_gameWindow->m_scaleW;
 	minv = 0.0f;
-	maxv = m_scaled_gameWindow->m_height*m_scaled_gameWindow->m_scaleH;
+	maxv = height * m_scaled_gameWindow->m_scaleH;
 
 	vertices[0] = minx; vertices[1] = miny;
 	vertices[2] = minx; vertices[3] = maxy;
@@ -828,24 +902,24 @@ void SurfaceOpenglES::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 		}
 	}
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny;
 	float maxy;
 	if(m_useFBO)
 	{
 		miny = SDL_static_cast(float, y);
-		maxy = SDL_static_cast(float, y+h);
+		maxy = SDL_static_cast(float, y + h);
 	}
 	else
 	{
 		maxy = SDL_static_cast(float, y);
-		miny = SDL_static_cast(float, y+h);
+		miny = SDL_static_cast(float, y + h);
 	}
 
-	float minu = sx*m_gameWindow->m_scaleW;
-	float maxu = (sx+sw)*m_gameWindow->m_scaleW;
-	float minv = sy*m_gameWindow->m_scaleH;
-	float maxv = (sy+sh)*m_gameWindow->m_scaleH;
+	float minu = sx * m_gameWindow->m_scaleW;
+	float maxu = (sx + sw) * m_gameWindow->m_scaleW;
+	float minv = sy * m_gameWindow->m_scaleH;
+	float maxv = (sy + sh) * m_gameWindow->m_scaleH;
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -885,10 +959,15 @@ void SurfaceOpenglES::beginGameScene()
 		copyFromScreen(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT);
 	}
 	fillRectangle(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, 0x00, 0x00, 0x00, 255);
+	m_vertices.clear();
+	m_texCoords.clear();
+	m_scheduleSpriteDraw = true;
 }
 
 void SurfaceOpenglES::endGameScene()
 {
+	checkScheduledSprites();
+	m_scheduleSpriteDraw = false;
 	if(m_useFBO)
 	{
 		OglBindFramebuffer(GL_FRAMEBUFFER, window_framebuffer);
@@ -902,78 +981,258 @@ void SurfaceOpenglES::endGameScene()
 	else
 	{
 		OglBindTexture(GL_TEXTURE_2D, m_gameWindow->m_texture);
-		OglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, m_viewPortH-RENDERTARGET_HEIGHT, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT);
+		OglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, m_viewPortH - RENDERTARGET_HEIGHT, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT);
 		drawBackup(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT);
 		disableClipRect();
 	}
 }
 
-void SurfaceOpenglES::drawLightMap(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
+void SurfaceOpenglES::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
-	float *vertices, *colores;
-	vertices = SDL_reinterpret_cast(float*, SDL_malloc(sizeof(float)*(width+1)*4));
-	colores = SDL_reinterpret_cast(float*, SDL_malloc(sizeof(float)*(width+1)*6));
+	m_vertices.clear();
+	m_texCoords.clear();//Used as colors buffer
 
 	OglDisable(GL_TEXTURE_2D);
 	changeBlending(GL_ZERO, GL_SRC_COLOR, GL_ZERO, GL_ONE);
 	OglEnableClientState(GL_COLOR_ARRAY);
 	OglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 
-	Sint32 drawY = y-scale-(scale/2);
+	Sint32 drawY = y - scale - (scale / 2);
 	height -= 1;
 	for(Sint32 j = -1; j < height; ++j)
 	{
 		Sint32 offset1 = (j + 1) * width;
 		Sint32 offset2 = UTIL_max<Sint32>(j, 0) * width;
-		Sint32 drawX = x-scale-(scale/2), verticeCount = 0;
+		Sint32 drawX = x - scale - (scale / 2), verticeCount = 0;
 		for(Sint32 k = -1; k < width; ++k)
 		{
 			Sint32 offset = UTIL_max<Sint32>(k, 0);
-			Uint32 offset3 = verticeCount * 2;
-			Uint32 offset4 = verticeCount * 3;
-			vertices[offset3] = SDL_static_cast(float, drawX);
-			vertices[offset3+1] = SDL_static_cast(float, drawY+scale);
-			colores[offset4] = lightmap[offset1+offset].r*inv255f;
-			colores[offset4+1] = lightmap[offset1+offset].g*inv255f;
-			colores[offset4+2] = lightmap[offset1+offset].b*inv255f;
+			m_vertices.push_back(SDL_static_cast(float, drawX)); m_vertices.push_back(SDL_static_cast(float, drawY + scale));
+			m_texCoords.push_back(lightmap[offset1 + offset].r * inv255f); m_texCoords.push_back(lightmap[offset1 + offset].g * inv255f); m_texCoords.push_back(lightmap[offset1 + offset].b * inv255f);
 			++verticeCount;
 
-			offset3 += 2;
-			offset4 += 3;
-			vertices[offset3] = SDL_static_cast(float, drawX);
-			vertices[offset3+1] = SDL_static_cast(float, drawY);
-			colores[offset4] = lightmap[offset2+offset].r*inv255f;
-			colores[offset4+1] = lightmap[offset2+offset].g*inv255f;
-			colores[offset4+2] = lightmap[offset2+offset].b*inv255f;
+			m_vertices.push_back(SDL_static_cast(float, drawX)); m_vertices.push_back(SDL_static_cast(float, drawY));
+			m_texCoords.push_back(lightmap[offset2 + offset].r * inv255f); m_texCoords.push_back(lightmap[offset2 + offset].g * inv255f); m_texCoords.push_back(lightmap[offset2 + offset].b * inv255f);
 			++verticeCount;
 			drawX += scale;
 		}
 
 		drawY += scale;
-		OglVertexPointer(2, GL_FLOAT, 0, vertices);
-		OglColorPointer(3, GL_FLOAT, 0, colores);
+		OglVertexPointer(2, GL_FLOAT, 0, &m_vertices[0]);
+		OglColorPointer(3, GL_FLOAT, 0, &m_texCoords[0]);
 		OglDrawArrays(GL_TRIANGLE_STRIP, 0, verticeCount);
+		m_vertices.clear();
+		m_texCoords.clear();
 	}
 
 	OglEnableClientState(GL_TEXTURE_COORD_ARRAY);
 	OglDisableClientState(GL_COLOR_ARRAY);
 	changeBlending(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 	OglEnable(GL_TEXTURE_2D);
+}
 
-	SDL_free(colores);
-	SDL_free(vertices);
+void SurfaceOpenglES::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
+{
+	m_vertices.clear();
+	m_texCoords.clear();//Used as colors buffer
+
+	OglDisable(GL_TEXTURE_2D);
+	changeBlending(GL_ZERO, GL_SRC_COLOR, GL_ZERO, GL_ONE);
+	OglEnableClientState(GL_COLOR_ARRAY);
+	OglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+	Sint32 halfScale = (scale / 2);
+	Sint32 drawY = y - scale - halfScale, verticeCount = 0;
+	height -= 1;
+	for(Sint32 j = -1; j < height; ++j)
+	{
+		Sint32 offset1 = (j + 1) * width;
+		Sint32 offset2 = UTIL_max<Sint32>(j, 0) * width;
+		Sint32 drawX = x - scale - halfScale;
+		for(Sint32 k = -1; k < width; ++k)
+		{
+			Sint32 offset = UTIL_max<Sint32>(k, 0);
+
+			//Get the colors of tile corners
+			float topCenter[2][3], leftCenter[2][3], bottomCenter[2][3], rightCenter[2][3], center[2][3], topLeft[2][3], topRight[2][3], bottomLeft[2][3], bottomRight[2][3];
+			topLeft[0][0] = lightmap[offset2 + offset].r * inv255f;
+			topLeft[0][1] = lightmap[offset2 + offset].g * inv255f;
+			topLeft[0][2] = lightmap[offset2 + offset].b * inv255f;
+			topRight[0][0] = lightmap[offset2 + k + 1].r * inv255f;
+			topRight[0][1] = lightmap[offset2 + k + 1].g * inv255f;
+			topRight[0][2] = lightmap[offset2 + k + 1].b * inv255f;
+			bottomLeft[0][0] = lightmap[offset1 + offset].r * inv255f;
+			bottomLeft[0][1] = lightmap[offset1 + offset].g * inv255f;
+			bottomLeft[0][2] = lightmap[offset1 + offset].b * inv255f;
+			bottomRight[0][0] = lightmap[offset1 + k + 1].r * inv255f;
+			bottomRight[0][1] = lightmap[offset1 + k + 1].g * inv255f;
+			bottomRight[0][2] = lightmap[offset1 + k + 1].b * inv255f;
+
+			//Get the colors of first triangles
+			float v[3][2], p[2];
+			v[0][0] = SDL_static_cast(float, drawX);
+			v[0][1] = SDL_static_cast(float, drawY);
+			v[1][0] = SDL_static_cast(float, drawX + scale);
+			v[1][1] = SDL_static_cast(float, drawY);
+			v[2][0] = SDL_static_cast(float, drawX);
+			v[2][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, topRight[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, topCenter[0]);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, leftCenter[0]);
+			p[0] = SDL_static_cast(float, drawX + halfScale) - 0.5f;
+			p[1] = SDL_static_cast(float, drawY + halfScale) - 0.5f;
+			getTrianglePointFloat(v[0], v[1], v[2], topLeft[0], topRight[0], bottomLeft[0], p, center[0]);
+			v[0][0] = SDL_static_cast(float, drawX + scale);
+			v[0][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, bottomLeft[1]);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, rightCenter[0]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomRight[0], topRight[0], bottomLeft[0], p, bottomCenter[0]);
+
+			//Get the colors of second triangles
+			v[0][0] = SDL_static_cast(float, drawX);
+			v[0][1] = SDL_static_cast(float, drawY + scale);
+			v[1][0] = SDL_static_cast(float, drawX);
+			v[1][1] = SDL_static_cast(float, drawY);
+			v[2][0] = SDL_static_cast(float, drawX + scale);
+			v[2][1] = SDL_static_cast(float, drawY + scale);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, topLeft[1]);
+			p[0] = SDL_static_cast(float, drawX);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, leftCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], bottomLeft[0], topLeft[0], bottomRight[0], p, bottomCenter[1]);
+			v[0][0] = SDL_static_cast(float, drawX + scale);
+			v[0][1] = SDL_static_cast(float, drawY);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + scale);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, bottomRight[1]);
+			p[0] = SDL_static_cast(float, drawX + scale);
+			p[1] = SDL_static_cast(float, drawY + halfScale);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, rightCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale);
+			p[1] = SDL_static_cast(float, drawY);
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, topCenter[1]);
+			p[0] = SDL_static_cast(float, drawX + halfScale) + 0.5f;
+			p[1] = SDL_static_cast(float, drawY + halfScale) + 0.5f;
+			getTrianglePointFloat(v[0], v[1], v[2], topRight[0], topLeft[0], bottomRight[0], p, center[1]);
+
+			//Use brighter color from triangles for our squares
+			#define VEC_MAX(a)										\
+				do {												\
+					a[0][0] = UTIL_max<float>(a[0][0], a[1][0]);	\
+					a[0][1] = UTIL_max<float>(a[0][1], a[1][1]);	\
+					a[0][2] = UTIL_max<float>(a[0][2], a[1][2]);	\
+				} while(0)
+
+			VEC_MAX(topLeft);
+			VEC_MAX(topRight);
+			VEC_MAX(bottomLeft);
+			VEC_MAX(bottomRight);
+			VEC_MAX(leftCenter);
+			VEC_MAX(bottomCenter);
+			VEC_MAX(rightCenter);
+			VEC_MAX(topCenter);
+			VEC_MAX(center);
+			#undef VEC_MAX
+
+			//Draw Top-Left square
+			m_vertices.push_back(SDL_static_cast(float, drawX)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(leftCenter[0][0]); m_texCoords.push_back(leftCenter[0][1]); m_texCoords.push_back(leftCenter[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX)); m_vertices.push_back(SDL_static_cast(float, drawY));
+			m_texCoords.push_back(topLeft[0][0]); m_texCoords.push_back(topLeft[0][1]); m_texCoords.push_back(topLeft[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(center[0][0]); m_texCoords.push_back(center[0][1]); m_texCoords.push_back(center[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY));
+			m_texCoords.push_back(topCenter[0][0]); m_texCoords.push_back(topCenter[0][1]); m_texCoords.push_back(topCenter[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX)); m_vertices.push_back(SDL_static_cast(float, drawY));
+			m_texCoords.push_back(topLeft[0][0]); m_texCoords.push_back(topLeft[0][1]); m_texCoords.push_back(topLeft[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(center[0][0]); m_texCoords.push_back(center[0][1]); m_texCoords.push_back(center[0][2]);
+
+			//Draw Bottom-Left square
+			m_vertices.push_back(SDL_static_cast(float, drawX)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(leftCenter[0][0]); m_texCoords.push_back(leftCenter[0][1]); m_texCoords.push_back(leftCenter[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX)); m_vertices.push_back(SDL_static_cast(float, drawY + scale));
+			m_texCoords.push_back(bottomLeft[0][0]); m_texCoords.push_back(bottomLeft[0][1]); m_texCoords.push_back(bottomLeft[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(center[0][0]); m_texCoords.push_back(center[0][1]); m_texCoords.push_back(center[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + scale));
+			m_texCoords.push_back(bottomCenter[0][0]); m_texCoords.push_back(bottomCenter[0][1]); m_texCoords.push_back(bottomCenter[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX)); m_vertices.push_back(SDL_static_cast(float, drawY + scale));
+			m_texCoords.push_back(bottomLeft[0][0]); m_texCoords.push_back(bottomLeft[0][1]); m_texCoords.push_back(bottomLeft[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(center[0][0]); m_texCoords.push_back(center[0][1]); m_texCoords.push_back(center[0][2]);
+
+			//Draw Top-Right square
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY));
+			m_texCoords.push_back(topCenter[0][0]); m_texCoords.push_back(topCenter[0][1]); m_texCoords.push_back(topCenter[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(center[0][0]); m_texCoords.push_back(center[0][1]); m_texCoords.push_back(center[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + scale)); m_vertices.push_back(SDL_static_cast(float, drawY));
+			m_texCoords.push_back(topRight[0][0]); m_texCoords.push_back(topRight[0][1]); m_texCoords.push_back(topRight[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + scale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(rightCenter[0][0]); m_texCoords.push_back(rightCenter[0][1]); m_texCoords.push_back(rightCenter[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(center[0][0]); m_texCoords.push_back(center[0][1]); m_texCoords.push_back(center[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + scale)); m_vertices.push_back(SDL_static_cast(float, drawY));
+			m_texCoords.push_back(topRight[0][0]); m_texCoords.push_back(topRight[0][1]); m_texCoords.push_back(topRight[0][2]);
+
+			//Draw Bottom-Right square
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + scale));
+			m_texCoords.push_back(bottomCenter[0][0]); m_texCoords.push_back(bottomCenter[0][1]); m_texCoords.push_back(bottomCenter[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(center[0][0]); m_texCoords.push_back(center[0][1]); m_texCoords.push_back(center[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + scale)); m_vertices.push_back(SDL_static_cast(float, drawY + scale));
+			m_texCoords.push_back(bottomRight[0][0]); m_texCoords.push_back(bottomRight[0][1]); m_texCoords.push_back(bottomRight[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + scale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(rightCenter[0][0]); m_texCoords.push_back(rightCenter[0][1]); m_texCoords.push_back(rightCenter[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + halfScale)); m_vertices.push_back(SDL_static_cast(float, drawY + halfScale));
+			m_texCoords.push_back(center[0][0]); m_texCoords.push_back(center[0][1]); m_texCoords.push_back(center[0][2]);
+			m_vertices.push_back(SDL_static_cast(float, drawX + scale)); m_vertices.push_back(SDL_static_cast(float, drawY + scale));
+			m_texCoords.push_back(bottomRight[0][0]); m_texCoords.push_back(bottomRight[0][1]); m_texCoords.push_back(bottomRight[0][2]);
+
+			verticeCount += 24;
+			drawX += scale;
+		}
+
+		drawY += scale;
+	}
+
+	OglVertexPointer(2, GL_FLOAT, 0, &m_vertices[0]);
+	OglColorPointer(3, GL_FLOAT, 0, &m_texCoords[0]);
+	OglDrawArrays(GL_TRIANGLES, 0, verticeCount);
+
+	OglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+	OglDisableClientState(GL_COLOR_ARRAY);
+	changeBlending(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+	OglEnable(GL_TEXTURE_2D);
 }
 
 void SurfaceOpenglES::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
 	OglEnable(GL_SCISSOR_TEST);
 	if(m_renderTarget)
-		OglScissor((m_viewPortX+x), (m_viewPortY+y), w, h);
+		OglScissor((m_viewPortX + x), (m_viewPortY + y), w, h);
 	else
 	{
 		Sint32 w_w, w_h;
 		SDL_GL_GetDrawableSize(g_engine.m_window, &w_w, &w_h);
-		OglScissor((m_viewPortX+x), (w_h-m_viewPortY-y-h), w, h);
+		OglScissor((m_viewPortX + x), (w_h - m_viewPortY - y - h), w, h);
 	}
 }
 
@@ -984,10 +1243,13 @@ void SurfaceOpenglES::disableClipRect()
 
 void SurfaceOpenglES::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	float minx = SDL_static_cast(float, x)+0.5f;
-	float maxx = SDL_static_cast(float, x+w)-0.5f;
-	float miny = SDL_static_cast(float, y)+0.5f;
-	float maxy = SDL_static_cast(float, y+h)-0.5f;
+	if(m_scheduleSpriteDraw)
+		checkScheduledSprites();
+
+	float minx = SDL_static_cast(float, x) + 0.5f;
+	float maxx = SDL_static_cast(float, x + w) - 0.5f;
+	float miny = SDL_static_cast(float, y) + 0.5f;
+	float maxy = SDL_static_cast(float, y + h) - 0.5f;
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -997,7 +1259,7 @@ void SurfaceOpenglES::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint
 
 	OglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	OglDisable(GL_TEXTURE_2D);
-	OglColor4f(r*inv255f, g*inv255f, b*inv255f, a*inv255f);
+	OglColor4f(r * inv255f, g * inv255f, b * inv255f, a * inv255f);
 	OglVertexPointer(2, GL_FLOAT, 0, vertices);
 	OglDrawArrays(GL_LINE_LOOP, 0, 4);
 	OglColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1007,10 +1269,13 @@ void SurfaceOpenglES::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint
 
 void SurfaceOpenglES::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
+	if(m_scheduleSpriteDraw)
+		checkScheduledSprites();
+
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -1020,7 +1285,7 @@ void SurfaceOpenglES::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint
 
 	OglDisableClientState(GL_TEXTURE_COORD_ARRAY);
 	OglDisable(GL_TEXTURE_2D);
-	OglColor4f(r*inv255f, g*inv255f, b*inv255f, a*inv255f);
+	OglColor4f(r * inv255f, g * inv255f, b * inv255f, a * inv255f);
 	OglVertexPointer(2, GL_FLOAT, 0, vertices);
 	OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	OglColor4f(1.0f, 1.0f, 1.0f, 1.0f);
@@ -1058,13 +1323,11 @@ void SurfaceOpenglES::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::
 			return;//load failed
 	}
 
-	std::vector<float> vertices;
-	std::vector<float> texCoords;
-	vertices.reserve(3072);
-	texCoords.reserve(3072);
+	m_vertices.clear();
+	m_texCoords.clear();
 
 	OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
-	OglColor4f(r*inv255f, g*inv255f, b*inv255f, 1.0f);
+	OglColor4f(r * inv255f, g * inv255f, b * inv255f, 1.0f);
 
 	Sint32 rx = x, ry = y;
 	Uint8 character;
@@ -1084,58 +1347,60 @@ void SurfaceOpenglES::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::
 				break;
 			case 0x0E://Special case - change rendering color
 			{
-				if(i+4 < len)//First check if we have the color bytes
+				if(i + 4 < len)//First check if we have the color bytes
 				{
-					Uint8 red = SDL_static_cast(Uint8, text[i+1]);
-					Uint8 green = SDL_static_cast(Uint8, text[i+2]);
-					Uint8 blue = SDL_static_cast(Uint8, text[i+3]);
-					drawTriangles(vertices, texCoords);
-					OglColor4f(red*inv255f, green*inv255f, blue*inv255f, 1.0f);
-					vertices.clear();
-					texCoords.clear();
+					Uint8 red = SDL_static_cast(Uint8, text[i + 1]);
+					Uint8 green = SDL_static_cast(Uint8, text[i + 2]);
+					Uint8 blue = SDL_static_cast(Uint8, text[i + 3]);
+					drawTriangles(m_vertices, m_texCoords);
+					OglColor4f(red * inv255f, green * inv255f, blue * inv255f, 1.0f);
+					m_vertices.clear();
+					m_texCoords.clear();
 					i += 3;
 				}
+				else
+					i = len;
 			}
 			break;
 			case 0x0F://Special case - change back standard color
 			{
-				drawTriangles(vertices, texCoords);
-				OglColor4f(r*inv255f, g*inv255f, b*inv255f, 1.0f);
-				vertices.clear();
-				texCoords.clear();
+				drawTriangles(m_vertices, m_texCoords);
+				OglColor4f(r * inv255f, g * inv255f, b * inv255f, 1.0f);
+				m_vertices.clear();
+				m_texCoords.clear();
 			}
 			break;
 			default:
 			{
 				float minx = SDL_static_cast(float, rx);
-				float maxx = SDL_static_cast(float, rx+cW[character]);
+				float maxx = SDL_static_cast(float, rx + cW[character]);
 				float miny = SDL_static_cast(float, ry);
-				float maxy = SDL_static_cast(float, ry+cH[character]);
+				float maxy = SDL_static_cast(float, ry + cH[character]);
 
-				float minu = cX[character]*tex->m_scaleW;
-				float maxu = (cX[character]+cW[character])*tex->m_scaleW;
-				float minv = cY[character]*tex->m_scaleH;
-				float maxv = (cY[character]+cH[character])*tex->m_scaleH;
+				float minu = cX[character] * tex->m_scaleW;
+				float maxu = (cX[character] + cW[character]) * tex->m_scaleW;
+				float minv = cY[character] * tex->m_scaleH;
+				float maxv = (cY[character] + cH[character]) * tex->m_scaleH;
 
-				vertices.push_back(minx); vertices.push_back(miny);
-				vertices.push_back(minx); vertices.push_back(maxy);
-				vertices.push_back(maxx); vertices.push_back(miny);
-				vertices.push_back(maxx); vertices.push_back(maxy);
-				vertices.push_back(maxx); vertices.push_back(miny);
-				vertices.push_back(minx); vertices.push_back(maxy);
+				m_vertices.push_back(minx); m_vertices.push_back(miny);
+				m_vertices.push_back(minx); m_vertices.push_back(maxy);
+				m_vertices.push_back(maxx); m_vertices.push_back(miny);
+				m_vertices.push_back(maxx); m_vertices.push_back(maxy);
+				m_vertices.push_back(maxx); m_vertices.push_back(miny);
+				m_vertices.push_back(minx); m_vertices.push_back(maxy);
 
-				texCoords.push_back(minu); texCoords.push_back(minv);
-				texCoords.push_back(minu); texCoords.push_back(maxv);
-				texCoords.push_back(maxu); texCoords.push_back(minv);
-				texCoords.push_back(maxu); texCoords.push_back(maxv);
-				texCoords.push_back(maxu); texCoords.push_back(minv);
-				texCoords.push_back(minu); texCoords.push_back(maxv);
+				m_texCoords.push_back(minu); m_texCoords.push_back(minv);
+				m_texCoords.push_back(minu); m_texCoords.push_back(maxv);
+				m_texCoords.push_back(maxu); m_texCoords.push_back(minv);
+				m_texCoords.push_back(maxu); m_texCoords.push_back(maxv);
+				m_texCoords.push_back(maxu); m_texCoords.push_back(minv);
+				m_texCoords.push_back(minu); m_texCoords.push_back(maxv);
 				rx += cW[character] + cX[0];
 			}
 			break;
 		}
 	}
-	drawTriangles(vertices, texCoords);
+	drawTriangles(m_vertices, m_texCoords);
 	OglColor4f(1.0f, 1.0f, 1.0f, 1.0f);
 }
 
@@ -1150,14 +1415,14 @@ void SurfaceOpenglES::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sin
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + sw) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + sh) * tex->m_scaleH;
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -1187,10 +1452,8 @@ void SurfaceOpenglES::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, 
 			return;//load failed
 	}
 
-	std::vector<float> vertices;
-	std::vector<float> texCoords;
-	vertices.reserve(3072);
-	texCoords.reserve(3072);
+	m_vertices.clear();
+	m_texCoords.clear();
 
 	Sint32 curW, curH, cx;
 	for(Sint32 j = h; j > 0; j -= sh)
@@ -1201,34 +1464,34 @@ void SurfaceOpenglES::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, 
 		{
 			curW = (k > sw ? sw : k);
 			float minx = SDL_static_cast(float, cx);
-			float maxx = SDL_static_cast(float, cx+curW);
+			float maxx = SDL_static_cast(float, cx + curW);
 			float miny = SDL_static_cast(float, y);
-			float maxy = SDL_static_cast(float, y+curH);
+			float maxy = SDL_static_cast(float, y + curH);
 
-			float minu = sx*tex->m_scaleW;
-			float maxu = (sx+curW)*tex->m_scaleW;
-			float minv = sy*tex->m_scaleH;
-			float maxv = (sy+curH)*tex->m_scaleH;
+			float minu = sx * tex->m_scaleW;
+			float maxu = (sx + curW) * tex->m_scaleW;
+			float minv = sy * tex->m_scaleH;
+			float maxv = (sy + curH) * tex->m_scaleH;
 
-			vertices.push_back(minx); vertices.push_back(miny);
-			vertices.push_back(minx); vertices.push_back(maxy);
-			vertices.push_back(maxx); vertices.push_back(miny);
-			vertices.push_back(maxx); vertices.push_back(maxy);
-			vertices.push_back(maxx); vertices.push_back(miny);
-			vertices.push_back(minx); vertices.push_back(maxy);
+			m_vertices.push_back(minx); m_vertices.push_back(miny);
+			m_vertices.push_back(minx); m_vertices.push_back(maxy);
+			m_vertices.push_back(maxx); m_vertices.push_back(miny);
+			m_vertices.push_back(maxx); m_vertices.push_back(maxy);
+			m_vertices.push_back(maxx); m_vertices.push_back(miny);
+			m_vertices.push_back(minx); m_vertices.push_back(maxy);
 
-			texCoords.push_back(minu); texCoords.push_back(minv);
-			texCoords.push_back(minu); texCoords.push_back(maxv);
-			texCoords.push_back(maxu); texCoords.push_back(minv);
-			texCoords.push_back(maxu); texCoords.push_back(maxv);
-			texCoords.push_back(maxu); texCoords.push_back(minv);
-			texCoords.push_back(minu); texCoords.push_back(maxv);
+			m_texCoords.push_back(minu); m_texCoords.push_back(minv);
+			m_texCoords.push_back(minu); m_texCoords.push_back(maxv);
+			m_texCoords.push_back(maxu); m_texCoords.push_back(minv);
+			m_texCoords.push_back(maxu); m_texCoords.push_back(maxv);
+			m_texCoords.push_back(maxu); m_texCoords.push_back(minv);
+			m_texCoords.push_back(minu); m_texCoords.push_back(maxv);
 			cx += sw;
 		}
 		y += sh;
 	}
 	OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
-	drawTriangles(vertices, texCoords);
+	drawTriangles(m_vertices, m_texCoords);
 }
 
 void SurfaceOpenglES::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -1242,14 +1505,14 @@ void SurfaceOpenglES::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+w)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+h)*tex->m_scaleH;
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + w) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + h) * tex->m_scaleH;
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -1269,35 +1532,300 @@ void SurfaceOpenglES::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32
 	OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
-OpenglESTexture* SurfaceOpenglES::loadSpriteMask(Uint64 tempPos, Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor)
+bool SurfaceOpenglES::loadSprite(Uint32 spriteId, OpenglESTexture* texture, Uint32 xoff, Uint32 yoff)
+{
+	unsigned char* pixels = g_engine.LoadSprite(spriteId, false);
+	if(!pixels)
+		return false;
+
+	OglBindTexture(GL_TEXTURE_2D, texture->m_texture);
+	OglPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	OglTexSubImage2D(GL_TEXTURE_2D, 0, SDL_static_cast(int, xoff), SDL_static_cast(int, yoff), 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+	SDL_free(pixels);
+	return true;
+}
+
+bool SurfaceOpenglES::loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, OpenglESTexture* texture, Uint32 xoff, Uint32 yoff)
 {
 	unsigned char* pixels = g_engine.LoadSpriteMask(spriteId, maskSpriteId, outfitColor, false);
 	if(!pixels)
-		return NULL;
+		return false;
 
-	if(m_spriteMasks.size() >= HARDWARE_MAX_SPRITEMASKS)
-	{
-		U64BGLESTextures::iterator it = m_spriteMasks.find(m_spritesMaskIds.front());
-		if(it == m_spriteMasks.end())//Something weird happen - let's erase the first one entry
-			it = m_spriteMasks.begin();
-
-		releaseOpenGLESTexture(it->second);
-		m_spriteMasks.erase(it);
-		m_spritesMaskIds.pop_front();
-	}
-	OpenglESTexture* s = createOpenGLESTexture(32, 32, false);
-	if(!s)
-	{
-		SDL_free(pixels);
-		return NULL;
-	}
-
-	updateTextureData(s, pixels);
+	OglBindTexture(GL_TEXTURE_2D, texture->m_texture);
+	OglPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	OglTexSubImage2D(GL_TEXTURE_2D, 0, SDL_static_cast(int, xoff), SDL_static_cast(int, yoff), 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 	SDL_free(pixels);
+	return true;
+}
 
-	m_spriteMasks[tempPos] = s;
-	m_spritesMaskIds.push_back(tempPos);
-	return s;
+void SurfaceOpenglES::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
+{
+	if(spriteId > g_spriteCounts)
+		return;
+
+	#if SIZEOF_VOIDP == 4
+	Uint64 tempPos;
+	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
+	u32p[0] = spriteId;
+	u32p[1] = 0;
+	#else
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
+	#endif
+	Uint32 xOffset;
+	Uint32 yOffset;
+	OpenglESTexture* tex;
+	U64BGLESTextures::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
+	{
+		if(m_sprites.size() >= MAX_SPRITES)
+		{
+			while(++m_spriteChecker < MAX_SPRITES)
+			{
+				Uint64 oldSpriteId = m_spritesIds.front();
+				it = m_sprites.find(oldSpriteId);
+				if(it == m_sprites.end())
+				{
+					UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+					exit(-1);
+				}
+
+				m_spritesIds.pop_front();
+				if(it->second.m_lastUsage == m_currentFrame)
+					m_spritesIds.push_back(oldSpriteId);
+				else
+					goto Skip_Search;
+			}
+
+			if(m_scheduleSpriteDraw)
+				checkScheduledSprites();
+
+			it = m_sprites.find(m_spritesIds.front());
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+				exit(-1);
+			}
+			m_spritesIds.pop_front();
+
+			Skip_Search:
+			OpenglESSpriteData sprData = it->second;
+			sprData.m_lastUsage = m_currentFrame;
+			m_sprites.erase(it);
+			m_sprites[tempPos] = sprData;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		else
+		{
+			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
+			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
+			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
+			if(spriteAtlas >= m_spritesAtlas.size())
+				return;
+
+			OpenglESSpriteData& sprData = m_sprites[tempPos];
+			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
+			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
+			sprData.m_surface = spriteAtlas;
+			sprData.m_lastUsage = m_currentFrame;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		if(!loadSprite(spriteId, tex, xOffset, yOffset))
+			return;//load failed
+	}
+	else
+	{
+		xOffset = it->second.m_xOffset;
+		yOffset = it->second.m_yOffset;
+		tex = m_spritesAtlas[it->second.m_surface];
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
+		{
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
+		}
+	}
+
+	float minx = SDL_static_cast(float, x);
+	float maxx = minx + 32.f;
+	float miny = SDL_static_cast(float, y);
+	float maxy = miny + 32.f;
+
+	float minu = xOffset * tex->m_scaleW;
+	float maxu = (xOffset + 32) * tex->m_scaleW;
+	float minv = yOffset * tex->m_scaleH;
+	float maxv = (yOffset + 32) * tex->m_scaleH;
+	if(m_scheduleSpriteDraw)
+	{
+		if(tex != m_spriteAtlas)
+		{
+			checkScheduledSprites();
+			m_spriteAtlas = tex;
+		}
+
+		m_vertices.push_back(minx); m_vertices.push_back(miny);
+		m_vertices.push_back(minx); m_vertices.push_back(maxy);
+		m_vertices.push_back(maxx); m_vertices.push_back(miny);
+		m_vertices.push_back(maxx); m_vertices.push_back(maxy);
+		m_vertices.push_back(maxx); m_vertices.push_back(miny);
+		m_vertices.push_back(minx); m_vertices.push_back(maxy);
+
+		m_texCoords.push_back(minu); m_texCoords.push_back(minv);
+		m_texCoords.push_back(minu); m_texCoords.push_back(maxv);
+		m_texCoords.push_back(maxu); m_texCoords.push_back(minv);
+		m_texCoords.push_back(maxu); m_texCoords.push_back(maxv);
+		m_texCoords.push_back(maxu); m_texCoords.push_back(minv);
+		m_texCoords.push_back(minu); m_texCoords.push_back(maxv);
+	}
+	else
+	{
+		float vertices[8];
+		vertices[0] = minx; vertices[1] = miny;
+		vertices[2] = minx; vertices[3] = maxy;
+		vertices[4] = maxx; vertices[5] = miny;
+		vertices[6] = maxx; vertices[7] = maxy;
+
+		float texCoords[8];
+		texCoords[0] = minu; texCoords[1] = minv;
+		texCoords[2] = minu; texCoords[3] = maxv;
+		texCoords[4] = maxu; texCoords[5] = minv;
+		texCoords[6] = maxu; texCoords[7] = maxv;
+
+		OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
+		OglVertexPointer(2, GL_FLOAT, 0, vertices);
+		OglTexCoordPointer(2, GL_FLOAT, 0, texCoords);
+		OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	}
+}
+
+void SurfaceOpenglES::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
+{
+	if(spriteId > g_spriteCounts)
+		return;
+
+	#if SIZEOF_VOIDP == 4
+	Uint64 tempPos;
+	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
+	u32p[0] = spriteId;
+	u32p[1] = 0;
+	#else
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
+	#endif
+	Uint32 xOffset;
+	Uint32 yOffset;
+	OpenglESTexture* tex;
+	U64BGLESTextures::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
+	{
+		if(m_sprites.size() >= MAX_SPRITES)
+		{
+			while(++m_spriteChecker < MAX_SPRITES)
+			{
+				Uint64 oldSpriteId = m_spritesIds.front();
+				it = m_sprites.find(oldSpriteId);
+				if(it == m_sprites.end())
+				{
+					UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+					exit(-1);
+				}
+
+				m_spritesIds.pop_front();
+				if(it->second.m_lastUsage == m_currentFrame)
+					m_spritesIds.push_back(oldSpriteId);
+				else
+					goto Skip_Search;
+			}
+
+			it = m_sprites.find(m_spritesIds.front());
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+				exit(-1);
+			}
+			m_spritesIds.pop_front();
+
+			Skip_Search:
+			OpenglESSpriteData sprData = it->second;
+			sprData.m_lastUsage = m_currentFrame;
+			m_sprites.erase(it);
+			m_sprites[tempPos] = sprData;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		else
+		{
+			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
+			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
+			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
+			if(spriteAtlas >= m_spritesAtlas.size())
+				return;
+
+			OpenglESSpriteData& sprData = m_sprites[tempPos];
+			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
+			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
+			sprData.m_surface = spriteAtlas;
+			sprData.m_lastUsage = m_currentFrame;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		if(!loadSprite(spriteId, tex, xOffset, yOffset))
+			return;//load failed
+	}
+	else
+	{
+		xOffset = it->second.m_xOffset;
+		yOffset = it->second.m_yOffset;
+		tex = m_spritesAtlas[it->second.m_surface];
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
+		{
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
+		}
+	}
+
+	float minx = SDL_static_cast(float, x);
+	float maxx = SDL_static_cast(float, x + w);
+	float miny = SDL_static_cast(float, y);
+	float maxy = SDL_static_cast(float, y + h);
+
+	sx += SDL_static_cast(Sint32, xOffset);
+	sy += SDL_static_cast(Sint32, yOffset);
+
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + sw) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + sh) * tex->m_scaleH;
+
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
+
+	float texCoords[8];
+	texCoords[0] = minu; texCoords[1] = minv;
+	texCoords[2] = minu; texCoords[3] = maxv;
+	texCoords[4] = maxu; texCoords[5] = minv;
+	texCoords[6] = maxu; texCoords[7] = maxv;
+
+	OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
+	OglVertexPointer(2, GL_FLOAT, 0, vertices);
+	OglTexCoordPointer(2, GL_FLOAT, 0, texCoords);
+	OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 void SurfaceOpenglES::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor)
@@ -1308,55 +1836,143 @@ void SurfaceOpenglES::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = spriteId;
+	u32p[0] = maskSpriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, (spriteId | SDL_static_cast(Uint64, outfitColor) << 32));
+	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
+	Uint32 xOffset;
+	Uint32 yOffset;
 	OpenglESTexture* tex;
-	U64BGLESTextures::iterator it = m_spriteMasks.find(tempPos);
-	if(it == m_spriteMasks.end())
+	U64BGLESTextures::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
 	{
-		tex = loadSpriteMask(tempPos, spriteId, maskSpriteId, outfitColor);
-		if(!tex)
+		if(m_sprites.size() >= MAX_SPRITES)
+		{
+			while(++m_spriteChecker < MAX_SPRITES)
+			{
+				Uint64 oldSpriteId = m_spritesIds.front();
+				it = m_sprites.find(oldSpriteId);
+				if(it == m_sprites.end())
+				{
+					UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+					exit(-1);
+				}
+
+				m_spritesIds.pop_front();
+				if(it->second.m_lastUsage == m_currentFrame)
+					m_spritesIds.push_back(oldSpriteId);
+				else
+					goto Skip_Search;
+			}
+
+			if(m_scheduleSpriteDraw)
+				checkScheduledSprites();
+
+			it = m_sprites.find(m_spritesIds.front());
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+				exit(-1);
+			}
+			m_spritesIds.pop_front();
+
+			Skip_Search:
+			OpenglESSpriteData sprData = it->second;
+			sprData.m_lastUsage = m_currentFrame;
+			m_sprites.erase(it);
+			m_sprites[tempPos] = sprData;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		else
+		{
+			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
+			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
+			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
+			if(spriteAtlas >= m_spritesAtlas.size())
+				return;
+
+			OpenglESSpriteData& sprData = m_sprites[tempPos];
+			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
+			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
+			sprData.m_surface = spriteAtlas;
+			sprData.m_lastUsage = m_currentFrame;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
 			return;//load failed
 	}
 	else
 	{
-		tex = it->second;
-		if(m_spritesMaskIds.front() == tempPos)
+		xOffset = it->second.m_xOffset;
+		yOffset = it->second.m_yOffset;
+		tex = m_spritesAtlas[it->second.m_surface];
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
 		{
-			m_spritesMaskIds.pop_front();
-			m_spritesMaskIds.push_back(tempPos);
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
 		}
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = minx+SDL_static_cast(float, tex->m_width);
+	float maxx = minx + 32.f;
 	float miny = SDL_static_cast(float, y);
-	float maxy = miny+SDL_static_cast(float, tex->m_height);
+	float maxy = miny + 32.f;
 
-	float minu = 0.0f;
-	float maxu = tex->m_width*tex->m_scaleW;
-	float minv = 0.0f;
-	float maxv = tex->m_height*tex->m_scaleH;
+	float minu = xOffset * tex->m_scaleW;
+	float maxu = (xOffset + 32) * tex->m_scaleW;
+	float minv = yOffset * tex->m_scaleH;
+	float maxv = (yOffset + 32) * tex->m_scaleH;
+	if(m_scheduleSpriteDraw)
+	{
+		if(tex != m_spriteAtlas)
+		{
+			checkScheduledSprites();
+			m_spriteAtlas = tex;
+		}
 
-	float vertices[8];
-	vertices[0] = minx; vertices[1] = miny;
-	vertices[2] = minx; vertices[3] = maxy;
-	vertices[4] = maxx; vertices[5] = miny;
-	vertices[6] = maxx; vertices[7] = maxy;
+		m_vertices.push_back(minx); m_vertices.push_back(miny);
+		m_vertices.push_back(minx); m_vertices.push_back(maxy);
+		m_vertices.push_back(maxx); m_vertices.push_back(miny);
+		m_vertices.push_back(maxx); m_vertices.push_back(maxy);
+		m_vertices.push_back(maxx); m_vertices.push_back(miny);
+		m_vertices.push_back(minx); m_vertices.push_back(maxy);
 
-	float texCoords[8];
-	texCoords[0] = minu; texCoords[1] = minv;
-	texCoords[2] = minu; texCoords[3] = maxv;
-	texCoords[4] = maxu; texCoords[5] = minv;
-	texCoords[6] = maxu; texCoords[7] = maxv;
+		m_texCoords.push_back(minu); m_texCoords.push_back(minv);
+		m_texCoords.push_back(minu); m_texCoords.push_back(maxv);
+		m_texCoords.push_back(maxu); m_texCoords.push_back(minv);
+		m_texCoords.push_back(maxu); m_texCoords.push_back(maxv);
+		m_texCoords.push_back(maxu); m_texCoords.push_back(minv);
+		m_texCoords.push_back(minu); m_texCoords.push_back(maxv);
+	}
+	else
+	{
+		float vertices[8];
+		vertices[0] = minx; vertices[1] = miny;
+		vertices[2] = minx; vertices[3] = maxy;
+		vertices[4] = maxx; vertices[5] = miny;
+		vertices[6] = maxx; vertices[7] = maxy;
 
-	OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
-	OglVertexPointer(2, GL_FLOAT, 0, vertices);
-	OglTexCoordPointer(2, GL_FLOAT, 0, texCoords);
-	OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		float texCoords[8];
+		texCoords[0] = minu; texCoords[1] = minv;
+		texCoords[2] = minu; texCoords[3] = maxv;
+		texCoords[4] = maxu; texCoords[5] = minv;
+		texCoords[6] = maxu; texCoords[7] = maxv;
+
+		OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
+		OglVertexPointer(2, GL_FLOAT, 0, vertices);
+		OglTexCoordPointer(2, GL_FLOAT, 0, texCoords);
+		OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	}
 }
 
 void SurfaceOpenglES::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor)
@@ -1367,38 +1983,102 @@ void SurfaceOpenglES::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = spriteId;
+	u32p[0] = maskSpriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, (spriteId | SDL_static_cast(Uint64, outfitColor) << 32));
+	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
+	Uint32 xOffset;
+	Uint32 yOffset;
 	OpenglESTexture* tex;
-	U64BGLESTextures::iterator it = m_spriteMasks.find(tempPos);
-	if(it == m_spriteMasks.end())
+	U64BGLESTextures::iterator it = m_sprites.find(tempPos);
+	if(it == m_sprites.end())
 	{
-		tex = loadSpriteMask(tempPos, spriteId, maskSpriteId, outfitColor);
-		if(!tex)
+		if(m_sprites.size() >= MAX_SPRITES)
+		{
+			while(++m_spriteChecker < MAX_SPRITES)
+			{
+				Uint64 oldSpriteId = m_spritesIds.front();
+				it = m_sprites.find(oldSpriteId);
+				if(it == m_sprites.end())
+				{
+					UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+					exit(-1);
+				}
+
+				m_spritesIds.pop_front();
+				if(it->second.m_lastUsage == m_currentFrame)
+					m_spritesIds.push_back(oldSpriteId);
+				else
+					goto Skip_Search;
+			}
+
+			it = m_sprites.find(m_spritesIds.front());
+			if(it == m_sprites.end())
+			{
+				UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+				exit(-1);
+			}
+			m_spritesIds.pop_front();
+
+			Skip_Search:
+			OpenglESSpriteData sprData = it->second;
+			sprData.m_lastUsage = m_currentFrame;
+			m_sprites.erase(it);
+			m_sprites[tempPos] = sprData;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		else
+		{
+			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
+			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
+			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
+			if(spriteAtlas >= m_spritesAtlas.size())
+				return;
+
+			OpenglESSpriteData& sprData = m_sprites[tempPos];
+			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
+			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
+			sprData.m_surface = spriteAtlas;
+			sprData.m_lastUsage = m_currentFrame;
+			m_spritesIds.push_back(tempPos);
+
+			xOffset = sprData.m_xOffset;
+			yOffset = sprData.m_yOffset;
+			tex = m_spritesAtlas[sprData.m_surface];
+		}
+		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
 			return;//load failed
 	}
 	else
 	{
-		tex = it->second;
-		if(m_spritesMaskIds.front() == tempPos)
+		xOffset = it->second.m_xOffset;
+		yOffset = it->second.m_yOffset;
+		tex = m_spritesAtlas[it->second.m_surface];
+		it->second.m_lastUsage = m_currentFrame;
+		if(m_spritesIds.front() == tempPos)
 		{
-			m_spritesMaskIds.pop_front();
-			m_spritesMaskIds.push_back(tempPos);
+			m_spritesIds.pop_front();
+			m_spritesIds.push_back(tempPos);
 		}
 	}
 
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
+	sx += SDL_static_cast(Sint32, xOffset);
+	sy += SDL_static_cast(Sint32, yOffset);
+
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + sw) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + sh) * tex->m_scaleH;
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -1420,19 +2100,26 @@ void SurfaceOpenglES::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 
 OpenglESTexture* SurfaceOpenglES::createAutomapTile(Uint32 currentArea)
 {
-	if(m_automapTiles.size() >= HARDWARE_MAX_AUTOMAPTILES)
+	OpenglESTexture* s = NULL;
+	if(m_automapTiles.size() >= MAX_AUTOMAPTILES)
 	{
 		U32BGLESTextures::iterator it = m_automapTiles.find(m_automapTilesBuff.front());
-		if(it == m_automapTiles.end())//Something weird happen - let's erase the first one entry
-			it = m_automapTiles.begin();
+		if(it == m_automapTiles.end())
+		{
+			UTIL_MessageBox(true, "OpenGL ES: Sprite Manager failure.");
+			exit(-1);
+		}
 
-		releaseOpenGLESTexture(it->second);
+		s = it->second;
 		m_automapTiles.erase(it);
 		m_automapTilesBuff.pop_front();
 	}
-	OpenglESTexture* s = createOpenGLESTexture(256, 256, false);
 	if(!s)
-		return NULL;
+	{
+		s = createOpenGLESTexture(256, 256, false);
+		if(!s)
+			return NULL;
+	}
 
 	m_automapTiles[currentArea] = s;
 	m_automapTilesBuff.push_back(currentArea);
@@ -1441,7 +2128,7 @@ OpenglESTexture* SurfaceOpenglES::createAutomapTile(Uint32 currentArea)
 
 void SurfaceOpenglES::uploadAutomapTile(OpenglESTexture* texture, Uint8 color[256][256])
 {
-	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(262144));//256*256*4
+	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(262144));//256 * 256 * 4
 	if(!pixels)
 		return;
 
@@ -1492,14 +2179,14 @@ void SurfaceOpenglES::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint8 
 	}
 	
 	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
+	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
+	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
+	float minu = sx * tex->m_scaleW;
+	float maxu = (sx + sw) * tex->m_scaleW;
+	float minv = sy * tex->m_scaleH;
+	float maxv = (sy + sh) * tex->m_scaleH;
 
 	float vertices[8];
 	vertices[0] = minx; vertices[1] = miny;
@@ -1519,465 +2206,4 @@ void SurfaceOpenglES::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint8 
 	OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
-SurfaceOpenglESComp::SurfaceOpenglESComp()
-{
-	m_sprites = NULL;
-}
-
-SurfaceOpenglESComp::~SurfaceOpenglESComp()
-{
-	if(m_sprites)
-	{
-		for(Uint32 i = 1; i <= m_spritesCache; ++i)
-		{
-			if(m_sprites[i])
-				releaseOpenGLESTexture(m_sprites[i]);
-		}
-
-		SDL_free(m_sprites);
-	}
-}
-
-void SurfaceOpenglESComp::init()
-{
-	SurfaceOpenglES::init();
-	m_sprites = SDL_reinterpret_cast(OpenglESTexture**, SDL_calloc(g_spriteCounts+1, sizeof(OpenglESTexture*)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::Init() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-}
-
-void SurfaceOpenglESComp::spriteManagerReset()
-{
-	SurfaceOpenglES::spriteManagerReset();
-	if(m_sprites)
-	{
-		for(Uint32 i = 1; i <= m_spritesCache; ++i)
-		{
-			if(m_sprites[i])
-				releaseOpenGLESTexture(m_sprites[i]);
-		}
-
-		SDL_free(m_sprites);
-	}
-	m_sprites = SDL_reinterpret_cast(OpenglESTexture**, SDL_calloc(g_spriteCounts+1, sizeof(OpenglESTexture*)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::spriteManagerReset() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-}
-
-OpenglESTexture* SurfaceOpenglESComp::loadSprite(Uint32 spriteId)
-{
-	unsigned char* pixels = g_engine.LoadSprite(spriteId, false);
-	if(!pixels)
-		return NULL;
-
-	OpenglESTexture* s = createOpenGLESTexture(32, 32, false);
-	if(!s)
-	{
-		SDL_free(pixels);
-		return NULL;
-	}
-	m_sprites[spriteId] = s;
-	updateTextureData(s, pixels);
-	SDL_free(pixels);
-	return s;
-}
-
-void SurfaceOpenglESComp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
-{
-	if(spriteId > g_spriteCounts)
-		return;
-
-	OpenglESTexture* tex = m_sprites[spriteId];
-	if(!tex)
-	{
-		tex = loadSprite(spriteId);
-		if(!tex)
-			return;//load failed
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = minx+SDL_static_cast(float, tex->m_width);
-	float miny = SDL_static_cast(float, y);
-	float maxy = miny+SDL_static_cast(float, tex->m_height);
-
-	float minu = 0.0f;
-	float maxu = tex->m_width*tex->m_scaleW;
-	float minv = 0.0f;
-	float maxv = tex->m_height*tex->m_scaleH;
-
-	float vertices[8];
-	vertices[0] = minx; vertices[1] = miny;
-	vertices[2] = minx; vertices[3] = maxy;
-	vertices[4] = maxx; vertices[5] = miny;
-	vertices[6] = maxx; vertices[7] = maxy;
-
-	float texCoords[8];
-	texCoords[0] = minu; texCoords[1] = minv;
-	texCoords[2] = minu; texCoords[3] = maxv;
-	texCoords[4] = maxu; texCoords[5] = minv;
-	texCoords[6] = maxu; texCoords[7] = maxv;
-
-	OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
-	OglVertexPointer(2, GL_FLOAT, 0, vertices);
-	OglTexCoordPointer(2, GL_FLOAT, 0, texCoords);
-	OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-}
-
-void SurfaceOpenglESComp::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
-{
-	if(spriteId > g_spriteCounts)
-		return;
-
-	OpenglESTexture* tex = m_sprites[spriteId];
-	if(!tex)
-	{
-		tex = loadSprite(spriteId);
-		if(!tex)
-			return;//load failed
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
-	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
-
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
-	
-	float vertices[8];
-	vertices[0] = minx; vertices[1] = miny;
-	vertices[2] = minx; vertices[3] = maxy;
-	vertices[4] = maxx; vertices[5] = miny;
-	vertices[6] = maxx; vertices[7] = maxy;
-
-	float texCoords[8];
-	texCoords[0] = minu; texCoords[1] = minv;
-	texCoords[2] = minu; texCoords[3] = maxv;
-	texCoords[4] = maxu; texCoords[5] = minv;
-	texCoords[6] = maxu; texCoords[7] = maxv;
-
-	OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
-	OglVertexPointer(2, GL_FLOAT, 0, vertices);
-	OglTexCoordPointer(2, GL_FLOAT, 0, texCoords);
-	OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-}
-
-SurfaceOpenglESPerf::SurfaceOpenglESPerf()
-{
-	m_sprites = NULL;
-	m_spriteAtlas = NULL;
-
-	m_spriteAtlases = 0;
-	m_spritesPerAtlas = 0;
-	m_spritesPerModulo = 0;
-
-	m_scheduleSpriteDraw = false;
-}
-
-SurfaceOpenglESPerf::~SurfaceOpenglESPerf()
-{
-	if(m_sprites)
-		SDL_free(m_sprites);
-
-	for(std::vector<OpenglESTexture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
-		releaseOpenGLESTexture((*it));
-
-	m_spritesAtlas.clear();
-}
-
-void SurfaceOpenglESPerf::generateSpriteAtlases()
-{
-	//TODO: don't make atlases for whole sprites because on big .spr it eat up whole vram
-	//use only necessary amount of textures
-	if(m_maxTextureSize >= 16384 && g_spriteCounts > 65536)
-	{
-		m_spriteAtlases = (g_spriteCounts+262143)/262144;
-		m_spritesPerAtlas = 262144;
-		m_spritesPerModulo = 16384;
-	}
-	else if(m_maxTextureSize >= 8192 && g_spriteCounts > 16384)
-	{
-		m_spriteAtlases = (g_spriteCounts+65535)/65536;
-		m_spritesPerAtlas = 65536;
-		m_spritesPerModulo = 8192;
-	}
-	else if(m_maxTextureSize >= 4096 && g_spriteCounts > 4096)
-	{
-		m_spriteAtlases = (g_spriteCounts+16383)/16384;
-		m_spritesPerAtlas = 16384;
-		m_spritesPerModulo = 4096;
-	}
-	else if(m_maxTextureSize >= 2048 && g_spriteCounts > 1024)
-	{
-		m_spriteAtlases = (g_spriteCounts+4095)/4096;
-		m_spritesPerAtlas = 4096;
-		m_spritesPerModulo = 2048;
-	}
-	else
-	{
-		m_spriteAtlases = (g_spriteCounts+1023)/1024;
-		m_spritesPerAtlas = 1024;
-		m_spritesPerModulo = 1024;
-	}
-	for(std::vector<OpenglESTexture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
-		releaseOpenGLESTexture((*it));
-
-	m_spritesAtlas.clear();
-	for(Uint32 i = 0; i < m_spriteAtlases; ++i)
-	{
-		OpenglESTexture* texture = createOpenGLESTexture(m_spritesPerModulo, m_spritesPerModulo, false);
-		if(!texture)
-		{
-			UTIL_MessageBox(true, "OpenGL ES: Out of video memory.");
-			exit(-1);
-			return;
-		}
-		m_spritesAtlas.push_back(texture);
-	}
-}
-
-void SurfaceOpenglESPerf::checkScheduledSprites()
-{
-	size_t vertices = m_gameWindowVertices.size();
-	if(vertices > 0)
-	{
-		OglBindTexture(GL_TEXTURE_2D, m_spriteAtlas->m_texture);
-		drawTriangles(m_gameWindowVertices, m_gameWindowTexCoords);
-
-		m_gameWindowVertices.clear();
-		m_gameWindowTexCoords.clear();
-		m_gameWindowVertices.reserve(61440);
-		m_gameWindowTexCoords.reserve(61440);
-	}
-}
-
-void SurfaceOpenglESPerf::init()
-{
-	SurfaceOpenglES::init();
-	m_sprites = SDL_reinterpret_cast(bool*, SDL_calloc(g_spriteCounts+1, sizeof(bool)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::Init() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-}
-
-void SurfaceOpenglESPerf::spriteManagerReset()
-{
-	SurfaceOpenglES::spriteManagerReset();
-	if(m_sprites)
-		SDL_free(m_sprites);
-
-	m_sprites = SDL_reinterpret_cast(bool*, SDL_calloc(g_spriteCounts+1, sizeof(bool)));
-	if(!m_sprites)
-	{
-		SDL_OutOfMemory();
-		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::spriteManagerReset() Failed: %s", SDL_GetError());
-		UTIL_MessageBox(true, g_buffer);
-		exit(-1);
-	}
-	m_spritesCache = g_spriteCounts;
-	generateSpriteAtlases();
-}
-
-void SurfaceOpenglESPerf::beginScene()
-{
-	SurfaceOpenglES::beginScene();
-	m_scheduleSpriteDraw = false;
-}
-
-void SurfaceOpenglESPerf::beginGameScene()
-{
-	SurfaceOpenglES::beginGameScene();
-	m_gameWindowVertices.clear();
-	m_gameWindowTexCoords.clear();
-	m_gameWindowVertices.reserve(61440);
-	m_gameWindowTexCoords.reserve(61440);
-	m_scheduleSpriteDraw = true;
-}
-
-void SurfaceOpenglESPerf::endGameScene()
-{
-	checkScheduledSprites();
-	m_scheduleSpriteDraw = false;
-	SurfaceOpenglES::endGameScene();
-}
-
-void SurfaceOpenglESPerf::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
-{
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
-	SurfaceOpenglES::drawRectangle(x, y, w, h, r, g, b, a);
-}
-
-void SurfaceOpenglESPerf::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
-{
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
-	SurfaceOpenglES::fillRectangle(x, y, w, h, r, g, b, a);
-}
-
-bool SurfaceOpenglESPerf::loadSprite(Uint32 spriteId, OpenglESTexture* texture, Uint32 xoff, Uint32 yoff)
-{
-	unsigned char* pixels = g_engine.LoadSprite(spriteId, false);
-	if(!pixels)
-		return false;
-
-	OglBindTexture(GL_TEXTURE_2D, texture->m_texture);
-	OglPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	OglTexSubImage2D(GL_TEXTURE_2D, 0, SDL_static_cast(int, xoff), SDL_static_cast(int, yoff), 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-	SDL_free(pixels);
-	return true;
-}
-
-void SurfaceOpenglESPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
-{
-	if(spriteId > g_spriteCounts)
-		return;
-
-	Uint32 spriteIndex = spriteId-1;
-	Uint32 spriteAtlas = spriteIndex/m_spritesPerAtlas;
-	spriteIndex = (spriteIndex%m_spritesPerAtlas)*32;
-	if(spriteAtlas >= m_spritesAtlas.size())
-		return;
-
-	Uint32 xOffset = spriteIndex%m_spritesPerModulo;
-	Uint32 yOffset = (spriteIndex/m_spritesPerModulo)*32;
-
-	OpenglESTexture* tex = m_spritesAtlas[spriteAtlas];
-	if(!m_sprites[spriteId])
-	{
-		if(!loadSprite(spriteId, tex, xOffset, yOffset))
-			return;//load failed
-		m_sprites[spriteId] = true;
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = minx+32.f;
-	float miny = SDL_static_cast(float, y);
-	float maxy = miny+32.f;
-
-	float minu = xOffset*tex->m_scaleW;
-	float maxu = (xOffset+32)*tex->m_scaleW;
-	float minv = yOffset*tex->m_scaleH;
-	float maxv = (yOffset+32)*tex->m_scaleH;
-	if(m_scheduleSpriteDraw)
-	{
-		if(tex != m_spriteAtlas)
-		{
-			checkScheduledSprites();
-			m_spriteAtlas = tex;
-		}
-
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(maxy);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(maxy);
-		m_gameWindowVertices.push_back(maxx); m_gameWindowVertices.push_back(miny);
-		m_gameWindowVertices.push_back(minx); m_gameWindowVertices.push_back(maxy);
-
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(maxv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(maxv);
-		m_gameWindowTexCoords.push_back(maxu); m_gameWindowTexCoords.push_back(minv);
-		m_gameWindowTexCoords.push_back(minu); m_gameWindowTexCoords.push_back(maxv);
-	}
-	else
-	{
-		float vertices[8];
-		vertices[0] = minx; vertices[1] = miny;
-		vertices[2] = minx; vertices[3] = maxy;
-		vertices[4] = maxx; vertices[5] = miny;
-		vertices[6] = maxx; vertices[7] = maxy;
-
-		float texCoords[8];
-		texCoords[0] = minu; texCoords[1] = minv;
-		texCoords[2] = minu; texCoords[3] = maxv;
-		texCoords[4] = maxu; texCoords[5] = minv;
-		texCoords[6] = maxu; texCoords[7] = maxv;
-
-		OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
-		OglVertexPointer(2, GL_FLOAT, 0, vertices);
-		OglTexCoordPointer(2, GL_FLOAT, 0, texCoords);
-		OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-	}
-}
-
-void SurfaceOpenglESPerf::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
-{
-	if(spriteId > g_spriteCounts)
-		return;
-
-	Uint32 spriteIndex = spriteId-1;
-	Uint32 spriteAtlas = spriteIndex/m_spritesPerAtlas;
-	spriteIndex = (spriteIndex%m_spritesPerAtlas)*32;
-	if(spriteAtlas >= m_spritesAtlas.size())
-		return;
-
-	Uint32 xOffset = spriteIndex%m_spritesPerModulo;
-	Uint32 yOffset = (spriteIndex/m_spritesPerModulo)*32;
-
-	OpenglESTexture* tex = m_spritesAtlas[spriteAtlas];
-	if(!m_sprites[spriteId])
-	{
-		if(!loadSprite(spriteId, tex, xOffset, yOffset))
-			return;//load failed
-		m_sprites[spriteId] = true;
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x+w);
-	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y+h);
-
-	sx += SDL_static_cast(Sint32, xOffset);
-	sy += SDL_static_cast(Sint32, yOffset);
-
-	float minu = sx*tex->m_scaleW;
-	float maxu = (sx+sw)*tex->m_scaleW;
-	float minv = sy*tex->m_scaleH;
-	float maxv = (sy+sh)*tex->m_scaleH;
-
-	float vertices[8];
-	vertices[0] = minx; vertices[1] = miny;
-	vertices[2] = minx; vertices[3] = maxy;
-	vertices[4] = maxx; vertices[5] = miny;
-	vertices[6] = maxx; vertices[7] = maxy;
-
-	float texCoords[8];
-	texCoords[0] = minu; texCoords[1] = minv;
-	texCoords[2] = minu; texCoords[3] = maxv;
-	texCoords[4] = maxu; texCoords[5] = minv;
-	texCoords[6] = maxu; texCoords[7] = maxv;
-
-	OglBindTexture(GL_TEXTURE_2D, tex->m_texture);
-	OglVertexPointer(2, GL_FLOAT, 0, vertices);
-	OglTexCoordPointer(2, GL_FLOAT, 0, texCoords);
-	OglDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-}
-
-void SurfaceOpenglESPerf::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor)
-{
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
-	SurfaceOpenglES::drawSpriteMask(spriteId, maskSpriteId, x, y, outfitColor);
-}
 #endif
