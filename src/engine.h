@@ -27,8 +27,16 @@
 class Surface
 {
 	public:
-		Surface() {;}
-		virtual ~Surface() {;}
+		Surface() {}
+		virtual ~Surface() {}
+
+		// non-copyable
+		Surface(const Surface&) = delete;
+		Surface& operator=(const Surface&) = delete;
+
+		// non-moveable
+		Surface(Surface&&) = delete;
+		Surface& operator=(Surface&&) = delete;
 
 		virtual bool isSupported() = 0;
 		virtual const char* getName() = 0;
@@ -54,7 +62,7 @@ class Surface
 
 		virtual void setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h) = 0;
 		virtual void disableClipRect() = 0;
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a) = 0;
+		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a) = 0;
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a) = 0;
 
 		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256]) = 0;
@@ -83,6 +91,14 @@ class Engine
 {
 	public:
 		Engine();
+
+		// non-copyable
+		Engine(const Engine&) = delete;
+		Engine& operator=(const Engine&) = delete;
+
+		// non-moveable
+		Engine(Engine&&) = delete;
+		Engine& operator=(Engine&&) = delete;
 
 		void loadCFG();
 		void saveCFG();
@@ -181,7 +197,7 @@ class Engine
 
 		SDL_INLINE void setEngineId(Uint8 engine) {m_engine = engine;}
 		SDL_FORCE_INLINE Uint8 getEngineId() {return m_engine;}
-		SDL_FORCE_INLINE Surface* getRender() {return m_surface;}
+		SDL_FORCE_INLINE std::unique_ptr<Surface>& getRender() {return m_surface;}
 
 		SDL_INLINE void setClientHost(std::string clientHost) {m_clientHost = std::move(clientHost);}
 		SDL_INLINE void setClientPort(std::string clientPort) {m_clientPort = std::move(clientPort);}
@@ -344,16 +360,19 @@ class Engine
 		SDL_FORCE_INLINE bool getIgnorePrivateMessages() {return m_ignorePrivateMessages;}
 		SDL_FORCE_INLINE bool getAllowVipMessages() {return m_allowVipMessages;}
 
-		SDL_Window* m_window;
-		Uint32 m_windowId;
+		SDL_INLINE void setTopPanel(GUI_PanelWindow* newTopPanel) {m_topPanel = newTopPanel;}
+		SDL_FORCE_INLINE GUI_PanelWindow* getTopPanel() {return m_topPanel;}
+
+		SDL_Window* m_window = NULL;
+		Uint32 m_windowId = 0;
 
 	protected:
-		std::string m_clientHost;
-		std::string m_clientPort;
+		std::string m_clientHost = "127.0.0.1";
+		std::string m_clientPort = "7171";
 		std::string m_clientProxy;
 		std::string m_clientProxyAuth;
 
-		std::string m_motdText;
+		std::string m_motdText = "No current information.";
 		std::string m_accountSessionKey;
 		std::string m_accountName;
 		std::string m_accountPassword;
@@ -363,13 +382,14 @@ class Engine
 		std::vector<Uint8> m_engines;
 		std::vector<GUI_Window*> m_toReleaseWindows;
 		std::vector<GUI_Window*> m_windows;
-		GUI_Window* m_actWindow;
+		GUI_Window* m_actWindow = NULL;
 
-		GUI_Description* m_description;
-		GUI_ContextMenu* m_contextMenu;
+		GUI_PanelWindow* m_topPanel = NULL;
+		GUI_Description* m_description = NULL;
+		GUI_ContextMenu* m_contextMenu = NULL;
 		std::vector<GUI_Panel*> m_toReleasePanels;
 		std::vector<GUI_Panel*> m_panels;
-		Surface* m_surface;
+		std::unique_ptr<Surface> m_surface;
 
 		std::map<Uint32, VipData> m_vipData;
 		std::map<Uint32, Sint32> m_parentWindows;
@@ -384,14 +404,14 @@ class Engine
 		iRect m_gameBackgroundRect;
 		iRect m_gameWindowRect;
 		iRect m_chatWindowRect;
-		Sint32 m_scaledSize;
-		float m_scale;
+		Sint32 m_scaledSize = 32;
+		float m_scale = 1.0f;
 
-		Uint32 m_motdNumber;
-		Uint32 m_accountPremDays;
+		Uint32 m_motdNumber = 0;
+		Uint32 m_accountPremDays = 0;
 
-		Sint32 m_moveItemX;
-		Sint32 m_moveItemY;
+		Sint32 m_moveItemX = SDL_MIN_SINT32;
+		Sint32 m_moveItemY = SDL_MIN_SINT32;
 
 		iRect m_leftPanelAddRect;
 		iRect m_leftPanelRemRect;
@@ -399,99 +419,99 @@ class Engine
 		iRect m_rightPanelRemRect;
 		Sint32 m_leftPanel;
 		Sint32 m_rightPanel;
-		Sint32 m_consoleHeight;
-		bool m_haveExtraLeftPanel;
-		bool m_haveExtraRightPanel;
-		bool m_canAddLeftPanel;
-		bool m_canAddRightPanel;
+		Sint32 m_consoleHeight = 140;
 
-		Sint32 m_fullScreenWidth;
-		Sint32 m_fullScreenHeight;
-		Sint32 m_fullScreenBits;
-		Sint32 m_fullScreenHZ;
+		Sint32 m_fullScreenWidth = 800;
+		Sint32 m_fullScreenHeight = 600;
+		Sint32 m_fullScreenBits = 32;
+		Sint32 m_fullScreenHZ = 60;
 
-		Sint32 m_characterSelectId;
+		Sint32 m_characterSelectId = 0;
 		Sint32 m_charx[CLIENT_FONT_LAST][256], m_chary[CLIENT_FONT_LAST][256], m_charw[CLIENT_FONT_LAST][256], m_charh[CLIENT_FONT_LAST][256];
-		Sint32 m_windowX;
-		Sint32 m_windowY;
-		Sint32 m_windowW;
-		Sint32 m_windowH;
-		Sint32 m_windowCachedW;
-		Sint32 m_windowCachedH;
+		Sint32 m_windowX = SDL_WINDOWPOS_CENTERED;
+		Sint32 m_windowY = SDL_WINDOWPOS_CENTERED;
+		Sint32 m_windowW = 640;
+		Sint32 m_windowH = 480;
+		Sint32 m_windowCachedW = 640;
+		Sint32 m_windowCachedH = 480;
 		Uint16 m_charPicture[CLIENT_FONT_LAST];
 
 		ClientActionData m_actionDataStructure[2];
-		ClientActions m_actionData;
+		ClientActions m_actionData = CLIENT_ACTION_NONE;
 
-		Uint8 m_accountStatus;
-		Uint8 m_accountSubStatus;
+		Uint8 m_accountStatus = AccountStatus_Ok;
+		Uint8 m_accountSubStatus = SubscriptionStatus_Free;
 
-		Uint8 m_attackMode;
-		Uint8 m_chaseMode;
-		Uint8 m_secureMode;
-		Uint8 m_pvpMode;
-		Uint8 m_antialiasing;
-		Uint8 m_lightAmbient;
-		Uint8 m_levelSeparator;
-		Uint8 m_lightMode;
+		Uint8 m_attackMode = ATTACKMODE_BALANCED;
+		Uint8 m_chaseMode = CHASEMODE_STAND;
+		Uint8 m_secureMode = SECUREMODE_SECURE;
+		Uint8 m_pvpMode = PVPMODE_DOVE;
+		Uint8 m_antialiasing = CLIENT_ANTIALIASING_NORMAL;
+		Uint8 m_lightAmbient = 25;
+		Uint8 m_levelSeparator = 80;
+		Uint8 m_lightMode = CLIENT_LIGHT_MODE_OLD;
 		Uint8 m_engine;
 
-		Uint8 m_leftAddPanel;
-		Uint8 m_leftRemPanel;
-		Uint8 m_rightAddPanel;
-		Uint8 m_rightRemPanel;
+		Uint8 m_leftAddPanel = 0;
+		Uint8 m_leftRemPanel = 0;
+		Uint8 m_rightAddPanel = 0;
+		Uint8 m_rightRemPanel = 0;
+		bool m_haveExtraLeftPanel = false;
+		bool m_haveExtraRightPanel = false;
+		bool m_canAddLeftPanel = false;
+		bool m_canAddRightPanel = false;
 
-		SortMethods m_battleSortMethod;
-		VipSortMethods m_buddySortmethod;
-		bool m_buddyHideOffline;
-		bool m_buddyHideGroups;
+		SortMethods m_battleSortMethod = Sort_Ascending_Time;
+		VipSortMethods m_buddySortmethod = Vip_Sort_Name;
+		bool m_buddyHideOffline = false;
+		bool m_buddyHideGroups = false;
 
-		bool m_maximized;
-		bool m_fullscreen;
-		bool m_vsync;
-		bool m_unlimitedFPS;
-		bool m_controlFPS;
-		bool m_sharpening;
+		bool m_maximized = true;
+		bool m_fullscreen = false;
+		bool m_vsync = true;
+		bool m_unlimitedFPS = true;
+		bool m_controlFPS = false;
+		bool m_sharpening = false;
 
-		bool m_classicControl;
-		bool m_autoChaseOff;
-		bool m_showNames;
-		bool m_showMarks;
-		bool m_showPvPFrames;
-		bool m_showIcons;
-		bool m_showTextualEffects;
-		bool m_showCooldown;
+		bool m_classicControl = true;
+		bool m_autoChaseOff = true;
+		bool m_showNames = true;
+		bool m_showMarks = true;
+		bool m_showPvPFrames = true;
+		bool m_showIcons = true;
+		bool m_showTextualEffects = true;
+		bool m_showCooldown = true;
 
-		bool m_showInfoMessages;
-		bool m_showEventMessages;
-		bool m_showStatusMessages;
-		bool m_showStatusOthersMessages;
-		bool m_showTimestamps;
-		bool m_showLevels;
-		bool m_showPrivateMessages;
+		bool m_showInfoMessages = true;
+		bool m_showEventMessages = true;
+		bool m_showStatusMessages = true;
+		bool m_showStatusOthersMessages = true;
+		bool m_showTimestamps = true;
+		bool m_showLevels = true;
+		bool m_showPrivateMessages = true;
 
-		bool m_showLevelBar;
-		bool m_showStaminaBar;
-		bool m_showMagLevelBar;
-		bool m_showTrainingBar;
+		bool m_showLevelBar = true;
+		bool m_showStaminaBar = true;
+		bool m_showMagLevelBar = true;
+		bool m_showTrainingBar = true;
 		bool m_showSkillsBar[Skills_LastSkill];
 
-		Uint8 m_buySortMethod;
-		Uint8 m_sellSortMethod;
-		bool m_buyWithBackpacks;
-		bool m_ignoreCapacity;
-		bool m_ignoreEquiped;
+		Uint8 m_buySortMethod = Shop_Sort_Name;
+		Uint8 m_sellSortMethod = Shop_Sort_Name;
+		bool m_buyWithBackpacks = false;
+		bool m_ignoreCapacity = false;
+		bool m_ignoreEquiped = true;
 
-		bool m_activatedBlackList;
-		bool m_activatedWhiteList;
-		bool m_ignoreYellingMessages;
-		bool m_ignorePrivateMessages;
-		bool m_allowVipMessages;
+		bool m_activatedBlackList = true;
+		bool m_activatedWhiteList = true;
+		bool m_ignoreYellingMessages = false;
+		bool m_ignorePrivateMessages = false;
+		bool m_allowVipMessages = false;
 
-		bool m_newCharacterList;
-		bool m_ingame;
-		bool m_showPerformance;
-		bool m_showLogger;
+		bool m_newCharacterList = false;
+		bool m_ingame = false;
+		bool m_showPerformance = false;
+		bool m_showLogger = false;
 };
 
 #endif /* __FILE_ENGINE_h_ */

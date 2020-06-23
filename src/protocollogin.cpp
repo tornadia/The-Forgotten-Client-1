@@ -33,12 +33,6 @@ extern Uint32 g_datRevision;
 extern Uint32 g_picRevision;
 extern Uint32 g_sprRevision;
 
-ProtocolLogin::ProtocolLogin()
-{
-	m_lastError = CONNECTION_ERROR_INVALID;
-	m_skipErrors = false;
-}
-
 void ProtocolLogin::parseMessage(InputMessage& msg)
 {
 	m_skipErrors = true;//Since we read something skip disconnect errors
@@ -364,7 +358,7 @@ void ProtocolLogin::onConnect()
 	}
 
 	if(checksumFeature)
-		setChecksumMethod(g_game.hasGameFeature(GAME_FEATURE_PROTOCOLSEQUENCE) ? CHECKSUM_METHOD_SEQUENCE : CHECKSUM_METHOD_ADLER32);
+		setChecksumMethod(CHECKSUM_METHOD_ADLER32);
 
 	onSend(msg);
 	if(xteaFeature)
@@ -410,8 +404,7 @@ void ProtocolLogin::onDisconnect()
 			case CONNECTION_ERROR_PROTOCOL_FAIL:
 				UTIL_messageBox("Connection Failed", "Cannot connect to a login server.\n\nError: Protocol mismatched.");
 				break;
-			default:
-				break;
+			default: break;
 		}
 	}
 	delete this;

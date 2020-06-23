@@ -36,13 +36,37 @@ struct ConfigKey
 		name = std::move(_name);
 		value = std::move(_value);
 	}
+
+	// non-copyable
+	ConfigKey(const ConfigKey&) = delete;
+	ConfigKey& operator=(const ConfigKey&) = delete;
+
+	// moveable
+	ConfigKey(ConfigKey&& rhs) noexcept : name(std::move(rhs.name)), value(std::move(rhs.value)) {}
+	ConfigKey& operator=(ConfigKey&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			name = std::move(rhs.name);
+			value = std::move(rhs.value);
+		}
+		return (*this);
+	}
 };
 
 class Config
 {
 	public:
-		Config();
+		Config() = default;
 		~Config();
+
+		// non-copyable
+		Config(const Config&) = delete;
+		Config& operator=(const Config&) = delete;
+
+		// non-moveable
+		Config(Config&&) = delete;
+		Config& operator=(Config&&) = delete;
 
 		bool openToRead(const char* fileName);
 		bool openToSave(const char* fileName);
@@ -56,8 +80,8 @@ class Config
 
 	protected:
 		std::vector<ConfigKey> m_keys;
-		SDL_RWops* m_fileHandle;
-		bool m_saveHandle;
+		SDL_RWops* m_fileHandle = NULL;
+		bool m_saveHandle = false;
 };
 
 #endif /* __FILE_CONFIG_h_ */

@@ -78,6 +78,36 @@ struct LightMap
 
 struct ContextMenuChild
 {
+	ContextMenuChild() = default;
+
+	// copyable
+	ContextMenuChild(const ContextMenuChild& rhs) : text(rhs.text), shortcut(rhs.shortcut), eventId(rhs.eventId), childStyle(rhs.childStyle) {}
+	ContextMenuChild& operator=(const ContextMenuChild& rhs)
+	{
+		if(this != &rhs)
+		{
+			text.assign(rhs.text);
+			shortcut.assign(rhs.shortcut);
+			eventId = rhs.eventId;
+			childStyle = rhs.childStyle;
+		}
+		return (*this);
+	}
+
+	// moveable
+	ContextMenuChild(ContextMenuChild&& rhs) noexcept : text(std::move(rhs.text)), shortcut(std::move(rhs.shortcut)), eventId(rhs.eventId), childStyle(rhs.childStyle) {}
+	ContextMenuChild& operator=(ContextMenuChild&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			text = std::move(rhs.text);
+			shortcut = std::move(rhs.shortcut);
+			eventId = rhs.eventId;
+			childStyle = rhs.childStyle;
+		}
+		return (*this);
+	}
+
 	std::string text;
 	std::string shortcut;
 	Uint32 eventId;
@@ -86,6 +116,36 @@ struct ContextMenuChild
 
 struct WorldDetail
 {
+	WorldDetail() = default;
+
+	// copyable
+	WorldDetail(const WorldDetail& rhs) : worldName(rhs.worldName), worldIp(rhs.worldIp), worldPort(rhs.worldPort), previewState(rhs.previewState) {}
+	WorldDetail& operator=(const WorldDetail& rhs)
+	{
+		if(this != &rhs)
+		{
+			worldName.assign(rhs.worldName);
+			worldIp.assign(rhs.worldIp);
+			worldPort = rhs.worldPort;
+			previewState = rhs.previewState;
+		}
+		return (*this);
+	}
+
+	// moveable
+	WorldDetail(WorldDetail&& rhs) noexcept : worldName(std::move(rhs.worldName)), worldIp(std::move(rhs.worldIp)), worldPort(rhs.worldPort), previewState(rhs.previewState) {}
+	WorldDetail& operator=(WorldDetail&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			worldName = std::move(rhs.worldName);
+			worldIp = std::move(rhs.worldIp);
+			worldPort = rhs.worldPort;
+			previewState = rhs.previewState;
+		}
+		return (*this);
+	}
+
 	std::string worldName;
 	std::string worldIp;
 	Uint16 worldPort;
@@ -94,6 +154,66 @@ struct WorldDetail
 
 struct CharacterDetail
 {
+	CharacterDetail() = default;
+
+	// copyable
+	CharacterDetail(const CharacterDetail& rhs) : name(rhs.name), vocName(rhs.vocName), worldName(rhs.worldName), worldIp(rhs.worldIp),
+		health(rhs.health), healthMax(rhs.healthMax), mana(rhs.mana), manaMax(rhs.manaMax), level(rhs.level), lookType(rhs.lookType), worldPort(rhs.worldPort),
+		lookHead(rhs.lookHead), lookBody(rhs.lookBody), lookLegs(rhs.lookLegs), lookFeet(rhs.lookFeet), lookAddons(rhs.lookAddons), previewState(rhs.previewState) {}
+	CharacterDetail& operator=(const CharacterDetail& rhs)
+	{
+		if(this != &rhs)
+		{
+			name.assign(rhs.name);
+			vocName.assign(rhs.vocName);
+			worldName.assign(rhs.worldName);
+			worldIp.assign(rhs.worldIp);
+			health = rhs.health;
+			healthMax = rhs.healthMax;
+			mana = rhs.mana;
+			manaMax = rhs.manaMax;
+			level = rhs.level;
+			lookType = rhs.lookType;
+			worldPort = rhs.worldPort;
+			lookHead = rhs.lookHead;
+			lookBody = rhs.lookBody;
+			lookLegs = rhs.lookLegs;
+			lookFeet = rhs.lookFeet;
+			lookAddons = rhs.lookAddons;
+			previewState = rhs.previewState;
+		}
+		return (*this);
+	}
+
+	// moveable
+	CharacterDetail(CharacterDetail&& rhs) noexcept : name(std::move(rhs.name)), vocName(std::move(rhs.vocName)), worldName(std::move(rhs.worldName)), worldIp(std::move(rhs.worldIp)),
+		health(rhs.health), healthMax(rhs.healthMax), mana(rhs.mana), manaMax(rhs.manaMax), level(rhs.level), lookType(rhs.lookType), worldPort(rhs.worldPort),
+		lookHead(rhs.lookHead), lookBody(rhs.lookBody), lookLegs(rhs.lookLegs), lookFeet(rhs.lookFeet), lookAddons(rhs.lookAddons), previewState(rhs.previewState) {}
+	CharacterDetail& operator=(CharacterDetail&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			name = std::move(rhs.name);
+			vocName = std::move(rhs.vocName);
+			worldName = std::move(rhs.worldName);
+			worldIp = std::move(rhs.worldIp);
+			health = rhs.health;
+			healthMax = rhs.healthMax;
+			mana = rhs.mana;
+			manaMax = rhs.manaMax;
+			level = rhs.level;
+			lookType = rhs.lookType;
+			worldPort = rhs.worldPort;
+			lookHead = rhs.lookHead;
+			lookBody = rhs.lookBody;
+			lookLegs = rhs.lookLegs;
+			lookFeet = rhs.lookFeet;
+			lookAddons = rhs.lookAddons;
+			previewState = rhs.previewState;
+		}
+		return (*this);
+	}
+
 	std::string name;
 	std::string vocName;
 	std::string worldName;
@@ -115,12 +235,66 @@ struct CharacterDetail
 
 struct ChannelDetail
 {
+	ChannelDetail() = default;
+
+	// copyable
+	ChannelDetail(const ChannelDetail& rhs) : channelName(rhs.channelName), channelId(rhs.channelId) {}
+	ChannelDetail& operator=(const ChannelDetail& rhs)
+	{
+		if(this != &rhs)
+		{
+			channelName.assign(rhs.channelName);
+			channelId = rhs.channelId;
+		}
+		return (*this);
+	}
+
+	// moveable
+	ChannelDetail(ChannelDetail&& rhs) noexcept : channelName(std::move(rhs.channelName)), channelId(rhs.channelId) {}
+	ChannelDetail& operator=(ChannelDetail&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			channelName = std::move(rhs.channelName);
+			channelId = rhs.channelId;
+		}
+		return (*this);
+	}
+
 	std::string channelName;
 	Uint16 channelId;
 };
 
 struct OutfitDetail
 {
+	OutfitDetail() = default;
+
+	// copyable
+	OutfitDetail(const OutfitDetail& rhs) : outfitName(rhs.outfitName), outfitID(rhs.outfitID), outfitAddons(rhs.outfitAddons) {}
+	OutfitDetail& operator=(const OutfitDetail& rhs)
+	{
+		if(this != &rhs)
+		{
+			outfitName.assign(rhs.outfitName);
+			outfitID = rhs.outfitID;
+			outfitAddons = rhs.outfitAddons;
+		}
+		return (*this);
+	}
+
+	// moveable
+	OutfitDetail(OutfitDetail&& rhs) noexcept : outfitName(std::move(rhs.outfitName)), outfitID(rhs.outfitID), outfitAddons(rhs.outfitAddons) {}
+	OutfitDetail& operator=(OutfitDetail&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			outfitName = std::move(rhs.outfitName);
+			outfitID = rhs.outfitID;
+			outfitAddons = rhs.outfitAddons;
+		}
+		return (*this);
+	}
+
 	std::string outfitName;
 	Uint16 outfitID;
 	Uint8 outfitAddons;
@@ -128,12 +302,66 @@ struct OutfitDetail
 
 struct MountDetail
 {
+	MountDetail() = default;
+
+	// copyable
+	MountDetail(const MountDetail& rhs) : mountName(rhs.mountName), mountID(rhs.mountID) {}
+	MountDetail& operator=(const MountDetail& rhs)
+	{
+		if(this != &rhs)
+		{
+			mountName.assign(rhs.mountName);
+			mountID = rhs.mountID;
+		}
+		return (*this);
+	}
+
+	// moveable
+	MountDetail(MountDetail&& rhs) noexcept : mountName(std::move(rhs.mountName)), mountID(rhs.mountID) {}
+	MountDetail& operator=(MountDetail&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			mountName = std::move(rhs.mountName);
+			mountID = rhs.mountID;
+		}
+		return (*this);
+	}
+
 	std::string mountName;
 	Uint16 mountID;
 };
 
 struct QuestLogDetail
 {
+	QuestLogDetail() = default;
+
+	// copyable
+	QuestLogDetail(const QuestLogDetail& rhs) : questName(rhs.questName), questId(rhs.questId), questCompleted(rhs.questCompleted) {}
+	QuestLogDetail& operator=(const QuestLogDetail& rhs)
+	{
+		if(this != &rhs)
+		{
+			questName.assign(rhs.questName);
+			questId = rhs.questId;
+			questCompleted = rhs.questCompleted;
+		}
+		return (*this);
+	}
+
+	// moveable
+	QuestLogDetail(QuestLogDetail&& rhs) noexcept : questName(std::move(rhs.questName)), questId(rhs.questId), questCompleted(rhs.questCompleted) {}
+	QuestLogDetail& operator=(QuestLogDetail&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			questName = std::move(rhs.questName);
+			questId = rhs.questId;
+			questCompleted = rhs.questCompleted;
+		}
+		return (*this);
+	}
+
 	std::string questName;
 	Uint16 questId;
 	bool questCompleted;
@@ -141,6 +369,34 @@ struct QuestLogDetail
 
 struct QuestLineDetail
 {
+	QuestLineDetail() = default;
+
+	// copyable
+	QuestLineDetail(const QuestLineDetail& rhs) : missionName(rhs.missionName), missionDescription(rhs.missionDescription), missionId(rhs.missionId) {}
+	QuestLineDetail& operator=(const QuestLineDetail& rhs)
+	{
+		if(this != &rhs)
+		{
+			missionName.assign(rhs.missionName);
+			missionDescription.assign(rhs.missionDescription);
+			missionId = rhs.missionId;
+		}
+		return (*this);
+	}
+
+	// moveable
+	QuestLineDetail(QuestLineDetail&& rhs) noexcept : missionName(std::move(rhs.missionName)), missionDescription(std::move(rhs.missionDescription)), missionId(rhs.missionId) {}
+	QuestLineDetail& operator=(QuestLineDetail&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			missionName = std::move(rhs.missionName);
+			missionDescription = std::move(rhs.missionDescription);
+			missionId = rhs.missionId;
+		}
+		return (*this);
+	}
+
 	std::string missionName;
 	std::string missionDescription;
 	Uint16 missionId;
@@ -161,6 +417,42 @@ struct RequestItems
 using NPCTradeGoods = std::map<Uint16, Uint16>;
 struct NPCTradeItems
 {
+	NPCTradeItems() = default;
+
+	// copyable
+	NPCTradeItems(const NPCTradeItems& rhs) :
+		itemName(rhs.itemName), itemWeight(rhs.itemWeight), itemBuyPrice(rhs.itemBuyPrice), itemSellPrice(rhs.itemSellPrice), itemId(rhs.itemId), itemSubtype(rhs.itemSubtype) {}
+	NPCTradeItems& operator=(const NPCTradeItems& rhs)
+	{
+		if(this != &rhs)
+		{
+			itemName.assign(rhs.itemName);
+			itemWeight = rhs.itemWeight;
+			itemBuyPrice = rhs.itemBuyPrice;
+			itemSellPrice = rhs.itemSellPrice;
+			itemId = rhs.itemId;
+			itemSubtype = rhs.itemSubtype;
+		}
+		return (*this);
+	}
+
+	// moveable
+	NPCTradeItems(NPCTradeItems&& rhs) noexcept :
+		itemName(std::move(rhs.itemName)), itemWeight(rhs.itemWeight), itemBuyPrice(rhs.itemBuyPrice), itemSellPrice(rhs.itemSellPrice), itemId(rhs.itemId), itemSubtype(rhs.itemSubtype) {}
+	NPCTradeItems& operator=(NPCTradeItems&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			itemName = std::move(rhs.itemName);
+			itemWeight = rhs.itemWeight;
+			itemBuyPrice = rhs.itemBuyPrice;
+			itemSellPrice = rhs.itemSellPrice;
+			itemId = rhs.itemId;
+			itemSubtype = rhs.itemSubtype;
+		}
+		return (*this);
+	}
+
 	std::string itemName;
 	Uint32 itemWeight;
 	Uint32 itemBuyPrice;
@@ -171,6 +463,34 @@ struct NPCTradeItems
 
 struct VipData
 {
+	VipData() = default;
+
+	// copyable
+	VipData(const VipData& rhs) : description(rhs.description), iconId(rhs.iconId), notifyLogin(rhs.notifyLogin) {}
+	VipData& operator=(const VipData& rhs)
+	{
+		if(this != &rhs)
+		{
+			description.assign(rhs.description);
+			iconId = rhs.iconId;
+			notifyLogin = rhs.notifyLogin;
+		}
+		return (*this);
+	}
+
+	// moveable
+	VipData(VipData&& rhs) noexcept : description(std::move(rhs.description)), iconId(rhs.iconId), notifyLogin(rhs.notifyLogin)	{}
+	VipData& operator=(VipData&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			description = std::move(rhs.description);
+			iconId = rhs.iconId;
+			notifyLogin = rhs.notifyLogin;
+		}
+		return (*this);
+	}
+
 	std::string description;
 	Uint32 iconId;
 	bool notifyLogin;
@@ -178,6 +498,44 @@ struct VipData
 
 struct VipPlayers
 {
+	VipPlayers() = default;
+
+	// copyable
+	VipPlayers(const VipPlayers& rhs) : groups(rhs.groups), playerName(rhs.playerName), description(rhs.description),
+		playerGUID(rhs.playerGUID), iconId(rhs.iconId), status(rhs.status), notifyLogin(rhs.notifyLogin) {}
+	VipPlayers& operator=(const VipPlayers& rhs)
+	{
+		if(this != &rhs)
+		{
+			groups.assign(rhs.groups.begin(), rhs.groups.end());
+			playerName.assign(rhs.playerName);
+			description.assign(rhs.description);
+			playerGUID = rhs.playerGUID;
+			iconId = rhs.iconId;
+			status = rhs.status;
+			notifyLogin = rhs.notifyLogin;
+		}
+		return (*this);
+	}
+
+	// moveable
+	VipPlayers(VipPlayers&& rhs) noexcept : groups(std::move(rhs.groups)), playerName(std::move(rhs.playerName)), description(std::move(rhs.description)),
+		playerGUID(rhs.playerGUID), iconId(rhs.iconId), status(rhs.status), notifyLogin(rhs.notifyLogin) {}
+	VipPlayers& operator=(VipPlayers&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			groups = std::move(rhs.groups);
+			playerName = std::move(rhs.playerName);
+			description = std::move(rhs.description);
+			playerGUID = rhs.playerGUID;
+			iconId = rhs.iconId;
+			status = rhs.status;
+			notifyLogin = rhs.notifyLogin;
+		}
+		return (*this);
+	}
+
 	std::vector<Uint8> groups;
 	std::string playerName;
 	std::string description;
@@ -189,6 +547,34 @@ struct VipPlayers
 
 struct VipGroups
 {
+	VipGroups() = default;
+
+	// copyable
+	VipGroups(const VipGroups& rhs) : groupName(rhs.groupName), groupId(rhs.groupId), groupRemovable(rhs.groupRemovable) {}
+	VipGroups& operator=(const VipGroups& rhs)
+	{
+		if(this != &rhs)
+		{
+			groupName.assign(rhs.groupName);
+			groupId = rhs.groupId;
+			groupRemovable = rhs.groupRemovable;
+		}
+		return (*this);
+	}
+
+	// moveable
+	VipGroups(VipGroups&& rhs) noexcept : groupName(std::move(rhs.groupName)), groupId(rhs.groupId), groupRemovable(rhs.groupRemovable)	{}
+	VipGroups& operator=(VipGroups&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			groupName = std::move(rhs.groupName);
+			groupId = rhs.groupId;
+			groupRemovable = rhs.groupRemovable;
+		}
+		return (*this);
+	}
+
 	std::string groupName;
 	Uint8 groupId;
 	bool groupRemovable;

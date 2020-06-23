@@ -465,6 +465,7 @@ void outfits_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -654,22 +655,13 @@ void UTIL_createOutfitWindow(Uint16 lookType, Uint8 lookHead, Uint8 lookBody, Ui
 	g_engine.addWindow(newWindow);
 }
 
-GUI_Outfit_View::GUI_Outfit_View(iRect boxRect, Uint32 internalID)
+GUI_Outfit_View::GUI_Outfit_View(iRect boxRect, Uint32 internalID) : m_currentFrame(ThingFrameGroup_Idle)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
 	m_ground = g_thingManager.getThingType(ThingCategory_Item, 429);
 	m_outfit = g_thingManager.getThingType(ThingCategory_Creature, g_outfitLookType);
 	m_mount = (g_outfitMount == 0 ? NULL : g_thingManager.getThingType(ThingCategory_Creature, g_outfitMount));
-	m_walkStartTime = 0;
-	m_walkedPixels = 0;
-	m_direction = DIRECTION_SOUTH;
-	m_outfitAnim = 0;
-	m_mountAnim = 0;
-	m_currentFrame = ThingFrameGroup_Idle;
-	m_showOutfit = true;
-	m_showMount = true;
-	m_walking = false;
 	resetAnimation();
 }
 
@@ -714,7 +706,7 @@ void GUI_Outfit_View::startMovement()
 	m_walking = true;
 	m_outfitAnim = 0;
 	m_mountAnim = 0;
-	if(m_outfit && m_outfit->hasFlag(ThingAttribute_NoMoveAnimation))
+	if(!g_game.hasGameFeature(GAME_FEATURE_FRAMEGROUPS) || (m_outfit && m_outfit->hasFlag(ThingAttribute_AnimateAlways)))
 		m_currentFrame = ThingFrameGroup_Idle;
 	else
 		m_currentFrame = ThingFrameGroup_Moving;
@@ -812,8 +804,8 @@ Sint32 GUI_Outfit_View::getOffsetX()
 			return 0;
 		case DIRECTION_WEST:
 			return -(m_walkedPixels % 32);
+		default: return 0;
 	}
-	return 0;
 }
 
 Sint32 GUI_Outfit_View::getOffsetY()
@@ -829,8 +821,8 @@ Sint32 GUI_Outfit_View::getOffsetY()
 			return (m_walkedPixels % 32);
 		case DIRECTION_WEST:
 			return 0;
+		default: return 0;
 	}
-	return 0;
 }
 
 void GUI_Outfit_View::render()
@@ -838,7 +830,7 @@ void GUI_Outfit_View::render()
 	Uint32 outfitColor = (g_outfitColors[3] << 24) | (g_outfitColors[2] << 16) | (g_outfitColors[1] << 8) | (g_outfitColors[0]);
 	updateMovement();
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->beginGameScene();
 	Sint32 startX = -getOffsetX();
 	Sint32 startY = -getOffsetY();
@@ -986,9 +978,6 @@ GUI_Outfit_Colors::GUI_Outfit_Colors(iRect boxRect, Uint32 internalID)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_selected = 0;
-	m_hoverColor[0] = m_hoverColor[1] = -1;
-	m_Pressed = false;
 }
 
 void GUI_Outfit_Colors::onMouseMove(Sint32 x, Sint32 y, bool)
@@ -1069,7 +1058,7 @@ void GUI_Outfit_Colors::onLMouseUp(Sint32 x, Sint32 y)
 
 void GUI_Outfit_Colors::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1 + m_tRect.x2 - 2, m_tRect.y1 + 16, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1, m_tRect.y1 + m_tRect.y2 - 2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1, m_tRect.y1 + 16, m_tRect.x2 - 2, 2);
@@ -1131,7 +1120,7 @@ void GUI_Outfit_Colors::render()
 			if(g_outfitColors[m_selected] == c)
 			{
 				renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_COLOR_BOX_DOWN_X, GUI_UI_ICON_COLOR_BOX_DOWN_Y, posX, posY, GUI_UI_ICON_COLOR_BOX_DOWN_W, GUI_UI_ICON_COLOR_BOX_DOWN_H);
-				renderer->drawRectangle(posX - 1, posY - 1, 14, 14, 255, 255, 255, 255);
+				renderer->drawRectangle(posX - 1, posY - 1, 14, 14, 1, 255, 255, 255, 255);
 			}
 			else
 				renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_COLOR_BOX_UP_X, (hoverC == c ? GUI_UI_ICON_COLOR_BOX_DOWN_Y : GUI_UI_ICON_COLOR_BOX_UP_Y), posX, posY, GUI_UI_ICON_COLOR_BOX_UP_W, GUI_UI_ICON_COLOR_BOX_UP_H);

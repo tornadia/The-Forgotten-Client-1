@@ -181,6 +181,7 @@ SDL_Cursor* createCursor(const char* data[], int hot_x, int hot_y)
 				case ' ': pixels[x] = 0x00000000; break;//transparent
 				case '.': pixels[x] = 0xFFFFFFFF; break;//white
 				case 'x': pixels[x] = 0xFF000000; break;//black
+				default: break;
 			}
 		}
 		pixels += (surface->pitch >> 2);
@@ -376,6 +377,9 @@ int main(int argc, char* argv[])
 								case SDL_WINDOWEVENT_CLOSE:
 									g_engine.exitGame();
 									break;
+
+								default:
+									break;
 							}
 						}
 					}
@@ -525,9 +529,13 @@ int main(int argc, char* argv[])
 							case CLIENT_EVENT_SAFEEVENTHANDLER: SDL_reinterpret_cast(void(*)(Uint32, Sint32), event.user.data1)(SDL_static_cast(Uint32, SDL_reinterpret_cast(size_t, event.user.data2)), SDL_static_cast(Sint32, event.user.windowID)); break;
 							case CLIENT_EVENT_UPDATEPANELS: g_engine.checkPanelWindows(SDL_reinterpret_cast(GUI_PanelWindow*, event.user.data1), event.user.windowID, SDL_static_cast(Sint32, SDL_reinterpret_cast(size_t, event.user.data2))); break;
 							case CLIENT_EVENT_RESIZEPANEL: g_engine.resizePanel(SDL_reinterpret_cast(GUI_PanelWindow*, event.user.data1), event.user.windowID, SDL_static_cast(Sint32, SDL_reinterpret_cast(size_t, event.user.data2))); break;
+							default: break;
 						}
 					}
 					break;
+
+					default:
+						break;
 				}
 			}
 

@@ -27,7 +27,15 @@
 class GUI_Description
 {
 	public:
-		GUI_Description();
+		GUI_Description() = default;
+
+		// non-copyable
+		GUI_Description(const GUI_Description&) = delete;
+		GUI_Description& operator=(const GUI_Description&) = delete;
+
+		// non-moveable
+		GUI_Description(GUI_Description&&) = delete;
+		GUI_Description& operator=(GUI_Description&&) = delete;
 
 		void setDisplay(Sint32 mouseX, Sint32 mouseY, const std::string description, Uint32 delay = 500);
 		void render();
@@ -35,7 +43,7 @@ class GUI_Description
 	protected:
 		std::string m_description;
 		iRect m_tRect;
-		Uint32 m_startDisplay;
+		Uint32 m_startDisplay = 0;
 };
 
 #endif /* __FILE_GUI_DESCRIPTION_h_ */

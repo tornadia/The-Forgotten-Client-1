@@ -26,12 +26,10 @@ RSA g_rsa;
 
 extern Connection* g_connection;
 
-Protocol::Protocol()
+Protocol::~Protocol()
 {
-	m_clientSequence = 0;
-	m_serverSequence = 0;
-	m_checksumMethod = CHECKSUM_METHOD_NONE;
-	m_encryption = false;
+	if(m_inflateStream)
+		inflateEnd(m_inflateStream.get());
 }
 
 bool Protocol::onRecv(InputMessage& msg)
@@ -87,10 +85,32 @@ bool Protocol::onRecv(InputMessage& msg)
 		msg.setMessageSize(messageSize + msg.getReadPos());
 	}
 
-	/*if(compression)
+	if(compression)
 	{
-		//TODO
-	}*/
+		if(!m_inflateStream)
+		{
+			m_inflateStream = std::move(std::make_unique<z_stream>());
+			inflateInit2(m_inflateStream.get(), -15);
+		}
+
+		static Uint8 infBuffer[65536];
+		m_inflateStream->next_in = msg.getReadBuffer();
+		m_inflateStream->avail_in = SDL_static_cast(Uint32, msg.getUnreadSize());
+		m_inflateStream->next_out = infBuffer;
+		m_inflateStream->avail_out = 65536;
+
+		Sint32 ret = inflate(m_inflateStream.get(), Z_FINISH);
+		if(ret != Z_OK && ret != Z_STREAM_END)
+			return false;
+
+		Uint32 totalSize = SDL_static_cast(Uint32, m_inflateStream->total_out);
+		inflateReset(m_inflateStream.get());
+		if(totalSize == 0)
+			return false;
+
+		UTIL_FastCopy(msg.getReadBuffer(), infBuffer, SDL_static_cast(size_t, totalSize));
+		msg.setMessageSize(SDL_static_cast(Uint16, totalSize) + msg.getReadPos());
+	}
 
 	while(!msg.eof())
 		parseMessage(msg);
@@ -205,8 +225,8 @@ Uint16 Protocol::getProtocolVersion()
 		case 1147: return 1145;
 		case 1149: return 1148;
 		case 1156: return 1150;
+		default: return SDL_static_cast(Uint16, g_clientVersion);
 	}
-	return SDL_static_cast(Uint16, g_clientVersion);
 	#endif
 }
 

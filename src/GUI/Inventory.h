@@ -29,6 +29,14 @@ class GUI_Icons : public GUI_Element
 	public:
 		GUI_Icons(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_Icons(const GUI_Icons&) = delete;
+		GUI_Icons& operator=(const GUI_Icons&) = delete;
+
+		// non-moveable
+		GUI_Icons(GUI_Icons&&) = delete;
+		GUI_Icons& operator=(GUI_Icons&&) = delete;
+
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 
 		void render();
@@ -38,6 +46,14 @@ class GUI_InventoryItem : public GUI_Element
 {
 	public:
 		GUI_InventoryItem(iRect boxRect, Sint32 skinX, Sint32 skinY, Uint8 slot, Uint32 internalID = 0);
+
+		// non-copyable
+		GUI_InventoryItem(const GUI_InventoryItem&) = delete;
+		GUI_InventoryItem& operator=(const GUI_InventoryItem&) = delete;
+
+		// non-moveable
+		GUI_InventoryItem(GUI_InventoryItem&&) = delete;
+		GUI_InventoryItem& operator=(GUI_InventoryItem&&) = delete;
 
 		void* onAction(Sint32 x, Sint32 y);
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
@@ -51,7 +67,7 @@ class GUI_InventoryItem : public GUI_Element
 		Sint32 m_skinX;
 		Sint32 m_skinY;
 		Uint8 m_slot;
-		bool m_selected;
+		bool m_selected = false;
 };
 
 #endif /* __FILE_GUI_INVENTORY_h_ */

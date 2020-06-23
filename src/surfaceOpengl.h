@@ -26,6 +26,14 @@
 
 #if defined(SDL_VIDEO_RENDER_OGL)
 
+#define OPENGL_MAX_VERTICES 43656
+#define OPENGL_MAX_INDICES (OPENGL_MAX_VERTICES * 6 / 4)
+#if OPENGL_MAX_INDICES >= 65500
+#define OPENGL_USE_UINT_INDICES 1
+#else
+#define OPENGL_USE_UINT_INDICES 0
+#endif
+
 #ifdef __APPLE__
 typedef void* GLhandleARB;
 #else
@@ -46,14 +54,15 @@ typedef void (APIENTRY *PFN_OglCopyTexSubImage2D)(unsigned int target, int level
 typedef void (APIENTRY *PFN_OglPolygonMode)(unsigned int face, unsigned int mode);
 typedef void (APIENTRY *PFN_OglEnable)(unsigned int cap);
 typedef void (APIENTRY *PFN_OglDisable)(unsigned int cap);
-typedef void (APIENTRY *PFN_OglBegin)(unsigned int mode);
-typedef void (APIENTRY *PFN_OglBlendFuncSeparate)(unsigned int sfactorRGB, unsigned int dfactorRGB, unsigned int sfactorAlpha, unsigned int dfactorAlpha);
-typedef void (APIENTRY *PFN_OglBlendEquation)(unsigned int mode);
+typedef void (APIENTRY *PFN_OglEnableClientState)(unsigned int cap);
+typedef void (APIENTRY *PFN_OglDisableClientState)(unsigned int cap);
+typedef void (APIENTRY *PFN_OglDrawArrays)(unsigned int mode, int first, int count);
+typedef void (APIENTRY *PFN_OglDrawElements)(unsigned int mode, int count, unsigned int type, const void* indices);
+typedef void (APIENTRY *PFN_OglBlendFunc)(unsigned int sfactorRGB, unsigned int dfactorRGB);
 typedef void (APIENTRY *PFN_OglColorMask)(unsigned char red, unsigned char green, unsigned char blue, unsigned char alpha);
-typedef void (APIENTRY *PFN_OglColor4f)(float red, float green, float blue, float alpha);
-typedef void (APIENTRY *PFN_OglTexCoord2f)(float u, float v);
-typedef void (APIENTRY *PFN_OglVertex2f)(float x, float y);
-typedef void (APIENTRY *PFN_OglEnd)(void);
+typedef void (APIENTRY *PFN_OglTexCoordPointer)(int size, unsigned int type, int stride, void* pointer);
+typedef void (APIENTRY *PFN_OglVertexPointer)(int size, unsigned int type, int stride, void* pointer);
+typedef void (APIENTRY *PFN_OglColorPointer)(int size, unsigned int type, int stride, void* pointer);
 typedef void (APIENTRY *PFN_OglReadPixels)(int x, int y, int width, int height, unsigned int format, unsigned int type, void* pixels);
 typedef void (APIENTRY *PFN_OglGetIntegerv)(unsigned int pname, int* params);
 typedef void (APIENTRY *PFN_OglLoadIdentity)();
@@ -84,6 +93,16 @@ typedef void (APIENTRY *PFN_OglUniform1iARB)(int location, int v0);
 typedef void (APIENTRY *PFN_OglUniform2fARB)(int location, float v0, float v1);
 typedef void (APIENTRY *PFN_OglUseProgramObjectARB)(GLhandleARB programObj);
 
+struct VertexOpengl
+{
+	VertexOpengl(float x, float y, float u, float v, DWORD color) : x(x), y(y), color(color), u(u), v(v) {}
+	VertexOpengl(float x, float y, DWORD color) : x(x), y(y), color(color), u(0.0f), v(0.0f) {}
+
+	float x, y;
+	float u, v;
+	DWORD color;
+};
+
 struct OpenglShader
 {
 	OpenglShader() : program(NULL), vert_shader(NULL), pix_shader(NULL) {}
@@ -96,6 +115,35 @@ struct OpenglShader
 struct OpenglTexture
 {
 	OpenglTexture() : m_texture(0), m_framebuffer(0) {}
+
+	operator bool() const {return (m_texture != 0);}
+
+	// non-copyable
+	OpenglTexture(const OpenglTexture&) = delete;
+	OpenglTexture& operator=(const OpenglTexture&) = delete;
+
+	// moveable
+	OpenglTexture(OpenglTexture&& rhs) noexcept : m_texture(rhs.m_texture), m_framebuffer(rhs.m_framebuffer),
+		m_width(rhs.m_width), m_height(rhs.m_height), m_scaleW(rhs.m_scaleW), m_scaleH(rhs.m_scaleH)
+	{
+		rhs.m_texture = 0;
+		rhs.m_framebuffer = 0;
+	}
+	OpenglTexture& operator=(OpenglTexture&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			m_texture = rhs.m_texture;
+			m_framebuffer = rhs.m_framebuffer;
+			m_width = rhs.m_width;
+			m_height = rhs.m_height;
+			m_scaleW = rhs.m_scaleW;
+			m_scaleH = rhs.m_scaleH;
+			rhs.m_texture = 0;
+			rhs.m_framebuffer = 0;
+		}
+		return (*this);
+	}
 
 	unsigned int m_texture;
 	unsigned int m_framebuffer;
@@ -115,7 +163,7 @@ struct OpenglSpriteData
 	Uint32 m_lastUsage;
 };
 
-typedef std::unordered_map<Uint32, OpenglTexture*> U32BGLTextures;
+typedef std::unordered_map<Uint32, OpenglTexture> U32BGLTextures;
 typedef std::unordered_map<Uint64, OpenglSpriteData> U64BGLTextures;
 
 class SurfaceOpengl : public Surface
@@ -124,25 +172,31 @@ class SurfaceOpengl : public Surface
 		SurfaceOpengl();
 		virtual ~SurfaceOpengl();
 
+		// non-copyable
+		SurfaceOpengl(const SurfaceOpengl&) = delete;
+		SurfaceOpengl& operator=(const SurfaceOpengl&) = delete;
+
+		// non-moveable
+		SurfaceOpengl(const SurfaceOpengl&&) = delete;
+		SurfaceOpengl& operator=(const SurfaceOpengl&&) = delete;
+
 		bool createOpenGLShader(OpenglShader& program, const char* vertex_shader, const char* pixel_shader);
 		void releaseOpenGLShader(OpenglShader& program);
 
-		OpenglTexture* createOpenGLTexture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
-		bool updateTextureData(OpenglTexture* texture, unsigned char* data);
-		void releaseOpenGLTexture(OpenglTexture* texture);
+		bool createOpenGLTexture(OpenglTexture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
+		bool updateTextureData(OpenglTexture& texture, unsigned char* data);
+		void releaseOpenGLTexture(OpenglTexture& texture);
 
 		void updateViewport();
 		void updateRenderer();
 
 		virtual bool isSupported();
-		virtual const char* getName() {return "OpenGL";}
+		virtual const char* getName() {return "OpenGL Legacy";}
 		virtual const char* getSoftware() {return m_software;}
 		virtual const char* getHardware() {return m_hardware;}
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
-		void drawTriangles(std::vector<float>& vertices, std::vector<float>& texCoords);
 		void generateSpriteAtlases();
-		void checkScheduledSprites();
 
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
@@ -155,6 +209,11 @@ class SurfaceOpengl : public Surface
 		void copyFromScreen(Sint32 x, Sint32 y, Uint32 w, Uint32 h);
 		void drawBackup(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
+		OpenglTexture* getTextureIndex(OpenglTexture* texture);
+		void drawQuad(OpenglTexture* texture, float vertices[8], float texcoords[8]);
+		void drawQuad(OpenglTexture* texture, float vertices[8], float texcoords[8], DWORD color);
+		void scheduleBatch();
+
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height) ;
@@ -164,7 +223,7 @@ class SurfaceOpengl : public Surface
 
 		virtual void setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void disableClipRect();
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		OpenglTexture* loadPicture(Uint16 pictureId, bool linear);
@@ -185,25 +244,29 @@ class SurfaceOpengl : public Surface
 		virtual void drawAutomapTile(Uint32 m_currentArea, bool& m_recreate, Uint8 m_color[256][256], Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 
 	protected:
-		std::vector<float> m_vertices;
-		std::vector<float> m_texCoords;
-		std::vector<OpenglTexture*> m_spritesAtlas;
+		std::vector<VertexOpengl> m_vertices;
+		#if OPENGL_USE_UINT_INDICES > 0
+		std::vector<Uint32> m_indices;
+		#else
+		std::vector<Uint16> m_indices;
+		#endif
+		std::vector<OpenglTexture> m_spritesAtlas;
 		U32BGLTextures m_automapTiles;
 		U64BGLTextures m_sprites;
-		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesIds;
+		std::circular_buffer<Uint32, MAX_AUTOMAPTILES> m_automapTilesBuff;
+		std::circular_buffer<Uint64, MAX_SPRITES> m_spritesIds;
 
-		OpenglTexture* m_spriteAtlas;
-		OpenglTexture** m_pictures;
-		char* m_software;
-		char* m_hardware;
+		OpenglTexture* m_pictures = NULL;
+		char* m_software = NULL;
+		char* m_hardware = NULL;
 
-		SDL_GLContext m_oglContext;
-		OpenglTexture* m_renderTarget;
+		SDL_GLContext m_oglContext = NULL;
+		OpenglTexture* m_renderTarget = NULL;
 
-		OpenglTexture* m_gameWindow;
-		OpenglTexture* m_scaled_gameWindow;
-		OpenglTexture* m_backup;
+		OpenglTexture m_gameWindow;
+		OpenglTexture m_scaled_gameWindow;
+		OpenglTexture m_backup;
+		OpenglTexture* m_binded_texture = NULL;
 
 		PFN_OglBindTexture OglBindTexture;
 		PFN_OglGenTextures OglGenTextures;
@@ -219,14 +282,15 @@ class SurfaceOpengl : public Surface
 		PFN_OglPolygonMode OglPolygonMode;
 		PFN_OglEnable OglEnable;
 		PFN_OglDisable OglDisable;
-		PFN_OglBegin OglBegin;
-		PFN_OglBlendFuncSeparate OglBlendFuncSeparate;
-		PFN_OglBlendEquation OglBlendEquation;
+		PFN_OglEnableClientState OglEnableClientState;
+		PFN_OglDisableClientState OglDisableClientState;
+		PFN_OglDrawArrays OglDrawArrays;
+		PFN_OglDrawElements OglDrawElements;
+		PFN_OglBlendFunc OglBlendFunc;
 		PFN_OglColorMask OglColorMask;
-		PFN_OglColor4f OglColor4f;
-		PFN_OglTexCoord2f OglTexCoord2f;
-		PFN_OglVertex2f OglVertex2f;
-		PFN_OglEnd OglEnd;
+		PFN_OglTexCoordPointer OglTexCoordPointer;
+		PFN_OglVertexPointer OglVertexPointer;
+		PFN_OglColorPointer OglColorPointer;
 		PFN_OglReadPixels OglReadPixels;
 		PFN_OglGetIntegerv OglGetIntegerv;
 		PFN_OglLoadIdentity OglLoadIdentity;
@@ -258,30 +322,30 @@ class SurfaceOpengl : public Surface
 		PFN_OglUseProgramObjectARB OglUseProgramObjectARB;
 
 		OpenglShader m_program_sharpen;
-		Sint32 m_sharpen_textureSize;
+		Sint32 m_sharpen_textureSize = -1;
 
-		Sint32 m_maxTextureSize;
-		Sint32 m_integer_scaling_width;
-		Sint32 m_integer_scaling_height;
+		Sint32 m_maxTextureSize = 1024;
+		Sint32 m_integer_scaling_width = 0;
+		Sint32 m_integer_scaling_height = 0;
 
-		Uint32 m_totalVRAM;
-		Uint32 m_spriteChecker;
-		Uint32 m_currentFrame;
+		Uint32 m_totalVRAM = 0;
+		Uint32 m_spriteChecker = 0;
+		Uint32 m_currentFrame = 0;
+		Uint32 m_cachedVertices = 0;
 
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
+		Uint32 m_spriteAtlases = 0;
+		Uint32 m_spritesPerAtlas = 0;
+		Uint32 m_spritesPerModulo = 0;
 
-		Sint32 m_viewPortX;
-		Sint32 m_viewPortY;
-		Sint32 m_viewPortW;
-		Sint32 m_viewPortH;
+		Sint32 m_viewPortX = 0;
+		Sint32 m_viewPortY = 0;
+		Sint32 m_viewPortW = 0;
+		Sint32 m_viewPortH = 0;
 
-		bool m_useFBO;
-		bool m_useAuxBuffer;
-		bool m_useNonPower2;
-		bool m_haveSharpening;
-		bool m_scheduleSpriteDraw;
+		bool m_useFBO = false;
+		bool m_useAuxBuffer = false;
+		bool m_useNonPower2 = false;
+		bool m_haveSharpening = false;
 };
 
 #define OGL_TEXTURE_VERTEX_SHADER                               \
@@ -299,7 +363,7 @@ class SurfaceOpengl : public Surface
 "uniform sampler2D tex0;\n"                                                                   \
 "uniform vec2 textureSize;\n\n"                                                               \
 "#define sharp_clamp ( 0.050000 )\n"                                                          \
-"#define sharp_strength ( 2.000000 )\n"                                                       \
+"#define sharp_strength ( 0.500000 )\n"                                                       \
 "#define CoefLuma vec3(0.2126, 0.7152, 0.0722)\n\n"                                           \
 "void main() {\n"                                                                             \
 "	vec3 origset = texture2D(tex0, v_texCoord).rgb;\n"                                        \

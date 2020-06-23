@@ -29,8 +29,16 @@ class Creature;
 class Thing
 {
 	public:
-		Thing();
+		Thing() = default;
 		virtual ~Thing() {}
+
+		// non-copyable
+		Thing(const Thing&) = delete;
+		Thing& operator=(const Thing&) = delete;
+
+		// non-moveable
+		Thing(Thing&&) = delete;
+		Thing& operator=(Thing&&) = delete;
 
 		void setCurrentPosition(Position& newPosition) {m_position = newPosition;}
 		Position& getCurrentPosition() {return m_position;}

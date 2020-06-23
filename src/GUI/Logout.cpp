@@ -60,6 +60,7 @@ void logout_Events(Uint32 event, Sint32)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 

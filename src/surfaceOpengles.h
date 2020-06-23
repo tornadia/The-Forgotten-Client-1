@@ -26,6 +26,14 @@
 
 #if defined(SDL_VIDEO_RENDER_OGL_ES)
 
+#define OPENGLES_MAX_VERTICES 2048
+#define OPENGLES_MAX_INDICES (OPENGLES_MAX_VERTICES * 6 / 4)
+#if OPENGLES_MAX_INDICES >= 65500
+#define OPENGLES_USE_UINT_INDICES 1
+#else
+#define OPENGLES_USE_UINT_INDICES 0
+#endif
+
 typedef void (APIENTRY *PFN_OglBindTexture)(unsigned int target, unsigned int texture);
 typedef void (APIENTRY *PFN_OglGenTextures)(int n, unsigned int* textures);
 typedef void (APIENTRY *PFN_OglDeleteTextures)(int n, unsigned int* textures);
@@ -40,6 +48,7 @@ typedef void (APIENTRY *PFN_OglDisable)(unsigned int cap);
 typedef void (APIENTRY *PFN_OglEnableClientState)(unsigned int cap);
 typedef void (APIENTRY *PFN_OglDisableClientState)(unsigned int cap);
 typedef void (APIENTRY *PFN_OglDrawArrays)(unsigned int mode, int first, int count);
+typedef void (APIENTRY *PFN_OglDrawElements)(unsigned int mode, int count, unsigned int type, const void* indices);
 typedef void (APIENTRY *PFN_OglBlendFunc)(unsigned int sfactor, unsigned int dfactor);
 typedef void (APIENTRY *PFN_OglBlendFuncSeparate)(unsigned int sfactorRGB, unsigned int dfactorRGB, unsigned int sfactorAlpha, unsigned int dfactorAlpha);
 typedef void (APIENTRY *PFN_OglBlendEquation)(unsigned int mode);
@@ -65,9 +74,48 @@ typedef void (APIENTRY *PFN_OglFramebufferTexture2D)(unsigned int target, unsign
 typedef void (APIENTRY *PFN_OglBindFramebuffer)(unsigned int target, unsigned int framebuffer);
 typedef unsigned int (APIENTRY *PFN_OglCheckFramebufferStatus)(unsigned int target);
 
+struct VertexOpenglES
+{
+	VertexOpenglES(float x, float y, float u, float v, DWORD color) : x(x), y(y), color(color), u(u), v(v) {}
+	VertexOpenglES(float x, float y, DWORD color) : x(x), y(y), color(color), u(0.0f), v(0.0f) {}
+
+	float x, y;
+	float u, v;
+	DWORD color;
+};
+
 struct OpenglESTexture
 {
 	OpenglESTexture() : m_texture(0), m_framebuffer(0) {}
+
+	operator bool() const {return (m_texture != 0);}
+
+	// non-copyable
+	OpenglESTexture(const OpenglESTexture&) = delete;
+	OpenglESTexture& operator=(const OpenglESTexture&) = delete;
+
+	// moveable
+	OpenglESTexture(OpenglESTexture&& rhs) noexcept : m_texture(rhs.m_texture), m_framebuffer(rhs.m_framebuffer),
+		m_width(rhs.m_width), m_height(rhs.m_height), m_scaleW(rhs.m_scaleW), m_scaleH(rhs.m_scaleH)
+	{
+		rhs.m_texture = 0;
+		rhs.m_framebuffer = 0;
+	}
+	OpenglESTexture& operator=(OpenglESTexture&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			m_texture = rhs.m_texture;
+			m_framebuffer = rhs.m_framebuffer;
+			m_width = rhs.m_width;
+			m_height = rhs.m_height;
+			m_scaleW = rhs.m_scaleW;
+			m_scaleH = rhs.m_scaleH;
+			rhs.m_texture = 0;
+			rhs.m_framebuffer = 0;
+		}
+		return (*this);
+	}
 
 	unsigned int m_texture;
 	unsigned int m_framebuffer;
@@ -87,7 +135,7 @@ struct OpenglESSpriteData
 	Uint32 m_lastUsage;
 };
 
-typedef std::unordered_map<Uint32, OpenglESTexture*> U32BGLESTextures;
+typedef std::unordered_map<Uint32, OpenglESTexture> U32BGLESTextures;
 typedef std::unordered_map<Uint64, OpenglESSpriteData> U64BGLESTextures;
 
 class SurfaceOpenglES : public Surface
@@ -96,11 +144,18 @@ class SurfaceOpenglES : public Surface
 		SurfaceOpenglES();
 		virtual ~SurfaceOpenglES();
 
-		OpenglESTexture* createOpenGLESTexture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
-		bool updateTextureData(OpenglESTexture* texture, unsigned char* data);
-		void releaseOpenGLESTexture(OpenglESTexture* texture);
+		// non-copyable
+		SurfaceOpenglES(const SurfaceOpenglES&) = delete;
+		SurfaceOpenglES& operator=(const SurfaceOpenglES&) = delete;
 
-		void drawTriangles(std::vector<float>& vertices, std::vector<float>& texCoords);
+		// non-moveable
+		SurfaceOpenglES(const SurfaceOpenglES&&) = delete;
+		SurfaceOpenglES& operator=(const SurfaceOpenglES&&) = delete;
+
+		bool createOpenGLESTexture(OpenglESTexture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
+		bool updateTextureData(OpenglESTexture& texture, unsigned char* data);
+		void releaseOpenGLESTexture(OpenglESTexture& texture);
+
 		void changeBlending(unsigned int sfactorRGB, unsigned int dfactorRGB, unsigned int sfactorAlpha, unsigned int dfactorAlpha);
 		void updateViewport();
 		void updateRenderer();
@@ -112,7 +167,6 @@ class SurfaceOpenglES : public Surface
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
 		void generateSpriteAtlases();
-		void checkScheduledSprites();
 
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
@@ -125,6 +179,11 @@ class SurfaceOpenglES : public Surface
 		void copyFromScreen(Sint32 x, Sint32 y, Uint32 w, Uint32 h);
 		void drawBackup(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
+		OpenglESTexture* getTextureIndex(OpenglESTexture* texture);
+		void drawQuad(OpenglESTexture* texture, float vertices[8], float texcoords[8]);
+		void drawQuad(OpenglESTexture* texture, float vertices[8], float texcoords[8], DWORD color);
+		void scheduleBatch();
+
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
@@ -134,7 +193,7 @@ class SurfaceOpenglES : public Surface
 
 		virtual void setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void disableClipRect();
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		OpenglESTexture* loadPicture(Uint16 pictureId, bool linear);
@@ -155,25 +214,29 @@ class SurfaceOpenglES : public Surface
 		virtual void drawAutomapTile(Uint32 m_currentArea, bool& m_recreate, Uint8 m_color[256][256], Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 
 	protected:
-		std::vector<float> m_vertices;
-		std::vector<float> m_texCoords;
-		std::vector<OpenglESTexture*> m_spritesAtlas;
+		std::vector<VertexOpenglES> m_vertices;
+		#if OPENGLES_USE_UINT_INDICES > 0
+		std::vector<Uint32> m_indices;
+		#else
+		std::vector<Uint16> m_indices;
+		#endif
+		std::vector<OpenglESTexture> m_spritesAtlas;
 		U32BGLESTextures m_automapTiles;
 		U64BGLESTextures m_sprites;
-		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesIds;
+		std::circular_buffer<Uint32, MAX_AUTOMAPTILES> m_automapTilesBuff;
+		std::circular_buffer<Uint64, MAX_SPRITES> m_spritesIds;
 
-		OpenglESTexture* m_spriteAtlas;
-		OpenglESTexture** m_pictures;
-		char* m_software;
-		char* m_hardware;
+		OpenglESTexture* m_pictures = NULL;
+		char* m_software = NULL;
+		char* m_hardware = NULL;
 
-		SDL_GLContext m_oglContext;
-		OpenglESTexture* m_renderTarget;
+		SDL_GLContext m_oglContext = NULL;
+		OpenglESTexture* m_renderTarget = NULL;
 
-		OpenglESTexture* m_gameWindow;
-		OpenglESTexture* m_scaled_gameWindow;
-		OpenglESTexture* m_backup;
+		OpenglESTexture m_gameWindow;
+		OpenglESTexture m_scaled_gameWindow;
+		OpenglESTexture m_backup;
+		OpenglESTexture* m_binded_texture = NULL;
 
 		PFN_OglBindTexture OglBindTexture;
 		PFN_OglGenTextures OglGenTextures;
@@ -189,6 +252,7 @@ class SurfaceOpenglES : public Surface
 		PFN_OglEnableClientState OglEnableClientState;
 		PFN_OglDisableClientState OglDisableClientState;
 		PFN_OglDrawArrays OglDrawArrays;
+		PFN_OglDrawElements OglDrawElements;
 		PFN_OglBlendFunc OglBlendFunc;
 		PFN_OglBlendFuncSeparate OglBlendFuncSeparate;
 		PFN_OglBlendEquation OglBlendEquation;
@@ -214,30 +278,30 @@ class SurfaceOpenglES : public Surface
 		PFN_OglBindFramebuffer OglBindFramebuffer;
 		PFN_OglCheckFramebufferStatus OglCheckFramebufferStatus;
 
-		unsigned int window_framebuffer;
+		unsigned int window_framebuffer = 0;
 
-		Sint32 m_maxTextureSize;
-		Sint32 m_integer_scaling_width;
-		Sint32 m_integer_scaling_height;
+		Sint32 m_maxTextureSize = 1024;
+		Sint32 m_integer_scaling_width = 0;
+		Sint32 m_integer_scaling_height = 0;
 
-		Uint32 m_totalVRAM;
-		Uint32 m_spriteChecker;
-		Uint32 m_currentFrame;
+		Uint32 m_totalVRAM = 0;
+		Uint32 m_spriteChecker = 0;
+		Uint32 m_currentFrame = 0;
+		Uint32 m_cachedVertices = 0;
 
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
+		Uint32 m_spriteAtlases = 0;
+		Uint32 m_spritesPerAtlas = 0;
+		Uint32 m_spritesPerModulo = 0;
 
-		Sint32 m_viewPortX;
-		Sint32 m_viewPortY;
-		Sint32 m_viewPortW;
-		Sint32 m_viewPortH;
+		Sint32 m_viewPortX = 0;
+		Sint32 m_viewPortY = 0;
+		Sint32 m_viewPortW = 0;
+		Sint32 m_viewPortH = 0;
 
-		bool m_useFBO;
-		bool m_useNonPower2;
-		bool m_useAlphaBlending;
-		bool m_useBlendEquation;
-		bool m_scheduleSpriteDraw;
+		bool m_useFBO = false;
+		bool m_useNonPower2 = false;
+		bool m_useAlphaBlending = false;
+		bool m_useBlendEquation = false;
 };
 #endif
 #endif /* __FILE_SURFACE_OPENGLES_h_ */

@@ -33,6 +33,14 @@ class DistanceEffect
 		DistanceEffect(const Position& from, const Position& to, Uint16 delay, ThingType* type);
 		~DistanceEffect();
 
+		// non-copyable
+		DistanceEffect(const DistanceEffect&) = delete;
+		DistanceEffect& operator=(const DistanceEffect&) = delete;
+
+		// non-moveable
+		DistanceEffect(DistanceEffect&&) = delete;
+		DistanceEffect& operator=(DistanceEffect&&) = delete;
+
 		static DistanceEffect* createDistanceEffect(const Position& pos, const Position& to, Uint16 delay, Uint16 type);
 
 		Uint16 getID();
@@ -58,54 +66,94 @@ class DistanceEffect
 class DistanceEffectNULL : public DistanceEffect
 {
 	public:
-		DistanceEffectNULL(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
+		DistanceEffectNULL(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type) {}
 
-		virtual void render(Sint32 posX, Sint32 posY);
+		// non-copyable
+		DistanceEffectNULL(const DistanceEffectNULL&) = delete;
+		DistanceEffectNULL& operator=(const DistanceEffectNULL&) = delete;
+
+		// non-moveable
+		DistanceEffectNULL(DistanceEffectNULL&&) = delete;
+		DistanceEffectNULL& operator=(DistanceEffectNULL&&) = delete;
+
+		virtual void render(Sint32, Sint32) {}
 };
 
 class DistanceEffect1X1 : public DistanceEffect
 {
 	public:
-		DistanceEffect1X1(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
+		DistanceEffect1X1(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type) {}
+
+		// non-copyable
+		DistanceEffect1X1(const DistanceEffect1X1&) = delete;
+		DistanceEffect1X1& operator=(const DistanceEffect1X1&) = delete;
+
+		// non-moveable
+		DistanceEffect1X1(DistanceEffect1X1&&) = delete;
+		DistanceEffect1X1& operator=(DistanceEffect1X1&&) = delete;
 
 		virtual void render(Sint32 posX, Sint32 posY);
 
-		Uint32 m_1X1Sprites;
+		Uint32 m_1X1Sprites = 0;
 };
 
 class DistanceEffect2X1 : public DistanceEffect
 {
 	public:
-		DistanceEffect2X1(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
+		DistanceEffect2X1(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type) {}
+
+		// non-copyable
+		DistanceEffect2X1(const DistanceEffect2X1&) = delete;
+		DistanceEffect2X1& operator=(const DistanceEffect2X1&) = delete;
+
+		// non-moveable
+		DistanceEffect2X1(DistanceEffect2X1&&) = delete;
+		DistanceEffect2X1& operator=(DistanceEffect2X1&&) = delete;
 
 		virtual void render(Sint32 posX, Sint32 posY);
 
-		Uint32 m_1X1Sprites;
-		Uint32 m_2X1Sprites;
+		Uint32 m_1X1Sprites = 0;
+		Uint32 m_2X1Sprites = 0;
 };
 
 class DistanceEffect1X2 : public DistanceEffect
 {
 	public:
-		DistanceEffect1X2(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
+		DistanceEffect1X2(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type) {}
+
+		// non-copyable
+		DistanceEffect1X2(const DistanceEffect1X2&) = delete;
+		DistanceEffect1X2& operator=(const DistanceEffect1X2&) = delete;
+
+		// non-moveable
+		DistanceEffect1X2(DistanceEffect1X2&&) = delete;
+		DistanceEffect1X2& operator=(DistanceEffect1X2&&) = delete;
 
 		virtual void render(Sint32 posX, Sint32 posY);
 
-		Uint32 m_1X1Sprites;
-		Uint32 m_1X2Sprites;
+		Uint32 m_1X1Sprites = 0;
+		Uint32 m_1X2Sprites = 0;
 };
 
 class DistanceEffect2X2 : public DistanceEffect
 {
 	public:
-		DistanceEffect2X2(const Position& pos, const Position& to, Uint16 delay, ThingType* type);
+		DistanceEffect2X2(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type) {}
+
+		// non-copyable
+		DistanceEffect2X2(const DistanceEffect2X2&) = delete;
+		DistanceEffect2X2& operator=(const DistanceEffect2X2&) = delete;
+
+		// non-moveable
+		DistanceEffect2X2(DistanceEffect2X2&&) = delete;
+		DistanceEffect2X2& operator=(DistanceEffect2X2&&) = delete;
 
 		virtual void render(Sint32 posX, Sint32 posY);
 
-		Uint32 m_1X1Sprites;
-		Uint32 m_2X1Sprites;
-		Uint32 m_1X2Sprites;
-		Uint32 m_2X2Sprites;
+		Uint32 m_1X1Sprites = 0;
+		Uint32 m_2X1Sprites = 0;
+		Uint32 m_1X2Sprites = 0;
+		Uint32 m_2X2Sprites = 0;
 };
 
 #endif /* __FILE_DISTANCEEFFECT_h_ */

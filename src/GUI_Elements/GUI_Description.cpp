@@ -25,11 +25,6 @@
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-GUI_Description::GUI_Description()
-{
-	m_startDisplay = 0;
-}
-
 void GUI_Description::setDisplay(Sint32 mouseX, Sint32 mouseY, const std::string description, Uint32 delay)
 {
 	m_description = std::move(description);
@@ -66,8 +61,8 @@ void GUI_Description::render()
 	if(g_frameTime < m_startDisplay)
 		return;
 
-	Surface* renderer = g_engine.getRender();
-	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 0, 0, 0, 255);
+	auto& renderer = g_engine.getRender();
+	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 1, 0, 0, 0, 255);
 	renderer->fillRectangle(m_tRect.x1 + 1, m_tRect.y1 + 1, m_tRect.x2 - 2, m_tRect.y2 - 2, 192, 192, 192, 255);
 	g_engine.drawFont(CLIENT_FONT_NONOUTLINED, m_tRect.x1 + 4, m_tRect.y1 + 4, m_description, 63, 63, 63, CLIENT_FONT_ALIGN_LEFT);
 }

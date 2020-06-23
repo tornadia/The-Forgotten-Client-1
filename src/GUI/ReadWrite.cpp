@@ -94,6 +94,7 @@ void readwrite_Events(Uint32 event, Sint32)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -111,16 +112,11 @@ void UTIL_createReadWriteWindow(Uint32 windowId, void* item, Uint16 maxLen, cons
 	if(itemUI && itemUI->getThingType())
 	{
 		ThingType* itemType = itemUI->getThingType();
-		if(itemType->hasFlag(ThingAttribute_WritableOnce))
+		if(itemType->hasFlag(ThingAttribute_WritableOnce) || itemType->hasFlag(ThingAttribute_Writable))
 		{
 			//Should we leave maxlen that we got from server?
-			maxLength = itemType->m_writableSize[1];
-			writeAble = text.empty();
-		}
-		else if(itemType->hasFlag(ThingAttribute_Writable))
-		{
-			maxLength = itemType->m_writableSize[0];
-			writeAble = true;
+			maxLength = itemType->m_writableSize;
+			writeAble = (itemType->hasFlag(ThingAttribute_WritableOnce) ? text.empty() : true);
 		}
 	}
 	if(!text.empty())

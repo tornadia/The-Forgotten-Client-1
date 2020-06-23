@@ -27,17 +27,6 @@
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-StaticText::StaticText(const Position& pos)
-{
-	m_textWidth = 0;
-	m_position = pos;
-	m_mode = MessageNone;
-	m_red = 255;
-	m_green = 255;
-	m_blue = 255;
-	m_isCompleted = false;
-}
-
 void StaticText::addMessage(const std::string& name, MessageMode mode, std::string text)
 {
 	if(m_messages.empty())

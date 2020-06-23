@@ -39,6 +39,14 @@ class GUI_MultiTextBox : public GUI_Element
 		GUI_MultiTextBox(iRect boxRect, bool allowEdit, const std::string text, Uint32 internalID = 0, Uint8 red = 223, Uint8 green = 223, Uint8 blue = 223);
 		~GUI_MultiTextBox();
 
+		// non-copyable
+		GUI_MultiTextBox(const GUI_MultiTextBox&) = delete;
+		GUI_MultiTextBox& operator=(const GUI_MultiTextBox&) = delete;
+
+		// non-moveable
+		GUI_MultiTextBox(GUI_MultiTextBox&&) = delete;
+		GUI_MultiTextBox& operator=(GUI_MultiTextBox&&) = delete;
+
 		void setRect(iRect& NewRect);
 		void setTextEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent);
 		void setColor(Uint8 red, Uint8 green, Uint8 blue) {m_red = red; m_green = green; m_blue = blue;}
@@ -75,27 +83,27 @@ class GUI_MultiTextBox : public GUI_Element
 
 	protected:
 		std::vector<MultiLine> m_lines;
-		void (*m_eventHandlerFunction)(Uint32,Sint32);
+		void (*m_eventHandlerFunction)(Uint32,Sint32) = NULL;
 		std::string m_sText;
 		GUI_VScrollBar* m_scrollBar;
-		Uint32 m_evtParam;
-		Uint32 m_maxLength;
+		Uint32 m_evtParam = 0;
+		Uint32 m_maxLength = SDL_MAX_UINT32;
 		Uint32 m_cursorTimer;
-		Uint32 m_cursorPosition;
-		Uint32 m_textStartPosition;
-		Uint32 m_selectionReference;
-		Uint32 m_selectionStart;
-		Uint32 m_selectionEnd;
-		Sint32 m_maxDisplay;
+		Uint32 m_cursorPosition = 0;
+		Uint32 m_textStartPosition = 4;
+		Uint32 m_selectionReference = 0;
+		Uint32 m_selectionStart = 0;
+		Uint32 m_selectionEnd = 0;
+		Sint32 m_maxDisplay = 0;
 		Uint8 m_red;
 		Uint8 m_green;
 		Uint8 m_blue;
-		Uint8 m_font;
+		Uint8 m_font = CLIENT_FONT_NONOUTLINED;
 		bool m_allowEdit;
-		bool m_bShowCursor;
-		bool m_selecting;
-		bool m_needUpdate;
-		bool m_needUpdateSelection;
+		bool m_bShowCursor = false;
+		bool m_selecting = false;
+		bool m_needUpdate = true;
+		bool m_needUpdateSelection = false;
 };
 
 #endif /* __FILE_GUI_MULTITEXTBOX_h_ */

@@ -29,6 +29,14 @@ class LightSystem
 	public:
 		LightSystem();
 
+		// non-copyable
+		LightSystem(const LightSystem&) = delete;
+		LightSystem& operator=(const LightSystem&) = delete;
+
+		// non-moveable
+		LightSystem(LightSystem&&) = delete;
+		LightSystem& operator=(LightSystem&&) = delete;
+
 		void setGlobalLight(Uint16 intensity, Uint16 color, Uint8 z);
 		void changeFloor(Uint8 z);
 

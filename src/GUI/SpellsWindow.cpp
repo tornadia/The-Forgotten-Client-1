@@ -257,6 +257,7 @@ void spells_Events(Uint32 event, Sint32 status)
 		}
 		break;
 		case SPELLS_EXIT_WINDOW_EVENTID: g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_SPELL_LIST, status); break;
+		default: break;
 	}
 }
 

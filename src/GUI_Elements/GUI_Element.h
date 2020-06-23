@@ -27,8 +27,16 @@
 class GUI_Element
 {
 	public:
-		GUI_Element();
-		virtual ~GUI_Element() {};
+		GUI_Element() = default;
+		virtual ~GUI_Element() {}
+
+		// non-copyable
+		GUI_Element(const GUI_Element&) = delete;
+		GUI_Element& operator=(const GUI_Element&) = delete;
+
+		// non-moveable
+		GUI_Element(GUI_Element&&) = delete;
+		GUI_Element& operator=(GUI_Element&&) = delete;
 
 		virtual void setRect(iRect& NewRect) {m_tRect = NewRect;}
 		iRect& getRect() {return m_tRect;}
@@ -58,8 +66,8 @@ class GUI_Element
 	protected:
 		Uint32 m_internalID;
 		iRect m_tRect;
-		bool m_bActive;
-		bool m_bEvents;
+		bool m_bActive = false;
+		bool m_bEvents = false;
 };
 
 #endif /* __FILE_GUI_ELEMENT_h_ */

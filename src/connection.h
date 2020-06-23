@@ -61,6 +61,14 @@ class Connection
 		Connection(const char* host, Uint16 port, const char* proxy, const char* proxyAuth, Protocol* protocol);
 		~Connection();
 
+		// non-copyable
+		Connection(const Connection&) = delete;
+		Connection& operator=(const Connection&) = delete;
+
+		// non-moveable
+		Connection(Connection&&) = delete;
+		Connection& operator=(Connection&&) = delete;
+
 		SDL_FORCE_INLINE Protocol* getProtocol() {return m_protocol;}
 		SDL_FORCE_INLINE ConnectionState getConnectionStatus() {return m_connectionState;}
 		void closeConnection();
@@ -76,18 +84,18 @@ class Connection
 		Protocol* m_protocol;
 		InputMessage m_inputMessage;
 
-		void* m_curlHandle;
-		void* m_curlEasyHandle;
+		void* m_curlHandle = NULL;
+		void* m_curlEasyHandle = NULL;
 
 		char* m_host;
 		Uint16 m_port;
 		char* m_proxy;
 		char* m_proxyAuth;
 
-		ReadState m_readState;
-		ConnectionState m_connectionState;
-		Uint32 m_waiting;
-		Uint16 m_messageSize;
+		ReadState m_readState = READ_SIZE;
+		ConnectionState m_connectionState = CONNECTION_STATE_INIT;
+		Uint32 m_waiting = 0;
+		Uint16 m_messageSize = 0;
 };
 
 #endif /* __FILE_CONNECTION_h_ */

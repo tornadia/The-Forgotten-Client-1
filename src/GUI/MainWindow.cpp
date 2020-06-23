@@ -85,6 +85,7 @@ void mainWindow_Events(Uint32 event, Sint32)
 			g_running = false;
 		}
 		break;
+		default: break;
 	}
 }
 

@@ -26,20 +26,10 @@
 
 namespace std
 {
-	template <class T>
+	template <class T, size_t s>
 	class circular_buffer
 	{
 		public:
-			circular_buffer(Sint32 size)
-			{
-				_data_ = new T[size];
-				_size_ = size;
-			}
-			~circular_buffer()
-			{
-				delete[] _data_;
-			}
-
 			T& operator[](size_t i)
 			{
 				size_t pos = (_back_ + i) % _size_;
@@ -98,10 +88,10 @@ namespace std
 			Sint32 max_size(void) {return _size_;}
 
 		private:
-			T* _data_;
+			T _data_[s];
 			Sint32 _front_ = 0;
 			Sint32 _back_ = 0;
-			Sint32 _size_;
+			Sint32 _size_ = s;
 	};
 }
 

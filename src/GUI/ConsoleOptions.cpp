@@ -121,6 +121,7 @@ void console_options_Events(Uint32 event, Sint32)
 		}
 		break;
 		case CONSOLE_OPTIONS_HELP_EVENTID: UTIL_OpenURL(CONSOLE_OPTIONS_HELP_LINK); break;
+		default: break;
 	}
 }
 

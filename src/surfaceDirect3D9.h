@@ -26,6 +26,14 @@
 
 #if defined(SDL_VIDEO_RENDER_D3D)
 
+#define DIRECT3D9_MAX_VERTICES 43656
+#define DIRECT3D9_MAX_INDICES (DIRECT3D9_MAX_VERTICES * 6 / 4)
+#if DIRECT3D9_MAX_INDICES >= 65500
+#define DIRECT3D9_USE_UINT_INDICES 1
+#else
+#define DIRECT3D9_USE_UINT_INDICES 0
+#endif
+
 struct VertexD3D9
 {
 	VertexD3D9(float x, float y, float u, float v, DWORD color) : x(x), y(y), z(0.0), color(color), u(u), v(v) {}
@@ -40,6 +48,33 @@ typedef struct IDirect3DTexture9 IDirect3DTexture9;
 struct Direct3D9Texture
 {
 	Direct3D9Texture() : m_texture(NULL) {}
+
+	operator bool() const {return m_texture;}
+
+	// non-copyable
+	Direct3D9Texture(const Direct3D9Texture&) = delete;
+	Direct3D9Texture& operator=(const Direct3D9Texture&) = delete;
+
+	// moveable
+	Direct3D9Texture(Direct3D9Texture&& rhs) noexcept : 
+		m_texture(rhs.m_texture), m_width(rhs.m_width), m_height(rhs.m_height), m_scaleW(rhs.m_scaleW), m_scaleH(rhs.m_scaleH), m_linearSample(rhs.m_linearSample)
+	{
+		rhs.m_texture = NULL;
+	}
+	Direct3D9Texture& operator=(Direct3D9Texture&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			m_texture = rhs.m_texture;
+			m_width = rhs.m_width;
+			m_height = rhs.m_height;
+			m_scaleW = rhs.m_scaleW;
+			m_scaleH = rhs.m_scaleH;
+			m_linearSample = rhs.m_linearSample;
+			rhs.m_texture = NULL;
+		}
+		return (*this);
+	}
 
 	IDirect3DTexture9* m_texture;
 	Uint32 m_width;
@@ -59,7 +94,7 @@ struct Direct3D9SpriteData
 	Uint32 m_lastUsage;
 };
 
-typedef std::unordered_map<Uint32, Direct3D9Texture*> U32BD3D9Textures;
+typedef std::unordered_map<Uint32, Direct3D9Texture> U32BD3D9Textures;
 typedef std::unordered_map<Uint64, Direct3D9SpriteData> U64BD3D9Textures;
 
 typedef struct IDirect3D9 IDirect3D9;
@@ -73,11 +108,18 @@ class SurfaceDirect3D9 : public Surface
 		SurfaceDirect3D9();
 		virtual ~SurfaceDirect3D9();
 
-		Direct3D9Texture* createDirect3DTexture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
-		bool updateTextureData(Direct3D9Texture* texture, unsigned char* data);
-		void releaseDirect3DTexture(Direct3D9Texture* texture);
-		void updateTextureScaling(Direct3D9Texture* texture);
-		void drawTriangles(std::vector<VertexD3D9>& vertices);
+		// non-copyable
+		SurfaceDirect3D9(const SurfaceDirect3D9&) = delete;
+		SurfaceDirect3D9& operator=(const SurfaceDirect3D9&) = delete;
+
+		// non-moveable
+		SurfaceDirect3D9(const SurfaceDirect3D9&&) = delete;
+		SurfaceDirect3D9& operator=(const SurfaceDirect3D9&&) = delete;
+
+		bool createDirect3DTexture(Direct3D9Texture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
+		bool updateTextureData(Direct3D9Texture& texture, unsigned char* data);
+		void releaseDirect3DTexture(Direct3D9Texture& texture);
+		void updateTextureScaling(Direct3D9Texture& texture);
 
 		void initRenderer();
 		void resetRenderer();
@@ -91,7 +133,6 @@ class SurfaceDirect3D9 : public Surface
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
 		void generateSpriteAtlases();
-		void checkScheduledSprites();
 
 		void renderTargetsRecreate();
 		virtual void init();
@@ -103,6 +144,11 @@ class SurfaceDirect3D9 : public Surface
 		virtual void beginScene();
 		virtual void endScene();
 
+		Direct3D9Texture* getTextureIndex(Direct3D9Texture* texture);
+		void drawQuad(Direct3D9Texture* texture, float vertices[8], float texcoords[8]);
+		void drawQuad(Direct3D9Texture* texture, float vertices[8], float texcoords[8], DWORD color);
+		void scheduleBatch();
+
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
@@ -112,7 +158,7 @@ class SurfaceDirect3D9 : public Surface
 
 		virtual void setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void disableClipRect();
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		Direct3D9Texture* loadPicture(Uint16 pictureId, bool linear);
@@ -134,54 +180,59 @@ class SurfaceDirect3D9 : public Surface
 
 	protected:
 		std::vector<VertexD3D9> m_vertices;
-		std::vector<Direct3D9Texture*> m_spritesAtlas;
+		#if DIRECT3D9_USE_UINT_INDICES > 0
+		std::vector<Uint32> m_indices;
+		#else
+		std::vector<Uint16> m_indices;
+		#endif
+		std::vector<Direct3D9Texture> m_spritesAtlas;
 		U32BD3D9Textures m_automapTiles;
 		U64BD3D9Textures m_sprites;
-		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesIds;
+		std::circular_buffer<Uint32, MAX_AUTOMAPTILES> m_automapTilesBuff;
+		std::circular_buffer<Uint64, MAX_SPRITES> m_spritesIds;
 
-		Direct3D9Texture* m_spriteAtlas;
-		Direct3D9Texture** m_pictures;
-		char* m_software;
-		char* m_hardware;
+		Direct3D9Texture* m_pictures = NULL;
+		char* m_software = "Direct3D 9.0";
+		char* m_hardware = NULL;
 
-		Direct3D9Texture* m_gameWindow;
-		Direct3D9Texture* m_scaled_gameWindow;
+		Direct3D9Texture m_gameWindow;
+		Direct3D9Texture m_scaled_gameWindow;
 
 		void* m_d3d9Handle;
-		IDirect3D9* m_d3d9;
-		IDirect3D9Ex* m_d3d9Ex;
-		IDirect3DDevice9* m_device;
-		IDirect3DDevice9Ex* m_deviceEx;
+		IDirect3D9* m_d3d9 = NULL;
+		IDirect3D9Ex* m_d3d9Ex = NULL;
+		IDirect3DDevice9* m_device = NULL;
+		IDirect3DDevice9Ex* m_deviceEx = NULL;
 
-		IDirect3DSurface9* m_defaultRenderTarget;
-		IDirect3DSurface9* m_currentRenderTarget;
+		IDirect3DSurface9* m_defaultRenderTarget = NULL;
+		IDirect3DSurface9* m_currentRenderTarget = NULL;
 
-		IDirect3DPixelShader9* m_pixelShader_sharpen;
+		Direct3D9Texture* m_binded_texture = NULL;
+		IDirect3DPixelShader9* m_pixelShader_sharpen = NULL;
 
-		Sint32 m_maxTextureSize;
-		Sint32 m_integer_scaling_width;
-		Sint32 m_integer_scaling_height;
+		Sint32 m_maxTextureSize = 1024;
+		Sint32 m_integer_scaling_width = 0;
+		Sint32 m_integer_scaling_height = 0;
 
-		Sint32 m_adapter;
-		Uint32 m_viewPortX;
-		Uint32 m_viewPortY;
-		Uint32 m_viewPortW;
-		Uint32 m_viewPortH;
+		Sint32 m_adapter = 0;
+		Uint32 m_viewPortX = 0;
+		Uint32 m_viewPortY = 0;
+		Uint32 m_viewPortW = 0;
+		Uint32 m_viewPortH = 0;
 
-		Uint32 m_totalVRAM;
-		Uint32 m_spriteChecker;
-		Uint32 m_currentFrame;
+		Uint32 m_totalVRAM = 0;
+		Uint32 m_spriteChecker = 0;
+		Uint32 m_currentFrame = 0;
+		Uint32 m_cachedVertices = 0;
 
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
+		Uint32 m_spriteAtlases = 0;
+		Uint32 m_spritesPerAtlas = 0;
+		Uint32 m_spritesPerModulo = 0;
 
-		bool m_usingLinearSample;
-		bool m_useAlphaBlending;
-		bool m_needReset;
-		bool m_haveSharpening;
-		bool m_scheduleSpriteDraw;
+		bool m_usingLinearSample = false;
+		bool m_useAlphaBlending = false;
+		bool m_needReset = true;
+		bool m_haveSharpening = false;
 };
 
 static const DWORD D3D9_sharpen[] =
@@ -195,7 +246,7 @@ static const DWORD D3D9_sharpen[] =
 	0x00000000, 0x325f7370, 0x4d00305f, 0x6f726369, 0x74666f73, 0x29522820,
 	0x534c4820, 0x6853204c, 0x72656461, 0x6d6f4320, 0x656c6970, 0x30312072,
 	0xab00312e, 0x05000051, 0xa00f0001, 0x3e800000, 0x3f800000, 0x3dcccccd,
-	0xbd4ccccd, 0x05000051, 0xa00f0002, 0x40881062, 0x4164dd2f, 0x3fb8d4fe,
+	0xbd4ccccd, 0x05000051, 0xa00f0002, 0x3f881062, 0x4064dd2f, 0x3eb8d4fe,
 	0x3f000000, 0x0200001f, 0x80000000, 0xb0030000, 0x0200001f, 0x90000000,
 	0xa00f0800, 0x03000002, 0x80010000, 0xb0000000, 0xa0000000, 0x03000002,
 	0x80020000, 0xb0550000, 0xa1550000, 0x03000002, 0x80030001, 0xb0e40000,

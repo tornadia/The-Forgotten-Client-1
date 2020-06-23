@@ -54,6 +54,14 @@ class SurfaceSoftware : public Surface
 		SurfaceSoftware();
 		virtual ~SurfaceSoftware();
 
+		// non-copyable
+		SurfaceSoftware(const SurfaceSoftware&) = delete;
+		SurfaceSoftware& operator=(const SurfaceSoftware&) = delete;
+
+		// non-moveable
+		SurfaceSoftware(const SurfaceSoftware&&) = delete;
+		SurfaceSoftware& operator=(const SurfaceSoftware&&) = delete;
+
 		virtual bool isSupported();
 		SDL_Surface* convertSurface(SDL_Surface* s);
 		virtual const char* getName() {return "Software";}
@@ -62,7 +70,7 @@ class SurfaceSoftware : public Surface
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
 		virtual void init();
-		virtual void doResize(Sint32, Sint32) {;}
+		virtual void doResize(Sint32 w, Sint32 h);
 		virtual void spriteManagerReset();
 		virtual unsigned char* getScreenPixels(Sint32& width, Sint32& height, bool& bgra);
 
@@ -78,7 +86,7 @@ class SurfaceSoftware : public Surface
 
 		virtual void setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void disableClipRect();
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		SDL_Surface* loadPicture(SDL_Surface* s, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
@@ -103,24 +111,27 @@ class SurfaceSoftware : public Surface
 		U32BOptimizer m_pictureOptimizations;
 		U32BSurfaces m_automapTiles;
 		U64BSurfaces m_sprites;
-		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesIds;
+		std::circular_buffer<Uint32, MAX_AUTOMAPTILES> m_automapTilesBuff;
+		std::circular_buffer<Uint64, MAX_SPRITES> m_spritesIds;
 
-		SDL_Surface** m_pictures;
-		char* m_hardware;
+		SDL_Surface** m_pictures = NULL;
+		char* m_hardware = NULL;
 
-		SDL_Surface* m_gameWindow;
-		SDL_Surface* m_renderSurface;
-		SDL_Surface* m_background;
-		SDL_Surface* m_scaled_gameWindow;
+		SDL_Surface* m_convertSurface = NULL;
+		SDL_Surface* m_gameWindow = NULL;
+		SDL_Surface* m_renderSurface = NULL;
+		SDL_Surface* m_background = NULL;
+		SDL_Surface* m_scaled_gameWindow = NULL;
 
-		Uint32 m_totalVRAM;
-		Uint32 m_spriteChecker;
-		Uint32 m_currentFrame;
-		Uint32 m_convertFormat;
+		Uint32 m_totalVRAM = 0;
+		Uint32 m_spriteChecker = 0;
+		Uint32 m_currentFrame = 0;
+		Uint32 m_convertFormat = SDL_PIXELFORMAT_UNKNOWN;
 
-		Sint32 m_integer_scaling_width;
-		Sint32 m_integer_scaling_height;
+		Sint32 m_integer_scaling_width = 0;
+		Sint32 m_integer_scaling_height = 0;
+
+		bool m_useConvertSurface = false;
 };
 
 #endif /* __FILE_SURFACE_SOFTWARE_h_ */

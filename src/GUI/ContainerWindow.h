@@ -30,6 +30,14 @@ class GUI_ContainerImage : public GUI_Element
 	public:
 		GUI_ContainerImage(iRect boxRect, Uint8 index, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_ContainerImage(const GUI_ContainerImage&) = delete;
+		GUI_ContainerImage& operator=(const GUI_ContainerImage&) = delete;
+
+		// non-moveable
+		GUI_ContainerImage(GUI_ContainerImage&&) = delete;
+		GUI_ContainerImage& operator=(GUI_ContainerImage&&) = delete;
+
 		void render();
 
 	protected:
@@ -39,7 +47,15 @@ class GUI_ContainerImage : public GUI_Element
 class GUI_ContainerContainer : public GUI_Container
 {
 	public:
-		GUI_ContainerContainer(iRect boxRect, Uint8 index, GUI_PanelWindow* parent, Uint32 internalID = 0);
+		GUI_ContainerContainer(iRect boxRect, Uint8 index, GUI_PanelWindow* parent, Uint32 internalID = 0) : m_index(index), GUI_Container(boxRect, parent, internalID) {}
+
+		// non-copyable
+		GUI_ContainerContainer(const GUI_ContainerContainer&) = delete;
+		GUI_ContainerContainer& operator=(const GUI_ContainerContainer&) = delete;
+
+		// non-moveable
+		GUI_ContainerContainer(GUI_ContainerContainer&&) = delete;
+		GUI_ContainerContainer& operator=(GUI_ContainerContainer&&) = delete;
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 		void onLMouseUp(Sint32 x, Sint32 y);
@@ -48,13 +64,21 @@ class GUI_ContainerContainer : public GUI_Container
 
 	protected:
 		Uint8 m_index;
-		bool m_selected;
+		bool m_selected = false;
 };
 
 class GUI_ContainerItem : public GUI_Element
 {
 	public:
 		GUI_ContainerItem(iRect boxRect, Uint8 cid, size_t index, Uint32 internalID = 0);
+
+		// non-copyable
+		GUI_ContainerItem(const GUI_ContainerItem&) = delete;
+		GUI_ContainerItem& operator=(const GUI_ContainerItem&) = delete;
+
+		// non-moveable
+		GUI_ContainerItem(GUI_ContainerItem&&) = delete;
+		GUI_ContainerItem& operator=(GUI_ContainerItem&&) = delete;
 
 		void* onAction(Sint32 x, Sint32 y);
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
@@ -67,7 +91,7 @@ class GUI_ContainerItem : public GUI_Element
 	protected:
 		size_t m_index;
 		Uint8 m_cid;
-		bool m_selected;
+		bool m_selected = false;
 };
 
 #endif /* __FILE_GUI_CONTAINERWINDOW_h_ */

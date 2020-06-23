@@ -41,6 +41,11 @@ Http::Http()
 {
 	m_remainingHandles = 0;
 	m_curlHandle = SDL_reinterpret_cast(void*, curl_multi_init());
+
+	m_curlJsonHeader = NULL;
+	m_curlJsonHeader = SDL_reinterpret_cast(void*, curl_slist_append(SDL_reinterpret_cast(curl_slist*, m_curlJsonHeader), "Accept: application/json"));
+	m_curlJsonHeader = SDL_reinterpret_cast(void*, curl_slist_append(SDL_reinterpret_cast(curl_slist*, m_curlJsonHeader), "Content-Type: application/json"));
+	m_curlJsonHeader = SDL_reinterpret_cast(void*, curl_slist_append(SDL_reinterpret_cast(curl_slist*, m_curlJsonHeader), "charset: utf-8"));
 }
 
 Http::~Http()
@@ -89,7 +94,8 @@ Uint32 Http::addRequest(const std::string& urlRequest, const std::string& fileNa
 	if(!jsonData.empty())
 	{
 		json_data = SDL_strdup(jsonData.c_str());
-		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "POST");
+		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, SDL_reinterpret_cast(curl_slist*, m_curlJsonHeader));
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_data);
 	}
 	curl_multi_add_handle(SDL_reinterpret_cast(CURLM*, m_curlHandle), curl);

@@ -366,12 +366,12 @@ void SDL_WriteLEString(SDL_RWops* src, const std::string& text)
 {
 	Uint16 len = SDL_static_cast(Uint16, text.size());
 	if(len > 0)
-		SDL_WriteLE16(src, 0);
-	else
 	{
 		SDL_WriteLE16(src, len);
 		SDL_RWwrite(src, text.c_str(), 1, len);
 	}
+	else
+		SDL_WriteLE16(src, 0);
 }
 
 Uint32 SDL_ReadProtobufTag(SDL_RWops* src)

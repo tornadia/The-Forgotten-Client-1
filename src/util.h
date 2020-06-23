@@ -104,8 +104,8 @@ SDL_FORCE_INLINE bool UTIL_isPartyMember(Uint8 shield)
 		case SHIELD_BLUE_NOSHAREDEXP:
 		case SHIELD_YELLOW_NOSHAREDEXP:
 			return true;
+		default: return false;
 	}
-	return false;
 }
 SDL_FORCE_INLINE bool UTIL_isPartyLeader(Uint8 shield)
 {
@@ -117,8 +117,8 @@ SDL_FORCE_INLINE bool UTIL_isPartyLeader(Uint8 shield)
 		case SHIELD_YELLOW_NOSHAREDEXP_BLINK:
 		case SHIELD_YELLOW_NOSHAREDEXP:
 			return true;
+		default: return false;
 	}
-	return false;
 }
 SDL_FORCE_INLINE bool UTIL_isPartySharedEnabled(Uint8 shield)
 {
@@ -131,8 +131,8 @@ SDL_FORCE_INLINE bool UTIL_isPartySharedEnabled(Uint8 shield)
 		case SHIELD_BLUE_NOSHAREDEXP_BLINK:
 		case SHIELD_BLUE_NOSHAREDEXP:
 			return true;
+		default: return false;
 	}
-	return false;
 }
 
 void UTIL_initSubsystem();

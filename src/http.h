@@ -57,6 +57,7 @@ class Http
 
 	private:
 		std::vector<HttpRequest> m_httpRequests;
+		void* m_curlJsonHeader;
 		void* m_curlHandle;
 		Sint32 m_remainingHandles;
 };

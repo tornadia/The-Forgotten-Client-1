@@ -27,7 +27,15 @@
 class GUI_ContextMenu
 {
 	public:
-		GUI_ContextMenu();
+		GUI_ContextMenu() = default;
+
+		// non-copyable
+		GUI_ContextMenu(const GUI_ContextMenu&) = delete;
+		GUI_ContextMenu& operator=(const GUI_ContextMenu&) = delete;
+
+		// non-moveable
+		GUI_ContextMenu(GUI_ContextMenu&&) = delete;
+		GUI_ContextMenu& operator=(GUI_ContextMenu&&) = delete;
 		
 		bool isInsideRect(Sint32 x, Sint32 y) {return m_tRect.isPointInside(x, y);}
 		void addContextMenu(Uint8 style, Uint32 eventId, const std::string text, const std::string shortcut);
@@ -41,9 +49,9 @@ class GUI_ContextMenu
 
 	protected:
 		std::vector<ContextMenuChild> m_childs;
-		void (*m_eventHandlerFunction)(Uint32, Sint32);
+		void (*m_eventHandlerFunction)(Uint32, Sint32) = NULL;
 		iRect m_tRect;
-		Sint32 m_hoverEvent;
+		Sint32 m_hoverEvent = -1;
 };
 
 #endif /* __FILE_GUI_CONTEXTMENU_h_ */

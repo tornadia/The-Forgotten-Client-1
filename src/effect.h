@@ -35,6 +35,14 @@ class Effect
 		Effect(const Position& pos, Uint16 delay, ThingType* type);
 		~Effect();
 
+		// non-copyable
+		Effect(const Effect&) = delete;
+		Effect& operator=(const Effect&) = delete;
+
+		// non-moveable
+		Effect(Effect&&) = delete;
+		Effect& operator=(Effect&&) = delete;
+
 		static Effect* createEffect(const Position& pos, Uint16 delay, Uint16 type);
 
 		Uint16 getID();
@@ -50,65 +58,105 @@ class Effect
 
 	protected:
 		ThingType* m_thingType;
-		Animator* m_animator;
+		Animator* m_animator = NULL;
 		Animation m_animation;
 		Position m_position;
 
 		Uint32 m_startTime;
-		Uint8 m_currentAnim;
-		Uint8 m_animCount;
-		Uint8 m_xPattern;
-		Uint8 m_yPattern;
-		Uint8 m_zPattern;
-		bool m_topEffect;
+		Uint8 m_currentAnim = 0;
+		Uint8 m_animCount = 0;
+		Uint8 m_xPattern = 0;
+		Uint8 m_yPattern = 0;
+		Uint8 m_zPattern = 0;
+		bool m_topEffect = false;
 };
 
 class EffectNULL : public Effect
 {
 	public:
-		EffectNULL(const Position& pos, Uint16 delay, ThingType* type);
+		EffectNULL(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type) {}
 
-		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
+		// non-copyable
+		EffectNULL(const EffectNULL&) = delete;
+		EffectNULL& operator=(const EffectNULL&) = delete;
+
+		// non-moveable
+		EffectNULL(EffectNULL&&) = delete;
+		EffectNULL& operator=(EffectNULL&&) = delete;
+
+		virtual void render(Sint32, Sint32, bool) {}
 };
 
 class Effect1X1 : public Effect
 {
 	public:
-		Effect1X1(const Position& pos, Uint16 delay, ThingType* type);
+		Effect1X1(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type) {}
+
+		// non-copyable
+		Effect1X1(const Effect1X1&) = delete;
+		Effect1X1& operator=(const Effect1X1&) = delete;
+
+		// non-moveable
+		Effect1X1(Effect1X1&&) = delete;
+		Effect1X1& operator=(Effect1X1&&) = delete;
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
-		Uint32 m_1X1Sprites[EFFECT_MAX_CACHED_ANIMATIONS];
+		Uint32 m_1X1Sprites[EFFECT_MAX_CACHED_ANIMATIONS] = {};
 };
 
 class Effect2X1 : public Effect
 {
 	public:
-		Effect2X1(const Position& pos, Uint16 delay, ThingType* type);
+		Effect2X1(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type) {}
+
+		// non-copyable
+		Effect2X1(const Effect2X1&) = delete;
+		Effect2X1& operator=(const Effect2X1&) = delete;
+
+		// non-moveable
+		Effect2X1(Effect2X1&&) = delete;
+		Effect2X1& operator=(Effect2X1&&) = delete;
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
-		Uint32 m_2X1Sprites[EFFECT_MAX_CACHED_ANIMATIONS][2];
+		Uint32 m_2X1Sprites[EFFECT_MAX_CACHED_ANIMATIONS][2] = {};
 };
 
 class Effect1X2 : public Effect
 {
 	public:
-		Effect1X2(const Position& pos, Uint16 delay, ThingType* type);
+		Effect1X2(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type) {}
+
+		// non-copyable
+		Effect1X2(Effect1X2&) = delete;
+		Effect1X2& operator=(Effect1X2&) = delete;
+
+		// non-moveable
+		Effect1X2(const Effect1X2&&) = delete;
+		Effect1X2& operator=(const Effect1X2&&) = delete;
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
-		Uint32 m_1X2Sprites[EFFECT_MAX_CACHED_ANIMATIONS][2];
+		Uint32 m_1X2Sprites[EFFECT_MAX_CACHED_ANIMATIONS][2] = {};
 };
 
 class Effect2X2 : public Effect
 {
 	public:
-		Effect2X2(const Position& pos, Uint16 delay, ThingType* type);
+		Effect2X2(const Position& pos, Uint16 delay, ThingType* type) : Effect(pos, delay, type) {}
+
+		// non-copyable
+		Effect2X2(const Effect2X2&) = delete;
+		Effect2X2& operator=(const Effect2X2&) = delete;
+
+		// non-moveable
+		Effect2X2(Effect2X2&&) = delete;
+		Effect2X2& operator=(Effect2X2&&) = delete;
 
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
-		Uint32 m_2X2Sprites[EFFECT_MAX_CACHED_ANIMATIONS][4];
+		Uint32 m_2X2Sprites[EFFECT_MAX_CACHED_ANIMATIONS][4] = {};
 };
 
 #endif /* __FILE_EFFECT_h_ */

@@ -38,6 +38,14 @@ class GUI_Log
 		GUI_Log();
 		~GUI_Log();
 
+		// non-copyable
+		GUI_Log(const GUI_Log&) = delete;
+		GUI_Log& operator=(const GUI_Log&) = delete;
+
+		// non-moveable
+		GUI_Log(GUI_Log&&) = delete;
+		GUI_Log& operator=(GUI_Log&&) = delete;
+
 		void addLog(Sint32 category, const std::string& text);
 
 		void onTextInput(const char* textInput);

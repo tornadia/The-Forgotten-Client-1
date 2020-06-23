@@ -29,6 +29,14 @@ class GUI_TextBox : public GUI_Element
 	public:
 		GUI_TextBox(iRect boxRect, const std::string text, Uint32 internalID = 0, Uint8 red = 180, Uint8 green = 180, Uint8 blue = 180);
 
+		// non-copyable
+		GUI_TextBox(const GUI_TextBox&) = delete;
+		GUI_TextBox& operator=(const GUI_TextBox&) = delete;
+
+		// non-moveable
+		GUI_TextBox(GUI_TextBox&&) = delete;
+		GUI_TextBox& operator=(GUI_TextBox&&) = delete;
+
 		void setTextEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent);
 		void setColor(Uint8 red, Uint8 green, Uint8 blue) {m_red = red; m_green = green; m_blue = blue;}
 
@@ -63,27 +71,27 @@ class GUI_TextBox : public GUI_Element
 		void setHideCharacter(char character) {m_hideCharacter = character;}
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32,Sint32);
+		void (*m_eventHandlerFunction)(Uint32,Sint32) = NULL;
 		std::string m_sText;
 		std::string m_sVisibleText;
-		Uint32 m_evtParam;
-		Uint32 m_maxLength;
+		Uint32 m_evtParam = 0;
+		Uint32 m_maxLength = SDL_MAX_UINT32;
 		Uint32 m_cursorTimer;
-		Uint32 m_cursorPosition;
-		Uint32 m_cursorRelativePosition;
-		Uint32 m_textStartPosition;
-		Uint32 m_positionOfFirstShownLetter;
-		Uint32 m_selectionReference;
-		Uint32 m_selectionStart;
-		Uint32 m_selectionEnd;
+		Uint32 m_cursorPosition = 0;
+		Uint32 m_cursorRelativePosition = 0;
+		Uint32 m_textStartPosition = 4;
+		Uint32 m_positionOfFirstShownLetter = 0;
+		Uint32 m_selectionReference = 0;
+		Uint32 m_selectionStart = 0;
+		Uint32 m_selectionEnd = 0;
 		Uint8 m_red;
 		Uint8 m_green;
 		Uint8 m_blue;
-		Uint8 m_font;
-		char m_hideCharacter;
-		bool m_bShowCursor;
-		bool m_onlyNumbers;
-		bool m_selecting;
+		Uint8 m_font = CLIENT_FONT_NONOUTLINED;
+		char m_hideCharacter = '\0';
+		bool m_bShowCursor = false;
+		bool m_onlyNumbers = false;
+		bool m_selecting = false;
 };
 
 #endif /* __FILE_GUI_TEXTBOX_h_ */

@@ -29,17 +29,25 @@ class GUI_Flash : public GUI_Element
 	public:
 		GUI_Flash(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_Flash(const GUI_Flash&) = delete;
+		GUI_Flash& operator=(const GUI_Flash&) = delete;
+
+		// non-moveable
+		GUI_Flash(GUI_Flash&&) = delete;
+		GUI_Flash& operator=(GUI_Flash&&) = delete;
+
 		void reset();
 		void setEndEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);
 
 		void render();
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32, Sint32);
+		void (*m_eventHandlerFunction)(Uint32, Sint32) = NULL;
 		Uint32 m_startFlash;
 		Uint32 m_lastControlFlash;
-		Uint32 m_evtParam;
-		bool m_controlFlash;
+		Uint32 m_evtParam = 0;
+		bool m_controlFlash = true;
 };
 
 #endif /* __FILE_GUI_FLASH_h_ */

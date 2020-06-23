@@ -269,26 +269,8 @@ Sint32 AStarNodes::getMapWalkFactor(AStarNode* node, const Position& neighborPos
 
 Map::Map()
 {
-	for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
-	{
-		for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
-		{
-			for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
-				m_tiles[z][y][x] = NULL;
-		}
-	}
 	for(Sint32 i = ONSCREEN_MESSAGE_BOTTOM; i < ONSCREEN_MESSAGE_LAST; ++i)
 		m_onscreenMessages[i] = new ScreenText(SDL_static_cast(OnscreenMessages, i));
-
-	m_localCreature = NULL;
-
-	m_magicEffectsTime = 0;
-	m_distanceEffectsTime = 0;
-
-	m_cachedLastVisibleFloor = 7;
-	m_cachedFirstVisibleFloor = 0;
-
-	m_needUpdateCache = true;
 }
 
 Map::~Map()
@@ -366,10 +348,14 @@ Tile* Map::resetTile(const Position& position, Sint32 offset)
 
 	Tile* tile = m_tiles[position.z][posY][posX];
 	if(tile)
-		delete tile;
+		tile->reset();
+	else
+	{
+		m_tiles[position.z][posY][posX] = new Tile(position);
+		return m_tiles[position.z][posY][posX];
+	}
 	
-	m_tiles[position.z][posY][posX] = new Tile(position);
-	return m_tiles[position.z][posY][posX];
+	return tile;
 }
 
 void Map::cleanTile(const Position& position, Sint32 offset)
@@ -409,7 +395,7 @@ void Map::render()
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 		g_light.initLightMap(offsetX, offsetY, getCentralPosition().z);
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->beginGameScene();
 	for(Sint32 z = m_cachedLastVisibleFloor; z >= m_cachedFirstVisibleFloor; --z)
 	{
@@ -1276,8 +1262,9 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 
 Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature*& topCreature, bool multifloor)
 {
+	Tile* bestPossibleTile = NULL;
 	if(!m_localCreature) //If somehow we don't have localcreature avoid crashing
-		return NULL;
+		return bestPossibleTile;
 
 	Sint32 xOffset = SDL_static_cast(Sint32, m_localCreature->getOffsetX(true) * scale);
 	Sint32 yOffset = SDL_static_cast(Sint32, m_localCreature->getOffsetY(true) * scale);
@@ -1325,30 +1312,28 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 		}
 
 		Search_for_Tile:
-		for(Sint32 y2 = 1; y2 >= -1; --y2)
+		Sint32 indexX = posX;
+		Sint32 indexY = posY;
+		if(indexX >= 0 && indexY >= 0 && indexX < GAME_MAP_WIDTH && indexY < GAME_MAP_HEIGHT)
 		{
-			for(Sint32 x2 = 1; x2 >= -1; --x2)
+			Tile* tile = m_tiles[z][indexY][indexX];
+			if(tile)
 			{
-				Sint32 indexX = posX + x2;
-				Sint32 indexY = posY + y2;
-				if(indexX >= 0 && indexY >= 0 && indexX < GAME_MAP_WIDTH && indexY < GAME_MAP_HEIGHT)
+				iRect irect = iRect(gameWindow.x1 + ((indexX - 1) * scaledSize) - xOffset, gameWindow.y1 + ((indexY - 1) * scaledSize) - yOffset, scaledSize, scaledSize);
+				if(irect.isPointInside(x, y))
 				{
-					Tile* tile = m_tiles[z][indexY][indexX];
-					if(tile)
+					if(tile->isLookingPossible())
 					{
-						Sint32 elevationSize = SDL_static_cast(Sint32, tile->getTileElevation() * scale);
-						iRect irect = iRect(gameWindow.x1 + ((indexX - 1) * scaledSize) - elevationSize - xOffset, gameWindow.y1 + ((indexY - 1) * scaledSize) - elevationSize - yOffset, scaledSize + elevationSize, scaledSize + elevationSize);
-						if(irect.isPointInside(x, y))
-						{
-							if(tile->isLookingPossible())
-								return tile;
-						}
+						//When we don't have ground let's see if we can get another tile
+						bestPossibleTile = tile;
+						if(tile->hasground())
+							return bestPossibleTile;
 					}
 				}
 			}
 		}
 	}
-	return NULL;
+	return bestPossibleTile;
 }
 
 void Map::resetCreatures()

@@ -54,14 +54,6 @@ struct KeyRepeat
 #endif
 #define GET_SAFE_PROTOCOLGAME ((g_connection && g_connection->getProtocol()) ? g_connection->getProtocol()->getProtocolGame() : NULL)
 
-#if __cplusplus >= 201300L || (defined(_MSC_VER) && _MSC_VER >= 1900)
-#define HAVE_CXX14_SUPPORT 1
-#endif
-
-#ifndef HAVE_CXX14_SUPPORT
-#error "Please use a compiler that support C++14 or enable it in project settings"
-#endif
-
 #if defined(_M_ARM) || defined(__arm__) || defined(_ARM) || defined(__arm)
 #define __USE_NEON__ 1
 #endif

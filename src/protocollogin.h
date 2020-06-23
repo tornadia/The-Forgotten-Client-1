@@ -47,7 +47,15 @@ enum LoginOpcodes : Uint8
 class ProtocolLogin : public Protocol
 {
 	public:
-		ProtocolLogin();
+		ProtocolLogin() = default;
+
+		// non-copyable
+		ProtocolLogin(const ProtocolLogin&) = delete;
+		ProtocolLogin& operator=(const ProtocolLogin&) = delete;
+
+		// non-moveable
+		ProtocolLogin(ProtocolLogin&&) = delete;
+		ProtocolLogin& operator=(ProtocolLogin&&) = delete;
 
 		virtual void parseMessage(InputMessage& msg);
 		virtual void onConnect();
@@ -66,8 +74,8 @@ class ProtocolLogin : public Protocol
 		void parseCharacterList(InputMessage& msg);
 		void parseCharacterListNew(InputMessage& msg);
 
-		ConnectionError m_lastError;
-		bool m_skipErrors;
+		ConnectionError m_lastError = CONNECTION_ERROR_INVALID;
+		bool m_skipErrors = false;
 };
 
 #endif /* __FILE_PROTOCOL_LOGIN_h_ */

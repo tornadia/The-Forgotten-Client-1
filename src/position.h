@@ -28,6 +28,7 @@ struct Position
 {
 	Position() : x(0), y(0), z(0) {}
 	Position(Uint16 x, Uint16 y, Uint8 z) : x(x), y(y), z(z) {}
+	Position(const Position& rhs) : x(rhs.x), y(rhs.y), z(rhs.z) {}
 
 	template<Sint32 deltax, Sint32 deltay>
 	static bool areInRange(const Position& p1, const Position& p2)
@@ -150,6 +151,7 @@ struct Position
 			case DIRECTION_SOUTHEAST: {++pos.x;++pos.y;} break;
 			case DIRECTION_SOUTHWEST: {--pos.x;++pos.y;} break;
 			case DIRECTION_NORTHWEST: {--pos.x;--pos.y;} break;
+			default: break;
         }
         return pos;
     }
@@ -172,6 +174,7 @@ struct Position
 				case DIRECTION_SOUTHEAST: {++pos.x; ++pos.y;} break;
 				case DIRECTION_SOUTHWEST: {--pos.x; ++pos.y;} break;
 				case DIRECTION_NORTHWEST: {--pos.x; --pos.y;} break;
+				default: break;
 			}
 		}
 		return pos;

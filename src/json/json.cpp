@@ -66,6 +66,9 @@ JSON_VALUE::JSON_VALUE(const JSON_VALUE& _source)
 			}
 		}
 		break;
+
+		default:
+			break;
 	}
 }
 
@@ -266,6 +269,9 @@ std::string JSON_VALUE::serialize()
 			str.append(1, '}');
 		}
 		break;
+
+		default:
+			break;
 	}
 	return str;
 }
@@ -492,6 +498,7 @@ size_t JSON_VALUE::size() const
 	{
 		case JSON_TYPE_ARRAY: return array_value->size();
 		case JSON_TYPE_OBJECT: return object_value->size();
+		default: break;
 	}
 	return 0;
 }

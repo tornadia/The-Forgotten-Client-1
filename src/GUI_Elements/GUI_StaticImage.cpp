@@ -24,14 +24,11 @@
 
 extern Engine g_engine;
 
-GUI_StaticImage::GUI_StaticImage(iRect boxRect, Uint16 pictureId, Sint32 pictureX, Sint32 pictureY, Uint32 internalID, const std::string description)
+GUI_StaticImage::GUI_StaticImage(iRect boxRect, Uint16 pictureId, Sint32 pictureX, Sint32 pictureY, Uint32 internalID, const std::string description) : 
+	m_description(std::move(description)), m_pictureX(pictureX), m_pictureY(pictureY), m_pictureId(pictureId)
 {
 	setRect(boxRect);
-	m_description = std::move(description);
 	m_internalID = internalID;
-	m_pictureId = pictureId;
-	m_pictureX = pictureX;
-	m_pictureY = pictureY;
 }
 
 void GUI_StaticImage::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)

@@ -24,14 +24,10 @@
 
 extern Engine g_engine;
 
-GUI_Window::GUI_Window(iRect boxRect, const std::string title, Uint32 internalID)
+GUI_Window::GUI_Window(iRect boxRect, const std::string title, Uint32 internalID) :
+	m_Title(std::move(title)), m_internalID(internalID)
 {
 	setRect(boxRect);
-	m_bActive = true;
-	m_bMouseDragging = false;
-	m_Title = std::move(title);
-	m_actElement = NULL;
-	m_internalID = internalID;
 }
 
 GUI_Window::~GUI_Window()
@@ -190,6 +186,9 @@ void GUI_Window::onKeyDown(SDL_Event& event)
 					setActiveElement(elementEnt);
 			}
 			return;
+
+			default:
+				break;
 		}
 	}
 	if(m_actElement)
@@ -308,7 +307,7 @@ void GUI_Window::onMove(Sint32 x, Sint32 y)
 
 void GUI_Window::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	switch(m_internalID)
 	{
 		case GUI_WINDOW_MAIN:

@@ -116,6 +116,7 @@ void item_move_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -159,7 +160,6 @@ GUI_ItemMove::GUI_ItemMove(iRect boxRect, Uint16 itemId, Uint16 itemCount, Uint3
 		m_item->setSubtype(itemCount, true);
 
 	m_lastKey = g_frameTime;
-	m_calculate = 0;
 }
 
 GUI_ItemMove::~GUI_ItemMove()
@@ -198,6 +198,7 @@ void GUI_ItemMove::onKeyDown(SDL_Event& event)
 				UTIL_SafeEventHandler(&item_move_Events, ITEM_MOVE_SCROLLBAR_SET_EVENTID, SDL_static_cast(Sint32, m_calculate) - 1);
 			}
 			break;
+			default: break;
 		}
 	}
 }

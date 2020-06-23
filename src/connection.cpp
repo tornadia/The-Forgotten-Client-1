@@ -23,22 +23,12 @@
 
 #include <curl/curl.h>
 
-Connection::Connection(const char* host, Uint16 port, const char* proxy, const char* proxyAuth, Protocol* protocol)
+Connection::Connection(const char* host, Uint16 port, const char* proxy, const char* proxyAuth, Protocol* protocol) : m_protocol(protocol)
 {
-	m_protocol = protocol;
-
 	m_host = SDL_strdup(host);
 	m_port = port;
 	m_proxy = SDL_strdup(proxy);
 	m_proxyAuth = SDL_strdup(proxyAuth);
-
-	m_curlHandle = NULL;
-	m_curlEasyHandle = NULL;
-
-	m_readState = READ_SIZE;
-	m_connectionState = CONNECTION_STATE_INIT;
-	m_waiting = 0;
-	m_messageSize = 0;
 }
 
 Connection::~Connection()
@@ -207,13 +197,13 @@ void Connection::updateConnection()
 						}
 					}
 					break;
+					default: break;
 				}
 			}
 		}
 		break;
 		case CONNECTION_STATE_SEND_ERROR: closeConnectionError(CONNECTION_ERROR_SEND_FAIL); break;
-		case CONNECTION_STATE_CLOSED:
-		case CONNECTION_STATE_ERROR:
+		default:
 			//Ignore
 			break;
 	}

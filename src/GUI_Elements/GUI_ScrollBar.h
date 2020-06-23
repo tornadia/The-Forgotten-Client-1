@@ -28,6 +28,14 @@ class GUI_HScrollBar : public GUI_Element
 {
 	public:
 		GUI_HScrollBar(iRect boxRect, Sint32 sSize, Sint32 sPos, Uint32 internalID = 0);
+
+		// non-copyable
+		GUI_HScrollBar(const GUI_HScrollBar&) = delete;
+		GUI_HScrollBar& operator=(const GUI_HScrollBar&) = delete;
+
+		// non-moveable
+		GUI_HScrollBar(GUI_HScrollBar&&) = delete;
+		GUI_HScrollBar& operator=(GUI_HScrollBar&&) = delete;
 		
 		SDL_FORCE_INLINE Sint32 getScrollSize() {return m_scrollSize;}
 		SDL_FORCE_INLINE Sint32 getScrollPos() {return m_scrollPos[1];}
@@ -45,23 +53,31 @@ class GUI_HScrollBar : public GUI_Element
 		void render();
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32, Sint32);
-		float m_scrollScale;
-		float m_scrollInvScale;
-		Uint32 m_evtParam;
+		void (*m_eventHandlerFunction)(Uint32, Sint32) = NULL;
+		float m_scrollScale = 0.f;
+		float m_scrollInvScale = 0.f;
+		Uint32 m_evtParam = 0;
 		Uint32 m_lastUpdate;
-		Sint32 m_mouseClickX;
-		Sint32 m_scrollPosSize;
-		Sint32 m_scrollPos[2];
-		Sint32 m_scrollSize;
-		Uint8 m_buttonDown;
-		bool m_haveHandle;
+		Sint32 m_mouseClickX = 0;
+		Sint32 m_scrollPosSize = 0;
+		Sint32 m_scrollPos[2] = {};
+		Sint32 m_scrollSize = 0;
+		Uint8 m_buttonDown = 0;
+		bool m_haveHandle = false;
 };
 
 class GUI_VScrollBar : public GUI_Element
 {
 	public:
 		GUI_VScrollBar(iRect boxRect, Sint32 sSize, Sint32 sPos, Uint32 internalID = 0);
+
+		// non-copyable
+		GUI_VScrollBar(const GUI_VScrollBar&) = delete;
+		GUI_VScrollBar& operator=(const GUI_VScrollBar&) = delete;
+
+		// non-moveable
+		GUI_VScrollBar(GUI_VScrollBar&&) = delete;
+		GUI_VScrollBar& operator=(GUI_VScrollBar&&) = delete;
 
 		SDL_FORCE_INLINE Sint32 getScrollSize() {return m_scrollSize;}
 		SDL_FORCE_INLINE Sint32 getScrollPos() {return m_scrollPos[1];}
@@ -79,17 +95,17 @@ class GUI_VScrollBar : public GUI_Element
 		void render();
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32, Sint32);
-		float m_scrollScale;
-		float m_scrollInvScale;
-		Uint32 m_evtParam;
+		void (*m_eventHandlerFunction)(Uint32, Sint32) = NULL;
+		float m_scrollScale = 0.f;
+		float m_scrollInvScale = 0.f;
+		Uint32 m_evtParam = 0;
 		Uint32 m_lastUpdate;
-		Sint32 m_mouseClickY;
-		Sint32 m_scrollPosSize;
-		Sint32 m_scrollPos[2];
-		Sint32 m_scrollSize;
-		Uint8 m_buttonDown;
-		bool m_haveHandle;
+		Sint32 m_mouseClickY = 0;
+		Sint32 m_scrollPosSize = 0;
+		Sint32 m_scrollPos[2] = {};
+		Sint32 m_scrollSize = 0;
+		Uint8 m_buttonDown = 0;
+		bool m_haveHandle = false;
 };
 
 #endif /* __FILE_GUI_SCROLLBAR_h_ */

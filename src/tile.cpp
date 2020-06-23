@@ -25,20 +25,17 @@
 #include "effect.h"
 #include "thingManager.h"
 
-Tile::Tile(const Position& position)
-{
-	m_ground = NULL;
-	m_position = position;
-	m_tileElevation = 0;
-	m_hasTranslucentLight = false;
-	m_lyingCorpses = false;
-}
-
 Tile::~Tile()
 {
 	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
 		(*it)->resetDrawnTile();
+	
+	m_walkCreatures.clear();
+	reset();
+}
 
+void Tile::reset()
+{
 	for(std::vector<Effect*>::iterator it = m_effects.begin(), end = m_effects.end(); it != end; ++it)
 		delete (*it);
 
@@ -49,12 +46,14 @@ Tile::~Tile()
 		delete (*it);
 
 	if(m_ground)
+	{
 		delete m_ground;
-	
+		m_ground = NULL;
+	}
+
 	m_topItems.clear();
 	m_downItems.clear();
 	m_creatures.clear();
-	m_walkCreatures.clear();
 	m_effects.clear();
 }
 
@@ -105,14 +104,14 @@ void Tile::render(Sint32 posX, Sint32 posY, bool visible_tile)
 	{
 		Creature* creature = (*it);
 		if(!creature->isWalking())
-			creature->render(posX, posY, visible_tile);
+			creature->render(posX, posY);
 	}
 
 	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
 	{
 		Creature* creature = (*it);
 		if(creature->isWalking())
-			creature->render(posX - creature->getWalkOffsetX(), posY - creature->getWalkOffsetY(), visible_tile);
+			creature->render(posX - creature->getWalkOffsetX(), posY - creature->getWalkOffsetY());
 	}
 
 	for(std::vector<Effect*>::iterator it = m_effects.begin(); it != m_effects.end();)
@@ -515,7 +514,10 @@ bool Tile::removeThing(Thing* thing, bool moveCreature)
 		if(it != m_creatures.end())
 		{
 			if(!moveCreature)
+			{
 				creature->removeFromDrawnTile();
+				creature->stopMove();
+			}
 
 			m_creatures.erase(it);
 			return true;

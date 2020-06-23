@@ -24,6 +24,8 @@
 
 #include "connection.h"
 
+#include <zlib.h>
+
 enum ProtocolOS : Uint8
 {
 	LEGACY_CIPBIA_OS = 2,
@@ -55,8 +57,16 @@ class ProtocolGame;
 class Protocol
 {
 	public:
-		Protocol();
-		virtual ~Protocol() {;}
+		Protocol() = default;
+		virtual ~Protocol();
+
+		// non-copyable
+		Protocol(const Protocol&) = delete;
+		Protocol& operator=(const Protocol&) = delete;
+
+		// non-moveable
+		Protocol(Protocol&&) = delete;
+		Protocol& operator=(Protocol&&) = delete;
 
 		virtual ProtocolGame* getProtocolGame() {return NULL;}
 		virtual const ProtocolGame* getProtocolGame() const {return NULL;}
@@ -80,11 +90,12 @@ class Protocol
 		static Uint32 getClientVersion();
 
 	private:
+		std::unique_ptr<z_stream> m_inflateStream;
 		Uint32 m_encryptionKeys[4];
-		Uint32 m_clientSequence;
-		Uint32 m_serverSequence;
-		Uint8 m_checksumMethod;
-		bool m_encryption;
+		Uint32 m_clientSequence = 0;
+		Uint32 m_serverSequence = 0;
+		Uint8 m_checksumMethod = CHECKSUM_METHOD_NONE;
+		bool m_encryption = false;
 };
 
 #endif /* __FILE_PROTOCOL_h_ */

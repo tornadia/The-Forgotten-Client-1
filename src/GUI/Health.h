@@ -29,12 +29,20 @@ class GUI_Health : public GUI_Element
 	public:
 		GUI_Health(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_Health(const GUI_Health&) = delete;
+		GUI_Health& operator=(const GUI_Health&) = delete;
+
+		// non-moveable
+		GUI_Health(GUI_Health&&) = delete;
+		GUI_Health& operator=(GUI_Health&&) = delete;
+
 		void setPercent(Sint32 percent) {m_percent = percent;}
 
 		void render();
 
 	protected:
-		Sint32 m_percent;
+		Sint32 m_percent = 90;
 };
 
 class GUI_Mana : public GUI_Element
@@ -42,12 +50,20 @@ class GUI_Mana : public GUI_Element
 	public:
 		GUI_Mana(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_Mana(const GUI_Mana&) = delete;
+		GUI_Mana& operator=(const GUI_Mana&) = delete;
+
+		// non-moveable
+		GUI_Mana(GUI_Mana&&) = delete;
+		GUI_Mana& operator=(GUI_Mana&&) = delete;
+
 		void setPercent(Sint32 percent) {m_percent = percent;}
 
 		void render();
 
 	protected:
-		Sint32 m_percent;
+		Sint32 m_percent = 90;
 };
 
 #endif /* __FILE_GUI_HEALTH_h_ */

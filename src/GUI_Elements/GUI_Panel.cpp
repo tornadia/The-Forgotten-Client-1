@@ -28,7 +28,6 @@ extern Engine g_engine;
 GUI_Panel::GUI_Panel(iRect boxRect, Sint32 internalId)
 {
 	setRect(boxRect);
-	m_actPanel = NULL;
 	m_lastPosY = m_tRect.y1 + 2;
 	m_freeHeight = m_tRect.y2 - 4;
 	m_internalID = internalId;
@@ -353,7 +352,6 @@ void GUI_Panel::onLMouseDown(Sint32 x, Sint32 y)
 	{
 		if((*it)->isInsideRect(x, y))
 		{
-			m_actPanel = (*it);
 			(*it)->onLMouseDown(x, y);
 			return;
 		}
@@ -362,7 +360,6 @@ void GUI_Panel::onLMouseDown(Sint32 x, Sint32 y)
 
 void GUI_Panel::onLMouseUp(Sint32 x, Sint32 y)
 {
-	m_actPanel = NULL;
 	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 		(*it)->onLMouseUp(x, y);
 }
@@ -373,7 +370,6 @@ void GUI_Panel::onRMouseDown(Sint32 x, Sint32 y)
 	{
 		if((*it)->isInsideRect(x, y))
 		{
-			m_actPanel = (*it);
 			(*it)->onRMouseDown(x, y);
 			return;
 		}
@@ -382,7 +378,6 @@ void GUI_Panel::onRMouseDown(Sint32 x, Sint32 y)
 
 void GUI_Panel::onRMouseUp(Sint32 x, Sint32 y)
 {
-	m_actPanel = NULL;
 	for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 		(*it)->onRMouseUp(x, y);
 }
@@ -405,9 +400,9 @@ void GUI_Panel::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 		(*it)->onMouseMove(x, y, isInsideParent);
 }
 
-GUI_PanelWindow* GUI_Panel::render()
+void GUI_Panel::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1 + m_tRect.x2 - 2, m_tRect.y1, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1 + m_tRect.x2 - 2, m_tRect.y1 + 2, 2, m_tRect.y2 - 4);
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_EXTRA_BORDER_X, GUI_UI_ICON_EXTRA_BORDER_Y, m_tRect.x1, m_tRect.y1 + m_tRect.y2 - 2, GUI_UI_ICON_EXTRA_BORDER_W, GUI_UI_ICON_EXTRA_BORDER_H);
@@ -417,19 +412,17 @@ GUI_PanelWindow* GUI_Panel::render()
 	if(m_freeHeight > 0)
 		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1 + 2, m_lastPosY, m_tRect.x2 - 4, m_freeHeight);
 
-	if(m_actPanel)
+	if(g_engine.getTopPanel())
 	{
 		for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 		{
-			if(m_actPanel != (*it))
+			if(g_engine.getTopPanel() != (*it))
 				(*it)->render();
 		}
-		return m_actPanel;
 	}
 	else
 	{
 		for(std::vector<GUI_PanelWindow*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
 			(*it)->render();
 	}
-	return NULL;
 }

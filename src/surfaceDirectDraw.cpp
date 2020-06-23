@@ -22,7 +22,6 @@
 #include "surfaceDirectDraw.h"
 
 //TODO: use flip model presentation for rendering in fullscreen
-//optimize texture updating
 
 #if defined(SDL_VIDEO_RENDER_DDRAW)
 #include <ddraw.h>
@@ -40,16 +39,11 @@ extern Uint16 g_pictureCounts;
 
 typedef HRESULT (WINAPI *PFN_DDrawCreate)(GUID* lpGUID, void** lplpDD, REFIID iid, IUnknown* pUnkOuter);
 
-SurfaceDirectDraw::SurfaceDirectDraw() : m_automapTilesBuff(MAX_AUTOMAPTILES), m_spritesIds(MAX_SPRITES)
+static const float inv255f = (1.0f / 255.0f);
+
+SurfaceDirectDraw::SurfaceDirectDraw()
 {
 	g_engine.RecreateWindow(false);
-
-	m_ddraw7 = NULL;
-	m_renderer = NULL;
-	m_device = NULL;
-	m_primarybuffer = NULL;
-	m_backbuffer = NULL;
-	m_clipper = NULL;
 
 	m_directDrawHandle = SDL_LoadObject("DDRAW.DLL");
 	if(m_directDrawHandle)
@@ -63,46 +57,8 @@ SurfaceDirectDraw::SurfaceDirectDraw() : m_automapTilesBuff(MAX_AUTOMAPTILES), m
 				m_ddraw7->QueryInterface(IID_IDirect3D7, SDL_reinterpret_cast(void**, &m_renderer));
 		}
 	}
-	
-	m_gameWindow = NULL;
-	m_scaled_gameWindow = NULL;
 
-	m_stagging = NULL;
-	m_spriteAtlas = NULL;
-	m_pictures = NULL;
-	m_hardware = NULL;
-
-	m_maxTextureSize = 1024;
-	m_integer_scaling_width = 0;
-	m_integer_scaling_height = 0;
-
-	m_clipRectX = 0;
-	m_clipRectY = 0;
-	m_clipRectW = 0;
-	m_clipRectH = 0;
-	m_viewPortX = 0;
-	m_viewPortY = 0;
-	m_viewPortW = 0;
-	m_viewPortH = 0;
-
-	m_totalVRAM = 0;
-	m_spriteChecker = 0;
-	m_currentFrame = 0;
-
-	m_spriteAtlases = 0;
-	m_spritesPerAtlas = 0;
-	m_spritesPerModulo = 0;
-
-	m_px = 0;
-	m_py = 0;
-
-	m_usingLinearSample = false;
-	m_needReset = true;
-	m_fullscreen = false;
-	m_scheduleSpriteDraw = false;
-
-	m_vertices.reserve(30720);
-
+	m_vertices.reserve(DIRECTDRAW_MAX_VERTICES);
 	m_sprites.reserve(MAX_SPRITES);
 	m_automapTiles.reserve(MAX_AUTOMAPTILES);
 }
@@ -129,7 +85,7 @@ SurfaceDirectDraw::~SurfaceDirectDraw()
 	for(U32BDDRAWTextures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseDirectDrawTexture(it->second);
 	
-	for(std::vector<DirectDrawTexture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+	for(std::vector<DirectDrawTexture>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
 		releaseDirectDrawTexture((*it));
 
 	m_sprites.clear();
@@ -165,8 +121,10 @@ SurfaceDirectDraw::~SurfaceDirectDraw()
 		SDL_UnloadObject(m_directDrawHandle);
 }
 
-DirectDrawTexture* SurfaceDirectDraw::createDirectDrawTexture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer)
+bool SurfaceDirectDraw::createDirectDrawTexture(DirectDrawTexture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer)
 {
+	releaseDirectDrawTexture(texture);
+
 	IDirectDrawSurface7* dd_surface;
 	DDSURFACEDESC2 ddsd;
 	memset(&ddsd, 0, sizeof(ddsd));
@@ -193,7 +151,7 @@ DirectDrawTexture* SurfaceDirectDraw::createDirectDrawTexture(Uint32 width, Uint
 	ddsd.ddpfPixelFormat.dwRGBAlphaBitMask = 0xFF000000;
 	HRESULT result = IDirectDraw7_CreateSurface(m_ddraw7, &ddsd, &dd_surface, NULL);
 	if(result != DD_OK)
-		return NULL;
+		return false;
 
 	memset(&ddsd, 0, sizeof(ddsd));
 	ddsd.dwSize = sizeof(ddsd);
@@ -201,89 +159,66 @@ DirectDrawTexture* SurfaceDirectDraw::createDirectDrawTexture(Uint32 width, Uint
 	if(result != DD_OK)
 	{
 		IDirectDrawSurface7_Release(dd_surface);
-		return NULL;
+		return false;
 	}
 	IDirectDrawSurface7_Unlock(dd_surface, NULL);
 
-	DirectDrawTexture* texture = new DirectDrawTexture();
-	if(!texture)
-	{
-		IDirectDrawSurface7_Release(dd_surface);
-		return NULL;
-	}
-	texture->m_texture = dd_surface;
-	texture->m_width = width;
-	texture->m_height = height;
-	texture->m_scaleW = 1.0f / width;
-	texture->m_scaleH = 1.0f / height;
-	texture->m_linearSample = linearSampler;
-	return texture;
+	texture.m_texture = dd_surface;
+	texture.m_width = width;
+	texture.m_height = height;
+	texture.m_scaleW = 1.0f / width;
+	texture.m_scaleH = 1.0f / height;
+	texture.m_linearSample = linearSampler;
+	return true;
 }
 
-bool SurfaceDirectDraw::updateTextureData(DirectDrawTexture* texture, unsigned char* data)
+bool SurfaceDirectDraw::updateTextureData(DirectDrawTexture& texture, unsigned char* data)
 {
 	DDSURFACEDESC2 ddsd;
 	memset(&ddsd, 0, sizeof(ddsd));
 	ddsd.dwSize = sizeof(ddsd);
-	HRESULT result = IDirectDrawSurface7_Lock(texture->m_texture, NULL, &ddsd, (DDLOCK_NOSYSLOCK|DDLOCK_WAIT), NULL);
+	HRESULT result = IDirectDrawSurface7_Lock(texture.m_texture, NULL, &ddsd, (DDLOCK_NOSYSLOCK|DDLOCK_WAIT), NULL);
 	if(result != DD_OK)
 		return false;
 
 	unsigned char* dstData = SDL_reinterpret_cast(unsigned char*, ddsd.lpSurface);
-	LONG length = texture->m_width * 4;
+	LONG length = texture.m_width * 4;
 	if(length == ddsd.lPitch)
-		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, data), length * texture->m_height);
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, data), length * texture.m_height);
 	else
 	{
 		if(length > ddsd.lPitch)
 			length = ddsd.lPitch;
-		for(Uint32 row = 0; row < texture->m_height; ++row)
+		for(Uint32 row = 0; row < texture.m_height; ++row)
 		{
 			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, data), length);
 			data += length;
 			dstData += ddsd.lPitch;
 		}
 	}
-	IDirectDrawSurface7_Unlock(texture->m_texture, NULL);
+	IDirectDrawSurface7_Unlock(texture.m_texture, NULL);
 	return true;
 }
 
-void SurfaceDirectDraw::releaseDirectDrawTexture(DirectDrawTexture* texture)
+void SurfaceDirectDraw::releaseDirectDrawTexture(DirectDrawTexture& texture)
 {
-	if(texture->m_texture)
-		IDirectDrawSurface7_Release(texture->m_texture);
-	delete texture;
+	if(texture.m_texture)
+	{
+		IDirectDrawSurface7_Release(texture.m_texture);
+		texture.m_texture = NULL;
+	}
 }
 
-void SurfaceDirectDraw::updateTextureScaling(DirectDrawTexture* texture)
+void SurfaceDirectDraw::updateTextureScaling(DirectDrawTexture& texture)
 {
-	if(m_usingLinearSample != texture->m_linearSample)
+	if(m_usingLinearSample != texture.m_linearSample)
 	{
-		m_usingLinearSample = texture->m_linearSample;
+		m_usingLinearSample = texture.m_linearSample;
 		IDirect3DDevice7_SetTextureStageState(m_device, 0, D3DTSS_MINFILTER, (m_usingLinearSample ? D3DFILTER_LINEAR : D3DFILTER_NEAREST));
 		IDirect3DDevice7_SetTextureStageState(m_device, 0, D3DTSS_MAGFILTER, (m_usingLinearSample ? D3DFILTER_LINEAR : D3DFILTER_NEAREST));
 		IDirect3DDevice7_SetTextureStageState(m_device, 0, D3DTSS_ADDRESSU, D3DTADDRESS_CLAMP);
 		IDirect3DDevice7_SetTextureStageState(m_device, 0, D3DTSS_ADDRESSV, D3DTADDRESS_CLAMP);
 	}
-}
-
-void SurfaceDirectDraw::drawTriangles(std::vector<VertexDDRAW>& vertices)
-{
-	DWORD verticesSize = SDL_static_cast(DWORD, vertices.size());
-	if(verticesSize > 2046)
-	{
-		VertexDDRAW* verticeData = &vertices[0];
-
-		DWORD verticeIndex = 0;
-		while(verticeIndex < verticesSize)
-		{
-			DWORD drawSize = UTIL_min<DWORD>(verticesSize - verticeIndex, 2046);
-			IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLELIST, DDRAW_FVF, SDL_reinterpret_cast(void*, &verticeData[verticeIndex]), drawSize, 0);
-			verticeIndex += drawSize;
-		}
-	}
-	else if(verticesSize > 0)
-		IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLELIST, DDRAW_FVF, &vertices[0], verticesSize, 0);
 }
 
 void SurfaceDirectDraw::resetRenderer()
@@ -318,7 +253,6 @@ void SurfaceDirectDraw::resetRenderer()
 		{
 			UTIL_MessageBox(true, "DirectDraw: Failed to set cooperative level.");
 			exit(-1);
-			return;
 		}
 
 		SDL_DisplayMode fullscreen_mode;
@@ -337,7 +271,6 @@ void SurfaceDirectDraw::resetRenderer()
 					{
 						UTIL_MessageBox(true, "DirectDraw: Failed to setup fullscreen display.");
 						exit(-1);
-						return;
 					}
 				}
 			}
@@ -352,7 +285,6 @@ void SurfaceDirectDraw::resetRenderer()
 		{
 			UTIL_MessageBox(true, "DirectDraw: Failed to set cooperative level.");
 			exit(-1);
-			return;
 		}
 
 		m_fullscreen = false;
@@ -368,7 +300,6 @@ void SurfaceDirectDraw::resetRenderer()
 	{
 		UTIL_MessageBox(true, "DirectDraw: Failed to create frontbuffer.");
 		exit(-1);
-		return;
 	}
 
 	memset(&ddsd, 0, sizeof(ddsd));
@@ -379,7 +310,6 @@ void SurfaceDirectDraw::resetRenderer()
 	{
 		UTIL_MessageBox(true, "DirectDraw: Frontbuffer doesn't have atleast 24bit color depth.");
 		exit(-1);
-		return;
 	}
 
 	if(!m_fullscreen)
@@ -391,7 +321,6 @@ void SurfaceDirectDraw::resetRenderer()
 			{
 				UTIL_MessageBox(true, "DirectDraw: Failed to create clipper.");
 				exit(-1);
-				return;
 			}
 		}
 		result = IDirectDrawClipper_SetHWnd(m_clipper, 0, windowinfo.info.win.window);
@@ -399,14 +328,12 @@ void SurfaceDirectDraw::resetRenderer()
 		{
 			UTIL_MessageBox(true, "DirectDraw: Failed to setup clipper.");
 			exit(-1);
-			return;
 		}
 		result = IDirectDrawSurface7_SetClipper(m_primarybuffer, m_clipper);
 		if(result != DD_OK)
 		{
 			UTIL_MessageBox(true, "DirectDraw: Failed to setup clipper.");
 			exit(-1);
-			return;
 		}
 
 		int m_windowX, m_windowY;
@@ -435,7 +362,6 @@ void SurfaceDirectDraw::resetRenderer()
 	{
 		UTIL_MessageBox(true, "DirectDraw: Failed to create backbuffer.");
 		exit(-1);
-		return;
 	}
 
 	result = IDirect3D7_CreateDevice(m_renderer, IID_IDirect3DTnLHalDevice, m_backbuffer, &m_device);
@@ -449,7 +375,6 @@ void SurfaceDirectDraw::resetRenderer()
 			{
 				UTIL_MessageBox(true, "DirectDraw: Failed to create DirectDraw device.");
 				exit(-1);
-				return;
 			}
 		}
 	}
@@ -733,23 +658,12 @@ void SurfaceDirectDraw::renderTargetsRecreate()
 		return;
 
 	if(m_scaled_gameWindow)
-	{
 		releaseDirectDrawTexture(m_scaled_gameWindow);
-		m_scaled_gameWindow = NULL;
-	}
-
-	if(m_gameWindow)
-	{
-		releaseDirectDrawTexture(m_gameWindow);
-		m_gameWindow = NULL;
-	}
-
-	m_gameWindow = createDirectDrawTexture(RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, (g_engine.getAntialiasing() == CLIENT_ANTIALIASING_NORMAL), true);
-	if(!m_gameWindow)
+	
+	if(!createDirectDrawTexture(m_gameWindow, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, (g_engine.getAntialiasing() == CLIENT_ANTIALIASING_NORMAL), true))
 	{
 		UTIL_MessageBox(true, "DirectDraw: Out of video memory.");
 		exit(-1);
-		return;
 	}
 }
 
@@ -788,38 +702,39 @@ void SurfaceDirectDraw::generateSpriteAtlases()
 
 	for(Uint32 i = 0; i < m_spriteAtlases; ++i)
 	{
-		DirectDrawTexture* texture = createDirectDrawTexture(m_spritesPerModulo, m_spritesPerModulo, false);
-		if(!texture)
+		m_spritesAtlas.emplace_back();
+		if(!createDirectDrawTexture(m_spritesAtlas.back(), m_spritesPerModulo, m_spritesPerModulo, false))
 		{
 			UTIL_MessageBox(true, "DirectDraw: Out of video memory.");
 			exit(-1);
-			return;
 		}
-		m_spritesAtlas.push_back(texture);
-	}
-}
-
-void SurfaceDirectDraw::checkScheduledSprites()
-{
-	size_t vertices = m_vertices.size();
-	if(vertices > 0)
-	{
-		updateTextureScaling(m_spriteAtlas);
-		IDirect3DDevice7_SetTexture(m_device, 0, m_spriteAtlas->m_texture);
-		drawTriangles(m_vertices);
-		m_vertices.clear();
 	}
 }
 
 void SurfaceDirectDraw::init()
 {
-	m_pictures = SDL_reinterpret_cast(DirectDrawTexture**, SDL_calloc(g_pictureCounts, sizeof(DirectDrawTexture*)));
+	m_pictures = SDL_reinterpret_cast(DirectDrawTexture*, SDL_calloc(g_pictureCounts, sizeof(DirectDrawTexture)));
 	if(!m_pictures)
 	{
 		SDL_OutOfMemory();
 		SDL_snprintf(g_buffer, sizeof(g_buffer), "Surface::Init() Failed: %s", SDL_GetError());
 		UTIL_MessageBox(true, g_buffer);
 		exit(-1);
+	}
+
+	Uint16 offset = 0;
+	m_indices.resize(DIRECTDRAW_MAX_INDICES);
+	for(Sint32 i = 0; i < DIRECTDRAW_MAX_INDICES; i += 6)
+	{
+		m_indices[i + 0] = 0 + offset;
+		m_indices[i + 1] = 1 + offset;
+		m_indices[i + 2] = 2 + offset;
+
+		m_indices[i + 3] = 3 + offset;
+		m_indices[i + 4] = 2 + offset;
+		m_indices[i + 5] = 1 + offset;
+
+		offset += 4;
 	}
 }
 
@@ -833,7 +748,7 @@ void SurfaceDirectDraw::spriteManagerReset()
 	for(U32BDDRAWTextures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseDirectDrawTexture(it->second);
 	
-	for(std::vector<DirectDrawTexture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+	for(std::vector<DirectDrawTexture>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
 		releaseDirectDrawTexture((*it));
 
 	m_sprites.clear();
@@ -883,11 +798,11 @@ void SurfaceDirectDraw::beginScene()
 
 	IDirect3DDevice7_BeginScene(m_device);
 	updateRenderer();
-	m_scheduleSpriteDraw = false;
 }
 
 void SurfaceDirectDraw::endScene()
 {
+	scheduleBatch();
 	IDirect3DDevice7_EndScene(m_device);
 	if(g_engine.isVsync())
 		IDirectDraw7_WaitForVerticalBlank(m_ddraw7, DDWAITVB_BLOCKEND, NULL);
@@ -924,6 +839,68 @@ void SurfaceDirectDraw::endScene()
 	}
 }
 
+DirectDrawTexture* SurfaceDirectDraw::getTextureIndex(DirectDrawTexture* texture)
+{
+	if(texture != m_binded_texture)
+	{
+		scheduleBatch();
+		m_binded_texture = texture;
+	}
+	return m_binded_texture;
+}
+
+void SurfaceDirectDraw::drawQuad(DirectDrawTexture*, float vertices[8], float texcoords[8])
+{
+	m_vertices.emplace_back(vertices[0], vertices[1], texcoords[0], texcoords[1], 0xFFFFFFFF);
+	m_vertices.emplace_back(vertices[2], vertices[3], texcoords[2], texcoords[3], 0xFFFFFFFF);
+	m_vertices.emplace_back(vertices[4], vertices[5], texcoords[4], texcoords[5], 0xFFFFFFFF);
+	m_vertices.emplace_back(vertices[6], vertices[7], texcoords[6], texcoords[7], 0xFFFFFFFF);
+	m_cachedVertices += 6;
+}
+
+void SurfaceDirectDraw::drawQuad(DirectDrawTexture*, float vertices[8], float texcoords[8], DWORD color)
+{
+	m_vertices.emplace_back(vertices[0], vertices[1], texcoords[0], texcoords[1], color);
+	m_vertices.emplace_back(vertices[2], vertices[3], texcoords[2], texcoords[3], color);
+	m_vertices.emplace_back(vertices[4], vertices[5], texcoords[4], texcoords[5], color);
+	m_vertices.emplace_back(vertices[6], vertices[7], texcoords[6], texcoords[7], color);
+	m_cachedVertices += 6;
+}
+
+void SurfaceDirectDraw::scheduleBatch()
+{
+	if(m_cachedVertices > 0)
+	{
+		if(m_binded_texture)
+		{
+			updateTextureScaling(*m_binded_texture);
+			IDirect3DDevice7_SetTexture(m_device, 0, m_binded_texture->m_texture);
+		}
+		else
+			IDirect3DDevice7_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirectDrawSurface7*, NULL));
+
+		if(m_cachedVertices > DIRECTDRAW_MAX_INDICES)
+		{
+			DWORD vertices = SDL_static_cast(DWORD, m_vertices.size());
+			VertexDDRAW* verticeData = &m_vertices[0];
+			do
+			{
+				DWORD passVertices = UTIL_min<DWORD>(vertices, DIRECTDRAW_MAX_VERTICES);
+				DWORD passIndices = UTIL_min<DWORD>(SDL_static_cast(DWORD, m_cachedVertices), DIRECTDRAW_MAX_INDICES);
+				IDirect3DDevice2_DrawIndexedPrimitive(m_device, D3DPT_TRIANGLELIST, DDRAW_FVF, verticeData, passVertices, &m_indices[0], passIndices, 0);
+				vertices -= passVertices;
+				verticeData += passVertices;
+				m_cachedVertices -= passIndices;
+			} while(m_cachedVertices > 0);
+		}
+		else
+			IDirect3DDevice2_DrawIndexedPrimitive(m_device, D3DPT_TRIANGLELIST, DDRAW_FVF, &m_vertices[0], SDL_static_cast(DWORD, m_vertices.size()), &m_indices[0], m_cachedVertices, 0);
+
+		m_vertices.clear();
+		m_cachedVertices = 0;
+	}
+}
+
 bool SurfaceDirectDraw::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
 	Sint32 limit = UTIL_min<Sint32>(2048, m_maxTextureSize);
@@ -932,25 +909,19 @@ bool SurfaceDirectDraw::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	UTIL_integer_scale(width, height, w, h, limit, limit);
 	if(m_integer_scaling_width != width || m_integer_scaling_height != height || !m_scaled_gameWindow)
 	{
-		if(m_scaled_gameWindow)
-		{
-			releaseDirectDrawTexture(m_scaled_gameWindow);
-			m_scaled_gameWindow = NULL;
-		}
-
-		m_scaled_gameWindow = createDirectDrawTexture(width, height, true, true);
-		if(!m_scaled_gameWindow)
+		if(!createDirectDrawTexture(m_scaled_gameWindow, width, height, true, true))
 			return false;
 
 		m_integer_scaling_width = width;
 		m_integer_scaling_height = height;
 	}
 
-	IDirect3DDevice7_SetRenderTarget(m_device, m_scaled_gameWindow->m_texture, 0);
+	scheduleBatch();
+	IDirect3DDevice7_SetRenderTarget(m_device, m_scaled_gameWindow.m_texture, 0);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
-	m_viewPortW = m_scaled_gameWindow->m_width;
-	m_viewPortH = m_scaled_gameWindow->m_height;
+	m_viewPortW = m_scaled_gameWindow.m_width;
+	m_viewPortH = m_scaled_gameWindow.m_height;
 	updateViewport();
 	
 	float minx = 0.0f;
@@ -958,18 +929,27 @@ bool SurfaceDirectDraw::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	float miny = 0.0f;
 	float maxy = SDL_static_cast(float, height);
 
-	float minu = (SDL_static_cast(float, sx) + 0.5f) * m_gameWindow->m_scaleW;
-	float maxu = (SDL_static_cast(float, sx + sw) + 0.5f) * m_gameWindow->m_scaleW;
-	float minv = (SDL_static_cast(float, sy) + 0.5f) * m_gameWindow->m_scaleH;
-	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * m_gameWindow->m_scaleH;
+	float minu = (SDL_static_cast(float, sx) + 0.5f) * m_gameWindow.m_scaleW;
+	float maxu = (SDL_static_cast(float, sx + sw) + 0.5f) * m_gameWindow.m_scaleW;
+	float minv = (SDL_static_cast(float, sy) + 0.5f) * m_gameWindow.m_scaleH;
+	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * m_gameWindow.m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(m_gameWindow);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_ALPHABLENDENABLE, FALSE);
-	IDirect3DDevice7_SetTexture(m_device, 0, m_gameWindow->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	drawQuad(getTextureIndex(&m_gameWindow), vertices, texcoords);
+
+	scheduleBatch();
 	IDirect3DDevice7_SetRenderTarget(m_device, m_backbuffer, 0);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
@@ -982,34 +962,23 @@ bool SurfaceDirectDraw::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 
 	miny = SDL_static_cast(float, y);
 	maxy = SDL_static_cast(float, y + h);
 
-	minu = 0.5f * m_scaled_gameWindow->m_scaleW;
-	maxu = (SDL_static_cast(float, m_scaled_gameWindow->m_width) + 0.5f) * m_scaled_gameWindow->m_scaleW;
-	minv = 0.5f * m_scaled_gameWindow->m_scaleH;
-	maxv = (SDL_static_cast(float, m_scaled_gameWindow->m_height) + 0.5f) * m_scaled_gameWindow->m_scaleH;
+	minu = 0.5f * m_scaled_gameWindow.m_scaleW;
+	maxu = (SDL_static_cast(float, m_scaled_gameWindow.m_width) + 0.5f) * m_scaled_gameWindow.m_scaleW;
+	minv = 0.5f * m_scaled_gameWindow.m_scaleH;
+	maxv = (SDL_static_cast(float, m_scaled_gameWindow.m_height) + 0.5f) * m_scaled_gameWindow.m_scaleH;
 
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
 
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-
-	updateTextureScaling(m_scaled_gameWindow);
-	IDirect3DDevice7_SetTexture(m_device, 0, m_scaled_gameWindow->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	drawQuad(getTextureIndex(&m_scaled_gameWindow), vertices, texcoords);
+	scheduleBatch();
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
 	return true;
 }
@@ -1030,43 +999,51 @@ void SurfaceDirectDraw::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh
 			g_engine.setAntialiasing(antialiasing);
 		}
 	}
+
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
 	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = (SDL_static_cast(float, sx) + 0.5f) * m_gameWindow->m_scaleW;
-	float maxu = (SDL_static_cast(float, sx + sw) + 0.5f) * m_gameWindow->m_scaleW;
-	float minv = (SDL_static_cast(float, sy) + 0.5f) * m_gameWindow->m_scaleH;
-	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * m_gameWindow->m_scaleH;
+	float minu = (SDL_static_cast(float, sx) + 0.5f) * m_gameWindow.m_scaleW;
+	float maxu = (SDL_static_cast(float, sx + sw) + 0.5f) * m_gameWindow.m_scaleW;
+	float minv = (SDL_static_cast(float, sy) + 0.5f) * m_gameWindow.m_scaleH;
+	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * m_gameWindow.m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(m_gameWindow);
-	IDirect3DDevice7_SetTexture(m_device, 0, m_gameWindow->m_texture);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+
+	scheduleBatch();
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_ALPHABLENDENABLE, FALSE);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	drawQuad(getTextureIndex(&m_gameWindow), vertices, texcoords);
+	scheduleBatch();
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
 }
 
 void SurfaceDirectDraw::beginGameScene()
 {
-	IDirect3DDevice7_SetRenderTarget(m_device, m_gameWindow->m_texture, 0);
+	scheduleBatch();
+	IDirect3DDevice7_SetRenderTarget(m_device, m_gameWindow.m_texture, 0);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
-	m_viewPortW = m_gameWindow->m_width;
-	m_viewPortH = m_gameWindow->m_height;
+	m_viewPortW = m_gameWindow.m_width;
+	m_viewPortH = m_gameWindow.m_height;
 	updateViewport();
 	fillRectangle(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, 0x00, 0x00, 0x00, 255);
-	m_vertices.clear();
-	m_scheduleSpriteDraw = true;
 }
 
 void SurfaceDirectDraw::endGameScene()
 {
-	checkScheduledSprites();
-	m_scheduleSpriteDraw = false;
+	scheduleBatch();
 	IDirect3DDevice7_SetRenderTarget(m_device, m_backbuffer, 0);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
@@ -1090,16 +1067,18 @@ void SurfaceDirectDraw::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y,
 	Sint32 sh = RENDERTARGET_HEIGHT;
 	if(!testClipper(x, y, w, h, sx, sy, sw, sh))
 		return;
+
+	scheduleBatch();
+	m_binded_texture = NULL;
 	
-	m_vertices.clear();
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE);
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_DESTBLEND, D3DBLEND_ZERO);
 
-	IDirect3DDevice7_SetRenderTarget(m_device, m_gameWindow->m_texture, 0);
+	IDirect3DDevice7_SetRenderTarget(m_device, m_gameWindow.m_texture, 0);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
-	m_viewPortW = m_gameWindow->m_width;
-	m_viewPortH = m_gameWindow->m_height;
+	m_viewPortW = m_gameWindow.m_width;
+	m_viewPortH = m_gameWindow.m_height;
 	updateViewport();
 
 	IDirect3DDevice7_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirectDrawSurface7*, NULL));
@@ -1142,18 +1121,26 @@ void SurfaceDirectDraw::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y,
 	float miny = SDL_static_cast(float, y);
 	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = (SDL_static_cast(float, sx) + 0.5f) * m_gameWindow->m_scaleW;
-	float maxu = (SDL_static_cast(float, sx + sw) + 0.5f) * m_gameWindow->m_scaleW;
-	float minv = (SDL_static_cast(float, sy) + 0.5f) * m_gameWindow->m_scaleH;
-	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * m_gameWindow->m_scaleH;
+	float minu = (SDL_static_cast(float, sx) + 0.5f) * m_gameWindow.m_scaleW;
+	float maxu = (SDL_static_cast(float, sx + sw) + 0.5f) * m_gameWindow.m_scaleW;
+	float minv = (SDL_static_cast(float, sy) + 0.5f) * m_gameWindow.m_scaleH;
+	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * m_gameWindow.m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW gameWindowVertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(m_gameWindow);
-	IDirect3DDevice7_SetTexture(m_device, 0, m_gameWindow->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, gameWindowVertices, 4, 0);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
 
+	drawQuad(getTextureIndex(&m_gameWindow), vertices, texcoords);
+	scheduleBatch();
+	
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
 }
@@ -1174,17 +1161,17 @@ void SurfaceDirectDraw::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y,
 	if(!testClipper(x, y, w, h, sx, sy, sw, sh))
 		return;
 
-	static const float inv255f = (1.0f / 255.0f);
-	m_vertices.clear();
+	scheduleBatch();
+	m_binded_texture = NULL;
 
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_SRCBLEND, D3DBLEND_ONE);
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_DESTBLEND, D3DBLEND_ZERO);
 
-	IDirect3DDevice7_SetRenderTarget(m_device, m_gameWindow->m_texture, 0);
+	IDirect3DDevice7_SetRenderTarget(m_device, m_gameWindow.m_texture, 0);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
-	m_viewPortW = m_gameWindow->m_width;
-	m_viewPortH = m_gameWindow->m_height;
+	m_viewPortW = m_gameWindow.m_width;
+	m_viewPortH = m_gameWindow.m_height;
 	updateViewport();
 
 	IDirect3DDevice7_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirectDrawSurface7*, NULL));
@@ -1304,40 +1291,33 @@ void SurfaceDirectDraw::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y,
 			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topLeft[0][0] * 255.f), SDL_static_cast(Uint8, topLeft[0][1] * 255.f), SDL_static_cast(Uint8, topLeft[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topLeft[0][0] * 255.f), SDL_static_cast(Uint8, topLeft[0][1] * 255.f), SDL_static_cast(Uint8, topLeft[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-
+			
 			//Draw Bottom-Left square
 			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, leftCenter[0][0] * 255.f), SDL_static_cast(Uint8, leftCenter[0][1] * 255.f), SDL_static_cast(Uint8, leftCenter[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + 32), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomLeft[0][0] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][1] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 32), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + 32), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomLeft[0][0] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][1] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-
+			
 			//Draw Top-Right square
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 32), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topRight[0][0] * 255.f), SDL_static_cast(Uint8, topRight[0][1] * 255.f), SDL_static_cast(Uint8, topRight[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 32), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + 32), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topRight[0][0] * 255.f), SDL_static_cast(Uint8, topRight[0][1] * 255.f), SDL_static_cast(Uint8, topRight[0][2] * 255.f), 255));
-
+			
 			//Draw Bottom-Right square
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 32), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 32), SDL_static_cast(float, drawY + 32), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomRight[0][0] * 255.f), SDL_static_cast(Uint8, bottomRight[0][1] * 255.f), SDL_static_cast(Uint8, bottomRight[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + 32), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + 16), SDL_static_cast(float, drawY + 16), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + 32), SDL_static_cast(float, drawY + 32), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomRight[0][0] * 255.f), SDL_static_cast(Uint8, bottomRight[0][1] * 255.f), SDL_static_cast(Uint8, bottomRight[0][2] * 255.f), 255));
-
+			
+			m_cachedVertices += 24;
 			drawX += 32;
 		}
 
 		drawY += 32;
 	}
 
-	drawTriangles(m_vertices);
+	scheduleBatch();
 	IDirect3DDevice7_SetRenderTarget(m_device, m_backbuffer, 0);
 	m_viewPortX = 0;
 	m_viewPortY = 0;
@@ -1353,17 +1333,25 @@ void SurfaceDirectDraw::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y,
 	float miny = SDL_static_cast(float, y);
 	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = (SDL_static_cast(float, sx) + 0.5f) * m_gameWindow->m_scaleW;
-	float maxu = (SDL_static_cast(float, sx + sw) + 0.5f) * m_gameWindow->m_scaleW;
-	float minv = (SDL_static_cast(float, sy) + 0.5f) * m_gameWindow->m_scaleH;
-	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * m_gameWindow->m_scaleH;
+	float minu = (SDL_static_cast(float, sx) + 0.5f) * m_gameWindow.m_scaleW;
+	float maxu = (SDL_static_cast(float, sx + sw) + 0.5f) * m_gameWindow.m_scaleW;
+	float minv = (SDL_static_cast(float, sy) + 0.5f) * m_gameWindow.m_scaleH;
+	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * m_gameWindow.m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW gameWindowVertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(m_gameWindow);
-	IDirect3DDevice7_SetTexture(m_device, 0, m_gameWindow->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, gameWindowVertices, 4, 0);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+
+	drawQuad(getTextureIndex(&m_gameWindow), vertices, texcoords);
+	scheduleBatch();
 
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_SRCBLEND, D3DBLEND_SRCALPHA);
 	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_DESTBLEND, D3DBLEND_INVSRCALPHA);
@@ -1371,6 +1359,8 @@ void SurfaceDirectDraw::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y,
 
 void SurfaceDirectDraw::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
+	scheduleBatch();
+
 	SDL_Rect rectSrc = {x, y, w, h};
 	SDL_Rect rectDst = {SDL_static_cast(Sint32, m_clipRectX), SDL_static_cast(Sint32, m_clipRectY), SDL_static_cast(Sint32, m_viewPortW), SDL_static_cast(Sint32, m_viewPortH)};
 	SDL_Rect rectRes;
@@ -1384,39 +1374,32 @@ void SurfaceDirectDraw::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 
 void SurfaceDirectDraw::disableClipRect()
 {
+	scheduleBatch();
+
 	m_clipRectX = 0;
 	m_clipRectY = 0;
 	m_clipRectW = m_viewPortW;
 	m_clipRectH = m_viewPortH;
 }
 
-void SurfaceDirectDraw::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+void SurfaceDirectDraw::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
-
-	if(!testClipper(x, y, w, h, x, y, w, h))
-		return;
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x + w) - 1.0f;
-	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y + h) - 1.0f;
-
-	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-	VertexDDRAW vertices[5] = {{minx, miny, texColor},{maxx, miny, texColor},{maxx, maxy, texColor},{minx, maxy, texColor},{minx, miny, texColor}};
-
-	IDirect3DDevice7_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirectDrawSurface7*, NULL));
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_LINESTRIP, DDRAW_FVF, vertices, 5, 0);
+	fillRectangle(x, y, lineWidth, h, r, g, b, a);
+	fillRectangle(x + w - lineWidth, y, lineWidth, h, r, g, b, a);
+	fillRectangle(x + lineWidth, y, w - (lineWidth << 1), lineWidth, r, g, b, a);
+	fillRectangle(x + lineWidth, y + h - lineWidth, w - (lineWidth << 1), lineWidth, r, g, b, a);
 }
 
 void SurfaceDirectDraw::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
-
 	if(!testClipper(x, y, w, h, x, y, w, h))
 		return;
+
+	if(m_binded_texture)
+	{
+		scheduleBatch();
+		m_binded_texture = NULL;
+	}
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
@@ -1424,10 +1407,11 @@ void SurfaceDirectDraw::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Ui
 	float maxy = SDL_static_cast(float, y + h);
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-	VertexDDRAW vertices[4] = {{minx, miny, texColor},{minx, maxy, texColor},{maxx, miny, texColor},{maxx, maxy, texColor}};
-
-	IDirect3DDevice7_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirectDrawSurface7*, NULL));
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	m_vertices.emplace_back(minx, miny, texColor);
+	m_vertices.emplace_back(minx, maxy, texColor);
+	m_vertices.emplace_back(maxx, miny, texColor);
+	m_vertices.emplace_back(maxx, maxy, texColor);
+	m_cachedVertices += 6;
 }
 
 DirectDrawTexture* SurfaceDirectDraw::loadPicture(DirectDrawTexture* s, Uint16 pictureId, bool linear)
@@ -1439,32 +1423,33 @@ DirectDrawTexture* SurfaceDirectDraw::loadPicture(DirectDrawTexture* s, Uint16 p
 
 	if(!s)
 	{
-		s = createDirectDrawTexture(width, height, linear);
-		if(!s)
+		s = &m_pictures[pictureId];
+		if(!createDirectDrawTexture(*s, width, height, linear))
 		{
 			SDL_free(pixels);
 			return NULL;
 		}
-		m_pictures[pictureId] = s;
 	}
 
-	while(!updateTextureData(s, pixels)) {SDL_Delay(10);}
+	while(!updateTextureData(*s, pixels)) {SDL_Delay(10);}
 	SDL_free(pixels);
 	return s;
 }
 
 void SurfaceDirectDraw::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256])
 {
-	DirectDrawTexture* tex = m_pictures[pictureId];
-	if(!tex)
+	DirectDrawTexture* tex = &m_pictures[pictureId];
+	if(!tex->m_texture)
 	{
 		tex = loadPicture(NULL, pictureId, false);
 		if(!tex)
 			return;//load failed
 	}
 
+	float vertices[8];
+	float texcoords[8];
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, 255);
-	m_vertices.clear();
+	tex = getTextureIndex(tex);
 
 	Sint32 rx = x, ry = y;
 	Uint8 character;
@@ -1519,23 +1504,23 @@ void SurfaceDirectDraw::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std
 					float minv = (SDL_static_cast(float, sy1) + 0.5f) * tex->m_scaleH;
 					float maxv = (SDL_static_cast(float, sy1 + h1) + 0.5f) * tex->m_scaleH;
 
-					m_vertices.emplace_back(minx, miny, minu, minv, texColor);
-					m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-					m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+					vertices[0] = minx; vertices[1] = miny;
+					vertices[2] = minx; vertices[3] = maxy;
+					vertices[4] = maxx; vertices[5] = miny;
+					vertices[6] = maxx; vertices[7] = maxy;
 
-					m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-					m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-					m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+					texcoords[0] = minu; texcoords[1] = minv;
+					texcoords[2] = minu; texcoords[3] = maxv;
+					texcoords[4] = maxu; texcoords[5] = minv;
+					texcoords[6] = maxu; texcoords[7] = maxv;
+
+					drawQuad(tex, vertices, texcoords, texColor);
 				}
 				rx += cW[character] + cX[0];
 			}
 			break;
 		}
 	}
-
-	updateTextureScaling(tex);
-	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-	drawTriangles(m_vertices);
 }
 
 void SurfaceDirectDraw::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -1543,8 +1528,8 @@ void SurfaceDirectDraw::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, S
 	if(!testClipper(x, y, w, h, sx, sy, sw, sh))
 		return;
 
-	DirectDrawTexture* tex = m_pictures[pictureId];
-	if(!tex)
+	DirectDrawTexture* tex = &m_pictures[pictureId];
+	if(!tex->m_texture)
 	{
 		tex = loadPicture(NULL, pictureId, g_engine.hasAntialiasing());
 		if(!tex)
@@ -1561,28 +1546,33 @@ void SurfaceDirectDraw::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, S
 	float minv = (SDL_static_cast(float, sy) + 0.5f) * tex->m_scaleH;
 	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_ALPHABLENDENABLE, FALSE);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
-	IDirect3DDevice7_SetRenderState(m_device, D3DRENDERSTATE_ALPHABLENDENABLE, TRUE);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 void SurfaceDirectDraw::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
-	DirectDrawTexture* tex = m_pictures[pictureId];
-	if(!tex)
+	DirectDrawTexture* tex = &m_pictures[pictureId];
+	if(!tex->m_texture)
 	{
 		tex = loadPicture(NULL, pictureId, false);
 		if(!tex)
 			return;//load failed
 	}
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vertices.clear();
+	float vertices[8];
+	float texcoords[8];
+	tex = getTextureIndex(tex);
 
 	Sint32 curW, curH, cx;
 	for(Sint32 j = h; j > 0; j -= sh)
@@ -1610,22 +1600,22 @@ void SurfaceDirectDraw::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy
 				float minv = (SDL_static_cast(float, sy1) + 0.5f) * tex->m_scaleH;
 				float maxv = (SDL_static_cast(float, sy1 + h1) + 0.5f) * tex->m_scaleH;
 
-				m_vertices.emplace_back(minx, miny, minu, minv, texColor);
-				m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-				m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+				vertices[0] = minx; vertices[1] = miny;
+				vertices[2] = minx; vertices[3] = maxy;
+				vertices[4] = maxx; vertices[5] = miny;
+				vertices[6] = maxx; vertices[7] = maxy;
 
-				m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-				m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-				m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+				texcoords[0] = minu; texcoords[1] = minv;
+				texcoords[2] = minu; texcoords[3] = maxv;
+				texcoords[4] = maxu; texcoords[5] = minv;
+				texcoords[6] = maxu; texcoords[7] = maxv;
+
+				drawQuad(tex, vertices, texcoords);
 			}
 			cx += sw;
 		}
 		y += sh;
 	}
-
-	updateTextureScaling(tex);
-	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-	drawTriangles(m_vertices);
 }
 
 void SurfaceDirectDraw::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
@@ -1633,8 +1623,8 @@ void SurfaceDirectDraw::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint
 	if(!testClipper(x, y, w, h, sx, sy, w, h))
 		return;
 
-	DirectDrawTexture* tex = m_pictures[pictureId];
-	if(!tex)
+	DirectDrawTexture* tex = &m_pictures[pictureId];
+	if(!tex->m_texture)
 	{
 		tex = loadPicture(NULL, pictureId, false);
 		if(!tex)
@@ -1651,12 +1641,18 @@ void SurfaceDirectDraw::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint
 	float minv = (SDL_static_cast(float, sy) + 0.5f) * tex->m_scaleH;
 	float maxv = (SDL_static_cast(float, sy + h) + 0.5f) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 bool SurfaceDirectDraw::loadSprite(Uint32 spriteId, DirectDrawTexture* texture, Uint32 xoff, Uint32 yoff)
@@ -1664,8 +1660,7 @@ bool SurfaceDirectDraw::loadSprite(Uint32 spriteId, DirectDrawTexture* texture, 
 	if(!m_stagging)
 	{
 		//Without stagging texture lock/unlock is slow af
-		m_stagging = createDirectDrawTexture(32, 32, false);
-		if(!m_stagging)
+		if(!createDirectDrawTexture(m_stagging, 32, 32, false))
 			return false;
 	}
 
@@ -1681,7 +1676,7 @@ bool SurfaceDirectDraw::loadSprite(Uint32 spriteId, DirectDrawTexture* texture, 
 	d3drect.right = 32;
 	d3drect.top = 0;
 	d3drect.bottom = 32;
-	IDirectDrawSurface7_BltFast(texture->m_texture, xoff, yoff, m_stagging->m_texture, &d3drect, (DDBLTFAST_NOCOLORKEY|DDBLTFAST_WAIT));
+	IDirectDrawSurface7_BltFast(texture->m_texture, xoff, yoff, m_stagging.m_texture, &d3drect, (DDBLTFAST_NOCOLORKEY|DDBLTFAST_WAIT));
 	return true;
 }
 
@@ -1690,8 +1685,7 @@ bool SurfaceDirectDraw::loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uin
 	if(!m_stagging)
 	{
 		//Without stagging texture lock/unlock is slow af
-		m_stagging = createDirectDrawTexture(32, 32, false);
-		if(!m_stagging)
+		if(!createDirectDrawTexture(m_stagging, 32, 32, false))
 			return false;
 	}
 
@@ -1707,151 +1701,22 @@ bool SurfaceDirectDraw::loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uin
 	d3drect.right = 32;
 	d3drect.top = 0;
 	d3drect.bottom = 32;
-	IDirectDrawSurface7_BltFast(texture->m_texture, xoff, yoff, m_stagging->m_texture, &d3drect, (DDBLTFAST_NOCOLORKEY|DDBLTFAST_WAIT));
+	IDirectDrawSurface7_BltFast(texture->m_texture, xoff, yoff, m_stagging.m_texture, &d3drect, (DDBLTFAST_NOCOLORKEY|DDBLTFAST_WAIT));
 	return true;
 }
 
 void SurfaceDirectDraw::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 {
-	if(spriteId > g_spriteCounts)
-		return;
-
-	#if SIZEOF_VOIDP == 4
-	Uint64 tempPos;
-	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = spriteId;
-	u32p[1] = 0;
-	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
-	#endif
-	Uint32 xOffset;
-	Uint32 yOffset;
-	DirectDrawTexture* tex;
-	U64BDDRAWTextures::iterator it = m_sprites.find(tempPos);
-	if(it == m_sprites.end())
-	{
-		if(m_sprites.size() >= MAX_SPRITES)
-		{
-			while(++m_spriteChecker < MAX_SPRITES)
-			{
-				Uint64 oldSpriteId = m_spritesIds.front();
-				it = m_sprites.find(oldSpriteId);
-				if(it == m_sprites.end())
-				{
-					UTIL_MessageBox(true, "DirectDraw: Sprite Manager failure.");
-					exit(-1);
-				}
-
-				m_spritesIds.pop_front();
-				if(it->second.m_lastUsage == m_currentFrame)
-					m_spritesIds.push_back(oldSpriteId);
-				else
-					goto Skip_Search;
-			}
-
-			if(m_scheduleSpriteDraw)
-				checkScheduledSprites();
-
-			it = m_sprites.find(m_spritesIds.front());
-			if(it == m_sprites.end())
-			{
-				UTIL_MessageBox(true, "DirectDraw: Sprite Manager failure.");
-				exit(-1);
-			}
-			m_spritesIds.pop_front();
-
-			Skip_Search:
-			DirectDrawSpriteData sprData = it->second;
-			sprData.m_lastUsage = m_currentFrame;
-			m_sprites.erase(it);
-			m_sprites[tempPos] = sprData;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		else
-		{
-			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
-			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
-			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
-			if(spriteAtlas >= m_spritesAtlas.size())
-				return;
-
-			DirectDrawSpriteData& sprData = m_sprites[tempPos];
-			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
-			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
-			sprData.m_surface = spriteAtlas;
-			sprData.m_lastUsage = m_currentFrame;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		if(!loadSprite(spriteId, tex, xOffset, yOffset))
-			return;//load failed
-	}
-	else
-	{
-		xOffset = it->second.m_xOffset;
-		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
-		it->second.m_lastUsage = m_currentFrame;
-		if(m_spritesIds.front() == tempPos)
-		{
-			m_spritesIds.pop_front();
-			m_spritesIds.push_back(tempPos);
-		}
-	}
-
-	Sint32 w = 32;
-	Sint32 h = 32;
-	Sint32 sx = SDL_static_cast(Sint32, xOffset);
-	Sint32 sy = SDL_static_cast(Sint32, yOffset);
-	if(!testClipper(x, y, w, h, sx, sy, w, h))
-		return;
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x + w);
-	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y + h);
-
-	float minu = (SDL_static_cast(float, sx) + 0.5f) * tex->m_scaleW;
-	float maxu = (SDL_static_cast(float, sx + w) + 0.5f) * tex->m_scaleW;
-	float minv = (SDL_static_cast(float, sy) + 0.5f) * tex->m_scaleH;
-	float maxv = (SDL_static_cast(float, sy + h) + 0.5f) * tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	if(m_scheduleSpriteDraw)
-	{
-		if(tex != m_spriteAtlas)
-		{
-			checkScheduledSprites();
-			m_spriteAtlas = tex;
-		}
-		m_vertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-
-		m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	}
-	else
-	{
-		VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-		updateTextureScaling(tex);
-		IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-		IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
-	}
+	drawSprite(spriteId, x, y, 32, 32, 0, 0, 32, 32);
 }
 
 void SurfaceDirectDraw::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
 {
 	if(spriteId > g_spriteCounts)
 		return;
+	
+	if(!testClipper(x, y, w, h, sx, sy, sw, sh))
+		return;
 
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
@@ -1885,6 +1750,7 @@ void SurfaceDirectDraw::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w
 				else
 					goto Skip_Search;
 			}
+			scheduleBatch();
 
 			it = m_sprites.find(m_spritesIds.front());
 			if(it == m_sprites.end())
@@ -1903,7 +1769,7 @@ void SurfaceDirectDraw::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		else
 		{
@@ -1922,7 +1788,7 @@ void SurfaceDirectDraw::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		if(!loadSprite(spriteId, tex, xOffset, yOffset))
 			return;//load failed
@@ -1931,7 +1797,7 @@ void SurfaceDirectDraw::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w
 	{
 		xOffset = it->second.m_xOffset;
 		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
+		tex = &m_spritesAtlas[it->second.m_surface];
 		it->second.m_lastUsage = m_currentFrame;
 		if(m_spritesIds.front() == tempPos)
 		{
@@ -1939,8 +1805,6 @@ void SurfaceDirectDraw::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w
 			m_spritesIds.push_back(tempPos);
 		}
 	}
-	if(!testClipper(x, y, w, h, sx, sy, sw, sh))
-		return;
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
@@ -1955,163 +1819,40 @@ void SurfaceDirectDraw::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w
 	float minv = (SDL_static_cast(float, sy) + 0.5f) * tex->m_scaleH;
 	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor)
 {
-	if(spriteId > g_spriteCounts || maskSpriteId > g_spriteCounts)
-		return;
-
-	#if SIZEOF_VOIDP == 4
-	Uint64 tempPos;
-	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = maskSpriteId;
-	u32p[1] = outfitColor;
-	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
-	#endif
-	Uint32 xOffset;
-	Uint32 yOffset;
-	DirectDrawTexture* tex;
-	U64BDDRAWTextures::iterator it = m_sprites.find(tempPos);
-	if(it == m_sprites.end())
-	{
-		if(m_sprites.size() >= MAX_SPRITES)
-		{
-			while(++m_spriteChecker < MAX_SPRITES)
-			{
-				Uint64 oldSpriteId = m_spritesIds.front();
-				it = m_sprites.find(oldSpriteId);
-				if(it == m_sprites.end())
-				{
-					UTIL_MessageBox(true, "DirectDraw: Sprite Manager failure.");
-					exit(-1);
-				}
-
-				m_spritesIds.pop_front();
-				if(it->second.m_lastUsage == m_currentFrame)
-					m_spritesIds.push_back(oldSpriteId);
-				else
-					goto Skip_Search;
-			}
-
-			if(m_scheduleSpriteDraw)
-				checkScheduledSprites();
-
-			it = m_sprites.find(m_spritesIds.front());
-			if(it == m_sprites.end())
-			{
-				UTIL_MessageBox(true, "DirectDraw: Sprite Manager failure.");
-				exit(-1);
-			}
-			m_spritesIds.pop_front();
-
-			Skip_Search:
-			DirectDrawSpriteData sprData = it->second;
-			sprData.m_lastUsage = m_currentFrame;
-			m_sprites.erase(it);
-			m_sprites[tempPos] = sprData;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		else
-		{
-			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
-			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
-			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
-			if(spriteAtlas >= m_spritesAtlas.size())
-				return;
-
-			DirectDrawSpriteData& sprData = m_sprites[tempPos];
-			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
-			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
-			sprData.m_surface = spriteAtlas;
-			sprData.m_lastUsage = m_currentFrame;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
-			return;//load failed
-	}
-	else
-	{
-		xOffset = it->second.m_xOffset;
-		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
-		it->second.m_lastUsage = m_currentFrame;
-		if(m_spritesIds.front() == tempPos)
-		{
-			m_spritesIds.pop_front();
-			m_spritesIds.push_back(tempPos);
-		}
-	}
-
-	Sint32 w = 32;
-	Sint32 h = 32;
-	Sint32 sx = SDL_static_cast(Sint32, xOffset);
-	Sint32 sy = SDL_static_cast(Sint32, yOffset);
-	if(!testClipper(x, y, w, h, sx, sy, w, h))
-		return;
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x + w);
-	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y + h);
-
-	float minu = (SDL_static_cast(float, sx) + 0.5f) * tex->m_scaleW;
-	float maxu = (SDL_static_cast(float, sx + w) + 0.5f) * tex->m_scaleW;
-	float minv = (SDL_static_cast(float, sy) + 0.5f) * tex->m_scaleH;
-	float maxv = (SDL_static_cast(float, sy + h) + 0.5f) * tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	if(m_scheduleSpriteDraw)
-	{
-		if(tex != m_spriteAtlas)
-		{
-			checkScheduledSprites();
-			m_spriteAtlas = tex;
-		}
-		m_vertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-
-		m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	}
-	else
-	{
-		VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-		updateTextureScaling(tex);
-		IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-		IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
-	}
+	drawSpriteMask(spriteId, maskSpriteId, x, y, 32, 32, 0, 0, 32, 32, outfitColor);
 }
 
 void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor)
 {
 	if(spriteId > g_spriteCounts || maskSpriteId > g_spriteCounts)
 		return;
+	
+	if(!testClipper(x, y, w, h, sx, sy, sw, sh))
+		return;
 
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = maskSpriteId;
+	u32p[0] = spriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
 	Uint32 xOffset;
 	Uint32 yOffset;
@@ -2137,6 +1878,7 @@ void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 				else
 					goto Skip_Search;
 			}
+			scheduleBatch();
 
 			it = m_sprites.find(m_spritesIds.front());
 			if(it == m_sprites.end())
@@ -2155,7 +1897,7 @@ void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		else
 		{
@@ -2174,7 +1916,7 @@ void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
 			return;//load failed
@@ -2183,7 +1925,7 @@ void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 	{
 		xOffset = it->second.m_xOffset;
 		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
+		tex = &m_spritesAtlas[it->second.m_surface];
 		it->second.m_lastUsage = m_currentFrame;
 		if(m_spritesIds.front() == tempPos)
 		{
@@ -2191,8 +1933,6 @@ void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 			m_spritesIds.push_back(tempPos);
 		}
 	}
-	if(!testClipper(x, y, w, h, sx, sy, sw, sh))
-		return;
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
@@ -2207,17 +1947,23 @@ void SurfaceDirectDraw::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sin
 	float minv = (SDL_static_cast(float, sy) + 0.5f) * tex->m_scaleH;
 	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 DirectDrawTexture* SurfaceDirectDraw::createAutomapTile(Uint32 currentArea)
 {
-	DirectDrawTexture* s = NULL;
+	std::unique_ptr<DirectDrawTexture> s;
 	if(m_automapTiles.size() >= MAX_AUTOMAPTILES)
 	{
 		U32BDDRAWTextures::iterator it = m_automapTiles.find(m_automapTilesBuff.front());
@@ -2227,20 +1973,22 @@ DirectDrawTexture* SurfaceDirectDraw::createAutomapTile(Uint32 currentArea)
 			exit(-1);
 		}
 
-		s = it->second;
+		s = std::make_unique<DirectDrawTexture>(std::move(it->second));
 		m_automapTiles.erase(it);
 		m_automapTilesBuff.pop_front();
 	}
 	if(!s)
 	{
-		s = createDirectDrawTexture(256, 256, false);
-		if(!s)
+		s = std::make_unique<DirectDrawTexture>();
+		if(!createDirectDrawTexture(*s, 256, 256, false))
 			return NULL;
 	}
+	else
+		scheduleBatch();
 
-	m_automapTiles[currentArea] = s;
+	m_automapTiles[currentArea] = std::move(*s.get());
 	m_automapTilesBuff.push_back(currentArea);
-	return s;
+	return &m_automapTiles[currentArea];
 }
 
 void SurfaceDirectDraw::uploadAutomapTile(DirectDrawTexture* texture, Uint8 color[256][256])
@@ -2263,7 +2011,7 @@ void SurfaceDirectDraw::uploadAutomapTile(DirectDrawTexture* texture, Uint8 colo
 			*ptrpixels++ = 255;
 		}
 	}
-	while(!updateTextureData(texture, pixels)) {SDL_Delay(10);}
+	while(!updateTextureData(*texture, pixels)) {SDL_Delay(10);}
 	SDL_free(pixels);
 }
 
@@ -2285,7 +2033,7 @@ void SurfaceDirectDraw::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint
 	}
 	else
 	{
-		tex = it->second;
+		tex = &it->second;
 		if(m_automapTilesBuff.front() == currentArea)
 		{
 			m_automapTilesBuff.pop_front();
@@ -2308,11 +2056,17 @@ void SurfaceDirectDraw::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint
 	float minv = (SDL_static_cast(float, sy) + 0.5f) * tex->m_scaleH;
 	float maxv = (SDL_static_cast(float, sy + sh) + 0.5f) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexDDRAW vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice7_SetTexture(m_device, 0, tex->m_texture);
-	IDirect3DDevice7_DrawPrimitive(m_device, D3DPT_TRIANGLESTRIP, DDRAW_FVF, vertices, 4, 0);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 #endif

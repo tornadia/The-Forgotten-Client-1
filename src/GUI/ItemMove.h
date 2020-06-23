@@ -31,6 +31,14 @@ class GUI_ItemMove : public GUI_Element
 		GUI_ItemMove(iRect boxRect, Uint16 itemId, Uint16 itemCount, Uint32 internalID = 0);
 		~GUI_ItemMove();
 
+		// non-copyable
+		GUI_ItemMove(const GUI_ItemMove&) = delete;
+		GUI_ItemMove& operator=(const GUI_ItemMove&) = delete;
+
+		// non-moveable
+		GUI_ItemMove(GUI_ItemMove&&) = delete;
+		GUI_ItemMove& operator=(GUI_ItemMove&&) = delete;
+
 		void onKeyDown(SDL_Event& event);
 		void setItemCount(Uint16 itemCount);
 		void render();
@@ -38,7 +46,7 @@ class GUI_ItemMove : public GUI_Element
 	protected:
 		ItemUI* m_item;
 		Uint32 m_lastKey;
-		Uint32 m_calculate;
+		Uint32 m_calculate = 0;
 };
 
 #endif /* __FILE_GUI_ITEMMOVE_h_ */

@@ -29,6 +29,14 @@ class GUI_CharacterView : public GUI_Element
 	public:
 		GUI_CharacterView(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_CharacterView(const GUI_CharacterView&) = delete;
+		GUI_CharacterView& operator=(const GUI_CharacterView&) = delete;
+
+		// non-moveable
+		GUI_CharacterView(GUI_CharacterView&&) = delete;
+		GUI_CharacterView& operator=(GUI_CharacterView&&) = delete;
+
 		void render();
 };
 

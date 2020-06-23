@@ -127,6 +127,7 @@ void minimap_Events(Uint32 event, Sint32)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -270,7 +271,7 @@ GUI_MinimapTime::GUI_MinimapTime(iRect boxRect, Uint32 internalID)
 
 void GUI_MinimapTime::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	Sint32 time = SDL_static_cast(Sint32, g_game.getGameTime()) / 10;
 	if(time >= 58)
 	{
@@ -292,12 +293,10 @@ void GUI_MinimapTime::render()
 	}
 }
 
-GUI_MinimapFlag::GUI_MinimapFlag(iRect boxRect, Uint8 type, Uint32 internalID)
+GUI_MinimapFlag::GUI_MinimapFlag(iRect boxRect, Uint8 type, Uint32 internalID) : m_type(type)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_pressed = 0;
-	m_type = type;
 }
 
 void GUI_MinimapFlag::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
@@ -333,7 +332,7 @@ void GUI_MinimapFlag::render()
 	bool pressed = (m_pressed == 1 ? true : false);
 	pressed = (m_type == g_minimapFlag ? true : pressed);
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(pressed)
 	{
 		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_TEXTURED_DOWN_X, GUI_UI_ICON_TEXTURED_DOWN_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
@@ -350,9 +349,6 @@ GUI_Minimap::GUI_Minimap(iRect boxRect, Uint32 internalID)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_haveRMouse = false;
-	m_bMouseDragging = false;
-	m_bMouseAutowalk = false;
 }
 
 void GUI_Minimap::onLMouseDown(Sint32 x, Sint32 y)

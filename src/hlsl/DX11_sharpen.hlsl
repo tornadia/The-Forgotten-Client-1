@@ -13,7 +13,7 @@
     };
 
     #define sharp_clamp ( 0.050000 )
-    #define sharp_strength ( 2.000000 )
+    #define sharp_strength ( 0.500000 )
     #define CoefLuma float3(0.2126, 0.7152, 0.0722)
 
     float4 main(PixelShaderInput input) : SV_TARGET

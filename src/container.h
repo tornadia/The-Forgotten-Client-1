@@ -28,8 +28,18 @@ class ItemUI;
 class Container
 {
 	public:
-		Container(Uint8 cid, ItemUI* item, std::string name, Uint8 capacity, bool hasParent, bool canUseDepotSearch, bool isUnlocked, bool hasPages, Uint16 containerSize, Uint16 firstIndex);
+		Container(Uint8 cid, ItemUI* item, std::string name, Uint8 capacity, bool hasParent, bool canUseDepotSearch, bool isUnlocked, bool hasPages, Uint16 containerSize, Uint16 firstIndex) :
+			m_containerItem(item), m_name(std::move(name)), m_size(containerSize), m_firstIndex(firstIndex), m_id(cid), m_capacity(capacity), m_hasParent(hasParent),
+			m_canUseDepotSearch(canUseDepotSearch), m_isUnlocked(isUnlocked), m_hasPages(hasPages) {}
 		~Container();
+
+		// non-copyable
+		Container(const Container&) = delete;
+		Container& operator=(const Container&) = delete;
+
+		// non-moveable
+		Container(Container&&) = delete;
+		Container& operator=(Container&&) = delete;
 		
 		SDL_FORCE_INLINE ItemUI* getItem() {return m_containerItem;}
 		ItemUI* getItem(size_t index);
@@ -68,7 +78,7 @@ class Container
 		bool m_canUseDepotSearch;
 		bool m_isUnlocked;
 		bool m_hasPages;
-		bool m_dirty;
+		bool m_dirty = true;
 };
 
 #endif /* __FILE_CONTAINER_h_ */

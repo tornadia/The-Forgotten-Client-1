@@ -21,12 +21,6 @@
 
 #include "config.h"
 
-Config::Config()
-{
-	m_fileHandle = NULL;
-	m_saveHandle = false;
-}
-
 Config::~Config()
 {
 	if(m_fileHandle)

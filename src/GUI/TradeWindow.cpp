@@ -181,6 +181,7 @@ void trade_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -346,14 +347,10 @@ void GUI_TradeContainer::render()
 	g_engine.getRender()->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_SEPARATOR_X, GUI_UI_ICON_VERTICAL_SEPARATOR_Y, GUI_UI_ICON_VERTICAL_SEPARATOR_W, GUI_UI_ICON_VERTICAL_SEPARATOR_H, m_tRect.x1 + 77, m_tRect.y1, 2, m_tRect.y2);
 }
 
-GUI_TradeItem::GUI_TradeItem(iRect boxRect, ItemUI* item, Uint8 index, bool counterOffer, Uint32 internalID)
+GUI_TradeItem::GUI_TradeItem(iRect boxRect, ItemUI* item, Uint8 index, bool counterOffer, Uint32 internalID) : m_item(item), m_index(index), m_counterOffer(counterOffer)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_item = item;
-	m_index = index;
-	m_haveMouse = 0;
-	m_counterOffer = counterOffer;
 }
 
 GUI_TradeItem::~GUI_TradeItem()
@@ -408,7 +405,7 @@ void GUI_TradeItem::onRMouseUp(Sint32, Sint32)
 
 void GUI_TradeItem::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2);
 	if(m_item)
 		m_item->render(m_tRect.x1, m_tRect.y1, m_tRect.y2);

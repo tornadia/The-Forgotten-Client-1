@@ -24,6 +24,7 @@
 #include "surfaceDirect3D9.h"
 #include "surfaceDirect3D11.h"
 #include "surfaceDirectDraw.h"
+#include "surfaceOpenglCore.h"
 #include "surfaceOpengl.h"
 #include "surfaceOpengles.h"
 #include "surfaceOpengles2.h"
@@ -81,6 +82,7 @@ Engine::Engine()
 	m_engines.emplace_back(CLIENT_ENGINE_DIRECT3D7);
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL)
+	m_engines.emplace_back(CLIENT_ENGINE_OPENGLCORE);
 	m_engines.emplace_back(CLIENT_ENGINE_OPENGL);
 	#else
 	#if defined(SDL_VIDEO_RENDER_OGL_ES)
@@ -94,109 +96,12 @@ Engine::Engine()
 	m_engines.emplace_back(CLIENT_ENGINE_DIRECT3D);
 	#endif
 
-	m_clientHost.assign("127.0.0.1");
-	m_clientPort.assign("7171");
-
-	m_window = NULL;
-	m_description = NULL;
-	m_contextMenu = NULL;
-
-	m_actWindow = NULL;
-	m_surface = NULL;
 	m_engine = m_engines.back();
-	m_windowX = SDL_WINDOWPOS_CENTERED;
-	m_windowY = SDL_WINDOWPOS_CENTERED;
-	m_windowW = 640;
-	m_windowH = 480;
-	m_windowCachedW = 640;
-	m_windowCachedH = 480;
-	m_maximized = true;
-	m_fullscreen = false;
-	m_vsync = true;
-	m_antialiasing = CLIENT_ANTIALIASING_NORMAL;
-	m_unlimitedFPS = true;
-	m_attackMode = ATTACKMODE_BALANCED;
-	m_chaseMode = CHASEMODE_STAND;
-	m_secureMode = SECUREMODE_SECURE;
-	m_pvpMode = PVPMODE_DOVE;
-	m_actionData = CLIENT_ACTION_NONE;
-	m_lightAmbient = 25;
-	m_levelSeparator = 80;
-	m_lightMode = CLIENT_LIGHT_MODE_OLD;
-	m_windowId = 0;
-	m_controlFPS = false;
-	m_sharpening = false;
-	m_newCharacterList = false;
-	m_ingame = false;
-	m_showPerformance = false;
-	m_showLogger = false;
-
-	m_classicControl = true;
-	m_autoChaseOff = true;
-	m_showNames = true;
-	m_showMarks = true;
-	m_showPvPFrames = true;
-	m_showIcons = true;
-	m_showTextualEffects = true;
-	m_showCooldown = true;
-
-	m_showInfoMessages = true;
-	m_showEventMessages = true;
-	m_showStatusMessages = true;
-	m_showStatusOthersMessages = true;
-	m_showTimestamps = true;
-	m_showLevels = true;
-	m_showPrivateMessages = true;
-
-	m_showLevelBar = true;
-	m_showStaminaBar = true;
-	m_showMagLevelBar = true;
-	m_showTrainingBar = true;
 	for(Sint32 i = Skills_Fist; i < Skills_LastSkill; ++i)
 		m_showSkillsBar[i] = true;
 
-	m_buyWithBackpacks = false;
-	m_ignoreCapacity = false;
-	m_ignoreEquiped = true;
-
-	m_motdText.assign("No current information.");
-	m_motdNumber = 0;
-
-	m_fullScreenWidth = 800;
-	m_fullScreenHeight = 600;
-	m_fullScreenBits = 32;
-	m_fullScreenHZ = 60;
-
-	m_characterSelectId = 0;
-	m_accountPremDays = 0;
-	m_accountStatus = AccountStatus_Ok;
-	m_accountSubStatus = SubscriptionStatus_Free;
-
-	m_moveItemX = SDL_MIN_SINT32;
-	m_moveItemY = SDL_MIN_SINT32;
-
 	m_leftPanel = GUI_PANEL_RANDOM;
 	m_rightPanel = GUI_PANEL_MAIN;
-	m_consoleHeight = 140;
-	m_haveExtraLeftPanel = false;
-	m_haveExtraRightPanel = false;
-	m_canAddLeftPanel = false;
-	m_canAddRightPanel = false;
-	m_leftAddPanel = 0;
-	m_leftRemPanel = 0;
-	m_rightAddPanel = 0;
-	m_rightRemPanel = 0;
-
-	m_battleSortMethod = Sort_Ascending_Time;
-	m_buddySortmethod = Vip_Sort_Name;
-	m_buddyHideOffline = false;
-	m_buddyHideGroups = false;
-
-	m_activatedBlackList = true;
-	m_activatedWhiteList = true;
-	m_ignoreYellingMessages = false;
-	m_ignorePrivateMessages = false;
-	m_allowVipMessages = false;
 }
 
 void Engine::loadCFG()
@@ -508,8 +413,8 @@ void Engine::loadCFG()
 		m_rightPanel = (m_rightPanel == 0 ? GUI_PANEL_MAIN : m_rightPanel + GUI_PANEL_EXTRA_RIGHT_START - 1);
 	}
 	#if CLIENT_OVVERIDE_VERSION > 0
-	g_clientVersion = CLIENT_OVVERIDE_PROTOCOL_VERSION;
-	g_game.clientChangeVersion(CLIENT_OVVERIDE_PROTOCOL_VERSION, CLIENT_OVVERIDE_FILE_VERSION);
+	g_clientVersion = CLIENT_OVERRIDE_PROTOCOL_VERSION;
+	g_game.clientChangeVersion(CLIENT_OVERRIDE_PROTOCOL_VERSION, CLIENT_OVERRIDE_FILE_VERSION);
 	#else
 	g_game.clientChangeVersion(g_clientVersion, g_clientVersion);
 	#endif
@@ -854,8 +759,7 @@ void Engine::terminate()
 	clearWindows();
 	clearPanels();
 	checkReleaseQueue();
-	if(m_surface)
-		delete m_surface;
+	m_surface.reset();
 
 	if(m_window)
 	{
@@ -878,7 +782,9 @@ void Engine::parseCommands(int argc, char* argv[])
 			m_engine = CLIENT_ENGINE_DIRECT3D7;
 		else if(SDL_strcasecmp(argv[i], "-force-vulkan") == 0)
 			m_engine = CLIENT_ENGINE_VULKAN;
-		else if(SDL_strcasecmp(argv[i], "-force-opengl") == 0)
+		else if(SDL_strcasecmp(argv[i], "-force-opengl-core") == 0)
+			m_engine = CLIENT_ENGINE_OPENGLCORE;
+		else if(SDL_strcasecmp(argv[i], "-force-opengl") == 0 || SDL_strcasecmp(argv[i], "-force-opengl-legacy") == 0)
 			m_engine = CLIENT_ENGINE_OPENGL;
 		else if(SDL_strcasecmp(argv[i], "-force-opengles") == 0)
 			m_engine = CLIENT_ENGINE_OPENGLES;
@@ -951,38 +857,38 @@ bool Engine::RecreateWindow(bool vulkan, bool opengl)
 
 bool Engine::init()
 {
-	if(m_surface)
-		delete m_surface;
-
+	m_surface.reset();
 	if(m_engine == CLIENT_ENGINE_SOFTWARE)
-		m_surface = new SurfaceSoftware();
+		m_surface = std::move(std::make_unique<SurfaceSoftware>());
 	#if defined(SDL_VIDEO_VULKAN)
 	else if(m_engine == CLIENT_ENGINE_VULKAN)
-		m_surface = new SurfaceVulkan();
+		m_surface = std::move(std::make_unique<SurfaceVulkan>());
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL)
+	else if(m_engine == CLIENT_ENGINE_OPENGLCORE)
+		m_surface = std::move(std::make_unique<SurfaceOpenglCore>());
 	else if(m_engine == CLIENT_ENGINE_OPENGL)
-		m_surface = new SurfaceOpengl();
+		m_surface = std::move(std::make_unique<SurfaceOpengl>());
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL_ES)
 	else if(m_engine == CLIENT_ENGINE_OPENGLES)
-		m_surface = new SurfaceOpenglES();
+		m_surface = std::move(std::make_unique<SurfaceOpenglES>());
 	#endif
 	#if defined(SDL_VIDEO_RENDER_OGL_ES2)
 	else if(m_engine == CLIENT_ENGINE_OPENGLES2)
-		m_surface = new SurfaceOpenglES2();
+		m_surface = std::move(std::make_unique<SurfaceOpenglES2>());
 	#endif
 	#if defined(SDL_VIDEO_RENDER_D3D)
 	else if(m_engine == CLIENT_ENGINE_DIRECT3D)
-		m_surface = new SurfaceDirect3D9();
+		m_surface = std::move(std::make_unique<SurfaceDirect3D9>());
 	#endif
 	#if defined(SDL_VIDEO_RENDER_D3D11)
 	else if(m_engine == CLIENT_ENGINE_DIRECT3D11)
-		m_surface = new SurfaceDirect3D11();
+		m_surface = std::move(std::make_unique<SurfaceDirect3D11>());
 	#endif
 	#if defined(SDL_VIDEO_RENDER_DDRAW)
 	else if(m_engine == CLIENT_ENGINE_DIRECT3D7)
-		m_surface = new SurfaceDirectDraw();
+		m_surface = std::move(std::make_unique<SurfaceDirectDraw>());
 	#endif
 	else
 	{
@@ -990,7 +896,7 @@ bool Engine::init()
 		return false;
 	}
 	
-	if(!m_surface || !m_surface->isSupported())
+	if(!m_surface->isSupported())
 	{
 		for(std::vector<Uint8>::iterator it = m_engines.begin(), end = m_engines.end(); it != end; ++it)
 		{
@@ -1029,6 +935,7 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 		case CLIENT_FONT_SMALL:
 			picture = GUI_FONT_SMALL_IMAGE;
 			break;
+		default: break;
 	}
 	if(!picture)
 		return;
@@ -1102,6 +1009,8 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 			m_charx[font][0] = m_chary[font][0] = 0;
 			m_charw[font][32] = m_charw[font][160] = 2;
 			break;
+
+		default: break;
 	}
 }
 
@@ -1313,6 +1222,7 @@ void Engine::onKeyDown(SDL_Event& event)
 				}
 			}
 			return;
+			default: break;
 		}
 	}
 	
@@ -1606,6 +1516,7 @@ void Engine::onKeyDown(SDL_Event& event)
 					//Implement actions
 				}
 				break;
+				default: break;
 			}
 			return;
 		}
@@ -1668,6 +1579,7 @@ void Engine::onKeyUp(SDL_Event& event)
 				case CLIENT_HOTKEY_MOVEMENT_GOSOUTHEAST:
 					g_game.releaseMovement();
 					break;
+				default: break;
 			}
 			return;
 		}
@@ -2962,13 +2874,8 @@ void Engine::redraw()
 		g_map.renderInformations(m_gameWindowRect.x1, m_gameWindowRect.y1, m_gameWindowRect.x2, m_gameWindowRect.y2, m_scale, m_scaledSize);
 		m_surface->disableClipRect();
 		g_chat.render(m_chatWindowRect);
-
-		GUI_PanelWindow* topPanel = NULL;
 		for(std::vector<GUI_Panel*>::iterator it = m_panels.begin(), end = m_panels.end(); it != end; ++it)
-		{
-			GUI_PanelWindow* panel = (*it)->render();
-			topPanel = (panel ? panel : topPanel);
-		}
+			(*it)->render();
 
 		{
 			m_leftPanelAddRect = iRect(m_gameBackgroundRect.x1, m_gameBackgroundRect.y1, GUI_UI_SIDEBAR_LEFT_ADD_UP_W, GUI_UI_SIDEBAR_LEFT_ADD_UP_H);
@@ -3020,8 +2927,8 @@ void Engine::redraw()
 				m_surface->drawPicture(GUI_UI_IMAGE, GUI_UI_SIDEBAR_RIGHT_REMOVE_DISABLED_X, GUI_UI_SIDEBAR_RIGHT_REMOVE_DISABLED_Y, m_rightPanelRemRect.x1, m_rightPanelRemRect.y1, m_rightPanelRemRect.x2, m_rightPanelRemRect.y2);
 		}
 
-		if(topPanel)
-			topPanel->render();
+		if(m_topPanel)
+			m_topPanel->render();
 	}
 	else
 	{
@@ -3047,11 +2954,11 @@ void Engine::redraw()
 		drawFont(CLIENT_FONT_OUTLINED, posX, 19, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
 		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Ping: %u ms", g_ping);
 		drawFont(CLIENT_FONT_OUTLINED, posX, 33, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Software: %s", getRender()->getSoftware());
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Software: %s", m_surface->getSoftware());
 		drawFont(CLIENT_FONT_OUTLINED, posX, 47, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Hardware: %s", getRender()->getHardware());
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "Hardware: %s", m_surface->getHardware());
 		drawFont(CLIENT_FONT_OUTLINED, posX, 61, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
-		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "VRAM: %u MB", getRender()->getVRAM());
+		len = SDL_snprintf(g_buffer, sizeof(g_buffer), "VRAM: %u MB", m_surface->getVRAM());
 		drawFont(CLIENT_FONT_OUTLINED, posX, 75, std::string(g_buffer, SDL_static_cast(size_t, len)), 255, 255, 255, CLIENT_FONT_ALIGN_RIGHT);
 	}
 
@@ -3066,7 +2973,7 @@ void Engine::redraw()
 
 	if(m_contextMenu)
 		m_contextMenu->render();
-
+		
 	m_surface->endScene();
 }
 
@@ -3102,6 +3009,7 @@ void Engine::drawFont(Uint8 fontId, Sint32 x, Sint32 y, const std::string& text,
 				case CLIENT_FONT_ALIGN_CENTER:
 					rx -= calculatedWidth / 2;
 					break;
+				default: break;
 			}
 			m_surface->drawFont(m_charPicture[fontId], rx, ry, text, start, pos, r, g, b, m_charx[fontId], m_chary[fontId], m_charw[fontId], m_charh[fontId]);
 			++pos;
@@ -3122,6 +3030,7 @@ void Engine::drawFont(Uint8 fontId, Sint32 x, Sint32 y, const std::string& text,
 			case CLIENT_FONT_ALIGN_CENTER:
 				rx -= calculatedWidth / 2;
 				break;
+			default: break;
 		}
 		m_surface->drawFont(m_charPicture[fontId], rx, ry, text, start, pos, r, g, b, m_charx[fontId], m_chary[fontId], m_charw[fontId], m_charh[fontId]);
 		return;
@@ -3648,7 +3557,7 @@ void Engine::issueNewConnection(bool protocolGame)
 		#if CLIENT_OVVERIDE_VERSION == 0
 		g_connection = new Connection(m_clientHost.c_str(), SDL_static_cast(Uint16, SDL_strtoul(m_clientPort.c_str(), NULL, 10)), m_clientProxy.c_str(), m_clientProxyAuth.c_str(), protocol);
 		#else
-		g_connection = new Connection(CLIENT_OVVERIDE_LOGIN_HOST, CLIENT_OVVERIDE_LOGIN_PORT, "", "", protocol);
+		g_connection = new Connection(CLIENT_OVERRIDE_LOGIN_HOST, CLIENT_OVERRIDE_LOGIN_PORT, "", "", protocol);
 		#endif
 	}
 }
@@ -3932,6 +3841,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 			//Report Bot/Macro
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -4147,6 +4057,7 @@ GUI_ContextMenu* Engine::createThingContextMenu(Creature* creature, ItemUI* item
 							newMenu->addContextMenu(CONTEXTMENU_STYLE_STANDARD, THING_EVENT_INVITETOPARTY, "Invite to Party", "");
 					}
 					break;
+					default: break;
 				}
 			}
 		}
@@ -4325,6 +4236,7 @@ void Engine::clearPanels()
 						m_openDialogs.push_back(windowId);
 					}
 					break;
+					default: break;
 				}
 			}
 		}
@@ -4364,13 +4276,10 @@ void Engine::checkPanelWindows(GUI_PanelWindow* pPanel, Sint32 x, Sint32 y)
 	if(gPanel)
 	{
 		if(parent)
-		{
 			parent->removePanel(pPanel, false);
-			parent->setActPanel(NULL);
-		}
+
 		gPanel->addPanel(pPanel);
 		gPanel->checkPanel(pPanel, x, y);
-		gPanel->setActPanel(pPanel);
 		pPanel->setRect(currentRect);
 		pPanel->setParent(gPanel);
 	}
@@ -4457,6 +4366,7 @@ void Engine::processGameStart()
 			case GUI_PANEL_WINDOW_BATTLE: UTIL_toggleBattleWindow(); break;
 			case GUI_PANEL_WINDOW_VIP: UTIL_toggleVipWindow(); break;
 			case GUI_PANEL_WINDOW_PARTY: UTIL_togglePartyWindow(); break;
+			default: break;
 		}
 	}
 

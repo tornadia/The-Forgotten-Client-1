@@ -29,6 +29,14 @@ class AnimatedText
 	public:
 		AnimatedText(const Position& pos, Uint8 color, Sint32 additionalOffset, const std::string& text);
 
+		// non-copyable
+		AnimatedText(const AnimatedText&) = delete;
+		AnimatedText& operator=(const AnimatedText&) = delete;
+
+		// non-moveable
+		AnimatedText(AnimatedText&&) = delete;
+		AnimatedText& operator=(AnimatedText&&) = delete;
+
 		SDL_FORCE_INLINE const Position& getPosition() {return m_position;}
 		bool canBeDeleted();
 		bool needAdditionalOffset();

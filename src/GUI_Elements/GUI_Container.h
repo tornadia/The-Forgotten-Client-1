@@ -32,6 +32,14 @@ class GUI_Container : public GUI_Element
 		GUI_Container(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID = 0);
 		~GUI_Container();
 
+		// non-copyable
+		GUI_Container(const GUI_Container&) = delete;
+		GUI_Container& operator=(const GUI_Container&) = delete;
+
+		// non-moveable
+		GUI_Container(GUI_Container&&) = delete;
+		GUI_Container& operator=(GUI_Container&&) = delete;
+
 		void setRect(iRect& NewRect);
 		bool isInsideRect(Sint32 x, Sint32 y) {return m_tRect.isPointInside(x, y);}
 		void makeVisible() {m_visible = true;}
@@ -62,15 +70,15 @@ class GUI_Container : public GUI_Element
 	protected:
 		std::vector<GUI_Element*> m_childs;
 		std::vector<GUI_Element*> m_drawns;
-		GUI_Element* m_actElement;
+		GUI_Element* m_actElement = NULL;
 		GUI_PanelWindow* m_parent;
 		GUI_VScrollBar* m_scrollBar;
-		Sint32 m_contentSize;
-		Sint32 m_lastPosX;
-		Sint32 m_lastPosY;
-		Sint32 m_maxDisplay;
-		bool m_visible;
-		bool m_resetPosition;
+		Sint32 m_contentSize = 0;
+		Sint32 m_lastPosX = 0;
+		Sint32 m_lastPosY = 0;
+		Sint32 m_maxDisplay = 0;
+		bool m_visible = true;
+		bool m_resetPosition = false;
 };
 
 #endif /* __FILE_GUI_CONTAINER_h_ */

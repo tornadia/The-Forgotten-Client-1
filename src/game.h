@@ -63,6 +63,14 @@ class Game
 		Game();
 		~Game();
 
+		// non-copyable
+		Game(const Game&) = delete;
+		Game& operator=(const Game&) = delete;
+
+		// non-moveable
+		Game(Game&&) = delete;
+		Game& operator=(Game&&) = delete;
+
 		void reset();
 
 		void clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion);
@@ -320,70 +328,70 @@ class Game
 		std::map<ResourceBalanceTypes, Uint64> m_resourceBalances;
 		std::string m_storeUrl;
 
-		ItemUI* m_inventoryItem[SLOT_LAST];
-		Container* m_containers[GAME_MAX_CONTAINERS];
+		ItemUI* m_inventoryItem[SLOT_LAST] = {};
+		Container* m_containers[GAME_MAX_CONTAINERS] = {};
 
-		Uint64 m_playerExperience;
-		double m_playerExpBonus;
-		double m_playerExpSpeed;
-		double m_playerCapacity;
-		double m_playerTotalCapacity;
+		Uint64 m_playerExperience = 0;
+		double m_playerExpBonus = 0.0;
+		double m_playerExpSpeed = 0.0;
+		double m_playerCapacity = 0.0;
+		double m_playerTotalCapacity = 0.0;
 
-		Uint32 m_localPlayerId;
-		Uint32 m_attackId;
-		Uint32 m_followId;
-		Uint32 m_selectId;
-		Uint32 m_sequence;
-		Uint32 m_playerHealth;
-		Uint32 m_playerMaxHealth;
-		Uint32 m_playerMana;
-		Uint32 m_playerMaxMana;
-		Uint32 m_icons;
-		Uint32 m_cancelWalkCounter;
+		Uint32 m_localPlayerId = 0;
+		Uint32 m_attackId = 0;
+		Uint32 m_followId = 0;
+		Uint32 m_selectId = 0;
+		Uint32 m_sequence = 0;
+		Uint32 m_playerHealth = 100;
+		Uint32 m_playerMaxHealth = 100;
+		Uint32 m_playerMana = 0;
+		Uint32 m_playerMaxMana = 0;
+		Uint32 m_icons = 0;
+		Uint32 m_cancelWalkCounter = 0;
 
-		Sint32 m_playerTournamentFactor;
-		Sint32 m_playerCharmPoints;
+		Sint32 m_playerTournamentFactor = 0;
+		Sint32 m_playerCharmPoints = 0;
 
 		Position m_autoWalkDestination;
 		Position m_limitWalkDestination;
 		Position m_lastCancelWalkPos;
 
-		Uint16 m_playerLevel;
-		Uint16 m_playerMagicLevel;
-		Uint16 m_playerBaseMagicLevel;
-		Uint16 m_playerStamina;
-		Uint16 m_playerBaseSpeed;
-		Uint16 m_playerRegeneration;
-		Uint16 m_playerOfflineTraining;
-		Uint16 m_playerBaseXpGain;
-		Uint16 m_playerVoucherXpGain;
-		Uint16 m_playerGrindingXpGain;
-		Uint16 m_playerStoreXpGain;
-		Uint16 m_playerHuntingXpGain;
+		Uint16 m_playerLevel = 1;
+		Uint16 m_playerMagicLevel = 0;
+		Uint16 m_playerBaseMagicLevel = 0;
+		Uint16 m_playerStamina = 2520;
+		Uint16 m_playerBaseSpeed = 200;
+		Uint16 m_playerRegeneration = 0;
+		Uint16 m_playerOfflineTraining = 0;
+		Uint16 m_playerBaseXpGain = 100;
+		Uint16 m_playerVoucherXpGain = 0;
+		Uint16 m_playerGrindingXpGain = 0;
+		Uint16 m_playerStoreXpGain = 0;
+		Uint16 m_playerHuntingXpGain = 100;
 		Uint16 m_playerSkillsLevel[Skills_LastAdditionalSkill];
 		Uint16 m_playerSkillsBaseLevel[Skills_LastAdditionalSkill];
-		Uint16 m_serverBeat;
-		Uint16 m_storePackages;
-		Uint16 m_gameTime;
-		Uint16 m_cached_stats;
-		Uint16 m_cached_skills;
+		Uint16 m_serverBeat = 50;
+		Uint16 m_storePackages = 25;
+		Uint16 m_gameTime = 58;
+		Uint16 m_cached_stats = 0;
+		Uint16 m_cached_skills = 0;
 
-		Uint8 m_playerHealthPercent;
-		Uint8 m_playerManaPercent;
-		Uint8 m_playerLevelPercent;
-		Uint8 m_playerMagicLevelPercent;
+		Uint8 m_playerHealthPercent = 100;
+		Uint8 m_playerManaPercent = 100;
+		Uint8 m_playerLevelPercent = 0;
+		Uint8 m_playerMagicLevelPercent = 0;
 		Uint8 m_playerSkillsLevelPercent[Skills_LastAdditionalSkill];
-		Uint8 m_playerSoul;
+		Uint8 m_playerSoul = 0;
 
-		Uint8 m_playerMovement;
-		Uint8 m_playerCurrentDir;
-		Uint8 m_playerLastDir;
+		Uint8 m_playerMovement = DIRECTION_INVALID;
+		Uint8 m_playerCurrentDir = DIRECTION_INVALID;
+		Uint8 m_playerLastDir = DIRECTION_INVALID;
 
-		bool m_canReportBugs;
-		bool m_expertPvpMode;
-		bool m_canChangePvpFrames;
-		bool m_haveExivaRestrictions;
-		bool m_tournamentEnabled;
+		bool m_canReportBugs = false;
+		bool m_expertPvpMode = false;
+		bool m_canChangePvpFrames = true;
+		bool m_haveExivaRestrictions = false;
+		bool m_tournamentEnabled = false;
 };
 
 #endif /* __FILE_GAME_h_ */

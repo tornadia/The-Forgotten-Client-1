@@ -24,16 +24,11 @@
 
 extern Engine g_engine;
 
-GUI_Label::GUI_Label(iRect boxRect, const std::string labelName, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue)
+GUI_Label::GUI_Label(iRect boxRect, const std::string labelName, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue) :
+	m_Label(std::move(labelName)), m_red(red), m_green(green), m_blue(blue)
 {
 	setRect(boxRect);
-	m_Label = std::move(labelName);
-	m_font = CLIENT_FONT_NONOUTLINED;
-	m_red = red;
-	m_green = green;
-	m_blue = blue;
 	m_internalID = internalID;
-	m_align = CLIENT_FONT_ALIGN_LEFT;
 }
 
 void GUI_Label::setName(const std::string labelName)
@@ -46,17 +41,11 @@ void GUI_Label::render()
 	g_engine.drawFont(m_font, m_tRect.x1, m_tRect.y1, m_Label, m_red, m_green, m_blue, m_align);
 }
 
-GUI_DynamicLabel::GUI_DynamicLabel(iRect boxRect, const std::string labelName, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue)
+GUI_DynamicLabel::GUI_DynamicLabel(iRect boxRect, const std::string labelName, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue) :
+	m_Label(std::move(labelName)), m_red(red), m_green(green), m_blue(blue)
 {
-	m_Label = std::move(labelName);
 	m_displayLabel.assign(m_Label);
-	m_font = CLIENT_FONT_NONOUTLINED;
-	m_red = red;
-	m_green = green;
-	m_blue = blue;
 	m_internalID = internalID;
-	m_align = CLIENT_FONT_ALIGN_LEFT;
-	m_fullDisplay = true;
 	setRect(boxRect);
 }
 

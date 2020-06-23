@@ -127,7 +127,11 @@ void Animator::resetAnimation(Animation& cAnim, Sint32 phase)
 	cAnim.m_isComplete = false;
 	cAnim.m_currentDirection = AnimationDirection_Forward;
 	cAnim.m_currentLoop = 0;
-	setPhase(cAnim, phase);
+	cAnim.m_phase = 0;
+	cAnim.m_lastPhaseTicks = g_frameTime;
+	cAnim.m_currentDuration = 20;
+	if(phase != AnimationPhase_Invalid)
+		setPhase(cAnim, phase);
 }
 
 Sint32 Animator::getMovementDuration(Uint32 movementSpeed)
@@ -146,6 +150,7 @@ Sint32 Animator::getPhaseDuration(Sint32 phase)
 	AnimationDurations& data = m_phaseDurations[phase];
 	if(data.m_min == data.m_max)
 		return data.m_min;
+
 	return UTIL_random(data.m_min, data.m_max);
 }
 

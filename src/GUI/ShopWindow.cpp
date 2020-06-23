@@ -177,6 +177,7 @@ void UTIL_sortShopItems()
 		}
 		break;
 		case Shop_Sort_Weight: std::sort(g_tempNPCItems.begin(), g_tempNPCItems.end(), [](NPCTradeItems& a, NPCTradeItems& b) -> bool {return a.itemWeight < b.itemWeight;}); break;
+		default: break;
 	}
 }
 
@@ -428,6 +429,7 @@ void shop_Events(Uint32 event, Sint32 status)
 			UTIL_updateShopWindow();
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -821,11 +823,6 @@ void UTIL_closeShopWindow()
 	}
 }
 
-GUI_ShopContainer::GUI_ShopContainer(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID) : GUI_Container(boxRect, parent, internalID)
-{
-	m_rmouse = false;
-}
-
 void GUI_ShopContainer::onRMouseDown(Sint32 x, Sint32 y)
 {
 	if(!m_visible)
@@ -877,7 +874,6 @@ GUI_ShopItem::GUI_ShopItem(iRect boxRect, Uint16 itemId, Uint16 itemCount, Uint3
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_haveMouse = 0;
 	m_item = ItemUI::createItemUI(itemId, 1);
 	if(m_item)
 		m_item->setSubtype(itemCount, false);
@@ -945,19 +941,18 @@ void GUI_ShopItem::setItemData(Uint16 itemId, Uint16 itemCount)
 
 void GUI_ShopItem::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2);
 	if(m_item)
 		m_item->render(m_tRect.x1, m_tRect.y1, m_tRect.y2);
 }
 
-GUI_ShopSelectItem::GUI_ShopSelectItem(iRect boxRect, const std::string& itemName, const std::string& itemDescription, Uint16 itemId, Uint8 itemSubtype, size_t index, Uint32 internalID)
+GUI_ShopSelectItem::GUI_ShopSelectItem(iRect boxRect, const std::string& itemName, const std::string& itemDescription, Uint16 itemId, Uint8 itemSubtype, size_t index, Uint32 internalID) : m_index(index)
 {
 	m_internalID = internalID;
 	m_name = new GUI_DynamicLabel(iRect(0, 0, 110, 14), itemName);
 	m_description = new GUI_DynamicLabel(iRect(0, 0, 110, 14), itemDescription);
 	m_item = ItemUI::createItemUI(itemId, SDL_static_cast(Uint16, itemSubtype));
-	m_index = index;
 	setRect(boxRect);
 }
 
@@ -1006,7 +1001,7 @@ void GUI_ShopSelectItem::setRect(iRect& NewRect)
 
 void GUI_ShopSelectItem::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(g_NPCActiveOffer == m_index)
 		g_engine.getRender()->fillRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 112, 112, 112, 255);
 

@@ -173,6 +173,11 @@ void advanced_graphics_options_Events(Uint32 event, Sint32 status)
 						g_engine.setEngineId(CLIENT_ENGINE_OPENGL);
 						g_inited = false;
 					}
+					else if(selectedAPI == engineCounter++ && engineId != CLIENT_ENGINE_OPENGLCORE)
+					{
+						g_engine.setEngineId(CLIENT_ENGINE_OPENGLCORE);
+						g_inited = false;
+					}
 					#else
 					#if defined(SDL_VIDEO_RENDER_OGL_ES)
 					else if(selectedAPI == engineCounter++ && engineId != CLIENT_ENGINE_OPENGLES)
@@ -303,6 +308,7 @@ void advanced_graphics_options_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -312,6 +318,10 @@ Sint32 getSelectedAPI()
 	Uint8 engineId = g_engine.getEngineId();
 	#if defined(SDL_VIDEO_RENDER_OGL)
 	if(engineId == CLIENT_ENGINE_OPENGL)
+		return engineCounter;
+	else
+		++engineCounter;
+	if(engineId == CLIENT_ENGINE_OPENGLCORE)
 		return engineCounter;
 	else
 		++engineCounter;
@@ -384,7 +394,8 @@ void UTIL_advancedGraphicsOptions()
 	GUI_ListBox* newListBox = new GUI_ListBox(iRect(GRAPHICS_OPTIONS_LISTBOX_ENGINES_X, GRAPHICS_OPTIONS_LISTBOX_ENGINES_Y, GRAPHICS_OPTIONS_LISTBOX_ENGINES_W, GRAPHICS_OPTIONS_LISTBOX_ENGINES_H), GRAPHICS_OPTIONS_LISTBOX_ENGINES_EVENTID);
 	newListBox->add("Software");
 	#if defined(SDL_VIDEO_RENDER_OGL)
-	newListBox->add("OpenGL");
+	newListBox->add("OpenGL Legacy");
+	newListBox->add("OpenGL Core");
 	#else
 	#if defined(SDL_VIDEO_RENDER_OGL_ES)
 	newListBox->add("OpenGL ES");

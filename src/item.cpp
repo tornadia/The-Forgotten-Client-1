@@ -31,20 +31,6 @@ extern ThingManager g_thingManager;
 extern LightSystem g_light;
 extern Uint32 g_frameTime;
 
-Item::Item(const Position& pos, ThingType* type)
-{
-	m_position = pos;
-	m_thingType = type;
-	m_animator = NULL;
-	m_topOrder = 0;
-	m_elevation = 0;
-	m_count = 1;
-	m_subtype = 0;
-	m_animCount = 0;
-	m_xPattern = m_yPattern = m_zPattern = 0;
-	m_hasElevation = false;
-}
-
 Item* Item::createItem(const Position& pos, Uint16 type, Uint16 count, Sint32 phase)
 {
 	Item* newItem = NULL;
@@ -309,7 +295,7 @@ Uint8 Item::calculateAnimationPhase()
 
 void Item::render(Sint32 posX, Sint32 posY, bool)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
 	{
 		posX -= m_thingType->m_displacement[0];
@@ -342,15 +328,6 @@ void Item::render(Sint32 posX, Sint32 posY, bool)
 	}
 }
 
-ItemNULL::ItemNULL(const Position& pos, ThingType* type) : Item(pos, type) {;}
-void ItemNULL::render(Sint32, Sint32, bool) {;}
-
-Item1X1::Item1X1(const Position& pos, ThingType* type) : Item(pos, type)
-{
-	for(Sint32 i = 0; i < ITEM_MAX_CACHED_ANIMATIONS; ++i)
-		m_1X1Sprites[i] = 0;
-}
-
 void Item1X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
@@ -375,18 +352,9 @@ void Item1X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		g_engine.getRender()->drawSprite(drawSprite, posX, posY);
 }
 
-Item2X1::Item2X1(const Position& pos, ThingType* type) : Item(pos, type)
-{
-	for(Sint32 i = 0; i < ITEM_MAX_CACHED_ANIMATIONS; ++i)
-	{
-		m_2X1Sprites[i][0] = 0;
-		m_2X1Sprites[i][1] = 0;
-	}
-}
-
 void Item2X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
 	{
 		posX -= m_thingType->m_displacement[0];
@@ -414,18 +382,9 @@ void Item2X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
-Item1X2::Item1X2(const Position& pos, ThingType* type) : Item(pos, type)
-{
-	for(Sint32 i = 0; i < ITEM_MAX_CACHED_ANIMATIONS; ++i)
-	{
-		m_1X2Sprites[i][0] = 0;
-		m_1X2Sprites[i][1] = 0;
-	}
-}
-
 void Item1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
 	{
 		posX -= m_thingType->m_displacement[0];
@@ -453,20 +412,9 @@ void Item1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		renderer->drawSprite(drawSprite, posX, posY - 32);
 }
 
-Item2X2::Item2X2(const Position& pos, ThingType* type) : Item(pos, type)
-{
-	for(Sint32 i = 0; i < ITEM_MAX_CACHED_ANIMATIONS; ++i)
-	{
-		m_2X2Sprites[i][0] = 0;
-		m_2X2Sprites[i][1] = 0;
-		m_2X2Sprites[i][2] = 0;
-		m_2X2Sprites[i][3] = 0;
-	}
-}
-
 void Item2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
 	{
 		posX -= m_thingType->m_displacement[0];
@@ -503,18 +451,9 @@ void Item2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
-Item1X1X2::Item1X1X2(const Position& pos, ThingType* type) : Item(pos, type)
-{
-	for(Sint32 i = 0; i < ITEM_MAX_CACHED_ANIMATIONS; ++i)
-	{
-		m_1X1X2Sprites[i][0] = 0;
-		m_1X1X2Sprites[i][1] = 0;
-	}
-}
-
 void Item1X1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
 	{
 		posX -= m_thingType->m_displacement[0];
@@ -541,18 +480,9 @@ void Item1X1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		renderer->drawSprite(drawSprite, posX, posY);
 }
 
-Item2X1X2::Item2X1X2(const Position& pos, ThingType* type) : Item(pos, type)
-{
-	for(Sint32 i = 0; i < ITEM_MAX_CACHED_ANIMATIONS; ++i)
-	{
-		m_2X1X2Sprites[i][0] = m_2X1X2Sprites[i][1] = 0;
-		m_2X1X2Sprites[i][2] = m_2X1X2Sprites[i][3] = 0;
-	}
-}
-
 void Item2X1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
 	{
 		posX -= m_thingType->m_displacement[0];
@@ -588,18 +518,9 @@ void Item2X1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
-Item1X2X2::Item1X2X2(const Position& pos, ThingType* type) : Item(pos, type)
-{
-	for(Sint32 i = 0; i < ITEM_MAX_CACHED_ANIMATIONS; ++i)
-	{
-		m_1X2X2Sprites[i][0] = m_1X2X2Sprites[i][1] = 0;
-		m_1X2X2Sprites[i][2] = m_1X2X2Sprites[i][3] = 0;
-	}
-}
-
 void Item1X2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
 	{
 		posX -= m_thingType->m_displacement[0];
@@ -635,20 +556,9 @@ void Item1X2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 		renderer->drawSprite(drawSprite, posX, posY - 32);
 }
 
-Item2X2X2::Item2X2X2(const Position& pos, ThingType* type) : Item(pos, type)
-{
-	for(Sint32 i = 0; i < ITEM_MAX_CACHED_ANIMATIONS; ++i)
-	{
-		m_2X2X2Sprites[i][0] = m_2X2X2Sprites[i][1] = 0;
-		m_2X2X2Sprites[i][2] = m_2X2X2Sprites[i][3] = 0;
-		m_2X2X2Sprites[i][4] = m_2X2X2Sprites[i][5] = 0;
-		m_2X2X2Sprites[i][6] = m_2X2X2Sprites[i][7] = 0;
-	}
-}
-
 void Item2X2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_thingType->hasFlag(ThingAttribute_Displacement))
 	{
 		posX -= m_thingType->m_displacement[0];

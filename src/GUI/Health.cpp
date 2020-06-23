@@ -81,6 +81,7 @@ void health_Events(Uint32 event, Sint32)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -192,13 +193,12 @@ void UTIL_flashHealthPanel()
 GUI_Health::GUI_Health(iRect boxRect, Uint32 internalID)
 {
 	setRect(boxRect);
-	m_percent = 90;
 	m_internalID = internalID;
 }
 
 void GUI_Health::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_BAR_EMPTY_X, GUI_UI_BAR_EMPTY_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_BAR_HEALTH_X, GUI_UI_BAR_HEALTH_Y, m_tRect.x1, m_tRect.y1, m_percent, m_tRect.y2);
 }
@@ -206,13 +206,12 @@ void GUI_Health::render()
 GUI_Mana::GUI_Mana(iRect boxRect, Uint32 internalID)
 {
 	setRect(boxRect);
-	m_percent = 90;
 	m_internalID = internalID;
 }
 
 void GUI_Mana::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_BAR_EMPTY_X, GUI_UI_BAR_EMPTY_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_BAR_MANA_X, GUI_UI_BAR_MANA_Y, m_tRect.x1, m_tRect.y1, m_percent, m_tRect.y2);
 }

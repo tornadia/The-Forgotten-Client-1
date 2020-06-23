@@ -175,6 +175,7 @@ void hotkey_Events(Uint32 event, Sint32)
 				g_engine.removeWindow(pWindow);
 		}
 		break;
+		default: break;
 	}
 }
 

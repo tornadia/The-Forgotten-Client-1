@@ -59,6 +59,14 @@ class GUI_Console : public GUI_Element
 		GUI_Console(iRect boxRect, Uint32 internalID = 0);
 		~GUI_Console();
 
+		// non-copyable
+		GUI_Console(const GUI_Console&) = delete;
+		GUI_Console& operator=(const GUI_Console&) = delete;
+
+		// non-moveable
+		GUI_Console(GUI_Console&&) = delete;
+		GUI_Console& operator=(GUI_Console&&) = delete;
+
 		void setRect(iRect& NewRect);
 		void setFont(Uint8 font) {m_font = font;}
 
@@ -92,16 +100,16 @@ class GUI_Console : public GUI_Element
 		std::vector<ConsoleLine> m_lines;
 		std::string m_sText;
 		GUI_VScrollBar* m_scrollBar;
-		Uint32 m_cursorPosition;
-		Uint32 m_selectionReference;
-		Uint32 m_selectionStart;
-		Uint32 m_selectionEnd;
-		Sint32 m_maxDisplay;
-		Uint8 m_font;
-		bool m_selecting;
-		bool m_needUpdate;
-		bool m_needUpdateSelection;
-		bool m_keepLastScrollPos;
+		Uint32 m_cursorPosition = 0;
+		Uint32 m_selectionReference = 0;
+		Uint32 m_selectionStart = 0;
+		Uint32 m_selectionEnd = 0;
+		Sint32 m_maxDisplay = 0;
+		Uint8 m_font = CLIENT_FONT_NONOUTLINED;
+		bool m_selecting = false;
+		bool m_needUpdate = true;
+		bool m_needUpdateSelection = false;
+		bool m_keepLastScrollPos = false;
 };
 
 #endif /* __FILE_GUI_CONSOLE_h_ */

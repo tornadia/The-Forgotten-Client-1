@@ -28,7 +28,8 @@ enum AnimationPhase : Sint32
 {
 	AnimationPhase_Automatic = -1,
 	AnimationPhase_Random = -2,
-	AnimationPhase_Async = -3
+	AnimationPhase_Async = -3,
+	AnimationPhase_Invalid = -4
 };
 
 enum AnimationDirection : Uint8

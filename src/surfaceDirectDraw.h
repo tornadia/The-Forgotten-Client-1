@@ -26,6 +26,12 @@
 
 #if defined(SDL_VIDEO_RENDER_DDRAW)
 
+#define DIRECTDRAW_MAX_VERTICES 2048
+#define DIRECTDRAW_MAX_INDICES (DIRECTDRAW_MAX_VERTICES * 6 / 4)
+#if DIRECTDRAW_MAX_INDICES >= 65500
+#error "DirectDraw doesn't support uint indices"
+#endif
+
 struct VertexDDRAW
 {
 	VertexDDRAW(float x, float y, float u, float v, DWORD color) : x(x), y(y), z(0.0f), color(color), u(u), v(v) {}
@@ -40,6 +46,33 @@ typedef struct IDirectDrawSurface7 IDirectDrawSurface7;
 struct DirectDrawTexture
 {
 	DirectDrawTexture() : m_texture(NULL) {}
+
+	operator bool() const {return m_texture;}
+
+	// non-copyable
+	DirectDrawTexture(const DirectDrawTexture&) = delete;
+	DirectDrawTexture& operator=(const DirectDrawTexture&) = delete;
+
+	// moveable
+	DirectDrawTexture(DirectDrawTexture&& rhs) noexcept :
+		m_texture(rhs.m_texture), m_width(rhs.m_width), m_height(rhs.m_height), m_scaleW(rhs.m_scaleW), m_scaleH(rhs.m_scaleH), m_linearSample(rhs.m_linearSample)
+	{
+		rhs.m_texture = NULL;
+	}
+	DirectDrawTexture& operator=(DirectDrawTexture&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			m_texture = rhs.m_texture;
+			m_width = rhs.m_width;
+			m_height = rhs.m_height;
+			m_scaleW = rhs.m_scaleW;
+			m_scaleH = rhs.m_scaleH;
+			m_linearSample = rhs.m_linearSample;
+			rhs.m_texture = NULL;
+		}
+		return (*this);
+	}
 
 	IDirectDrawSurface7* m_texture;
 	Uint32 m_width;
@@ -59,7 +92,7 @@ struct DirectDrawSpriteData
 	Uint32 m_lastUsage;
 };
 
-typedef std::unordered_map<Uint32, DirectDrawTexture*> U32BDDRAWTextures;
+typedef std::unordered_map<Uint32, DirectDrawTexture> U32BDDRAWTextures;
 typedef std::unordered_map<Uint64, DirectDrawSpriteData> U64BDDRAWTextures;
 
 typedef struct IDirectDraw IDirectDraw;
@@ -72,12 +105,19 @@ class SurfaceDirectDraw : public Surface
 	public:
 		SurfaceDirectDraw();
 		virtual ~SurfaceDirectDraw();
+
+		// non-copyable
+		SurfaceDirectDraw(const SurfaceDirectDraw&) = delete;
+		SurfaceDirectDraw& operator=(const SurfaceDirectDraw&) = delete;
+
+		// non-moveable
+		SurfaceDirectDraw(const SurfaceDirectDraw&&) = delete;
+		SurfaceDirectDraw& operator=(const SurfaceDirectDraw&&) = delete;
 		
-		DirectDrawTexture* createDirectDrawTexture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
-		bool updateTextureData(DirectDrawTexture* texture, unsigned char* data);
-		void releaseDirectDrawTexture(DirectDrawTexture* texture);
-		void updateTextureScaling(DirectDrawTexture* texture);
-		void drawTriangles(std::vector<VertexDDRAW>& vertices);
+		bool createDirectDrawTexture(DirectDrawTexture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
+		bool updateTextureData(DirectDrawTexture& texture, unsigned char* data);
+		void releaseDirectDrawTexture(DirectDrawTexture& texture);
+		void updateTextureScaling(DirectDrawTexture& texture);
 
 		void resetRenderer();
 		void initRenderer();
@@ -93,7 +133,6 @@ class SurfaceDirectDraw : public Surface
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
 		void generateSpriteAtlases();
-		void checkScheduledSprites();
 
 		virtual void renderTargetsRecreate();
 		virtual void init();
@@ -104,6 +143,11 @@ class SurfaceDirectDraw : public Surface
 		virtual void beginScene();
 		virtual void endScene();
 
+		DirectDrawTexture* getTextureIndex(DirectDrawTexture* texture);
+		void drawQuad(DirectDrawTexture* texture, float vertices[8], float texcoords[8]);
+		void drawQuad(DirectDrawTexture* texture, float vertices[8], float texcoords[8], DWORD color);
+		void scheduleBatch();
+
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
 		virtual void drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
@@ -113,7 +157,7 @@ class SurfaceDirectDraw : public Surface
 
 		virtual void setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void disableClipRect();
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		DirectDrawTexture* loadPicture(DirectDrawTexture* s, Uint16 pictureId, bool linear);
@@ -135,56 +179,58 @@ class SurfaceDirectDraw : public Surface
 
 	protected:
 		std::vector<VertexDDRAW> m_vertices;
-		std::vector<DirectDrawTexture*> m_spritesAtlas;
+		std::vector<Uint16> m_indices;
+		std::vector<DirectDrawTexture> m_spritesAtlas;
 		U32BDDRAWTextures m_automapTiles;
 		U64BDDRAWTextures m_sprites;
-		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesIds;
+		std::circular_buffer<Uint32, MAX_AUTOMAPTILES> m_automapTilesBuff;
+		std::circular_buffer<Uint64, MAX_SPRITES> m_spritesIds;
 
-		DirectDrawTexture* m_stagging;
-		DirectDrawTexture* m_spriteAtlas;
-		DirectDrawTexture** m_pictures;
-		char* m_hardware;
+		DirectDrawTexture m_stagging;
+		DirectDrawTexture* m_pictures = NULL;
+		char* m_hardware = NULL;
 
-		DirectDrawTexture* m_gameWindow;
-		DirectDrawTexture* m_scaled_gameWindow;
+		DirectDrawTexture m_gameWindow;
+		DirectDrawTexture m_scaled_gameWindow;
+		DirectDrawTexture* m_binded_texture = NULL;
 
 		void* m_directDrawHandle;
-		IDirectDraw7* m_ddraw7;
-		IDirect3D7* m_renderer;
-		IDirect3DDevice7* m_device;
-		IDirectDrawSurface7* m_primarybuffer;
-		IDirectDrawSurface7* m_backbuffer;
-		IDirectDrawClipper* m_clipper;
+		IDirectDraw7* m_ddraw7 = NULL;
+		IDirect3D7* m_renderer = NULL;
+		IDirect3DDevice7* m_device = NULL;
+		IDirectDrawSurface7* m_primarybuffer = NULL;
+		IDirectDrawSurface7* m_backbuffer = NULL;
+		IDirectDrawClipper* m_clipper = NULL;
 
-		Sint32 m_maxTextureSize;
-		Sint32 m_integer_scaling_width;
-		Sint32 m_integer_scaling_height;
+		Sint32 m_maxTextureSize = 1024;
+		Sint32 m_integer_scaling_width = 0;
+		Sint32 m_integer_scaling_height = 0;
 
-		Uint32 m_clipRectX;
-		Uint32 m_clipRectY;
-		Uint32 m_clipRectW;
-		Uint32 m_clipRectH;
-		Uint32 m_viewPortX;
-		Uint32 m_viewPortY;
-		Uint32 m_viewPortW;
-		Uint32 m_viewPortH;
+		Uint32 m_clipRectX = 0;
+		Uint32 m_clipRectY = 0;
+		Uint32 m_clipRectW = 0;
+		Uint32 m_clipRectH = 0;
 
-		Uint32 m_totalVRAM;
-		Uint32 m_spriteChecker;
-		Uint32 m_currentFrame;
+		Uint32 m_viewPortX = 0;
+		Uint32 m_viewPortY = 0;
+		Uint32 m_viewPortW = 0;
+		Uint32 m_viewPortH = 0;
 
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
+		Uint32 m_totalVRAM = 0;
+		Uint32 m_spriteChecker = 0;
+		Uint32 m_currentFrame = 0;
+		Uint32 m_cachedVertices = 0;
 
-		Sint32 m_px;
-		Sint32 m_py;
+		Uint32 m_spriteAtlases = 0;
+		Uint32 m_spritesPerAtlas = 0;
+		Uint32 m_spritesPerModulo = 0;
 
-		bool m_usingLinearSample;
-		bool m_needReset;
-		bool m_fullscreen;
-		bool m_scheduleSpriteDraw;
+		Sint32 m_px = 0;
+		Sint32 m_py = 0;
+
+		bool m_usingLinearSample = false;
+		bool m_needReset = true;
+		bool m_fullscreen = false;
 };
 #endif
 #endif /* __FILE_SURFACE_DIRECTDRAW_h_ */

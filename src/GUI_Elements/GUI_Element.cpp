@@ -20,9 +20,3 @@
 */
 
 #include "GUI_Element.h"
-
-GUI_Element::GUI_Element()
-{
-	m_bActive = false;
-	m_bEvents = false;
-}

@@ -177,9 +177,6 @@
     <ClCompile Include="..\..\surfaceDirect3D11.cpp">
       <Filter>Source Files\Graphics</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\surfaceOpengl.cpp">
-      <Filter>Source Files\Graphics</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\surfaceDirect3D9.cpp">
       <Filter>Source Files\Graphics</Filter>
     </ClCompile>
@@ -266,9 +263,6 @@
     </ClCompile>
     <ClCompile Include="..\..\json\json.cpp">
       <Filter>Source Files\json</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\protocollogin11.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\spriteManager.cpp">
       <Filter>Source Files</Filter>
@@ -374,6 +368,15 @@
     </ClCompile>
     <ClCompile Include="..\..\GUI\Logout.cpp">
       <Filter>Source Files\GUI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\surfaceOpenglCore.cpp">
+      <Filter>Source Files\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\surfaceOpengl.cpp">
+      <Filter>Source Files\Graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\protocolloginHttp.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -506,9 +509,6 @@
     <ClInclude Include="..\..\softwareDrawning.h">
       <Filter>Header Files\Graphics</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\surfaceOpengl.h">
-      <Filter>Header Files\Graphics</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\surfaceSoftware.h">
       <Filter>Header Files\Graphics</Filter>
     </ClInclude>
@@ -593,9 +593,6 @@
     <ClInclude Include="..\..\json\json.h">
       <Filter>Header Files\json</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\protocollogin11.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\spriteManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -667,6 +664,15 @@
     </ClInclude>
     <ClInclude Include="..\..\GUI\VipWindow.h">
       <Filter>Header Files\GUI</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\surfaceOpenglCore.h">
+      <Filter>Header Files\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\surfaceOpengl.h">
+      <Filter>Header Files\Graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\protocolloginHttp.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

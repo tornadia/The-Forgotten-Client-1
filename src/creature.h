@@ -31,7 +31,15 @@ class Tile;
 class Creature : public Thing
 {
 	public:
-		Creature();
+		Creature() = default;
+
+		// non-copyable
+		Creature(const Creature&) = delete;
+		Creature& operator=(const Creature&) = delete;
+
+		// non-moveable
+		Creature(Creature&&) = delete;
+		Creature& operator=(Creature&&) = delete;
 
 		static double speedA, speedB, speedC;
 
@@ -54,7 +62,7 @@ class Creature : public Thing
 
 		void updateFrameGroup(Uint8 frameGroup);
 		void update();
-		void render(Sint32 posX, Sint32 posY, bool visible_tile);
+		void render(Sint32 posX, Sint32 posY);
 		void renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 drawY, float scale, bool visible);
 		void renderOnBattle(Sint32 posX, Sint32 posY, bool renderManaBar);
 
@@ -63,7 +71,7 @@ class Creature : public Thing
 		void showStaticSquare(Uint8 color);
 		void hideStaticSquare();
 
-		void addWalkTime(Uint32 walkTime) {m_walkEndTime += walkTime;}
+		SDL_INLINE void addWalkTime(Uint32 walkTime) {m_walkEndTime += walkTime;}
 		SDL_INLINE void setId(Uint32 cid) {m_id = cid;}
 		void setName(const std::string name);
 		void setHealth(Uint8 health);
@@ -119,85 +127,85 @@ class Creature : public Thing
 
 	protected:
 		std::string m_name;
-		ThingType* m_thingType;
-		ThingType* m_mountType;
-		Animator* m_outfitAnimator[ThingFrameGroup_Last];
-		Animator* m_mountAnimator[ThingFrameGroup_Last];
+		ThingType* m_thingType = NULL;
+		ThingType* m_mountType = NULL;
+		Animator* m_outfitAnimator[ThingFrameGroup_Last] = {};
+		Animator* m_mountAnimator[ThingFrameGroup_Last] = {};
 		Animation m_outfitAnimation[ThingFrameGroup_Last];
 		Animation m_mountAnimation[ThingFrameGroup_Last];
 
-		Tile* m_drawnTile;
+		Tile* m_drawnTile = NULL;
 
-		Uint32 m_nameLen;
-		Uint32 m_updateTime;
-		Uint32 m_walkStartTime;
-		Uint32 m_walkEndTime;
-		Uint32 m_walkTime;
-		Uint32 m_timedSquareStartTime;
-		Uint32 m_shieldTime;
-		Uint32 m_visibleTime;
+		Uint32 m_nameLen = 0;
+		Uint32 m_updateTime = 0;
+		Uint32 m_walkStartTime = 0;
+		Uint32 m_walkEndTime = 0;
+		Uint32 m_walkTime = 0;
+		Uint32 m_timedSquareStartTime = 0;
+		Uint32 m_shieldTime = 0;
+		Uint32 m_visibleTime = 0;
 
-		Sint32 m_walkedPixels;
-		Sint32 m_walkOffsetX;
-		Sint32 m_walkOffsetY;
+		Sint32 m_walkedPixels = 0;
+		Sint32 m_walkOffsetX = 0;
+		Sint32 m_walkOffsetY = 0;
 
-		Sint32 m_shieldX;
-		Sint32 m_shieldY;
-		Sint32 m_skullX;
-		Sint32 m_skullY;
-		Sint32 m_typeX;
-		Sint32 m_typeY;
-		Sint32 m_iconX;
-		Sint32 m_iconY;
-		Sint32 m_emblemX;
-		Sint32 m_emblemY;
+		Sint32 m_shieldX = -1;
+		Sint32 m_shieldY = -1;
+		Sint32 m_skullX = -1;
+		Sint32 m_skullY = -1;
+		Sint32 m_typeX = -1;
+		Sint32 m_typeY = -1;
+		Sint32 m_iconX = -1;
+		Sint32 m_iconY = -1;
+		Sint32 m_emblemX = -1;
+		Sint32 m_emblemY = -1;
 
-		Uint32 m_id;
-		Uint32 m_outfit;
+		Uint32 m_id = 0;
+		Uint32 m_outfit = 0x4C3A454E;
 
-		Uint16 m_light[2];
-		Uint16 m_speed;
-		Uint16 m_helpers;
+		Uint16 m_light[2] = {};
+		Uint16 m_speed = 220;
+		Uint16 m_helpers = 0;
 
-		Uint8 m_lookAddons;
-		Uint8 m_health;
-		Uint8 m_skull;
-		Uint8 m_shield;
-		Uint8 m_emblem;
-		Uint8 m_type;
-		Uint8 m_icon;
+		Uint8 m_lookAddons = 0;
+		Uint8 m_health = 100;
+		Uint8 m_skull = SKULL_NONE;
+		Uint8 m_shield = SHIELD_NONE;
+		Uint8 m_emblem = GUILDEMBLEM_NONE;
+		Uint8 m_type = CREATURETYPE_NPC;
+		Uint8 m_icon = CREATUREICON_NONE;
 
-		Uint8 m_timedSquareRed;
-		Uint8 m_timedSquareGreen;
-		Uint8 m_timedSquareBlue;
-		Uint8 m_staticSquareRed;
-		Uint8 m_staticSquareGreen;
-		Uint8 m_staticSquareBlue;
-		Uint8 m_red;
-		Uint8 m_green;
-		Uint8 m_blue;
-		Uint8 m_manaPercent;
-		Uint8 m_vocation;
+		Uint8 m_timedSquareRed = 0;
+		Uint8 m_timedSquareGreen = 0;
+		Uint8 m_timedSquareBlue = 0;
+		Uint8 m_staticSquareRed = 0;
+		Uint8 m_staticSquareGreen = 0;
+		Uint8 m_staticSquareBlue = 0;
+		Uint8 m_red = 0;
+		Uint8 m_green = 188;
+		Uint8 m_blue = 0;
+		Uint8 m_manaPercent = 100;
+		Uint8 m_vocation = 0;
 
-		Direction m_direction;
-		Direction m_turnDirection;
-		Direction m_walkDirection;
+		Direction m_direction = DIRECTION_SOUTH;
+		Direction m_turnDirection = DIRECTION_SOUTH;
+		Direction m_walkDirection = DIRECTION_SOUTH;
 
-		Uint8 m_outfitAnim;
-		Uint8 m_mountAnim;
-		Uint8 m_currentFrame;
-		Uint8 m_animationFrame;
+		Uint8 m_outfitAnim = 0;
+		Uint8 m_mountAnim = 0;
+		Uint8 m_currentFrame = ThingFrameGroup_Idle;
+		Uint8 m_animationFrame = ThingFrameGroup_Idle;
 
-		bool m_walking;
-		bool m_preWalking;
-		bool m_isLocalCreature;
-		bool m_unpassable;
-		bool m_showTimedSquare;
-		bool m_showStaticSquare;
-		bool m_showShield;
-		bool m_showStatus;
-		bool m_isVisible;
-		bool m_needUpdate;
+		bool m_walking = false;
+		bool m_preWalking = false;
+		bool m_isLocalCreature = false;
+		bool m_unpassable = true;
+		bool m_showTimedSquare = false;
+		bool m_showStaticSquare = false;
+		bool m_showShield = false;
+		bool m_showStatus = true;
+		bool m_isVisible = false;
+		bool m_needUpdate = false;
 };
 
 #endif /* __FILE_CREATURE_h_ */

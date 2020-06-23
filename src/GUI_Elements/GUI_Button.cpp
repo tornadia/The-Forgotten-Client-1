@@ -24,19 +24,11 @@
 
 extern Engine g_engine;
 
-GUI_Button::GUI_Button(iRect boxRect, const std::string labelName, Uint32 internalID, const std::string description)
+GUI_Button::GUI_Button(iRect boxRect, const std::string labelName, Uint32 internalID, const std::string description) : m_description(std::move(description)), m_label(std::move(labelName))
 {
-	m_sx[0] = m_sx[1] = 0;
-	m_sy[0] = m_sy[1] = 0;
-
 	setRect(boxRect);
 	cacheUI();
-	m_description = std::move(description);
-	m_label = std::move(labelName);
 	m_startX = g_engine.calculateFontWidth(CLIENT_FONT_SMALL, m_label) / 2;
-	m_pressed = 0;
-	m_evtParam = 0;
-	m_eventHandlerFunction = NULL;
 	m_internalID = internalID;
 }
 
@@ -190,15 +182,9 @@ void GUI_Button::render()
 {
 	bool pressed = (m_pressed == 1 ? true : false);
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1 + (m_tRect.x2 / 2) + (pressed ? 1 : 0) - m_startX, m_tRect.y1 + (pressed ? 7 : 6), m_label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
-}
-
-GUI_RadioButton::GUI_RadioButton(iRect boxRect, const std::string labelName, Uint32 internalID, const std::string description):
-	GUI_Button(boxRect, labelName, internalID, description)
-{
-	m_eventRadioChecked = NULL;
 }
 
 void GUI_RadioButton::setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description)
@@ -232,7 +218,7 @@ void GUI_RadioButton::render()
 	if(m_eventRadioChecked && m_eventRadioChecked())
 		pressed = true;
 	
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 	g_engine.drawFont(CLIENT_FONT_SMALL, m_tRect.x1 + (m_tRect.x2 / 2) + (pressed ? 1 : 0) - m_startX, m_tRect.y1 + (pressed ? 7 : 6), m_label, 255, 255, 255, CLIENT_FONT_ALIGN_LEFT);
 }

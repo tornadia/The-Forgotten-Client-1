@@ -34,8 +34,18 @@ class Effect;
 class Tile
 {
 	public:
-		Tile(const Position& position);
+		Tile(const Position& position) : m_position(position) {}
 		~Tile();
+
+		// non-copyable
+		Tile(const Tile&) = delete;
+		Tile& operator=(const Tile&) = delete;
+
+		// non-moveable
+		Tile(Tile&&) = delete;
+		Tile& operator=(Tile&&) = delete;
+
+		void reset();
 
 		void render(Sint32 posX, Sint32 posY, bool visible_tile);
 		void renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 drawY, float scale, bool visible);
@@ -83,7 +93,7 @@ class Tile
 		bool limitsFloorsView(bool isFreeView);
 
 	protected:
-		Item* m_ground;
+		Item* m_ground = NULL;
 		std::vector<Item*> m_topItems;
 		std::vector<Item*> m_downItems;
 		std::vector<Creature*> m_creatures;
@@ -91,9 +101,9 @@ class Tile
 		std::vector<Effect*> m_effects;
 
 		Position m_position;
-		Sint32 m_tileElevation;
-		bool m_hasTranslucentLight;
-		bool m_lyingCorpses;
+		Sint32 m_tileElevation = 0;
+		bool m_hasTranslucentLight = false;
+		bool m_lyingCorpses = false;
 };
 
 #endif /* __FILE_TILE_h_ */

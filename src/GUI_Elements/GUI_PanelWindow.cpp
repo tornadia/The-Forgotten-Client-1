@@ -26,23 +26,11 @@
 extern Engine g_engine;
 extern Sint32 g_actualCursor;
 
-GUI_PanelWindow::GUI_PanelWindow(iRect boxRect, bool windowed, Uint32 internalID, bool parentChangeable)
+GUI_PanelWindow::GUI_PanelWindow(iRect boxRect, bool windowed, Uint32 internalID, bool parentChangeable) :
+	m_internalID(internalID), m_windowed(windowed), m_parentChangeable(parentChangeable)
 {
 	setRect(boxRect, true);
-	m_eventHandlerFunction = NULL;
-	m_actElement = NULL;
-	m_parent = NULL;
-	m_resizeWidth = 0;
-	m_resizeHeight = 0;
-	m_exitEvent = 0;
-	m_internalID = internalID;
-	m_bMouseDragging = false;
-	m_bMouseResizing = false;
-	m_windowed = windowed;
-	m_parentChangeable = parentChangeable;
 	m_cachedHeight = m_nRect.y2;
-	m_minHeight = GAME_PANEL_MINIMUM_HEIGHT;
-	m_maxHeight = 0;
 }
 
 GUI_PanelWindow::~GUI_PanelWindow()
@@ -50,6 +38,9 @@ GUI_PanelWindow::~GUI_PanelWindow()
 	clearChilds();
 	if(m_eventHandlerFunction)
 		m_eventHandlerFunction(m_exitEvent, (m_tRect.y2 > 19 ? m_tRect.y2 : m_cachedHeight));
+
+	if(g_engine.getTopPanel() == this)
+		g_engine.setTopPanel(NULL);
 }
 
 void GUI_PanelWindow::setEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 widthEvent, Uint32 heightEvent, Uint32 exitEvent)
@@ -203,12 +194,14 @@ void GUI_PanelWindow::onLMouseDown(Sint32 x, Sint32 y)
 		m_bMouseDragging = true;
 		m_mouseEvent.x1 = x - m_tRect.x1;
 		m_mouseEvent.y1 = y - m_tRect.y1;
+		g_engine.setTopPanel(this);
 	}
 	else
 	{
 		m_bMouseDragging = true;
 		m_mouseEvent.x1 = x - m_tRect.x1;
 		m_mouseEvent.y1 = y - m_tRect.y1;
+		g_engine.setTopPanel(this);
 	}
 }
 
@@ -216,6 +209,7 @@ void GUI_PanelWindow::onLMouseUp(Sint32 x, Sint32 y)
 {
 	if(m_bMouseDragging)
 	{
+		g_engine.setTopPanel(NULL);
 		m_bMouseDragging = false;
 		setRect(m_nRect);
 	}
@@ -336,7 +330,7 @@ void GUI_PanelWindow::onMoveNormal(Sint32 x, Sint32 y)
 
 void GUI_PanelWindow::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(m_bMouseDragging)
 		renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_DARKGREY_X, GUI_UI_BACKGROUND_DARKGREY_Y, GUI_UI_BACKGROUND_DARKGREY_W, GUI_UI_BACKGROUND_DARKGREY_H, m_nRect.x1, m_nRect.y1, m_nRect.x2, m_nRect.y2);
 	if(m_windowed)

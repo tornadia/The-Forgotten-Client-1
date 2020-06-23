@@ -54,42 +54,9 @@ buy_price: Price the NPC buys the object for.
 changedtoexpire: If the item can be switched on Action Bars using the Smart Switch option, currently available for Rings only.
 former_object_typeid: The object ID of the corresponding "activated" version of the object.
 
-corpse: If the object is a corpse.
-
-player_corpse: If the object is a player's corpse.
-
 cyclopediaitem: If the object is in the Cyclopedia.
 cyclopedia_type: The Object ID that will be used to represent this object, which is not always the same as its own ID.
 */
-
-ThingType::ThingType()
-{
-	for(Sint32 i = ThingFrameGroup_Default; i < ThingFrameGroup_Last; ++i)
-	{
-		FrameGroup& frame = m_frameGroup[i];
-		frame.m_animator = NULL;
-		frame.m_width = frame.m_height = 0;
-		frame.m_layers = 0;
-		frame.m_patternX = frame.m_patternY = frame.m_patternZ = 0;
-		frame.m_animCount = 0;
-	}
-
-	m_flags = 0;
-	m_marketData.m_restrictVocation = 0;
-
-	m_groundSpeed = 100;
-	m_writableSize[0] = m_writableSize[1] = 0;
-	m_displacement[0] = m_displacement[1] = 0;
-	m_light[0] = m_light[1] = 0;
-	m_elevation = 0;
-	m_minimapColor = 0;
-	m_lensHelp = 0;
-	m_cloth = 0;
-	m_defaultAction = 0;
-
-	m_id = 0;
-	m_category = ThingCategory_Invalid;
-}
 
 void ThingType::clear()
 {
@@ -125,7 +92,7 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 
 		if(g_clientVersion >= 1000)
 		{
-			/* In 10.10+ all attributes from 16 and up were
+			/* In 10.00+ all attributes from 16 and up were
 			* incremented by 1 to make space for 16 as
 			* "No Movement Animation" flag.
 			*/
@@ -137,7 +104,7 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 		else if(g_clientVersion >= 860)
 		{
 			/* Default attribute values follow
-			* the format of 8.6-9.86.
+			* the format of 7.55-7.72 and 8.6-9.86.
 			* Therefore no changes here.
 			*/
 		}
@@ -154,9 +121,10 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 		}
 		else if(g_clientVersion >= 755)
 		{
-			/* In 7.55-7.72 attributes 23 is "Floor Change". */
-			if(attr == 23)
-				attr = 251;
+			/* Default attribute values follow
+			* the format of 7.55-7.72 and 8.6-9.86.
+			* Therefore no changes here.
+			*/
 		}
 		else if(g_clientVersion >= 740)
 		{
@@ -169,7 +137,7 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 			else if(attr == 16)
 				attr = 21;
 			else if(attr == 17)
-				attr = 251;
+				attr = 23;
 			else if(attr == 18)
 				attr = 30;
 			else if(attr == 19)
@@ -199,7 +167,7 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 		}
 		else if(g_clientVersion >= 710)
 		{
-			/* In 7.1-7.3 attributes are simmilar to 7.4-7.5
+			/* In 7.1-7.3 attributes are similar to 7.4-7.5
 			* the difference is that there aren't hangable items.
 			*/
 			if(attr > 0 && attr <= 15)
@@ -207,7 +175,7 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 			else if(attr == 16)
 				attr = 21;
 			else if(attr == 17)
-				attr = 251;
+				attr = 23;
 			else if(attr == 18)
 				attr = 30;
 			else if(attr == 19)
@@ -223,6 +191,42 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 			else if(attr == 25)
 				attr = 27;
 			else if(attr == 26)
+				attr = 29;
+
+			/* "Multi Use" and "Force Use" are swapped */
+			if(attr == 7)
+				attr = 6;
+			else if(attr == 6)
+				attr = 7;
+		}
+		else if(g_clientVersion >= 700)
+		{
+			/* In 7.0 attributes are similar to 7.1-7.3
+			* the difference is that there aren't writable once items.
+			*/
+			if(attr > 0 && attr <= 7)
+				attr += 1;
+			else if(attr > 7 && attr <= 14)
+				attr += 2;
+			else if(attr == 15)
+				attr = 21;
+			else if(attr == 16)
+				attr = 23;
+			else if(attr == 17)
+				attr = 30;
+			else if(attr == 18)
+				attr = 25;
+			else if(attr == 19)
+				attr = 24;
+			else if(attr == 21)
+				attr = 28;
+			else if(attr == 22)
+				attr = 20;
+			else if(attr == 23)
+				attr = 26;
+			else if(attr == 24)
+				attr = 27;
+			else if(attr == 25)
 				attr = 29;
 
 			/* "Multi Use" and "Force Use" are swapped */
@@ -250,20 +254,20 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 			case 8: //Writable
 			{
 				m_flags |= ThingAttribute_Writable;
-				m_writableSize[0] = SDL_ReadLE16(rwops);
+				m_writableSize = SDL_ReadLE16(rwops);
 			}
 			break;
 			case 9: //Writable Once
 			{
 				m_flags |= ThingAttribute_WritableOnce;
-				m_writableSize[1] = SDL_ReadLE16(rwops);
+				m_writableSize = SDL_ReadLE16(rwops);
 			}
 			break;
 			case 10: m_flags |= ThingAttribute_FluidContainer; break; //Fluid Container
 			case 11: m_flags |= ThingAttribute_Splash; break; //Splash
 			case 12: m_flags |= ThingAttribute_NotWalkable; break; //Not Walkable
 			case 13: m_flags |= ThingAttribute_NotMoveable; break; //Not Moveable
-			case 14: m_flags |= ThingAttribute_BlockProjectile; break; //Nlock Projectile
+			case 14: m_flags |= ThingAttribute_BlockProjectile; break; //Block Projectile
 			case 15: m_flags |= ThingAttribute_NotPathable; break; //Not Pathable
 			case 16: m_flags |= ThingAttribute_Pickupable; break; //Pickupable
 			case 17: m_flags |= ThingAttribute_Hangable; break; //Hangable
@@ -342,7 +346,6 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 			case 35: m_flags |= ThingAttribute_Wrapable; break; //Wrapable
 			case 36: m_flags |= ThingAttribute_Unwrapable; break; //Unwrapable
 			case 37: m_flags |= ThingAttribute_TopEffect; break; //Top Effect
-			case 251: m_flags |= ThingAttribute_FloorChange; break; //Floor Change
 			case 252: m_flags |= ThingAttribute_NoMoveAnimation; break; //No Move Animation
 			case 253: m_flags |= ThingAttribute_Usable; break; //Usable
 			case 254: m_flags |= ThingAttribute_Chargeable; break; //Chargeable
@@ -407,8 +410,6 @@ bool ThingType::loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops)
 				frame.m_sprites[s] = SDL_static_cast(Uint32, SDL_ReadLE16(rwops));
 		}
 	}
-	if(category == ThingCategory_Creature && !g_game.hasGameFeature(GAME_FEATURE_FRAMEGROUPS))
-		m_flags |= ThingAttribute_NoMoveAnimation;
 	if(needCopyToIdle)
 	{
 		FrameGroup& fromFrame = m_frameGroup[ThingFrameGroup_Moving];
@@ -442,7 +443,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 			else
 				things = UTIL_max<Uint16>(things, m_id);
 		}
-		else if(tagHigh == 2 && tagLow == 18)// repeated .tibia.protobuf.appearances.FrameGroup frame_group = 2;
+		else if(tagHigh == 2 && tagLow == 18)// repeated .protobuf.appearances.FrameGroup frame_group = 2;
 		{
 			FrameGroup parseFrameGroup;
 			parseFrameGroup.m_animator = NULL;
@@ -457,13 +458,14 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 			ThingFrameGroup frameGroupType = ThingFrameGroup_Default;
 			Uint32 frameGroupId = 0;
 
-			Sint64 framegroupLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+			Sint64 framegroupLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+			framegroupLimit += SDL_RWtell(rwops);
 			while(SDL_RWtell(rwops) < framegroupLimit)
 			{
 				tag = SDL_ReadProtobufTag(rwops);
 				tagHigh = (tag >> 3);
 				tagLow = SDL_static_cast(Uint8, tag);
-				if(tagHigh == 1 && tagLow == 8)// optional .tibia.protobuf.appearances.FIXED_FRAME_GROUP fixed_frame_group = 1;
+				if(tagHigh == 1 && tagLow == 8)// optional .protobuf.appearances.FIXED_FRAME_GROUP fixed_frame_group = 1;
 				{
 					frameGroupType = SDL_static_cast(ThingFrameGroup, SDL_ReadProtobufVariant(rwops));
 					if(frameGroupType >= ThingFrameGroup_Last)
@@ -471,9 +473,10 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 				}
 				else if(tagHigh == 2 && tagLow == 16)// optional uint32 id = 2;
 					frameGroupId = SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops));
-				else if(tagHigh == 3 && tagLow == 26)// optional .tibia.protobuf.appearances.SpriteInfo sprite_info = 3;
+				else if(tagHigh == 3 && tagLow == 26)// optional .protobuf.appearances.SpriteInfo sprite_info = 3;
 				{
-					Sint64 spriteInfoLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+					Sint64 spriteInfoLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+					spriteInfoLimit += SDL_RWtell(rwops);
 					while(SDL_RWtell(rwops) < spriteInfoLimit)
 					{
 						tag = SDL_ReadProtobufTag(rwops);
@@ -494,7 +497,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 								bool haveData = true;
 								do
 								{
-									parseFrameGroup.m_sprites.push_back(SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops)));
+									parseFrameGroup.m_sprites.emplace_back(SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops)));
 									haveData = (SDL_RWtell(rwops) < spriteInfoLimit);
 								} while(haveData && SDL_ReadU8(rwops) == 40);
 								if(haveData)//Rewind one byte
@@ -502,16 +505,18 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							}
 							else if(tagLow == 42)
 							{
-								Sint64 spriteIdLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+								Sint64 spriteIdLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+								spriteIdLimit += SDL_RWtell(rwops);
 								while(SDL_RWtell(rwops) < spriteIdLimit)
-									parseFrameGroup.m_sprites.push_back(SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops)));
+									parseFrameGroup.m_sprites.emplace_back(SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops)));
 							}
 						}
-						else if(tagHigh == 6 && tagLow == 50)// optional .tibia.protobuf.appearances.SpriteAnimation animation = 6;
+						else if(tagHigh == 6 && tagLow == 50)// optional .protobuf.appearances.SpriteAnimation animation = 6;
 						{
 							parseFrameGroup.m_animator = new Animator();
 
-							Sint64 spriteAnimationLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 spriteAnimationLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							spriteAnimationLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < spriteAnimationLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -526,7 +531,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 									if(SDL_static_cast(bool, SDL_ReadProtobufVariant(rwops)))
 										parseFrameGroup.m_animator->setStartPhase(-2);
 								}
-								else if(tagHigh == 4 && tagLow == 32)// optional .tibia.protobuf.shared.ANIMATION_LOOP_TYPE loop_type = 4;
+								else if(tagHigh == 4 && tagLow == 32)// optional .protobuf.shared.ANIMATION_LOOP_TYPE loop_type = 4;
 								{
 									Sint32 loopType = SDL_static_cast(Sint32, SDL_ReadProtobufVariant(rwops));
 									if(loopType == 0)//Infinite Loop
@@ -542,13 +547,14 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 									if(loopCount > 0)
 										parseFrameGroup.m_animator->setLoopCount(loopCount);
 								}
-								else if(tagHigh == 6 && tagLow == 50)// repeated .tibia.protobuf.appearances.SpritePhase sprite_phase = 6;
+								else if(tagHigh == 6 && tagLow == 50)// repeated .protobuf.appearances.SpritePhase sprite_phase = 6;
 								{
 									bool haveData = true;
 									do
 									{
 										Sint32 min = 0, max = 0;
-										Sint64 spritePhaseLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+										Sint64 spritePhaseLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+										spritePhaseLimit += SDL_RWtell(rwops);
 										while(SDL_RWtell(rwops) < spritePhaseLimit)
 										{
 											tag = SDL_ReadProtobufTag(rwops);
@@ -558,6 +564,29 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 												min = SDL_static_cast(Sint32, SDL_ReadProtobufVariant(rwops));
 											else if(tagHigh == 2 && tagLow == 16)// optional uint32 duration_max = 2;
 												max = SDL_static_cast(Sint32, SDL_ReadProtobufVariant(rwops));
+											else if(tagHigh == 3 && tagLow == 24)// optional uint32 unknown3 = 3;
+												SDL_ReadProtobufVariant(rwops);
+											else if(tagHigh == 4 && tagLow == 32)// optional uint32 unknown4 = 4;
+												SDL_ReadProtobufVariant(rwops);
+											else if(tagHigh == 5 && tagLow == 40)// optional uint32 unknown5 = 5;
+												SDL_ReadProtobufVariant(rwops);
+											else if(tagHigh == 6 && tagLow == 50)// repeated .protobuf.appearances.Unknown6 unknown6 = 6;
+											{
+												Sint64 unknown6Limit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+												unknown6Limit += SDL_RWtell(rwops);
+												while(SDL_RWtell(rwops) < unknown6Limit)
+												{
+													tag = SDL_ReadProtobufTag(rwops);
+													tagHigh = (tag >> 3);
+													tagLow = SDL_static_cast(Uint8, tag);
+													if(tagHigh == 1 && tagLow == 8) // optional uint32 unknown1 = 1;
+														SDL_ReadProtobufVariant(rwops);
+													else if(tagHigh == 2 && tagLow == 16) // optional uint32 unknown2 = 2;
+														SDL_ReadProtobufVariant(rwops);
+													else
+														break;
+												}
+											}
 											else
 												break;
 										}
@@ -577,12 +606,13 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							SDL_ReadProtobufVariant(rwops);
 						else if(tagHigh == 8 && tagLow == 64)// optional bool is_opaque = 8;
 							SDL_ReadProtobufVariant(rwops);
-						else if(tagHigh == 9 && tagLow == 74)// repeated .tibia.protobuf.appearances.Box bounding_box_per_direction = 9;
+						else if(tagHigh == 9 && tagLow == 74)// repeated .protobuf.appearances.Box bounding_box_per_direction = 9;
 						{
 							bool haveData = true;
 							do
 							{
-								Sint64 spriteBoxLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+								Sint64 spriteBoxLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+								spriteBoxLimit += SDL_RWtell(rwops);
 								while(SDL_RWtell(rwops) < spriteBoxLimit)
 								{
 									tag = SDL_ReadProtobufTag(rwops);
@@ -613,7 +643,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 			}
 
 			FrameGroup& ourFrame = m_frameGroup[frameGroupType];
-			if(parseFrameGroup.m_animCount == 1 && parseFrameGroup.m_animator)
+			if(parseFrameGroup.m_animCount <= 1 && parseFrameGroup.m_animator)
 			{
 				delete parseFrameGroup.m_animator;
 				parseFrameGroup.m_animator = NULL;
@@ -629,9 +659,10 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 			ourFrame.m_animCount = parseFrameGroup.m_animCount;
 			g_spriteManager.manageSprites(parseFrameGroup.m_sprites, ourFrame.m_sprites, ourFrame.m_width, ourFrame.m_height);
 		}
-		else if(tagHigh == 3 && tagLow == 26)// optional .tibia.protobuf.appearances.AppearanceFlags flags = 3;
+		else if(tagHigh == 3 && tagLow == 26)// optional .protobuf.appearances.AppearanceFlags flags = 3;
 		{
-			Sint64 flagsLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+			Sint64 flagsLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+			flagsLimit += SDL_RWtell(rwops);
 			while(SDL_RWtell(rwops) < flagsLimit)
 			{
 				tag = SDL_ReadProtobufTag(rwops);
@@ -639,11 +670,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 				tagLow = SDL_static_cast(Uint8, tag);
 				switch(tagHigh)
 				{
-					case 1:// optional .tibia.protobuf.appearances.AppearanceFlagBank bank = 1;
+					case 1:// optional .protobuf.appearances.AppearanceFlagBank bank = 1;
 					{
 						if(tagLow == 10)
 						{
-							Sint64 bankLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 bankLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							bankLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < bankLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -750,11 +782,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 10:// optional .tibia.protobuf.appearances.AppearanceFlagWrite write = 10;
+					case 10:// optional .protobuf.appearances.AppearanceFlagWrite write = 10;
 					{
 						if(tagLow == 82)
 						{
-							Sint64 writableLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 writableLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							writableLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < writableLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -763,7 +796,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 								if(tagHigh == 1 && tagLow == 8)// optional uint32 max_text_length = 1;
 								{
 									m_flags |= ThingAttribute_Writable;
-									m_writableSize[0] = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
+									m_writableSize = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
 								}
 								else
 									break;
@@ -773,11 +806,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 11:// optional .tibia.protobuf.appearances.AppearanceFlagWriteOnce write_once = 11;
+					case 11:// optional .protobuf.appearances.AppearanceFlagWriteOnce write_once = 11;
 					{
 						if(tagLow == 90)
 						{
-							Sint64 writableLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 writableLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							writableLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < writableLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -786,7 +820,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 								if(tagHigh == 1 && tagLow == 8)// optional uint32 max_text_length_once = 1;
 								{
 									m_flags |= ThingAttribute_WritableOnce;
-									m_writableSize[1] = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
+									m_writableSize = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
 								}
 								else
 									break;
@@ -895,17 +929,18 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 21:// optional .tibia.protobuf.appearances.AppearanceFlagHook hook = 21;
+					case 21:// optional .protobuf.appearances.AppearanceFlagHook hook = 21;
 					{
 						if(tagLow == 170)
 						{
-							Sint64 hookLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 hookLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							hookLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < hookLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
 								tagHigh = (tag >> 3);
 								tagLow = SDL_static_cast(Uint8, tag);
-								if(tagHigh == 1 && tagLow == 8)// optional .tibia.protobuf.shared.HOOK_TYPE direction = 1;
+								if(tagHigh == 1 && tagLow == 8)// optional .protobuf.shared.HOOK_TYPE direction = 1;
 								{
 									Uint64 direction = SDL_ReadProtobufVariant(rwops);
 									if(direction == 1)
@@ -932,11 +967,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 23:// optional .tibia.protobuf.appearances.AppearanceFlagLight light = 23;
+					case 23:// optional .protobuf.appearances.AppearanceFlagLight light = 23;
 					{
 						if(tagLow == 186)
 						{
-							Sint64 lightLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 lightLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							lightLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < lightLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -982,11 +1018,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 26:// optional .tibia.protobuf.appearances.AppearanceFlagShift shift = 26;
+					case 26:// optional .protobuf.appearances.AppearanceFlagShift shift = 26;
 					{
 						if(tagLow == 210)
 						{
-							Sint64 displacementLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 displacementLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							displacementLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < displacementLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1010,11 +1047,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 27:// optional .tibia.protobuf.appearances.AppearanceFlagHeight height = 27;
+					case 27:// optional .protobuf.appearances.AppearanceFlagHeight height = 27;
 					{
 						if(tagLow == 218)
 						{
-							Sint64 elevationLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 elevationLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							elevationLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < elevationLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1055,11 +1093,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 30:// optional .tibia.protobuf.appearances.AppearanceFlagAutomap automap = 30;
+					case 30:// optional .protobuf.appearances.AppearanceFlagAutomap automap = 30;
 					{
 						if(tagLow == 242)
 						{
-							Sint64 minimapLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 minimapLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							minimapLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < minimapLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1078,11 +1117,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 31:// optional .tibia.protobuf.appearances.AppearanceFlagLenshelp lenshelp = 31;
+					case 31:// optional .protobuf.appearances.AppearanceFlagLenshelp lenshelp = 31;
 					{
 						if(tagLow == 250)
 						{
-							Sint64 lensLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 lensLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							lensLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < lensLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1123,11 +1163,12 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 34:// optional .tibia.protobuf.appearances.AppearanceFlagClothes clothes = 34;
+					case 34:// optional .protobuf.appearances.AppearanceFlagClothes clothes = 34;
 					{
 						if(tagLow == 18)
 						{
-							Sint64 clothLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 clothLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							clothLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < clothLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
@@ -1146,17 +1187,18 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 35:// optional .tibia.protobuf.appearances.AppearanceFlagDefaultAction default_action = 35;
+					case 35:// optional .protobuf.appearances.AppearanceFlagDefaultAction default_action = 35;
 					{
 						if(tagLow == 26)
 						{
-							Sint64 actionLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 actionLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							actionLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < actionLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
 								tagHigh = (tag >> 3);
 								tagLow = SDL_static_cast(Uint8, tag);
-								if(tagHigh == 1 && tagLow == 8)// optional .tibia.protobuf.shared.PLAYER_ACTION action = 1;
+								if(tagHigh == 1 && tagLow == 8)// optional .protobuf.shared.PLAYER_ACTION action = 1;
 								{
 									m_flags |= ThingAttribute_DefaultAction;
 									m_defaultAction = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
@@ -1169,17 +1211,18 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 36:// optional .tibia.protobuf.appearances.AppearanceFlagMarket market = 36;
+					case 36:// optional .protobuf.appearances.AppearanceFlagMarket market = 36;
 					{
 						if(tagLow == 34)
 						{
-							Sint64 marketLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 marketLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							marketLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < marketLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
 								tagHigh = (tag >> 3);
 								tagLow = SDL_static_cast(Uint8, tag);
-								if(tagHigh == 1 && tagLow == 8)// optional .tibia.protobuf.shared.ITEM_CATEGORY category = 1;
+								if(tagHigh == 1 && tagLow == 8)// optional .protobuf.shared.ITEM_CATEGORY category = 1;
 								{
 									m_flags |= ThingAttribute_Market;
 									m_marketData.m_category = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
@@ -1197,10 +1240,11 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 								else if(tagHigh == 4 && tagLow == 34)// optional string name = 4;
 								{
 									m_flags |= ThingAttribute_Market;
-									m_marketData.m_name = SDL_ReadProtobufString(rwops);
+									m_marketData.m_name = std::move(SDL_ReadProtobufString(rwops));
 								}
-								else if(tagHigh == 5 && (tagLow == 40 || tagLow == 42))// repeated .tibia.protobuf.shared.PLAYER_PROFESSION restrict_to_profession = 5;
+								else if(tagHigh == 5 && (tagLow == 40 || tagLow == 42))// repeated .protobuf.shared.PLAYER_PROFESSION restrict_to_profession = 5;
 								{
+									std::vector<MarketVocations> tempVocations;
 									m_flags |= ThingAttribute_Market;
 									if(tagLow == 40)
 									{
@@ -1209,19 +1253,19 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 										{
 											Uint16 restrictedVocs = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
 											if(restrictedVocs == 0)
-												m_marketData.m_restrictVocation += 0;//None
+												tempVocations.emplace_back(Market_Vocation_None);
 											else if(restrictedVocs == 1)
-												m_marketData.m_restrictVocation += 1;//Knight
+												tempVocations.emplace_back(Market_Vocation_Knight);
 											else if(restrictedVocs == 2)
-												m_marketData.m_restrictVocation += 2;//Paladin
+												tempVocations.emplace_back(Market_Vocation_Paladin);
 											else if(restrictedVocs == 3)
-												m_marketData.m_restrictVocation += 3;//Sorcerer
+												tempVocations.emplace_back(Market_Vocation_Sorcerer);
 											else if(restrictedVocs == 4)
-												m_marketData.m_restrictVocation += 4;//Druid
+												tempVocations.emplace_back(Market_Vocation_Druid);
 											else if(restrictedVocs == 10)
-												m_marketData.m_restrictVocation += 10;//Promoted
+												tempVocations.emplace_back(Market_Vocation_Promoted);
 											else
-												m_marketData.m_restrictVocation = 0xFF;//Any
+												tempVocations.emplace_back(Market_Vocation_Any);
 
 											haveData = (SDL_RWtell(rwops) < marketLimit);
 										} while(haveData && SDL_ReadU8(rwops) == 40);
@@ -1230,25 +1274,38 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 									}
 									else if(tagLow == 42)
 									{
-										Sint64 spriteIdLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
-										while(SDL_RWtell(rwops) < spriteIdLimit)
+										Sint64 vocationsLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+										vocationsLimit += SDL_RWtell(rwops);
+										while(SDL_RWtell(rwops) < vocationsLimit)
 										{
 											Uint16 restrictedVocs = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
 											if(restrictedVocs == 0)
-												m_marketData.m_restrictVocation += 0;//None
+												tempVocations.emplace_back(Market_Vocation_None);
 											else if(restrictedVocs == 1)
-												m_marketData.m_restrictVocation += 1;//Knight
+												tempVocations.emplace_back(Market_Vocation_Knight);
 											else if(restrictedVocs == 2)
-												m_marketData.m_restrictVocation += 2;//Paladin
+												tempVocations.emplace_back(Market_Vocation_Paladin);
 											else if(restrictedVocs == 3)
-												m_marketData.m_restrictVocation += 3;//Sorcerer
+												tempVocations.emplace_back(Market_Vocation_Sorcerer);
 											else if(restrictedVocs == 4)
-												m_marketData.m_restrictVocation += 4;//Druid
+												tempVocations.emplace_back(Market_Vocation_Druid);
 											else if(restrictedVocs == 10)
-												m_marketData.m_restrictVocation += 10;//Promoted
+												tempVocations.emplace_back(Market_Vocation_Promoted);
 											else
-												m_marketData.m_restrictVocation = 0xFF;//Any
+												tempVocations.emplace_back(Market_Vocation_Any);
 										}
+									}
+
+									m_marketData.m_restrictVocation = 0;
+									for(std::vector<MarketVocations>::iterator it = tempVocations.begin(), end = tempVocations.end(); it != end; ++it)
+									{
+										if((*it) == Market_Vocation_Any)
+										{
+											m_marketData.m_restrictVocation = Market_Vocation_Any;
+											break;
+										}
+
+										m_marketData.m_restrictVocation |= (*it);
 									}
 								}
 								else if(tagHigh == 6 && tagLow == 48)// optional uint32 minimum_level = 6;
@@ -1297,27 +1354,36 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							goto loop_break;
 					}
 					break;
-					case 40:// repeated .tibia.protobuf.appearances.AppearanceFlagNPC npcsaledata = 40;
+					case 40:// repeated .protobuf.appearances.AppearanceFlagNPC npcsaledata = 40;
 					{
 						if(tagLow == 66)
 						{
 							bool haveData = true;
 							do
 							{
-								Sint64 actionLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
-								while(SDL_RWtell(rwops) < actionLimit)
+								m_flags |= ThingAttribute_SaleData;
+								m_salesData.emplace_back();
+								SaleData& saleData = m_salesData.back();
+
+								Sint64 saleLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+								saleLimit += SDL_RWtell(rwops);
+								while(SDL_RWtell(rwops) < saleLimit)
 								{
 									tag = SDL_ReadProtobufTag(rwops);
 									tagHigh = (tag >> 3);
 									tagLow = SDL_static_cast(Uint8, tag);
 									if(tagHigh == 1 && tagLow == 10)// optional string name = 1;
-										SDL_ReadProtobufString(rwops);
+										saleData.m_name = std::move(SDL_ReadProtobufString(rwops));
 									else if(tagHigh == 2 && tagLow == 18)// optional string location = 2;
-										SDL_ReadProtobufString(rwops);
+										saleData.m_location = std::move(SDL_ReadProtobufString(rwops));
 									else if(tagHigh == 3 && tagLow == 24)// optional uint32 sale_price = 3;
-										SDL_ReadProtobufVariant(rwops);
+										saleData.m_sellPrice = SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops));
 									else if(tagHigh == 4 && tagLow == 32)// optional uint32 buy_price = 4;
-										SDL_ReadProtobufVariant(rwops);
+										saleData.m_buyPrice = SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops));
+									else if(tagHigh == 5 && tagLow == 40)// optional uint32 money_type = 5;
+										saleData.m_moneyType = SDL_static_cast(Uint32, SDL_ReadProtobufVariant(rwops));
+									else if(tagHigh == 6 && tagLow == 50)// optional string unknown = 6;
+										SDL_ReadProtobufString(rwops);
 									else
 										break;
 								}
@@ -1325,23 +1391,29 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 							} while(haveData && SDL_ReadLE16(rwops) == 706);
 							if(haveData)//Rewind two bytes
 								SDL_RWseek(rwops, SDL_RWtell(rwops) - 2, RW_SEEK_SET);
+
+							m_salesData.shrink_to_fit();
 						}
 						else
 							goto loop_break;
 					}
 					break;
-					case 41:// optional .tibia.protobuf.appearances.AppearanceFlagChangedToExpire changedtoexpire = 41;
+					case 41:// optional .protobuf.appearances.AppearanceFlagChangedToExpire changedtoexpire = 41;
 					{
 						if(tagLow == 74)
 						{
-							Sint64 expireLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 expireLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							expireLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < expireLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
 								tagHigh = (tag >> 3);
 								tagLow = SDL_static_cast(Uint8, tag);
 								if(tagHigh == 1 && tagLow == 8)// optional uint32 former_object_typeid = 1;
-									SDL_ReadProtobufVariant(rwops);
+								{
+									m_flags |= ThingAttribute_ChangeToExpire;
+									m_changeToExpire = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
+								}
 								else
 									break;
 							}
@@ -1356,7 +1428,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 						{
 							//Corpse
 							if(SDL_static_cast(bool, SDL_ReadProtobufVariant(rwops)))
-								m_flags |= ThingAttribute_Container;
+								m_flags |= ThingAttribute_Corpse;
 						}
 						else
 							goto loop_break;
@@ -1368,24 +1440,28 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 						{
 							//Player Corpse
 							if(SDL_static_cast(bool, SDL_ReadProtobufVariant(rwops)))
-								m_flags |= ThingAttribute_Container;
+								m_flags |= ThingAttribute_PlayerCorpse;
 						}
 						else
 							goto loop_break;
 					}
 					break;
-					case 44:// optional .tibia.protobuf.appearances.AppearanceFlagCyclopedia cyclopediaitem = 44;
+					case 44:// optional .protobuf.appearances.AppearanceFlagCyclopedia cyclopediaitem = 44;
 					{
 						if(tagLow == 98)
 						{
-							Sint64 cyclopediaLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops)) + SDL_RWtell(rwops);
+							Sint64 cyclopediaLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(rwops));
+							cyclopediaLimit += SDL_RWtell(rwops);
 							while(SDL_RWtell(rwops) < cyclopediaLimit)
 							{
 								tag = SDL_ReadProtobufTag(rwops);
 								tagHigh = (tag >> 3);
 								tagLow = SDL_static_cast(Uint8, tag);
 								if(tagHigh == 1 && tagLow == 8)// optional uint32 cyclopedia_type = 1;
-									SDL_ReadProtobufVariant(rwops);
+								{
+									m_flags |= ThingAttribute_CyclopediaItem;
+									m_cyclopediaType = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(rwops));
+								}
 								else
 									break;
 							}
@@ -1403,7 +1479,7 @@ bool ThingType::loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rw
 			}
 		}
 		else if(tagHigh == 4 && tagLow == 34)// optional string name = 4;
-			m_marketData.m_name = SDL_ReadProtobufString(rwops);
+			m_marketData.m_name = std::move(SDL_ReadProtobufString(rwops));
 		else
 			break;
 	}
@@ -1415,11 +1491,6 @@ Uint32 ThingType::getSprite(ThingFrameGroup f, Uint8 w, Uint8 h, Uint8 l, Uint8 
 	FrameGroup& frame = m_frameGroup[f];
 	size_t index = (((((a * frame.m_patternZ + z) * frame.m_patternY + y) * frame.m_patternX + x) * frame.m_layers + l) * frame.m_height + h) * frame.m_width + w;
 	return (index < frame.m_sprites.size() ? frame.m_sprites[index] : 0);
-}
-
-ThingManager::ThingManager()
-{
-	m_datLoaded = false;
 }
 
 ThingManager::~ThingManager()
@@ -1453,24 +1524,22 @@ bool ThingManager::loadDat(const char* filename)
 		SDL_RWops* file = SDL_RWFromFile(filename, "rb");
 		if(file)
 		{
-			SDL_RWseek(file, 0, RW_SEEK_END);
-			Sint32 fileSize = SDL_static_cast(Sint32, SDL_RWtell(file));
-			SDL_RWseek(file, 0, RW_SEEK_SET);
+			size_t fileSize = SDL_static_cast(size_t, SDL_RWsize(file));
 			unsigned char* data = SDL_reinterpret_cast(unsigned char*, SDL_malloc(fileSize));
 			if(data)
 			{
-				SDL_RWread(file, data, 1, SDL_static_cast(size_t, fileSize));
+				SDL_RWread(file, data, 1, fileSize);
 				SDL_RWclose(file);
-				file = SDL_RWFromMem(data, fileSize);
+				file = SDL_RWFromMem(data, SDL_static_cast(Sint32, fileSize));
 			}
 			g_datRevision = SDL_ReadLE32(file);
-			for(Sint32 i = 0; i < ThingCategory_Last; ++i)
+			for(Sint32 i = ThingCategory_First; i < ThingCategory_Last; ++i)
 			{
 				Uint16 things = SDL_ReadLE16(file) + 1;
 				m_things[i].resize(things);
 			}
 
-			for(Sint32 i = 0; i < ThingCategory_Last; ++i)
+			for(Sint32 i = ThingCategory_First; i < ThingCategory_Last; ++i)
 			{
 				Uint16 startId = (i == ThingCategory_Item ? 100 : 1);
 				size_t size = m_things[i].size();
@@ -1507,15 +1576,13 @@ bool ThingManager::loadAppearances(const char* filename)
 		SDL_RWops* file = SDL_RWFromFile(filename, "rb");
 		if(file)
 		{
-			SDL_RWseek(file, 0, RW_SEEK_END);
-			Sint32 fileSize = SDL_static_cast(Sint32, SDL_RWtell(file));
-			SDL_RWseek(file, 0, RW_SEEK_SET);
+			size_t fileSize = SDL_static_cast(size_t, SDL_RWsize(file));
 			unsigned char* data = SDL_reinterpret_cast(unsigned char*, SDL_malloc(fileSize));
 			if(data)
 			{
-				SDL_RWread(file, data, 1, SDL_static_cast(size_t, fileSize));
+				SDL_RWread(file, data, 1, fileSize);
 				SDL_RWclose(file);
-				file = SDL_RWFromMem(data, fileSize);
+				file = SDL_RWFromMem(data, SDL_static_cast(Sint32, fileSize));
 			}
 
 			Uint16 Items = 0;
@@ -1532,19 +1599,23 @@ bool ThingManager::loadAppearances(const char* filename)
 				Uint32 tag = SDL_ReadProtobufTag(file);
 				Uint32 tagHigh = (tag >> 3);
 				Uint8 tagLow = SDL_static_cast(Uint8, tag);
-				if(tagHigh == 1 && tagLow == 10)// repeated .tibia.protobuf.appearances.Appearance object = 1;
+				if(tagHigh == 1 && tagLow == 10)// repeated .protobuf.appearances.Appearance object = 1;
 				{
 					tempItems.emplace_back();
 					ThingType& tType = tempItems.back();
 					tType.m_category = ThingCategory_Item;
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file)) + SDL_RWtell(file), Items, file);
+					Sint64 appearanceLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(file));
+					appearanceLimit += SDL_RWtell(file);
+					tType.loadAppearance(appearanceLimit, Items, file);
 				}
-				else if(tagHigh == 2 && tagLow == 18)// repeated .tibia.protobuf.appearances.Appearance outfit = 2;
+				else if(tagHigh == 2 && tagLow == 18)// repeated .protobuf.appearances.Appearance outfit = 2;
 				{
 					tempCreatures.emplace_back();
 					ThingType& tType = tempCreatures.back();
 					tType.m_category = ThingCategory_Creature;
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file)) + SDL_RWtell(file), Creatures, file);
+					Sint64 appearanceLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(file));
+					appearanceLimit += SDL_RWtell(file);
+					tType.loadAppearance(appearanceLimit, Creatures, file);
 					if(!tType.m_frameGroup[ThingFrameGroup_Moving].m_sprites.empty() && tType.m_frameGroup[ThingFrameGroup_Idle].m_sprites.empty())
 					{
 						FrameGroup& fromFrame = tType.m_frameGroup[ThingFrameGroup_Moving];
@@ -1561,89 +1632,97 @@ bool ThingManager::loadAppearances(const char* filename)
 						toFrame.m_animCount = fromFrame.m_animCount;
 					}
 				}
-				else if(tagHigh == 3 && tagLow == 26)// repeated .tibia.protobuf.appearances.Appearance effect = 3;
+				else if(tagHigh == 3 && tagLow == 26)// repeated .protobuf.appearances.Appearance effect = 3;
 				{
 					tempEffect.emplace_back();
 					ThingType& tType = tempEffect.back();
 					tType.m_category = ThingCategory_Effect;
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file)) + SDL_RWtell(file), Effects, file);
+					Sint64 appearanceLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(file));
+					appearanceLimit += SDL_RWtell(file);
+					tType.loadAppearance(appearanceLimit, Effects, file);
 				}
-				else if(tagHigh == 4 && tagLow == 34)// repeated .tibia.protobuf.appearances.Appearance missile = 4;
+				else if(tagHigh == 4 && tagLow == 34)// repeated .protobuf.appearances.Appearance missile = 4;
 				{
 					tempDistanceEffects.emplace_back();
 					ThingType& tType = tempDistanceEffects.back();
 					tType.m_category = ThingCategory_DistanceEffect;
-					tType.loadAppearance(SDL_static_cast(Sint64, SDL_ReadProtobufSize(file)) + SDL_RWtell(file), DistanceEffects, file);
+					Sint64 appearanceLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(file));
+					appearanceLimit += SDL_RWtell(file);
+					tType.loadAppearance(appearanceLimit, DistanceEffects, file);
+				}
+				else if(tagHigh == 5 && tagLow == 42)// optional .protobuf.appearances.SpecialMeaningAppearanceIds ids = 5;
+				{
+					Sint64 appearancesLimit = SDL_static_cast(Sint64, SDL_ReadProtobufSize(file));
+					appearancesLimit += SDL_RWtell(file);
+					while(SDL_RWtell(file) < appearancesLimit)
+					{
+						tag = SDL_ReadProtobufTag(file);
+						tagHigh = (tag >> 3);
+						tagLow = SDL_static_cast(Uint8, tag);
+						if(tagHigh == 1 && tagLow == 8)// optional uint32 gold_coin_id = 1;
+							m_goldCoinId = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(file));
+						else if(tagHigh == 2 && tagLow == 16)// optional uint32 platinum_coin_id = 2;
+							m_platinumCoinId = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(file));
+						else if(tagHigh == 3 && tagLow == 24)// optional uint32 crystal_coin_id = 3;
+							m_crystalCoinId = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(file));
+						else if(tagHigh == 4 && tagLow == 32)// optional uint32 crystal_coin_id = 4;
+							m_tibiaCoinId = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(file));
+						else if(tagHigh == 5 && tagLow == 40)// optional uint32 crystal_coin_id = 5;
+							m_stampedLetterId = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(file));
+						else if(tagHigh == 6 && tagLow == 48)// optional uint32 crystal_coin_id = 6;
+							m_supplyStashId = SDL_static_cast(Uint16, SDL_ReadProtobufVariant(file));
+						else
+							break;
+					}
 				}
 				else
 					break;
 			}
 
-			#define MOVE_THINGS(fromList, toVector)																		\
-				do {																									\
-					for(std::list<ThingType>::iterator it = fromList.begin(), end = fromList.end(); it != end; ++it)	\
-					{																									\
-						ThingType& cType = (*it);																		\
-						ThingType& tType = toVector[cType.m_id];														\
-						tType.m_id = cType.m_id;																		\
-						tType.m_flags = cType.m_flags;																	\
-						tType.m_category = cType.m_category;															\
-						tType.m_groundSpeed = cType.m_groundSpeed;														\
-						tType.m_writableSize[0] = cType.m_writableSize[0];												\
-						tType.m_writableSize[1] = cType.m_writableSize[1];												\
-						tType.m_displacement[0] = cType.m_displacement[0];												\
-						tType.m_displacement[1] = cType.m_displacement[1];												\
-						tType.m_light[0] = cType.m_light[0];															\
-						tType.m_light[1] = cType.m_light[1];															\
-						tType.m_elevation = cType.m_elevation;															\
-						tType.m_minimapColor = cType.m_minimapColor;													\
-						tType.m_lensHelp = cType.m_lensHelp;															\
-						tType.m_cloth = cType.m_cloth;																	\
-						tType.m_defaultAction = cType.m_defaultAction;													\
-						tType.m_marketData.m_category = cType.m_marketData.m_category;									\
-						tType.m_marketData.m_requiredLevel = cType.m_marketData.m_requiredLevel;						\
-						tType.m_marketData.m_restrictVocation = cType.m_marketData.m_restrictVocation;					\
-						tType.m_marketData.m_showAs = cType.m_marketData.m_showAs;										\
-						tType.m_marketData.m_tradeAs = cType.m_marketData.m_tradeAs;									\
-						tType.m_marketData.m_name.assign(cType.m_marketData.m_name);									\
-						for(Sint32 i = 0; i < ThingFrameGroup_Last; ++i)												\
-						{																								\
-							tType.m_frameGroup[i].m_width = cType.m_frameGroup[i].m_width;								\
-							tType.m_frameGroup[i].m_height = cType.m_frameGroup[i].m_height;							\
-							tType.m_frameGroup[i].m_realSize = cType.m_frameGroup[i].m_realSize;						\
-							tType.m_frameGroup[i].m_layers = cType.m_frameGroup[i].m_layers;							\
-							tType.m_frameGroup[i].m_patternX = cType.m_frameGroup[i].m_patternX;						\
-							tType.m_frameGroup[i].m_patternY = cType.m_frameGroup[i].m_patternY;						\
-							tType.m_frameGroup[i].m_patternZ = cType.m_frameGroup[i].m_patternZ;						\
-							tType.m_frameGroup[i].m_animCount = cType.m_frameGroup[i].m_animCount;						\
-							tType.m_frameGroup[i].m_animator = cType.m_frameGroup[i].m_animator;						\
-							tType.m_frameGroup[i].m_sprites.swap(cType.m_frameGroup[i].m_sprites);						\
-						}																								\
-					}																									\
-					fromList.clear();																					\
-				} while(0)
-
 			if(Items > 0)
 			{
 				m_things[ThingCategory_Item].resize(Items + 1);
-				MOVE_THINGS(tempItems, m_things[ThingCategory_Item]);
+				for(std::list<ThingType>::iterator it = tempItems.begin(), end = tempItems.end(); it != end; ++it)
+				{
+					ThingType& tempType = (*it);
+					m_things[ThingCategory_Item][tempType.m_id] = std::move(tempType);
+				}
+
+				tempItems.clear();
 			}
 			if(Creatures > 0)
 			{
 				m_things[ThingCategory_Creature].resize(Creatures + 1);
-				MOVE_THINGS(tempCreatures, m_things[ThingCategory_Creature]);
+				for(std::list<ThingType>::iterator it = tempCreatures.begin(), end = tempCreatures.end(); it != end; ++it)
+				{
+					ThingType& tempType = (*it);
+					m_things[ThingCategory_Creature][tempType.m_id] = std::move(tempType);
+				}
+
+				tempCreatures.clear();
 			}
 			if(Effects > 0)
 			{
 				m_things[ThingCategory_Effect].resize(Effects + 1);
-				MOVE_THINGS(tempEffect, m_things[ThingCategory_Effect]);
+				for(std::list<ThingType>::iterator it = tempEffect.begin(), end = tempEffect.end(); it != end; ++it)
+				{
+					ThingType& tempType = (*it);
+					m_things[ThingCategory_Effect][tempType.m_id] = std::move(tempType);
+				}
+
+				tempEffect.clear();
 			}
 			if(DistanceEffects > 0)
 			{
 				m_things[ThingCategory_DistanceEffect].resize(DistanceEffects + 1);
-				MOVE_THINGS(tempDistanceEffects, m_things[ThingCategory_DistanceEffect]);
+				for(std::list<ThingType>::iterator it = tempDistanceEffects.begin(), end = tempDistanceEffects.end(); it != end; ++it)
+				{
+					ThingType& tempType = (*it);
+					m_things[ThingCategory_DistanceEffect][tempType.m_id] = std::move(tempType);
+				}
+
+				tempDistanceEffects.clear();
 			}
-			#undef MOVE_THINGS
 
 			m_datLoaded = true;
 			SDL_RWclose(file);
@@ -1665,5 +1744,6 @@ ThingType* ThingManager::getThingType(ThingCategory category, Uint16 id)
 {
 	if(category >= ThingCategory_Last || id >= m_things[category].size())
 		return NULL;
+
 	return &m_things[category][id];
 }

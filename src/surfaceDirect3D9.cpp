@@ -37,54 +37,15 @@ typedef HRESULT(WINAPI *PFN_CREATE_D3D9Ex)(UINT SDKVersion, IDirect3D9Ex** d3d9E
 static const GUID D3D9_IID_IDirect3D9 = {0x81BDCBCA, 0x64D4, 0x426D,{0xAE, 0x8D, 0xAD, 0x01, 0x47, 0xF4, 0x27, 0x5C}};
 static const GUID D3D9_IID_IDirect3DDevice9Ex = {0xB18B10CE, 0x2649, 0x405A,{0x87, 0x0F, 0x95, 0xF7, 0x77, 0xD4, 0x31, 0x3A}};
 
-SurfaceDirect3D9::SurfaceDirect3D9() : m_automapTilesBuff(MAX_AUTOMAPTILES), m_spritesIds(MAX_SPRITES)
+static const float inv255f = (1.0f / 255.0f);
+
+SurfaceDirect3D9::SurfaceDirect3D9()
 {
 	g_engine.RecreateWindow(false);
 
 	m_d3d9Handle = SDL_LoadObject("D3D9.DLL");
-	m_d3d9 = NULL;
-	m_d3d9Ex = NULL;
-	m_device = NULL;
-	m_deviceEx = NULL;
 
-	m_defaultRenderTarget = NULL;
-	m_currentRenderTarget = NULL;
-
-	m_spriteAtlas = NULL;
-	m_pictures = NULL;
-	m_software = "Direct3D 9.0";
-	m_hardware = NULL;
-
-	m_gameWindow = NULL;
-	m_scaled_gameWindow = NULL;
-	m_pixelShader_sharpen = NULL;
-
-	m_maxTextureSize = 1024;
-	m_integer_scaling_width = 0;
-	m_integer_scaling_height = 0;
-
-	m_adapter = 0;
-	m_viewPortX = 0;
-	m_viewPortY = 0;
-	m_viewPortW = 0;
-	m_viewPortH = 0;
-
-	m_totalVRAM = 0;
-	m_spriteChecker = 0;
-	m_currentFrame = 0;
-
-	m_spriteAtlases = 0;
-	m_spritesPerAtlas = 0;
-	m_spritesPerModulo = 0;
-
-	m_usingLinearSample = false;
-	m_useAlphaBlending = false;
-	m_needReset = true;
-	m_haveSharpening = false;
-	m_scheduleSpriteDraw = false;
-
-	m_vertices.reserve(30720);
-
+	m_vertices.reserve(DIRECT3D9_MAX_VERTICES);
 	m_sprites.reserve(MAX_SPRITES);
 	m_automapTiles.reserve(MAX_AUTOMAPTILES);
 }
@@ -117,7 +78,7 @@ SurfaceDirect3D9::~SurfaceDirect3D9()
 	for(U32BD3D9Textures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseDirect3DTexture(it->second);
 	
-	for(std::vector<Direct3D9Texture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+	for(std::vector<Direct3D9Texture>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
 		releaseDirect3DTexture((*it));
 
 	m_sprites.clear();
@@ -147,30 +108,26 @@ SurfaceDirect3D9::~SurfaceDirect3D9()
 		SDL_UnloadObject(m_d3d9Handle);
 }
 
-Direct3D9Texture* SurfaceDirect3D9::createDirect3DTexture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer)
+bool SurfaceDirect3D9::createDirect3DTexture(Direct3D9Texture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer)
 {
-	Direct3D9Texture* texture = new Direct3D9Texture();
-	if(!texture)
-		return NULL;
+	releaseDirect3DTexture(texture);
 
-	HRESULT result = IDirect3DDevice9_CreateTexture(m_device, width, height, 1, (frameBuffer ? D3DUSAGE_RENDERTARGET : D3DUSAGE_DYNAMIC), D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture->m_texture, NULL);
+	HRESULT result = IDirect3DDevice9_CreateTexture(m_device, width, height, 1, (frameBuffer ? D3DUSAGE_RENDERTARGET : D3DUSAGE_DYNAMIC), D3DFMT_A8R8G8B8, D3DPOOL_DEFAULT, &texture.m_texture, NULL);
 	if(FAILED(result))
-	{
-		releaseDirect3DTexture(texture);
-		return NULL;
-	}
-	texture->m_width = width;
-	texture->m_height = height;
-	texture->m_scaleW = 1.0f / width;
-	texture->m_scaleH = 1.0f / height;
-	texture->m_linearSample = linearSampler;
-	return texture;
+		return false;
+
+	texture.m_width = width;
+	texture.m_height = height;
+	texture.m_scaleW = 1.0f / width;
+	texture.m_scaleH = 1.0f / height;
+	texture.m_linearSample = linearSampler;
+	return true;
 }
 
-bool SurfaceDirect3D9::updateTextureData(Direct3D9Texture* texture, unsigned char* data)
+bool SurfaceDirect3D9::updateTextureData(Direct3D9Texture& texture, unsigned char* data)
 {
 	IDirect3DTexture9* stagingTexture;
-	HRESULT result = IDirect3DDevice9_CreateTexture(m_device, texture->m_width, texture->m_height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &stagingTexture, NULL);
+	HRESULT result = IDirect3DDevice9_CreateTexture(m_device, texture.m_width, texture.m_height, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_SYSTEMMEM, &stagingTexture, NULL);
 	if(FAILED(result))
 		return false;
 
@@ -183,14 +140,14 @@ bool SurfaceDirect3D9::updateTextureData(Direct3D9Texture* texture, unsigned cha
 	}
 
 	unsigned char* dstData = SDL_reinterpret_cast(unsigned char*, locked.pBits);
-	int length = texture->m_width * 4;
+	int length = texture.m_width * 4;
 	if(length == locked.Pitch)
-		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, data), length * texture->m_height);
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, data), length * texture.m_height);
 	else
 	{
 		if(length > locked.Pitch)
 			length = locked.Pitch;
-		for(Uint32 row = 0; row < texture->m_height; ++row)
+		for(Uint32 row = 0; row < texture.m_height; ++row)
 		{
 			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, dstData), SDL_reinterpret_cast(const Uint8*, data), length);
 			data += length;
@@ -203,47 +160,30 @@ bool SurfaceDirect3D9::updateTextureData(Direct3D9Texture* texture, unsigned cha
 		IDirect3DTexture9_Release(stagingTexture);
 		return false;
 	}
-	IDirect3DDevice9_UpdateTexture(m_device, SDL_reinterpret_cast(IDirect3DBaseTexture9*, stagingTexture), SDL_reinterpret_cast(IDirect3DBaseTexture9*, texture->m_texture));
+	IDirect3DDevice9_UpdateTexture(m_device, SDL_reinterpret_cast(IDirect3DBaseTexture9*, stagingTexture), SDL_reinterpret_cast(IDirect3DBaseTexture9*, texture.m_texture));
 	IDirect3DTexture9_Release(stagingTexture);
 	return true;
 }
 
-void SurfaceDirect3D9::releaseDirect3DTexture(Direct3D9Texture* texture)
+void SurfaceDirect3D9::releaseDirect3DTexture(Direct3D9Texture& texture)
 {
-	if(texture->m_texture)
-		IDirect3DTexture9_Release(texture->m_texture);
-	delete texture;
+	if(texture.m_texture)
+	{
+		IDirect3DTexture9_Release(texture.m_texture);
+		texture.m_texture = NULL;
+	}
 }
 
-void SurfaceDirect3D9::updateTextureScaling(Direct3D9Texture* texture)
+void SurfaceDirect3D9::updateTextureScaling(Direct3D9Texture& texture)
 {
-	if(m_usingLinearSample != texture->m_linearSample)
+	if(m_usingLinearSample != texture.m_linearSample)
 	{
-		m_usingLinearSample = texture->m_linearSample;
+		m_usingLinearSample = texture.m_linearSample;
 		IDirect3DDevice9_SetSamplerState(m_device, 0, D3DSAMP_MINFILTER, (m_usingLinearSample ? D3DTEXF_LINEAR : D3DTEXF_POINT));
 		IDirect3DDevice9_SetSamplerState(m_device, 0, D3DSAMP_MAGFILTER, (m_usingLinearSample ? D3DTEXF_LINEAR : D3DTEXF_POINT));
 		IDirect3DDevice9_SetSamplerState(m_device, 0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
 		IDirect3DDevice9_SetSamplerState(m_device, 0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
 	}
-}
-
-void SurfaceDirect3D9::drawTriangles(std::vector<VertexD3D9>& vertices)
-{
-	UINT verticesSize = SDL_static_cast(UINT, vertices.size());
-	if(verticesSize > 2046)
-	{
-		VertexD3D9* verticeData = &vertices[0];
-
-		UINT verticeIndex = 0;
-		while(verticeIndex < verticesSize)
-		{
-			UINT drawSize = UTIL_min<UINT>(verticesSize - verticeIndex, 2046);
-			IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLELIST, (drawSize / 3), SDL_reinterpret_cast(void*, &verticeData[verticeIndex]), sizeof(VertexD3D9));
-			verticeIndex += drawSize;
-		}
-	}
-	else if(verticesSize > 0)
-		IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLELIST, (verticesSize / 3), &vertices[0], sizeof(VertexD3D9));
 }
 
 void SurfaceDirect3D9::initRenderer()
@@ -302,16 +242,10 @@ void SurfaceDirect3D9::resetRenderer()
 	}
 
 	if(m_gameWindow)
-	{
 		releaseDirect3DTexture(m_gameWindow);
-		m_gameWindow = NULL;
-	}
 
 	if(m_scaled_gameWindow)
-	{
 		releaseDirect3DTexture(m_scaled_gameWindow);
-		m_scaled_gameWindow = NULL;
-	}
 
 	HRESULT result = IDirect3DDevice9_Reset(m_device, &d3d9_pparams);
 	if(FAILED(result))
@@ -524,38 +458,18 @@ void SurfaceDirect3D9::generateSpriteAtlases()
 
 	for(Uint32 i = 0; i < m_spriteAtlases; ++i)
 	{
-		Direct3D9Texture* texture = createDirect3DTexture(m_spritesPerModulo, m_spritesPerModulo, false);
-		if(!texture)
+		m_spritesAtlas.emplace_back();
+		if(!createDirect3DTexture(m_spritesAtlas.back(), m_spritesPerModulo, m_spritesPerModulo, false))
 		{
 			UTIL_MessageBox(true, "Direct3D9: Out of video memory.");
 			exit(-1);
 		}
-		m_spritesAtlas.push_back(texture);
-	}
-}
-
-void SurfaceDirect3D9::checkScheduledSprites()
-{
-	size_t vertices = m_vertices.size();
-	if(vertices > 0)
-	{
-		updateTextureScaling(m_spriteAtlas);
-		IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, m_spriteAtlas->m_texture));
-		drawTriangles(m_vertices);
-		m_vertices.clear();
 	}
 }
 
 void SurfaceDirect3D9::renderTargetsRecreate()
 {
-	if(m_gameWindow)
-	{
-		releaseDirect3DTexture(m_gameWindow);
-		m_gameWindow = NULL;
-	}
-
-	m_gameWindow = createDirect3DTexture(RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, (g_engine.getAntialiasing() == CLIENT_ANTIALIASING_NORMAL), true);
-	if(!m_gameWindow)
+	if(!createDirect3DTexture(m_gameWindow, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, (g_engine.getAntialiasing() == CLIENT_ANTIALIASING_NORMAL), true))
 	{
 		UTIL_MessageBox(false, "Direct3D9: Out of video memory.");
 		exit(-1);
@@ -565,7 +479,7 @@ void SurfaceDirect3D9::renderTargetsRecreate()
 
 void SurfaceDirect3D9::init()
 {
-	m_pictures = SDL_reinterpret_cast(Direct3D9Texture**, SDL_calloc(g_pictureCounts, sizeof(Direct3D9Texture*)));
+	m_pictures = SDL_reinterpret_cast(Direct3D9Texture*, SDL_calloc(g_pictureCounts, sizeof(Direct3D9Texture)));
 	if(!m_pictures)
 	{
 		SDL_OutOfMemory();
@@ -574,6 +488,25 @@ void SurfaceDirect3D9::init()
 		exit(-1);
 	}
 	renderTargetsRecreate();
+
+	#if DIRECT3D9_USE_UINT_INDICES > 0
+	Uint32 offset = 0;
+	#else
+	Uint16 offset = 0;
+	#endif
+	m_indices.resize(DIRECT3D9_MAX_INDICES);
+	for(Sint32 i = 0; i < DIRECT3D9_MAX_INDICES; i += 6)
+	{
+		m_indices[i + 0] = 0 + offset;
+		m_indices[i + 1] = 1 + offset;
+		m_indices[i + 2] = 2 + offset;
+
+		m_indices[i + 3] = 3 + offset;
+		m_indices[i + 4] = 2 + offset;
+		m_indices[i + 5] = 1 + offset;
+
+		offset += 4;
+	}
 }
 
 void SurfaceDirect3D9::doResize(Sint32, Sint32)
@@ -586,7 +519,7 @@ void SurfaceDirect3D9::spriteManagerReset()
 	for(U32BD3D9Textures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseDirect3DTexture(it->second);
 	
-	for(std::vector<Direct3D9Texture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+	for(std::vector<Direct3D9Texture>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
 		releaseDirect3DTexture((*it));
 
 	m_sprites.clear();
@@ -604,17 +537,14 @@ void SurfaceDirect3D9::releaseTextures()
 		for(Uint16 i = 0; i < g_pictureCounts; ++i)
 		{
 			if(m_pictures[i])
-			{
 				releaseDirect3DTexture(m_pictures[i]);
-				m_pictures[i] = NULL;
-			}
 		}
 	}
 
 	for(U32BD3D9Textures::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseDirect3DTexture(it->second);
 	
-	for(std::vector<Direct3D9Texture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+	for(std::vector<Direct3D9Texture>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
 		releaseDirect3DTexture((*it));
 
 	m_sprites.clear();
@@ -720,11 +650,11 @@ void SurfaceDirect3D9::beginScene()
 		IDirect3DDevice9_BeginScene(m_device);
 	}
 	updateRenderer();
-	m_scheduleSpriteDraw = false;
 }
 
 void SurfaceDirect3D9::endScene()
 {
+	scheduleBatch();
 	IDirect3DDevice9_EndScene(m_device);
 
 	HRESULT result = IDirect3DDevice9_TestCooperativeLevel(m_device);
@@ -741,6 +671,78 @@ void SurfaceDirect3D9::endScene()
 		IDirect3DDevice9_Present(m_device, NULL, NULL, NULL, NULL);
 }
 
+Direct3D9Texture* SurfaceDirect3D9::getTextureIndex(Direct3D9Texture* texture)
+{
+	if(texture != m_binded_texture)
+	{
+		scheduleBatch();
+		m_binded_texture = texture;
+	}
+	return m_binded_texture;
+}
+
+void SurfaceDirect3D9::drawQuad(Direct3D9Texture*, float vertices[8], float texcoords[8])
+{
+	m_vertices.emplace_back(vertices[0], vertices[1], texcoords[0], texcoords[1], 0xFFFFFFFF);
+	m_vertices.emplace_back(vertices[2], vertices[3], texcoords[2], texcoords[3], 0xFFFFFFFF);
+	m_vertices.emplace_back(vertices[4], vertices[5], texcoords[4], texcoords[5], 0xFFFFFFFF);
+	m_vertices.emplace_back(vertices[6], vertices[7], texcoords[6], texcoords[7], 0xFFFFFFFF);
+	m_cachedVertices += 6;
+}
+
+void SurfaceDirect3D9::drawQuad(Direct3D9Texture*, float vertices[8], float texcoords[8], DWORD color)
+{
+	m_vertices.emplace_back(vertices[0], vertices[1], texcoords[0], texcoords[1], color);
+	m_vertices.emplace_back(vertices[2], vertices[3], texcoords[2], texcoords[3], color);
+	m_vertices.emplace_back(vertices[4], vertices[5], texcoords[4], texcoords[5], color);
+	m_vertices.emplace_back(vertices[6], vertices[7], texcoords[6], texcoords[7], color);
+	m_cachedVertices += 6;
+}
+
+void SurfaceDirect3D9::scheduleBatch()
+{
+	if(m_cachedVertices > 0)
+	{
+		if(m_binded_texture)
+		{
+			updateTextureScaling(*m_binded_texture);
+			IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, m_binded_texture->m_texture));
+		}
+		else
+			IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, NULL));
+
+		if(m_cachedVertices > DIRECT3D9_MAX_INDICES)
+		{
+			UINT vertices = SDL_static_cast(UINT, m_vertices.size());
+			VertexD3D9* verticeData = &m_vertices[0];
+			do
+			{
+				UINT passVertices = UTIL_min<UINT>(vertices, DIRECT3D9_MAX_VERTICES);
+				UINT passIndices = UTIL_min<UINT>(SDL_static_cast(UINT, m_cachedVertices), DIRECT3D9_MAX_INDICES);
+				#if DIRECT3D9_USE_UINT_INDICES > 0
+				IDirect3DDevice9_DrawIndexedPrimitiveUP(m_device, D3DPT_TRIANGLELIST, 0, passVertices, (passIndices / 3), &m_indices[0], D3DFMT_INDEX32, verticeData, sizeof(VertexD3D9));
+				#else
+				IDirect3DDevice9_DrawIndexedPrimitiveUP(m_device, D3DPT_TRIANGLELIST, 0, passVertices, (passIndices / 3), &m_indices[0], D3DFMT_INDEX16, verticeData, sizeof(VertexD3D9));
+				#endif
+				vertices -= passVertices;
+				verticeData += passVertices;
+				m_cachedVertices -= passIndices;
+			} while(m_cachedVertices > 0);
+		}
+		else
+		{
+			#if DIRECT3D9_USE_UINT_INDICES > 0
+			IDirect3DDevice9_DrawIndexedPrimitiveUP(m_device, D3DPT_TRIANGLELIST, 0, SDL_static_cast(UINT, m_vertices.size()), SDL_static_cast(UINT, m_cachedVertices / 3), &m_indices[0], D3DFMT_INDEX32, &m_vertices[0], sizeof(VertexD3D9));
+			#else
+			IDirect3DDevice9_DrawIndexedPrimitiveUP(m_device, D3DPT_TRIANGLELIST, 0, SDL_static_cast(UINT, m_vertices.size()), SDL_static_cast(UINT, m_cachedVertices / 3), &m_indices[0], D3DFMT_INDEX16, &m_vertices[0], sizeof(VertexD3D9));
+			#endif
+		}
+
+		m_vertices.clear();
+		m_cachedVertices = 0;
+	}
+}
+
 bool SurfaceDirect3D9::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
 	Sint32 width = RENDERTARGET_WIDTH;
@@ -748,32 +750,26 @@ bool SurfaceDirect3D9::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 s
 	UTIL_integer_scale(width, height, w, h, m_maxTextureSize, m_maxTextureSize);
 	if(m_integer_scaling_width < width || m_integer_scaling_height < height || !m_scaled_gameWindow)
 	{
-		if(m_scaled_gameWindow)
-		{
-			releaseDirect3DTexture(m_scaled_gameWindow);
-			m_scaled_gameWindow = NULL;
-		}
-
-		m_scaled_gameWindow = createDirect3DTexture(width, height, true, true);
-		if(!m_scaled_gameWindow)
+		if(!createDirect3DTexture(m_scaled_gameWindow, width, height, true, true))
 			return false;
 
 		m_integer_scaling_width = width;
 		m_integer_scaling_height = height;
 	}
 
+	scheduleBatch();
 	if(m_currentRenderTarget)
 	{
 		IDirect3DSurface9_Release(m_currentRenderTarget);
 		m_currentRenderTarget = NULL;
 	}
-	IDirect3DTexture9_GetSurfaceLevel(m_scaled_gameWindow->m_texture, 0, &m_currentRenderTarget);
+	IDirect3DTexture9_GetSurfaceLevel(m_scaled_gameWindow.m_texture, 0, &m_currentRenderTarget);
 	IDirect3DDevice9_SetRenderTarget(m_device, 0, m_currentRenderTarget);
 
 	m_viewPortX = 0;
 	m_viewPortY = 0;
-	m_viewPortW = m_scaled_gameWindow->m_width;
-	m_viewPortH = m_scaled_gameWindow->m_height;
+	m_viewPortW = m_scaled_gameWindow.m_width;
+	m_viewPortH = m_scaled_gameWindow.m_height;
 	updateViewport();
 
 	float minx = -0.5f;
@@ -781,18 +777,27 @@ bool SurfaceDirect3D9::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 s
 	float miny = -0.5f;
 	float maxy = miny + SDL_static_cast(float, height);
 
-	float minu = sx * m_gameWindow->m_scaleW;
-	float maxu = (sx + sw) * m_gameWindow->m_scaleW;
-	float minv = sy * m_gameWindow->m_scaleH;
-	float maxv = (sy + sh) * m_gameWindow->m_scaleH;
+	float minu = sx * m_gameWindow.m_scaleW;
+	float maxu = (sx + sw) * m_gameWindow.m_scaleW;
+	float minv = sy * m_gameWindow.m_scaleH;
+	float maxv = (sy + sh) * m_gameWindow.m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(m_gameWindow);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, m_gameWindow->m_texture));
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, FALSE);
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
+	drawQuad(getTextureIndex(&m_gameWindow), vertices, texcoords);
+
+	scheduleBatch();
 	if(m_currentRenderTarget)
 	{
 		IDirect3DSurface9_Release(m_currentRenderTarget);
@@ -812,42 +817,32 @@ bool SurfaceDirect3D9::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 s
 	maxy = miny + SDL_static_cast(float, h);
 
 	minu = 0.0f;
-	maxu = width * m_scaled_gameWindow->m_scaleW;
+	maxu = width * m_scaled_gameWindow.m_scaleW;
 	minv = 0.0f;
-	maxv = height * m_scaled_gameWindow->m_scaleH;
+	maxv = height * m_scaled_gameWindow.m_scaleH;
 
-	vertices[0].x = minx;
-	vertices[0].y = miny;
-	vertices[0].u = minu;
-	vertices[0].v = minv;
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	vertices[1].x = minx;
-	vertices[1].y = maxy;
-	vertices[1].u = minu;
-	vertices[1].v = maxv;
-
-	vertices[2].x = maxx;
-	vertices[2].y = miny;
-	vertices[2].u = maxu;
-	vertices[2].v = minv;
-
-	vertices[3].x = maxx;
-	vertices[3].y = maxy;
-	vertices[3].u = maxu;
-	vertices[3].v = maxv;
-
-	updateTextureScaling(m_scaled_gameWindow);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, m_scaled_gameWindow->m_texture));
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
 	if(g_engine.isSharpening() && m_haveSharpening)
 	{
-		float textureDimensions[2] = {1.0f / w * (sw * m_gameWindow->m_scaleW), 1.0f / h * (sh * m_gameWindow->m_scaleH)};
+		float textureDimensions[2] = {1.0f / w * (sw * m_gameWindow.m_scaleW), 1.0f / h * (sh * m_gameWindow.m_scaleH)};
 		IDirect3DDevice9_SetPixelShader(m_device, m_pixelShader_sharpen);
 		IDirect3DDevice9_SetPixelShaderConstantF(m_device, 0, textureDimensions, 2);
 	}
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
+
+	drawQuad(getTextureIndex(&m_scaled_gameWindow), vertices, texcoords);
+	scheduleBatch();
+	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, TRUE);
 	if(g_engine.isSharpening() && m_haveSharpening)
 		IDirect3DDevice9_SetPixelShader(m_device, NULL);
-	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, TRUE);
+
 	return true;
 }
 
@@ -864,58 +859,67 @@ void SurfaceDirect3D9::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh,
 			g_engine.setAntialiasing(antialiasing);
 		}
 	}
+
 	float minx = SDL_static_cast(float, x) - 0.5f;
 	float maxx = minx + SDL_static_cast(float, w);
 	float miny = SDL_static_cast(float, y) - 0.5f;
 	float maxy = miny + SDL_static_cast(float, h);
 
-	float minu = sx * m_gameWindow->m_scaleW;
-	float maxu = (sx + sw) * m_gameWindow->m_scaleW;
-	float minv = sy * m_gameWindow->m_scaleH;
-	float maxv = (sy + sh) * m_gameWindow->m_scaleH;
+	float minu = sx * m_gameWindow.m_scaleW;
+	float maxu = (sx + sw) * m_gameWindow.m_scaleW;
+	float minv = sy * m_gameWindow.m_scaleH;
+	float maxv = (sy + sh) * m_gameWindow.m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(m_gameWindow);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, m_gameWindow->m_texture));
-	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, FALSE);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+
+	scheduleBatch();
 	if(g_engine.isSharpening() && m_haveSharpening)
 	{
-		float textureDimensions[2] = {1.0f / w * (sw * m_gameWindow->m_scaleW), 1.0f / h * (sh * m_gameWindow->m_scaleH)};
+		float textureDimensions[2] = {1.0f / w * (sw * m_gameWindow.m_scaleW), 1.0f / h * (sh * m_gameWindow.m_scaleH)};
 		IDirect3DDevice9_SetPixelShader(m_device, m_pixelShader_sharpen);
 		IDirect3DDevice9_SetPixelShaderConstantF(m_device, 0, textureDimensions, 2);
 	}
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
+
+	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, FALSE);
+	drawQuad(getTextureIndex(&m_gameWindow), vertices, texcoords);
+	scheduleBatch();
+	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, TRUE);
 	if(g_engine.isSharpening() && m_haveSharpening)
 		IDirect3DDevice9_SetPixelShader(m_device, NULL);
-	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, TRUE);
 }
 
 void SurfaceDirect3D9::beginGameScene()
 {
+	scheduleBatch();
 	if(m_currentRenderTarget)
 	{
 		IDirect3DSurface9_Release(m_currentRenderTarget);
 		m_currentRenderTarget = NULL;
 	}
-	IDirect3DTexture9_GetSurfaceLevel(m_gameWindow->m_texture, 0, &m_currentRenderTarget);
+	IDirect3DTexture9_GetSurfaceLevel(m_gameWindow.m_texture, 0, &m_currentRenderTarget);
 	IDirect3DDevice9_SetRenderTarget(m_device, 0, m_currentRenderTarget);
 
 	m_viewPortX = 0;
 	m_viewPortY = 0;
-	m_viewPortW = m_gameWindow->m_width;
-	m_viewPortH = m_gameWindow->m_height;
+	m_viewPortW = m_gameWindow.m_width;
+	m_viewPortH = m_gameWindow.m_height;
 	updateViewport();
 	fillRectangle(0, 0, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, 0x00, 0x00, 0x00, 255);
-	m_vertices.clear();
-	m_scheduleSpriteDraw = true;
 }
 
 void SurfaceDirect3D9::endGameScene()
 {
-	checkScheduledSprites();
-	m_scheduleSpriteDraw = false;
+	scheduleBatch();
 	if(m_currentRenderTarget)
 	{
 		IDirect3DSurface9_Release(m_currentRenderTarget);
@@ -932,7 +936,9 @@ void SurfaceDirect3D9::endGameScene()
 
 void SurfaceDirect3D9::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
-	m_vertices.clear();
+	scheduleBatch();
+	m_binded_texture = NULL;
+
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_SRCBLEND, D3DBLEND_ZERO);
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_DESTBLEND, D3DBLEND_SRCCOLOR);
 	if(m_useAlphaBlending)
@@ -974,8 +980,8 @@ void SurfaceDirect3D9::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, 
 
 void SurfaceDirect3D9::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
-	static const float inv255f = (1.0f / 255.0f);
-	m_vertices.clear();
+	scheduleBatch();
+	m_binded_texture = NULL;
 
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_SRCBLEND, D3DBLEND_ZERO);
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_DESTBLEND, D3DBLEND_SRCCOLOR);
@@ -1100,40 +1106,33 @@ void SurfaceDirect3D9::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, 
 			m_vertices.emplace_back(SDL_static_cast(float, drawX) - 0.5f, SDL_static_cast(float, drawY) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topLeft[0][0] * 255.f), SDL_static_cast(Uint8, topLeft[0][1] * 255.f), SDL_static_cast(Uint8, topLeft[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX) - 0.5f, SDL_static_cast(float, drawY) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topLeft[0][0] * 255.f), SDL_static_cast(Uint8, topLeft[0][1] * 255.f), SDL_static_cast(Uint8, topLeft[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-
+			
 			//Draw Bottom-Left square
 			m_vertices.emplace_back(SDL_static_cast(float, drawX) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, leftCenter[0][0] * 255.f), SDL_static_cast(Uint8, leftCenter[0][1] * 255.f), SDL_static_cast(Uint8, leftCenter[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX) - 0.5f, SDL_static_cast(float, drawY + scale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomLeft[0][0] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][1] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + scale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX) - 0.5f, SDL_static_cast(float, drawY + scale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomLeft[0][0] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][1] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-
+			
 			//Draw Top-Right square
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale) - 0.5f, SDL_static_cast(float, drawY) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topRight[0][0] * 255.f), SDL_static_cast(Uint8, topRight[0][1] * 255.f), SDL_static_cast(Uint8, topRight[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale) - 0.5f, SDL_static_cast(float, drawY) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topRight[0][0] * 255.f), SDL_static_cast(Uint8, topRight[0][1] * 255.f), SDL_static_cast(Uint8, topRight[0][2] * 255.f), 255));
-
+			
 			//Draw Bottom-Right square
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + scale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale) - 0.5f, SDL_static_cast(float, drawY + scale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomRight[0][0] * 255.f), SDL_static_cast(Uint8, bottomRight[0][1] * 255.f), SDL_static_cast(Uint8, bottomRight[0][2] * 255.f), 255));
 			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + halfScale) - 0.5f, SDL_static_cast(float, drawY + halfScale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-			m_vertices.emplace_back(SDL_static_cast(float, drawX + scale) - 0.5f, SDL_static_cast(float, drawY + scale) - 0.5f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomRight[0][0] * 255.f), SDL_static_cast(Uint8, bottomRight[0][1] * 255.f), SDL_static_cast(Uint8, bottomRight[0][2] * 255.f), 255));
 
+			m_cachedVertices += 24;
 			drawX += scale;
 		}
 
 		drawY += scale;
 	}
 
-	drawTriangles(m_vertices);
+	scheduleBatch();
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 	if(m_useAlphaBlending)
@@ -1145,6 +1144,7 @@ void SurfaceDirect3D9::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, 
 
 void SurfaceDirect3D9::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
+	scheduleBatch();
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_SCISSORTESTENABLE, TRUE);
 
 	RECT r;
@@ -1157,41 +1157,81 @@ void SurfaceDirect3D9::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 
 void SurfaceDirect3D9::disableClipRect()
 {
+	scheduleBatch();
 	IDirect3DDevice9_SetRenderState(m_device, D3DRS_SCISSORTESTENABLE, FALSE);
 }
 
-void SurfaceDirect3D9::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+void SurfaceDirect3D9::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
+	if(m_binded_texture)
+	{
+		scheduleBatch();
+		m_binded_texture = NULL;
+	}
 
-	float minx = SDL_static_cast(float, x);
-	float maxx = SDL_static_cast(float, x + w - 1);
-	float miny = SDL_static_cast(float, y);
-	float maxy = SDL_static_cast(float, y + h - 1);
+	//First Quad
+	float minx0 = SDL_static_cast(float, x) - 0.5f;
+	float maxx0 = minx0 + SDL_static_cast(float, lineWidth);
+	float miny0 = SDL_static_cast(float, y) - 0.5f;
+	float maxy0 = miny0 + SDL_static_cast(float, h);
 
+	//Second Quad
+	float minx1 = SDL_static_cast(float, x + w - lineWidth) - 0.5f;
+	float maxx1 = minx1 + SDL_static_cast(float, lineWidth);
+	float miny1 = SDL_static_cast(float, y) - 0.5f;
+	float maxy1 = miny1 + SDL_static_cast(float, h);
+
+	//Third Quad
+	float minx2 = SDL_static_cast(float, x + lineWidth) - 0.5f;
+	float maxx2 = minx2 + SDL_static_cast(float, w - (lineWidth << 1));
+	float miny2 = SDL_static_cast(float, y) - 0.5f;
+	float maxy2 = miny2 + SDL_static_cast(float, lineWidth);
+
+	//Fourth Quad
+	float minx3 = SDL_static_cast(float, x + lineWidth) - 0.5f;
+	float maxx3 = minx3 + SDL_static_cast(float, w - (lineWidth << 1));
+	float miny3 = SDL_static_cast(float, y + h - lineWidth) - 0.5f;
+	float maxy3 = miny3 + SDL_static_cast(float, lineWidth);
+	
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-	VertexD3D9 vertices[5] = {{minx, miny, texColor},{maxx, miny, texColor},{maxx, maxy, texColor},{minx, maxy, texColor},{minx, miny, texColor}};
-
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, NULL));
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_LINESTRIP, 4, vertices, sizeof(VertexD3D9));
+	m_vertices.emplace_back(minx0, miny0, texColor);
+	m_vertices.emplace_back(minx0, maxy0, texColor);
+	m_vertices.emplace_back(maxx0, miny0, texColor);
+	m_vertices.emplace_back(maxx0, maxy0, texColor);
+	m_vertices.emplace_back(minx1, miny1, texColor);
+	m_vertices.emplace_back(minx1, maxy1, texColor);
+	m_vertices.emplace_back(maxx1, miny1, texColor);
+	m_vertices.emplace_back(maxx1, maxy1, texColor);
+	m_vertices.emplace_back(minx2, miny2, texColor);
+	m_vertices.emplace_back(minx2, maxy2, texColor);
+	m_vertices.emplace_back(maxx2, miny2, texColor);
+	m_vertices.emplace_back(maxx2, maxy2, texColor);
+	m_vertices.emplace_back(minx3, miny3, texColor);
+	m_vertices.emplace_back(minx3, maxy3, texColor);
+	m_vertices.emplace_back(maxx3, miny3, texColor);
+	m_vertices.emplace_back(maxx3, maxy3, texColor);
+	m_cachedVertices += 24;
 }
 
 void SurfaceDirect3D9::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
+	if(m_binded_texture)
+	{
+		scheduleBatch();
+		m_binded_texture = NULL;
+	}
 
 	float minx = SDL_static_cast(float, x) - 0.5f;
 	float maxx = minx + SDL_static_cast(float, w);
 	float miny = SDL_static_cast(float, y) - 0.5f;
 	float maxy = miny + SDL_static_cast(float, h);
-	
-	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-	VertexD3D9 vertices[4] = {{minx, miny, texColor},{minx, maxy, texColor},{maxx, miny, texColor},{maxx, maxy, texColor}};
 
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, NULL));
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
+	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
+	m_vertices.emplace_back(minx, miny, texColor);
+	m_vertices.emplace_back(minx, maxy, texColor);
+	m_vertices.emplace_back(maxx, miny, texColor);
+	m_vertices.emplace_back(maxx, maxy, texColor);
+	m_cachedVertices += 6;
 }
 
 Direct3D9Texture* SurfaceDirect3D9::loadPicture(Uint16 pictureId, bool linear)
@@ -1201,31 +1241,32 @@ Direct3D9Texture* SurfaceDirect3D9::loadPicture(Uint16 pictureId, bool linear)
 	if(!pixels)
 		return NULL;
 
-	Direct3D9Texture* s = createDirect3DTexture(width, height, linear);
-	if(!s)
+	Direct3D9Texture* s = &m_pictures[pictureId];
+	if(!createDirect3DTexture(*s, width, height, linear))
 	{
 		SDL_free(pixels);
 		return NULL;
 	}
 
-	updateTextureData(s, pixels);
+	updateTextureData(*s, pixels);
 	SDL_free(pixels);
-	m_pictures[pictureId] = s;
 	return s;
 }
 
 void SurfaceDirect3D9::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256])
 {
-	Direct3D9Texture* tex = m_pictures[pictureId];
-	if(!tex)
+	Direct3D9Texture* tex = &m_pictures[pictureId];
+	if(!tex->m_texture)
 	{
 		tex = loadPicture(pictureId, false);
 		if(!tex)
 			return;//load failed
 	}
 
+	float vertices[8];
+	float texcoords[8];
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, 255);
-	m_vertices.clear();
+	tex = getTextureIndex(tex);
 
 	Sint32 rx = x, ry = y;
 	Uint8 character;
@@ -1272,29 +1313,28 @@ void SurfaceDirect3D9::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std:
 				float minv = cY[character] * tex->m_scaleH;
 				float maxv = (cY[character] + cH[character]) * tex->m_scaleH;
 
-				m_vertices.emplace_back(minx, miny, minu, minv, texColor);
-				m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-				m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+				vertices[0] = minx; vertices[1] = miny;
+				vertices[2] = minx; vertices[3] = maxy;
+				vertices[4] = maxx; vertices[5] = miny;
+				vertices[6] = maxx; vertices[7] = maxy;
 
-				m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-				m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-				m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+				texcoords[0] = minu; texcoords[1] = minv;
+				texcoords[2] = minu; texcoords[3] = maxv;
+				texcoords[4] = maxu; texcoords[5] = minv;
+				texcoords[6] = maxu; texcoords[7] = maxv;
 
+				drawQuad(tex, vertices, texcoords, texColor);
 				rx += cW[character] + cX[0];
 			}
 			break;
 		}
 	}
-
-	updateTextureScaling(tex);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-	drawTriangles(m_vertices);
 }
 
 void SurfaceDirect3D9::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
-	Direct3D9Texture* tex = m_pictures[pictureId];
-	if(!tex)
+	Direct3D9Texture* tex = &m_pictures[pictureId];
+	if(!tex->m_texture)
 	{
 		tex = loadPicture(pictureId, g_engine.hasAntialiasing());
 		if(!tex)
@@ -1311,28 +1351,33 @@ void SurfaceDirect3D9::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Si
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + sh) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, FALSE);
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
-	IDirect3DDevice9_SetRenderState(m_device, D3DRS_ALPHABLENDENABLE, TRUE);
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 void SurfaceDirect3D9::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
-	Direct3D9Texture* tex = m_pictures[pictureId];
-	if(!tex)
+	Direct3D9Texture* tex = &m_pictures[pictureId];
+	if(!tex->m_texture)
 	{
 		tex = loadPicture(pictureId, false);
 		if(!tex)
 			return;//load failed
 	}
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vertices.clear();
+	float vertices[8];
+	float texcoords[8];
+	tex = getTextureIndex(tex);
 
 	Sint32 curW, curH, cx;
 	for(Sint32 j = h; j > 0; j -= sh)
@@ -1352,28 +1397,27 @@ void SurfaceDirect3D9::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy,
 			float minv = sy * tex->m_scaleH;
 			float maxv = (sy + curH) * tex->m_scaleH;
 
-			m_vertices.emplace_back(minx, miny, minu, minv, texColor);
-			m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-			m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
+			vertices[0] = minx; vertices[1] = miny;
+			vertices[2] = minx; vertices[3] = maxy;
+			vertices[4] = maxx; vertices[5] = miny;
+			vertices[6] = maxx; vertices[7] = maxy;
 
-			m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-			m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-			m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
+			texcoords[0] = minu; texcoords[1] = minv;
+			texcoords[2] = minu; texcoords[3] = maxv;
+			texcoords[4] = maxu; texcoords[5] = minv;
+			texcoords[6] = maxu; texcoords[7] = maxv;
 
+			drawQuad(tex, vertices, texcoords);
 			cx += sw;
 		}
 		y += sh;
 	}
-
-	updateTextureScaling(tex);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-	drawTriangles(m_vertices);
 }
 
 void SurfaceDirect3D9::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
-	Direct3D9Texture* tex = m_pictures[pictureId];
-	if(!tex)
+	Direct3D9Texture* tex = &m_pictures[pictureId];
+	if(!tex->m_texture)
 	{
 		tex = loadPicture(pictureId, false);
 		if(!tex)
@@ -1390,12 +1434,18 @@ void SurfaceDirect3D9::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint3
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + h) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 bool SurfaceDirect3D9::loadSprite(Uint32 spriteId, Direct3D9Texture* texture, Uint32 xoff, Uint32 yoff)
@@ -1518,132 +1568,7 @@ bool SurfaceDirect3D9::loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint
 
 void SurfaceDirect3D9::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 {
-	if(spriteId > g_spriteCounts)
-		return;
-
-	#if SIZEOF_VOIDP == 4
-	Uint64 tempPos;
-	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = spriteId;
-	u32p[1] = 0;
-	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
-	#endif
-	Uint32 xOffset;
-	Uint32 yOffset;
-	Direct3D9Texture* tex;
-	U64BD3D9Textures::iterator it = m_sprites.find(tempPos);
-	if(it == m_sprites.end())
-	{
-		if(m_sprites.size() >= MAX_SPRITES)
-		{
-			while(++m_spriteChecker < MAX_SPRITES)
-			{
-				Uint64 oldSpriteId = m_spritesIds.front();
-				it = m_sprites.find(oldSpriteId);
-				if(it == m_sprites.end())
-				{
-					UTIL_MessageBox(true, "Direct3D9: Sprite Manager failure.");
-					exit(-1);
-				}
-
-				m_spritesIds.pop_front();
-				if(it->second.m_lastUsage == m_currentFrame)
-					m_spritesIds.push_back(oldSpriteId);
-				else
-					goto Skip_Search;
-			}
-
-			if(m_scheduleSpriteDraw)
-				checkScheduledSprites();
-
-			it = m_sprites.find(m_spritesIds.front());
-			if(it == m_sprites.end())
-			{
-				UTIL_MessageBox(true, "Direct3D9: Sprite Manager failure.");
-				exit(-1);
-			}
-			m_spritesIds.pop_front();
-
-			Skip_Search:
-			Direct3D9SpriteData sprData = it->second;
-			sprData.m_lastUsage = m_currentFrame;
-			m_sprites.erase(it);
-			m_sprites[tempPos] = sprData;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		else
-		{
-			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
-			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
-			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
-			if(spriteAtlas >= m_spritesAtlas.size())
-				return;
-
-			Direct3D9SpriteData& sprData = m_sprites[tempPos];
-			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
-			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
-			sprData.m_surface = spriteAtlas;
-			sprData.m_lastUsage = m_currentFrame;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		if(!loadSprite(spriteId, tex, xOffset, yOffset))
-			return;//load failed
-	}
-	else
-	{
-		xOffset = it->second.m_xOffset;
-		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
-		it->second.m_lastUsage = m_currentFrame;
-		if(m_spritesIds.front() == tempPos)
-		{
-			m_spritesIds.pop_front();
-			m_spritesIds.push_back(tempPos);
-		}
-	}
-
-	float minx = SDL_static_cast(float, x) - 0.5f;
-	float maxx = minx + 32.0f;
-	float miny = SDL_static_cast(float, y) - 0.5f;
-	float maxy = miny + 32.0f;
-
-	float minu = xOffset * tex->m_scaleW;
-	float maxu = (xOffset + 32) * tex->m_scaleW;
-	float minv = yOffset * tex->m_scaleH;
-	float maxv = (yOffset + 32) * tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	if(m_scheduleSpriteDraw)
-	{
-		if(tex != m_spriteAtlas)
-		{
-			checkScheduledSprites();
-			m_spriteAtlas = tex;
-		}
-		m_vertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-
-		m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	}
-	else
-	{
-		VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-		updateTextureScaling(tex);
-		IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-		IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
-	}
+	drawSprite(spriteId, x, y, 32, 32, 0, 0, 32, 32);
 }
 
 void SurfaceDirect3D9::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
@@ -1683,6 +1608,7 @@ void SurfaceDirect3D9::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w,
 				else
 					goto Skip_Search;
 			}
+			scheduleBatch();
 
 			it = m_sprites.find(m_spritesIds.front());
 			if(it == m_sprites.end())
@@ -1701,7 +1627,7 @@ void SurfaceDirect3D9::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w,
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		else
 		{
@@ -1720,7 +1646,7 @@ void SurfaceDirect3D9::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w,
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		if(!loadSprite(spriteId, tex, xOffset, yOffset))
 			return;//load failed
@@ -1729,7 +1655,7 @@ void SurfaceDirect3D9::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w,
 	{
 		xOffset = it->second.m_xOffset;
 		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
+		tex = &m_spritesAtlas[it->second.m_surface];
 		it->second.m_lastUsage = m_currentFrame;
 		if(m_spritesIds.front() == tempPos)
 		{
@@ -1751,142 +1677,23 @@ void SurfaceDirect3D9::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w,
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + sh) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 void SurfaceDirect3D9::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor)
 {
-	if(spriteId > g_spriteCounts || maskSpriteId > g_spriteCounts)
-		return;
-
-	#if SIZEOF_VOIDP == 4
-	Uint64 tempPos;
-	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = maskSpriteId;
-	u32p[1] = outfitColor;
-	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
-	#endif
-	Uint32 xOffset;
-	Uint32 yOffset;
-	Direct3D9Texture* tex;
-	U64BD3D9Textures::iterator it = m_sprites.find(tempPos);
-	if(it == m_sprites.end())
-	{
-		if(m_sprites.size() >= MAX_SPRITES)
-		{
-			while(++m_spriteChecker < MAX_SPRITES)
-			{
-				Uint64 oldSpriteId = m_spritesIds.front();
-				it = m_sprites.find(oldSpriteId);
-				if(it == m_sprites.end())
-				{
-					UTIL_MessageBox(true, "Direct3D9: Sprite Manager failure.");
-					exit(-1);
-				}
-
-				m_spritesIds.pop_front();
-				if(it->second.m_lastUsage == m_currentFrame)
-					m_spritesIds.push_back(oldSpriteId);
-				else
-					goto Skip_Search;
-			}
-
-			if(m_scheduleSpriteDraw)
-				checkScheduledSprites();
-
-			it = m_sprites.find(m_spritesIds.front());
-			if(it == m_sprites.end())
-			{
-				UTIL_MessageBox(true, "Direct3D9: Sprite Manager failure.");
-				exit(-1);
-			}
-			m_spritesIds.pop_front();
-
-			Skip_Search:
-			Direct3D9SpriteData sprData = it->second;
-			sprData.m_lastUsage = m_currentFrame;
-			m_sprites.erase(it);
-			m_sprites[tempPos] = sprData;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		else
-		{
-			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
-			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
-			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
-			if(spriteAtlas >= m_spritesAtlas.size())
-				return;
-
-			Direct3D9SpriteData& sprData = m_sprites[tempPos];
-			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
-			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
-			sprData.m_surface = spriteAtlas;
-			sprData.m_lastUsage = m_currentFrame;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
-			return;//load failed
-	}
-	else
-	{
-		xOffset = it->second.m_xOffset;
-		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
-		it->second.m_lastUsage = m_currentFrame;
-		if(m_spritesIds.front() == tempPos)
-		{
-			m_spritesIds.pop_front();
-			m_spritesIds.push_back(tempPos);
-		}
-	}
-
-	float minx = SDL_static_cast(float, x) - 0.5f;
-	float maxx = minx + 32.0f;
-	float miny = SDL_static_cast(float, y) - 0.5f;
-	float maxy = miny + 32.0f;
-
-	float minu = xOffset * tex->m_scaleW;
-	float maxu = (xOffset + 32) * tex->m_scaleW;
-	float minv = yOffset * tex->m_scaleH;
-	float maxv = (yOffset + 32) * tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	if(m_scheduleSpriteDraw)
-	{
-		if(tex != m_spriteAtlas)
-		{
-			checkScheduledSprites();
-			m_spriteAtlas = tex;
-		}
-		m_vertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-
-		m_vertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-		m_vertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_vertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	}
-	else
-	{
-		VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
-		updateTextureScaling(tex);
-		IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-		IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
-	}
+	drawSpriteMask(spriteId, maskSpriteId, x, y, 32, 32, 0, 0, 32, 32, outfitColor);
 }
 
 void SurfaceDirect3D9::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor)
@@ -1897,10 +1704,10 @@ void SurfaceDirect3D9::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = maskSpriteId;
+	u32p[0] = spriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
 	Uint32 xOffset;
 	Uint32 yOffset;
@@ -1926,6 +1733,7 @@ void SurfaceDirect3D9::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint
 				else
 					goto Skip_Search;
 			}
+			scheduleBatch();
 
 			it = m_sprites.find(m_spritesIds.front());
 			if(it == m_sprites.end())
@@ -1944,7 +1752,7 @@ void SurfaceDirect3D9::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		else
 		{
@@ -1963,7 +1771,7 @@ void SurfaceDirect3D9::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
 			return;//load failed
@@ -1972,7 +1780,7 @@ void SurfaceDirect3D9::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint
 	{
 		xOffset = it->second.m_xOffset;
 		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
+		tex = &m_spritesAtlas[it->second.m_surface];
 		it->second.m_lastUsage = m_currentFrame;
 		if(m_spritesIds.front() == tempPos)
 		{
@@ -1994,17 +1802,23 @@ void SurfaceDirect3D9::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + sh) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 Direct3D9Texture* SurfaceDirect3D9::createAutomapTile(Uint32 currentArea)
 {
-	Direct3D9Texture* s = NULL;
+	std::unique_ptr<Direct3D9Texture> s;
 	if(m_automapTiles.size() >= MAX_AUTOMAPTILES)
 	{
 		U32BD3D9Textures::iterator it = m_automapTiles.find(m_automapTilesBuff.front());
@@ -2014,25 +1828,27 @@ Direct3D9Texture* SurfaceDirect3D9::createAutomapTile(Uint32 currentArea)
 			exit(-1);
 		}
 
-		s = it->second;
+		s = std::make_unique<Direct3D9Texture>(std::move(it->second));
 		m_automapTiles.erase(it);
 		m_automapTilesBuff.pop_front();
 	}
 	if(!s)
 	{
-		s = createDirect3DTexture(256, 256, false);
-		if(!s)
+		s = std::make_unique<Direct3D9Texture>();
+		if(!createDirect3DTexture(*s, 256, 256, false))
 			return NULL;
 	}
+	else
+		scheduleBatch();
 
-	m_automapTiles[currentArea] = s;
+	m_automapTiles[currentArea] = std::move(*s.get());
 	m_automapTilesBuff.push_back(currentArea);
-	return s;
+	return &m_automapTiles[currentArea];
 }
 
 void SurfaceDirect3D9::uploadAutomapTile(Direct3D9Texture* texture, Uint8 color[256][256])
 {
-	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(262144));//256 * 256 * 4
+	unsigned char* pixels = SDL_reinterpret_cast(unsigned char*, SDL_malloc(256 * 256 * 4));
 	if(!pixels)
 		return;
 
@@ -2050,7 +1866,7 @@ void SurfaceDirect3D9::uploadAutomapTile(Direct3D9Texture* texture, Uint8 color[
 			*ptrpixels++ = 255;
 		}
 	}
-	updateTextureData(texture, pixels);
+	updateTextureData(*texture, pixels);
 	SDL_free(pixels);
 }
 
@@ -2069,7 +1885,7 @@ void SurfaceDirect3D9::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint8
 	}
 	else
 	{
-		tex = it->second;
+		tex = &it->second;
 		if(m_automapTilesBuff.front() == currentArea)
 		{
 			m_automapTilesBuff.pop_front();
@@ -2092,11 +1908,17 @@ void SurfaceDirect3D9::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint8
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + sh) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	VertexD3D9 vertices[4] = {{minx, miny, minu, minv, texColor},{minx, maxy, minu, maxv, texColor},{maxx, miny, maxu, minv, texColor},{maxx, maxy, maxu, maxv, texColor}};
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	updateTextureScaling(tex);
-	IDirect3DDevice9_SetTexture(m_device, 0, SDL_reinterpret_cast(IDirect3DBaseTexture9*, tex->m_texture));
-	IDirect3DDevice9_DrawPrimitiveUP(m_device, D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(VertexD3D9));
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 #endif

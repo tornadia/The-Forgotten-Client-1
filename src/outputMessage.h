@@ -34,6 +34,14 @@ class OutputMessage
 	public:
 		OutputMessage(Uint16 headerPos) {reset(headerPos);}
 
+		// non-copyable
+		OutputMessage(const OutputMessage&) = delete;
+		OutputMessage& operator=(const OutputMessage&) = delete;
+
+		// non-moveable
+		OutputMessage(OutputMessage&&) = delete;
+		OutputMessage& operator=(OutputMessage&&) = delete;
+
 		void reset(Uint16 headerPos);
 
 		void addU8(Uint8 value);

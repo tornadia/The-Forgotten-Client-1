@@ -54,6 +54,14 @@ class AStarNodes
 		AStarNodes(const Position& startPos);
 		~AStarNodes();
 
+		// non-copyable
+		AStarNodes(const AStarNodes&) = delete;
+		AStarNodes& operator=(const AStarNodes&) = delete;
+
+		// non-moveable
+		AStarNodes(AStarNodes&&) = delete;
+		AStarNodes& operator=(AStarNodes&&) = delete;
+
 		bool createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 Sx, Sint32 Sy, const Position& targetPos, const Position& pos);
 		AStarNode* getBestNode();
 		void closeNode(AStarNode* node);
@@ -76,6 +84,14 @@ class Map
 	public:
 		Map();
 		~Map();
+
+		// non-copyable
+		Map(const Map&) = delete;
+		Map& operator=(const Map&) = delete;
+
+		// non-moveable
+		Map(Map&&) = delete;
+		Map& operator=(Map&&) = delete;
 
 		Tile* getTile(const Position& position);
 		Tile* getTileOrCreate(const Position& position);
@@ -121,22 +137,22 @@ class Map
 		std::vector<DistanceEffect*> m_distanceEffects[GAME_MAP_FLOORS + 1];
 		std::vector<AnimatedText*> m_animatedTexts;
 		std::vector<StaticText*> m_staticTexts;
-		Tile* m_tiles[GAME_MAP_FLOORS + 1][GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
+		Tile* m_tiles[GAME_MAP_FLOORS + 1][GAME_MAP_HEIGHT][GAME_MAP_WIDTH] = {};
 		ScreenText* m_onscreenMessages[ONSCREEN_MESSAGE_LAST];
 
-		Creature* m_localCreature;
+		Creature* m_localCreature = NULL;
 		Position m_centerPosition;
 		
-		Uint32 m_magicEffectsTime;
-		Uint32 m_distanceEffectsTime;
+		Uint32 m_magicEffectsTime = 0;
+		Uint32 m_distanceEffectsTime = 0;
 
-		Sint32 m_cachedFirstVisibleGround[GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
-		Sint32 m_cachedFirstGrounds[GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
-		Sint32 m_cachedFirstFullGrounds[GAME_MAP_HEIGHT][GAME_MAP_WIDTH];
-		Sint32 m_cachedLastVisibleFloor;
-		Sint32 m_cachedFirstVisibleFloor;
+		Sint32 m_cachedFirstVisibleGround[GAME_MAP_HEIGHT][GAME_MAP_WIDTH] = {};
+		Sint32 m_cachedFirstGrounds[GAME_MAP_HEIGHT][GAME_MAP_WIDTH] = {};
+		Sint32 m_cachedFirstFullGrounds[GAME_MAP_HEIGHT][GAME_MAP_WIDTH] = {};
+		Sint32 m_cachedLastVisibleFloor = 7;
+		Sint32 m_cachedFirstVisibleFloor = 0;
 
-		bool m_needUpdateCache;
+		bool m_needUpdateCache = true;
 };
 
 #endif /* __FILE_MAP_h_ */

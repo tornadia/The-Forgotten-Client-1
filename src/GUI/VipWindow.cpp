@@ -564,6 +564,7 @@ void vip_Events(Uint32 event, Sint32 status)
 			//
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -720,6 +721,7 @@ void UTIL_sortVipWindow()
 		case Vip_Sort_Name: std::sort(g_vipPlayers.begin(), g_vipPlayers.end(), [](VipPlayers& a, VipPlayers& b) -> bool {return a.playerName < b.playerName;}); break;
 		case Vip_Sort_Status: std::sort(g_vipPlayers.begin(), g_vipPlayers.end(), [](VipPlayers& a, VipPlayers& b) -> bool {return a.status < b.status;}); break;
 		case Vip_Sort_Type: std::sort(g_vipPlayers.begin(), g_vipPlayers.end(), [](VipPlayers& a, VipPlayers& b) -> bool {return a.iconId < b.iconId;}); break;
+		default: break;
 	}
 	g_recreateVipWindow = true;
 }
@@ -1063,7 +1065,7 @@ void GUI_VipContainer::onRMouseUp(Sint32 x, Sint32 y)
 	g_vipRMouse = false;
 }
 
-GUI_VipPlayer::GUI_VipPlayer(iRect boxRect, const std::string& name, Uint32 _GUID, Uint32 iconId, Uint8 status, Uint32 internalID)
+GUI_VipPlayer::GUI_VipPlayer(iRect boxRect, const std::string& name, Uint32 _GUID, Uint32 iconId, Uint8 status, Uint32 internalID) : m_GUID(_GUID), m_iconId(iconId)
 {
 	Uint8 red, green, blue;
 	if(status == VIP_STATUS_ONLINE)
@@ -1087,9 +1089,6 @@ GUI_VipPlayer::GUI_VipPlayer(iRect boxRect, const std::string& name, Uint32 _GUI
 
 	m_internalID = internalID;
 	m_name = new GUI_DynamicLabel(iRect(0, 0, boxRect.x2 - 20, boxRect.y2), name, 0, red, green, blue);
-	m_GUID = _GUID;
-	m_iconId = iconId;
-	m_hover = false;
 	setRect(boxRect);
 }
 
@@ -1138,12 +1137,10 @@ void GUI_VipPlayer::render()
 	m_name->render();
 }
 
-GUI_VipGroup::GUI_VipGroup(iRect boxRect, const std::string& name, Uint8 groupId, Uint32 internalID)
+GUI_VipGroup::GUI_VipGroup(iRect boxRect, const std::string& name, Uint8 groupId, Uint32 internalID) : m_groupId(groupId)
 {
 	m_internalID = internalID;
 	m_name = new GUI_DynamicLabel(iRect(0, 0, boxRect.x2, boxRect.y2), name, 0, 255, 255, 255);
-	m_groupId = groupId;
-	m_hover = false;
 	setRect(boxRect);
 }
 
@@ -1190,12 +1187,10 @@ void GUI_VipGroup::render()
 	m_name->render();
 }
 
-GUI_VipIcon::GUI_VipIcon(iRect boxRect, Uint32 iconId, Uint32 internalID)
+GUI_VipIcon::GUI_VipIcon(iRect boxRect, Uint32 iconId, Uint32 internalID) : m_iconId(iconId)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_iconId = iconId;
-	m_pressed = 0;
 }
 
 void GUI_VipIcon::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
@@ -1228,7 +1223,7 @@ void GUI_VipIcon::onLMouseUp(Sint32, Sint32)
 
 void GUI_VipIcon::renderIcon(Uint32 iconId, Sint32 x, Sint32 y)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	switch(iconId)
 	{
 		case 1: renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_VIP_001_X, GUI_UI_VIP_001_Y, x, y, GUI_UI_VIP_001_W, GUI_UI_VIP_001_H); break;
@@ -1241,6 +1236,7 @@ void GUI_VipIcon::renderIcon(Uint32 iconId, Sint32 x, Sint32 y)
 		case 8: renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_VIP_008_X, GUI_UI_VIP_008_Y, x, y, GUI_UI_VIP_008_W, GUI_UI_VIP_008_H); break;
 		case 9: renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_VIP_009_X, GUI_UI_VIP_009_Y, x, y, GUI_UI_VIP_009_W, GUI_UI_VIP_009_H); break;
 		case 10: renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_VIP_010_X, GUI_UI_VIP_010_Y, x, y, GUI_UI_VIP_010_W, GUI_UI_VIP_010_H); break;
+		default: break;
 	}
 }
 
@@ -1249,7 +1245,7 @@ void GUI_VipIcon::render()
 	bool pressed = (m_pressed == 1 ? true : false);
 	pressed = (m_iconId == g_vipIconId ? true : pressed);
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(pressed)
 	{
 		renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_TEXTURED_DOWN_X, GUI_UI_ICON_TEXTURED_DOWN_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);

@@ -29,13 +29,7 @@ extern Uint32 g_frameTime;
 GUI_ListBox::GUI_ListBox(iRect boxRect, Uint32 internalID)
 {
 	m_scrollBar = new GUI_VScrollBar(iRect(0, 0, 0, 0), 0, 0);
-	m_maxDisplay = 0;
 	setRect(boxRect);
-	m_lastClick = 0;
-	m_select = -1;
-	m_doubleClicked = false;
-	m_evtParam = 0;
-	m_eventHandlerFunction = NULL;
 	m_internalID = internalID;
 }
 
@@ -125,6 +119,9 @@ void GUI_ListBox::onKeyDown(SDL_Event& event)
 				UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, m_select);
 			return;
 		}
+
+		default:
+			break;
 	}
 }
 
@@ -193,7 +190,7 @@ void GUI_ListBox::onWheel(Sint32, Sint32, bool wheelUP)
 
 void GUI_ListBox::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1 + 1, 1, m_tRect.y2 - 1);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1 + 1, m_tRect.y1 + m_tRect.y2 - 1, m_tRect.x2 - 1, 1);

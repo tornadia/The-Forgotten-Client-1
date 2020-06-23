@@ -29,8 +29,6 @@ GUI_Content::GUI_Content(iRect boxRect, Uint32 internalID)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_visible = true;
-	m_actElement = NULL;
 }
 
 GUI_Content::~GUI_Content()

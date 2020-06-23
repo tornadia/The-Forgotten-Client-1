@@ -34,79 +34,20 @@ extern Uint32 g_spriteCounts;
 extern Uint16 g_pictureCounts;
 extern bool g_inited;
 
-SurfaceVulkan::SurfaceVulkan() : m_automapTilesBuff(MAX_AUTOMAPTILES), m_spritesIds(MAX_SPRITES)
+static const float inv255f = (1.0f / 255.0f);
+
+SurfaceVulkan::SurfaceVulkan()
 {
-	m_instance = VK_NULL_HANDLE;
-	m_surface = VK_NULL_HANDLE;
-	m_gpu = VK_NULL_HANDLE;
-	m_device = VK_NULL_HANDLE;
-	m_queue = VK_NULL_HANDLE;
-	m_presentQueue = VK_NULL_HANDLE;
-	m_commandPool = VK_NULL_HANDLE;
-	m_commandDataBuffer = VK_NULL_HANDLE;
-	m_descriptorSetLayout = VK_NULL_HANDLE;
-
-	m_storeRenderPass = m_clearRenderPass = m_textureStoreRenderPass = m_textureClearRenderPass = VK_NULL_HANDLE;
-	m_swapChain = VK_NULL_HANDLE;
-	m_samplers[0] = m_samplers[1] = VK_NULL_HANDLE;
-	for(Sint32 i = GRAPHIC_PIPELINE_RGBA; i < GRAPHIC_PIPELINE_LAST; ++i)
-	{
-		m_pipelineLayout[i] = VK_NULL_HANDLE;
-		m_graphicsPipeline[i] = VK_NULL_HANDLE;
-	}
-	for(size_t i = 0; i < VULKAN_INFLIGHT_FRAMES; ++i)
-	{
-		m_presentCompleteSemaphores[i] = VK_NULL_HANDLE;
-		m_renderCompleteSemaphores[i] = VK_NULL_HANDLE;
-		m_renderFences[i] = VK_NULL_HANDLE;
-		m_commandVertexBuffers[i] = VK_NULL_HANDLE;
-		m_commandBuffers[i] = VK_NULL_HANDLE;
-
-		m_staggingBuffer[i] = VK_NULL_HANDLE;
-		m_staggingBufferMemory[i] = VK_NULL_HANDLE;
-		m_vertexBuffer[i] = VK_NULL_HANDLE;
-		m_vertexBufferMemory[i] = VK_NULL_HANDLE;
-		m_vertexBufferSize[i] = 0;
-	}
-
-	m_vertexOffset = 0;
-	m_lightVertices = 0;
-	m_gameVertices = 0;
-
-	m_imageCount = 0;
-	m_renderFrame = 0;
-	m_currentGraphicPipeline = GRAPHIC_PIPELINE_LAST;
-
-	m_totalVRAM = 0;
-	m_spriteChecker = 0;
-	m_currentFrame = 0;
-
-	m_spriteAtlases = 0;
-	m_spritesPerAtlas = 0;
-	m_spritesPerModulo = 0;
-
-	m_maxTextureSize = 1024;
-	m_integer_scaling_width = 0;
-	m_integer_scaling_height = 0;
-
-	m_software = NULL;
-	m_hardware = NULL;
-
-	m_spriteAtlas = NULL;
-	m_scaled_gameWindow = NULL;
-	m_pictures = NULL;
-	m_gameWindow = NULL;
-
-	m_haveSharpening = false;
-	m_scheduleSpriteDraw = false;
-
-	m_vulkanVertices.reserve(1048576);
+	m_vulkanVertices.reserve(VULKAN_PREALLOCATED_VERTICES);
 	m_sprites.reserve(MAX_SPRITES);
 	m_automapTiles.reserve(MAX_AUTOMAPTILES);
 }
 
 SurfaceVulkan::~SurfaceVulkan()
 {
+	vkQueueWaitIdle(m_presentQueue);
+	vkQueueWaitIdle(m_queue);
+	vkDeviceWaitIdle(m_device);
 	if(m_software)
 		SDL_free(m_software);
 
@@ -127,12 +68,12 @@ SurfaceVulkan::~SurfaceVulkan()
 	for(U32BImages::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseVulkanTexture(it->second);
 
-	for(std::vector<VulkanTexture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+	for(std::vector<VulkanTexture>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
 		releaseVulkanTexture((*it));
 
 	for(size_t i = 0; i < VULKAN_INFLIGHT_FRAMES; ++i)
 	{
-		for(std::vector<VulkanTexture*>::iterator it = m_texturesToDelete[i].begin(), end = m_texturesToDelete[i].end(); it != end; ++it)
+		for(std::vector<VulkanTexture>::iterator it = m_texturesToDelete[i].begin(), end = m_texturesToDelete[i].end(); it != end; ++it)
 			releaseVulkanTexture((*it));
 
 		for(std::vector<VkDeviceMemory>::iterator it = m_buffersMemoryToDelete[i].begin(), end = m_buffersMemoryToDelete[i].end(); it != end; ++it)
@@ -164,7 +105,6 @@ SurfaceVulkan::~SurfaceVulkan()
 
 	if(m_commandPool)
 	{
-		vkFreeCommandBuffers(m_device, m_commandPool, VULKAN_INFLIGHT_FRAMES, m_commandVertexBuffers);
 		vkFreeCommandBuffers(m_device, m_commandPool, VULKAN_INFLIGHT_FRAMES, m_commandBuffers);
 		vkFreeCommandBuffers(m_device, m_commandPool, 1, &m_commandDataBuffer);
 		vkDestroyCommandPool(m_device, m_commandPool, NULL);
@@ -193,6 +133,12 @@ SurfaceVulkan::~SurfaceVulkan()
 		if(m_vertexBuffer[i])
 			vkDestroyBuffer(m_device, m_vertexBuffer[i], NULL);
 	}
+
+	if(m_indexBufferMemory)
+		vkFreeMemory(m_device, m_indexBufferMemory, NULL);
+
+	if(m_indexBuffer)
+		vkDestroyBuffer(m_device, m_indexBuffer, NULL);
 
 	if(m_device)
 		vkDestroyDevice(m_device, NULL);
@@ -304,14 +250,14 @@ Uint32 SurfaceVulkan::findMemoryType(Uint32 typeFilter, VkMemoryPropertyFlags pr
 	return 0;//Throw here
 }
 
-VkShaderModule SurfaceVulkan::createShaderModule(const char* code, size_t codesize)
+VkShaderModule SurfaceVulkan::createShaderModule(const Uint32* code, size_t codesize)
 {
 	VkShaderModuleCreateInfo createInfo;
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.pNext = NULL;
 	createInfo.flags = 0;
 	createInfo.codeSize = codesize;
-	createInfo.pCode = SDL_reinterpret_cast(const Uint32*, code);
+	createInfo.pCode = code;
 
 	VkShaderModule shaderModule;
 	if(vkCreateShaderModule(m_device, &createInfo, NULL, &shaderModule) != VK_SUCCESS)
@@ -319,21 +265,18 @@ VkShaderModule SurfaceVulkan::createShaderModule(const char* code, size_t codesi
 	return shaderModule;
 }
 
-void SurfaceVulkan::setupTextureRendering(VulkanTexture* texture)
+void SurfaceVulkan::setupTextureRendering(VulkanTexture& texture)
 {
-	vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout[m_currentGraphicPipeline], 0, 1, &texture->m_descriptorSet, 0, NULL);
+	vkCmdBindDescriptorSets(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout[m_currentGraphicPipeline], 0, 1, &texture.m_descriptorSet, 0, NULL);
 }
 
-VulkanTexture* SurfaceVulkan::createVulkanTexture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer)
+bool SurfaceVulkan::createVulkanTexture(VulkanTexture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer)
 {
-	VulkanTexture* texture = new VulkanTexture();
-	if(!texture)
-		return NULL;
-
-	texture->m_width = width;
-	texture->m_height = height;
-	texture->m_scaleW = 1.0f / width;
-	texture->m_scaleH = 1.0f / height;
+	releaseVulkanTexture(texture);
+	texture.m_width = width;
+	texture.m_height = height;
+	texture.m_scaleW = 1.0f / width;
+	texture.m_scaleH = 1.0f / height;
 
 	VkImageCreateInfo imageInfo;
 	imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -356,37 +299,37 @@ VulkanTexture* SurfaceVulkan::createVulkanTexture(Uint32 width, Uint32 height, b
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imageInfo.queueFamilyIndexCount = 0;
 	imageInfo.pQueueFamilyIndices = NULL;
-	if(vkCreateImage(m_device, &imageInfo, NULL, &texture->m_textureImage) != VK_SUCCESS)
+	if(vkCreateImage(m_device, &imageInfo, NULL, &texture.m_textureImage) != VK_SUCCESS)
 	{
 		releaseVulkanTexture(texture);
-		return NULL;
+		return false;
 	}
 
 	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(m_device, texture->m_textureImage, &memRequirements);
+	vkGetImageMemoryRequirements(m_device, texture.m_textureImage, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo;
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.pNext = NULL;
 	allocInfo.allocationSize = memRequirements.size;
 	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	if(vkAllocateMemory(m_device, &allocInfo, NULL, &texture->m_textureImageMemory) != VK_SUCCESS)
+	if(vkAllocateMemory(m_device, &allocInfo, NULL, &texture.m_textureImageMemory) != VK_SUCCESS)
 	{
 		releaseVulkanTexture(texture);
-		return NULL;
+		return false;
 	}
 
-	if(vkBindImageMemory(m_device, texture->m_textureImage, texture->m_textureImageMemory, 0) != VK_SUCCESS)
+	if(vkBindImageMemory(m_device, texture.m_textureImage, texture.m_textureImageMemory, 0) != VK_SUCCESS)
 	{
 		releaseVulkanTexture(texture);
-		return NULL;
+		return false;
 	}
 
 	VkImageViewCreateInfo viewInfo;
 	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	viewInfo.pNext = NULL;
 	viewInfo.flags = 0;
-	viewInfo.image = texture->m_textureImage;
+	viewInfo.image = texture.m_textureImage;
 	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	viewInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
 	viewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -398,10 +341,10 @@ VulkanTexture* SurfaceVulkan::createVulkanTexture(Uint32 width, Uint32 height, b
 	viewInfo.subresourceRange.levelCount = 1;
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
-	if(vkCreateImageView(m_device, &viewInfo, NULL, &texture->m_textureView) != VK_SUCCESS)
+	if(vkCreateImageView(m_device, &viewInfo, NULL, &texture.m_textureView) != VK_SUCCESS)
 	{
 		releaseVulkanTexture(texture);
-		return NULL;
+		return false;
 	}
 
 	VkDescriptorPoolSize poolSize;
@@ -415,33 +358,33 @@ VulkanTexture* SurfaceVulkan::createVulkanTexture(Uint32 width, Uint32 height, b
 	poolInfo.poolSizeCount = 1;
 	poolInfo.pPoolSizes = &poolSize;
 	poolInfo.maxSets = 1;
-	if(vkCreateDescriptorPool(m_device, &poolInfo, NULL, &texture->m_descriptorPool) != VK_SUCCESS)
+	if(vkCreateDescriptorPool(m_device, &poolInfo, NULL, &texture.m_descriptorPool) != VK_SUCCESS)
 	{
 		releaseVulkanTexture(texture);
-		return NULL;
+		return false;
 	}
 
 	VkDescriptorSetAllocateInfo allocSetInfo;
 	allocSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocSetInfo.pNext = NULL;
-	allocSetInfo.descriptorPool = texture->m_descriptorPool;
+	allocSetInfo.descriptorPool = texture.m_descriptorPool;
 	allocSetInfo.descriptorSetCount = 1;
 	allocSetInfo.pSetLayouts = &m_descriptorSetLayout;
-	if(vkAllocateDescriptorSets(m_device, &allocSetInfo, &texture->m_descriptorSet) != VK_SUCCESS)
+	if(vkAllocateDescriptorSets(m_device, &allocSetInfo, &texture.m_descriptorSet) != VK_SUCCESS)
 	{
 		releaseVulkanTexture(texture);
-		return NULL;
+		return false;
 	}
 
 	VkDescriptorImageInfo imageDescInfo;
 	imageDescInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	imageDescInfo.imageView = texture->m_textureView;
+	imageDescInfo.imageView = texture.m_textureView;
 	imageDescInfo.sampler = m_samplers[(linearSampler ? 1 : 0)];
 
 	VkWriteDescriptorSet descriptorWrite;
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorWrite.pNext = NULL;
-	descriptorWrite.dstSet = texture->m_descriptorSet;
+	descriptorWrite.dstSet = texture.m_descriptorSet;
 	descriptorWrite.dstBinding = 0;
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -450,10 +393,10 @@ VulkanTexture* SurfaceVulkan::createVulkanTexture(Uint32 width, Uint32 height, b
 	descriptorWrite.pBufferInfo = NULL;
 	descriptorWrite.pTexelBufferView = NULL;
 	vkUpdateDescriptorSets(m_device, 1, &descriptorWrite, 0, NULL);
-	return texture;
+	return true;
 }
 
-bool SurfaceVulkan::createTextureFramebuffer(VulkanTexture* texture)
+bool SurfaceVulkan::createTextureFramebuffer(VulkanTexture& texture)
 {
 	VkFramebufferCreateInfo framebufferInfo;
 	framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -461,16 +404,17 @@ bool SurfaceVulkan::createTextureFramebuffer(VulkanTexture* texture)
 	framebufferInfo.flags = 0;
 	framebufferInfo.renderPass = m_textureStoreRenderPass;
 	framebufferInfo.attachmentCount = 1;
-	framebufferInfo.pAttachments = &texture->m_textureView;
-	framebufferInfo.width = texture->m_width;
-	framebufferInfo.height = texture->m_height;
+	framebufferInfo.pAttachments = &texture.m_textureView;
+	framebufferInfo.width = texture.m_width;
+	framebufferInfo.height = texture.m_height;
 	framebufferInfo.layers = 1;
-	if(vkCreateFramebuffer(m_device, &framebufferInfo, NULL, &texture->m_framebuffer) != VK_SUCCESS)
+	if(vkCreateFramebuffer(m_device, &framebufferInfo, NULL, &texture.m_framebuffer) != VK_SUCCESS)
 		return false;
+
 	return true;
 }
 
-bool SurfaceVulkan::updateTextureData(VulkanTexture* texture, unsigned char* pixels)
+bool SurfaceVulkan::updateTextureData(VulkanTexture& texture, unsigned char* pixels)
 {
 	VkCommandBufferBeginInfo beginInfo;
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -480,7 +424,7 @@ bool SurfaceVulkan::updateTextureData(VulkanTexture* texture, unsigned char* pix
 	vkResetCommandBuffer(m_commandDataBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 	vkBeginCommandBuffer(m_commandDataBuffer, &beginInfo);
 
-	VkDeviceSize imageSize = (texture->m_width * texture->m_height * 4);
+	VkDeviceSize imageSize = (texture.m_width * texture.m_height * 4);
 	VkBuffer stagingBuffer = NULL;
 	VkDeviceMemory stagingBufferMemory = NULL;
 	VkBufferCreateInfo bufferInfo;
@@ -526,7 +470,7 @@ bool SurfaceVulkan::updateTextureData(VulkanTexture* texture, unsigned char* pix
 	barrier.subresourceRange.levelCount = 1;
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
-	barrier.image = texture->m_textureImage;
+	barrier.image = texture.m_textureImage;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	barrier.srcAccessMask = 0;
@@ -542,8 +486,8 @@ bool SurfaceVulkan::updateTextureData(VulkanTexture* texture, unsigned char* pix
 	region.imageSubresource.baseArrayLayer = 0;
 	region.imageSubresource.layerCount = 1;
 	region.imageOffset = {0, 0, 0};
-	region.imageExtent = {texture->m_width, texture->m_height, 1};
-	vkCmdCopyBufferToImage(m_commandDataBuffer, stagingBuffer, texture->m_textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+	region.imageExtent = {texture.m_width, texture.m_height, 1};
+	vkCmdCopyBufferToImage(m_commandDataBuffer, stagingBuffer, texture.m_textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
 	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -571,21 +515,38 @@ bool SurfaceVulkan::updateTextureData(VulkanTexture* texture, unsigned char* pix
 	return true;
 }
 
-void SurfaceVulkan::releaseVulkanTexture(VulkanTexture* texture)
+void SurfaceVulkan::releaseVulkanTexture(VulkanTexture& texture)
 {
-	if(texture->m_descriptorSet)
-		vkFreeDescriptorSets(m_device, texture->m_descriptorPool, 1, &texture->m_descriptorSet);
-	if(texture->m_descriptorPool)
-		vkDestroyDescriptorPool(m_device, texture->m_descriptorPool, NULL);
-	if(texture->m_framebuffer)
-		vkDestroyFramebuffer(m_device, texture->m_framebuffer, NULL);
-	if(texture->m_textureView)
-		vkDestroyImageView(m_device, texture->m_textureView, NULL);
-	if(texture->m_textureImageMemory)
-		vkFreeMemory(m_device, texture->m_textureImageMemory, NULL);
-	if(texture->m_textureImage)
-		vkDestroyImage(m_device, texture->m_textureImage, NULL);
-	delete texture;
+	if(texture.m_descriptorSet)
+	{
+		vkResetDescriptorPool(m_device, texture.m_descriptorPool, 0);
+		texture.m_descriptorSet = VK_NULL_HANDLE;
+	}
+	if(texture.m_descriptorPool)
+	{
+		vkDestroyDescriptorPool(m_device, texture.m_descriptorPool, NULL);
+		texture.m_descriptorPool = VK_NULL_HANDLE;
+	}
+	if(texture.m_framebuffer)
+	{
+		vkDestroyFramebuffer(m_device, texture.m_framebuffer, NULL);
+		texture.m_framebuffer = VK_NULL_HANDLE;
+	}
+	if(texture.m_textureView)
+	{
+		vkDestroyImageView(m_device, texture.m_textureView, NULL);
+		texture.m_textureView = VK_NULL_HANDLE;
+	}
+	if(texture.m_textureImageMemory)
+	{
+		vkFreeMemory(m_device, texture.m_textureImageMemory, NULL);
+		texture.m_textureImageMemory = VK_NULL_HANDLE;
+	}
+	if(texture.m_textureImage)
+	{
+		vkDestroyImage(m_device, texture.m_textureImage, NULL);
+		texture.m_textureImage = VK_NULL_HANDLE;
+	}
 }
 
 void SurfaceVulkan::setupGraphicPipeline(Sint32 pipelineId)
@@ -601,20 +562,20 @@ bool SurfaceVulkan::CreateGraphicPipeline(Sint32 pipelineId)
 {
 	VkShaderModule vertShaderModule = VK_NULL_HANDLE;
 	VkShaderModule fragShaderModule = VK_NULL_HANDLE;
-	if(pipelineId == GRAPHIC_PIPELINE_RGBA || pipelineId == GRAPHIC_PIPELINE_RGBA_LINES || pipelineId == GRAPHIC_PIPELINE_LIGHT_MAP)
+	if(pipelineId == GRAPHIC_PIPELINE_RGBA || pipelineId == GRAPHIC_PIPELINE_LIGHT_MAP)
 	{
-		vertShaderModule = createShaderModule(RGB_VERTEX_SHADER, sizeof(RGB_VERTEX_SHADER) - 1);
-		fragShaderModule = createShaderModule(RGB_FRAGMENT_SHADER, sizeof(RGB_FRAGMENT_SHADER) - 1);
+		vertShaderModule = createShaderModule(VK_VertexShader_Solid, sizeof(VK_VertexShader_Solid));
+		fragShaderModule = createShaderModule(VK_PixelShader_Solid, sizeof(VK_PixelShader_Solid));
 	}
 	else if(pipelineId == GRAPHIC_PIPELINE_SHARPEN)
 	{
-		vertShaderModule = createShaderModule(SHARPEN_VERTEX_SHADER, sizeof(SHARPEN_VERTEX_SHADER) - 1);
-		fragShaderModule = createShaderModule(SHARPEN_FRAGMENT_SHADER, sizeof(SHARPEN_FRAGMENT_SHADER) - 1);
+		vertShaderModule = createShaderModule(VK_VertexShader_Sharpen, sizeof(VK_VertexShader_Sharpen));
+		fragShaderModule = createShaderModule(VK_PixelShader_Sharpen, sizeof(VK_PixelShader_Sharpen));
 	}
 	else
 	{
-		vertShaderModule = createShaderModule(TEXTURE_VERTEX_SHADER, sizeof(TEXTURE_VERTEX_SHADER) - 1);
-		fragShaderModule = createShaderModule(TEXTURE_FRAGMENT_SHADER, sizeof(TEXTURE_FRAGMENT_SHADER) - 1);
+		vertShaderModule = createShaderModule(VK_VertexShader_Texture, sizeof(VK_VertexShader_Texture));
+		fragShaderModule = createShaderModule(VK_PixelShader_Texture, sizeof(VK_PixelShader_Texture));
 	}
 	if(!vertShaderModule || !fragShaderModule)
 	{
@@ -683,6 +644,7 @@ bool SurfaceVulkan::CreateGraphicPipeline(Sint32 pipelineId)
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.pNext = NULL;
 	inputAssembly.flags = 0;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 	VkPipelineViewportStateCreateInfo viewportState;
@@ -715,13 +677,13 @@ bool SurfaceVulkan::CreateGraphicPipeline(Sint32 pipelineId)
 	multisampling.flags = 0;
 	multisampling.sampleShadingEnable = VK_FALSE;
 	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-	multisampling.minSampleShading = 0.0f;
+	multisampling.minSampleShading = 1.0f;
 	multisampling.pSampleMask = NULL;
 	multisampling.alphaToCoverageEnable = VK_FALSE;
 	multisampling.alphaToOneEnable = VK_FALSE;
 
 	VkPushConstantRange pushConstantInfo;
-	pushConstantInfo.stageFlags = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+	pushConstantInfo.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	pushConstantInfo.offset = 0;
 	pushConstantInfo.size = sizeof(struct PushConstant_Projection);
 
@@ -729,18 +691,6 @@ bool SurfaceVulkan::CreateGraphicPipeline(Sint32 pipelineId)
 	colorBlendAttachment.colorWriteMask = (VK_COLOR_COMPONENT_R_BIT|VK_COLOR_COMPONENT_G_BIT|VK_COLOR_COMPONENT_B_BIT|VK_COLOR_COMPONENT_A_BIT);
 	switch(pipelineId)
 	{
-		case GRAPHIC_PIPELINE_RGBA_LINES:
-		{
-			colorBlendAttachment.blendEnable = VK_TRUE;
-			colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-			colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-		}
-		break;
 		case GRAPHIC_PIPELINE_LIGHT_MAP:
 		{
 			colorBlendAttachment.blendEnable = VK_TRUE;
@@ -753,42 +703,6 @@ bool SurfaceVulkan::CreateGraphicPipeline(Sint32 pipelineId)
 			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 		}
 		break;
-		case GRAPHIC_PIPELINE_TEXTURE:
-		{
-			colorBlendAttachment.blendEnable = VK_TRUE;
-			colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-			colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-		}
-		break;
-		case GRAPHIC_PIPELINE_TEXTURE_NON_BLEND:
-		{
-			colorBlendAttachment.blendEnable = VK_FALSE;
-			colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-			colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-			colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-			colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-		}
-		break;
-		case GRAPHIC_PIPELINE_TEXTURE_TRIANGLES:
-		{
-			colorBlendAttachment.blendEnable = VK_TRUE;
-			colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-			colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-			colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-			colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-		}
-		break;
 		case GRAPHIC_PIPELINE_SHARPEN:
 		{
 			colorBlendAttachment.blendEnable = VK_FALSE;
@@ -798,7 +712,6 @@ bool SurfaceVulkan::CreateGraphicPipeline(Sint32 pipelineId)
 			colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 			colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 			pushConstantInfo.size = sizeof(struct PushConstant_Sharpen);
 		}
 		break;
@@ -811,7 +724,6 @@ bool SurfaceVulkan::CreateGraphicPipeline(Sint32 pipelineId)
 			colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 			colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 			colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-			inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 		}
 		break;
 	}
@@ -887,15 +799,10 @@ bool SurfaceVulkan::CreateGraphicPipeline(Sint32 pipelineId)
 void SurfaceVulkan::cleanupSwapChainResources()
 {
 	if(m_scaled_gameWindow)
-	{
 		releaseVulkanTexture(m_scaled_gameWindow);
-		m_scaled_gameWindow = NULL;
-	}
+
 	if(m_gameWindow)
-	{
 		releaseVulkanTexture(m_gameWindow);
-		m_gameWindow = NULL;
-	}
 
 	for(std::vector<VkFramebuffer>::iterator it = m_swapChainFrameBuffer.begin(), end = m_swapChainFrameBuffer.end(); it != end; ++it)
 		vkDestroyFramebuffer(m_device, (*it), NULL);
@@ -906,37 +813,37 @@ void SurfaceVulkan::cleanupSwapChainResources()
 		if(m_graphicsPipeline[i])
 		{
 			vkDestroyPipeline(m_device, m_graphicsPipeline[i], NULL);
-			m_graphicsPipeline[i] = NULL;
+			m_graphicsPipeline[i] = VK_NULL_HANDLE;
 		}
 		if(m_pipelineLayout[i])
 		{
 			vkDestroyPipelineLayout(m_device, m_pipelineLayout[i], NULL);
-			m_pipelineLayout[i] = NULL;
+			m_pipelineLayout[i] = VK_NULL_HANDLE;
 		}
 	}
 
 	if(m_textureClearRenderPass)
 	{
 		vkDestroyRenderPass(m_device, m_textureClearRenderPass, NULL);
-		m_textureClearRenderPass = NULL;
+		m_textureClearRenderPass = VK_NULL_HANDLE;
 	}
 
 	if(m_textureStoreRenderPass)
 	{
 		vkDestroyRenderPass(m_device, m_textureStoreRenderPass, NULL);
-		m_textureStoreRenderPass = NULL;
+		m_textureStoreRenderPass = VK_NULL_HANDLE;
 	}
 
 	if(m_clearRenderPass)
 	{
 		vkDestroyRenderPass(m_device, m_clearRenderPass, NULL);
-		m_clearRenderPass = NULL;
+		m_clearRenderPass = VK_NULL_HANDLE;
 	}
 
 	if(m_storeRenderPass)
 	{
 		vkDestroyRenderPass(m_device, m_storeRenderPass, NULL);
-		m_storeRenderPass = NULL;
+		m_storeRenderPass = VK_NULL_HANDLE;
 	}
 
 	for(std::vector<VkImageView>::iterator it = m_swapChainImageViews.begin(), end = m_swapChainImageViews.end(); it != end; ++it)
@@ -946,7 +853,7 @@ void SurfaceVulkan::cleanupSwapChainResources()
 	if(m_swapChain)
 	{
 		vkDestroySwapchainKHR(m_device, m_swapChain, NULL);
-		m_swapChain = NULL;
+		m_swapChain = VK_NULL_HANDLE;
 	}
 }
 
@@ -1003,7 +910,6 @@ void SurfaceVulkan::reinitSwapChainResources()
 	{
 		UTIL_MessageBox(true, "Vulkan: Failed to create swapchain.");
 		exit(-1);
-		return;
 	}
 
 	vkGetSwapchainImagesKHR(m_device, m_swapChain, &m_imageCount, NULL);
@@ -1011,7 +917,6 @@ void SurfaceVulkan::reinitSwapChainResources()
 	{
 		UTIL_MessageBox(true, "Vulkan: Failed to create swapchain.");
 		exit(-1);
-		return;
 	}
 
 	size_t imageCount = SDL_static_cast(size_t, m_imageCount);
@@ -1044,7 +949,6 @@ void SurfaceVulkan::reinitSwapChainResources()
 		{
 			UTIL_MessageBox(true, "Vulkan: Failed to create imageview.");
 			exit(-1);
-			return;
 		}
 	}
 
@@ -1078,10 +982,10 @@ void SurfaceVulkan::reinitSwapChainResources()
 	VkSubpassDependency dependency;
 	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	dependency.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	dependency.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 	VkRenderPassCreateInfo renderPassInfo;
@@ -1098,49 +1002,38 @@ void SurfaceVulkan::reinitSwapChainResources()
 	{
 		UTIL_MessageBox(true, "Vulkan: Failed to create render pass.");
 		exit(-1);
-		return;
 	}
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	if(vkCreateRenderPass(m_device, &renderPassInfo, NULL, &m_clearRenderPass) != VK_SUCCESS)
 	{
 		UTIL_MessageBox(true, "Vulkan: Failed to create render pass.");
 		exit(-1);
-		return;
 	}
 	colorAttachment.format = VK_FORMAT_B8G8R8A8_UNORM;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
-	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_GENERAL;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	dependency.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	if(vkCreateRenderPass(m_device, &renderPassInfo, NULL, &m_textureStoreRenderPass) != VK_SUCCESS)
 	{
 		UTIL_MessageBox(true, "Vulkan: Failed to create render pass.");
 		exit(-1);
-		return;
 	}
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	if(vkCreateRenderPass(m_device, &renderPassInfo, NULL, &m_textureClearRenderPass) != VK_SUCCESS)
 	{
 		UTIL_MessageBox(true, "Vulkan: Failed to create render pass.");
 		exit(-1);
-		return;
 	}
 
-	if(!CreateGraphicPipeline(GRAPHIC_PIPELINE_RGBA) || !CreateGraphicPipeline(GRAPHIC_PIPELINE_RGBA_LINES) || !CreateGraphicPipeline(GRAPHIC_PIPELINE_LIGHT_MAP))
+	if(!CreateGraphicPipeline(GRAPHIC_PIPELINE_RGBA) || !CreateGraphicPipeline(GRAPHIC_PIPELINE_LIGHT_MAP))
 	{
 		UTIL_MessageBox(true, "Vulkan: Failed to create graphic pipeline(SOLID COLORS).");
 		exit(-1);
-		return;
 	}
 	
-	if(!CreateGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE) || !CreateGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_NON_BLEND) || !CreateGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_TRIANGLES))
+	if(!CreateGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE))
 	{
-		UTIL_MessageBox(true, "Vulkan: Failed to create graphic pipeline(RGBA TEXTURES).");
+		UTIL_MessageBox(true, "Vulkan: Failed to create graphic pipeline(TEXTURE).");
 		exit(-1);
-		return;
 	}
 
 	if(CreateGraphicPipeline(GRAPHIC_PIPELINE_SHARPEN))
@@ -1163,30 +1056,20 @@ void SurfaceVulkan::reinitSwapChainResources()
 		{
 			UTIL_MessageBox(true, "Vulkan: Failed to create framebuffers.");
 			exit(-1);
-			return;
 		}
 	}
 }
 
 void SurfaceVulkan::setupProjection()
 {
-	VkMemoryBarrier barrier;
-	barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-	barrier.pNext = NULL;
-	barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
-
 	PushConstant_Projection projection;
 	projection.vkWidth = m_vkWidth;
 	projection.vkHeight = m_vkHeight;
-	for(Sint32 i = GRAPHIC_PIPELINE_RGBA; i <= GRAPHIC_PIPELINE_TEXTURE_TRIANGLES; ++i)
+	for(Sint32 i = GRAPHIC_PIPELINE_RGBA; i <= GRAPHIC_PIPELINE_TEXTURE; ++i)
 		vkCmdPushConstants(m_commandBuffer, m_pipelineLayout[i], VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct PushConstant_Projection), SDL_reinterpret_cast(void*, &projection));
-
-	vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
 }
 
-bool SurfaceVulkan::updateVertexBuffer(const void* vertexData, Uint32 dataSize)
+bool SurfaceVulkan::updateVertexBuffer(const void* vertexData, Uint32 dataSize, bool& redrawFrame)
 {
 	VkDeviceSize deviceSize = SDL_static_cast(VkDeviceSize, dataSize);
 	if(m_vertexBufferSize[m_renderFrame] < dataSize || !m_vertexBuffer[m_renderFrame] || !m_vertexBufferMemory[m_renderFrame] || !m_staggingBuffer[m_renderFrame] || !m_staggingBufferMemory[m_renderFrame])
@@ -1217,7 +1100,7 @@ bool SurfaceVulkan::updateVertexBuffer(const void* vertexData, Uint32 dataSize)
 		bufferInfo.pNext = NULL;
 		bufferInfo.flags = 0;
 		bufferInfo.size = deviceSize;
-		bufferInfo.usage = (VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		bufferInfo.usage = (VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
 		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 		bufferInfo.queueFamilyIndexCount = 0;
 		bufferInfo.pQueueFamilyIndices = NULL;
@@ -1256,7 +1139,18 @@ bool SurfaceVulkan::updateVertexBuffer(const void* vertexData, Uint32 dataSize)
 
 		vkBindBufferMemory(m_device, m_staggingBuffer[m_renderFrame], m_staggingBufferMemory[m_renderFrame], 0);
 		m_vertexBufferSize[m_renderFrame] = dataSize;
+
+		redrawFrame = true;
+		return true;
 	}
+
+	VkCommandBufferBeginInfo beginInfo;
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.pNext = NULL;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	beginInfo.pInheritanceInfo = NULL;
+	vkResetCommandBuffer(m_commandDataBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+	vkBeginCommandBuffer(m_commandDataBuffer, &beginInfo);
 
 	void* mappedMem;
 	if(vkMapMemory(m_device, m_staggingBufferMemory[m_renderFrame], 0, deviceSize, 0, &mappedMem) != VK_SUCCESS)
@@ -1269,7 +1163,127 @@ bool SurfaceVulkan::updateVertexBuffer(const void* vertexData, Uint32 dataSize)
 	copyRegion.srcOffset = 0;
 	copyRegion.dstOffset = 0;
 	copyRegion.size = deviceSize;
-	vkCmdCopyBuffer(m_commandVertexBuffers[m_renderFrame], m_staggingBuffer[m_renderFrame], m_vertexBuffer[m_renderFrame], 1, &copyRegion);
+	vkCmdCopyBuffer(m_commandDataBuffer, m_staggingBuffer[m_renderFrame], m_vertexBuffer[m_renderFrame], 1, &copyRegion);
+
+	VkSubmitInfo submitInfo;
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = NULL;
+	submitInfo.waitSemaphoreCount = 0;
+	submitInfo.pWaitSemaphores = NULL;
+	submitInfo.pWaitDstStageMask = NULL;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &m_commandDataBuffer;
+	submitInfo.signalSemaphoreCount = 0;
+	submitInfo.pSignalSemaphores = NULL;
+	vkEndCommandBuffer(m_commandDataBuffer);
+	vkQueueSubmit(m_queue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(m_queue);
+	return true;
+}
+
+bool SurfaceVulkan::updateIndexBuffer(const void* indexData, Uint32 dataSize)
+{
+	VkDeviceSize deviceSize = SDL_static_cast(VkDeviceSize, dataSize);
+	if(m_indexBufferSize < dataSize || !m_indexBuffer || !m_indexBufferMemory)
+	{
+		if(m_indexBufferMemory)
+		{
+			vkFreeMemory(m_device, m_indexBufferMemory, NULL);
+			m_indexBufferMemory = VK_NULL_HANDLE;
+		}
+		if(m_indexBuffer)
+		{
+			vkDestroyBuffer(m_device, m_indexBuffer, NULL);
+			m_indexBuffer = VK_NULL_HANDLE;
+		}
+
+		VkBufferCreateInfo bufferInfo;
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.pNext = NULL;
+		bufferInfo.flags = 0;
+		bufferInfo.size = deviceSize;
+		bufferInfo.usage = (VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		bufferInfo.queueFamilyIndexCount = 0;
+		bufferInfo.pQueueFamilyIndices = NULL;
+		if(vkCreateBuffer(m_device, &bufferInfo, NULL, &m_indexBuffer) != VK_SUCCESS)
+			return false;
+
+		VkMemoryRequirements memRequirements;
+		vkGetBufferMemoryRequirements(m_device, m_indexBuffer, &memRequirements);
+
+		VkMemoryAllocateInfo allocInfo;
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = NULL;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if(vkAllocateMemory(m_device, &allocInfo, NULL, &m_indexBufferMemory) != VK_SUCCESS)
+			return false;
+		vkBindBufferMemory(m_device, m_indexBuffer, m_indexBufferMemory, 0);
+		m_indexBufferSize = dataSize;
+	}
+
+	VkCommandBufferBeginInfo beginInfo;
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.pNext = NULL;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	beginInfo.pInheritanceInfo = NULL;
+	vkResetCommandBuffer(m_commandDataBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+	vkBeginCommandBuffer(m_commandDataBuffer, &beginInfo);
+
+	VkBuffer staggingBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory staggingBufferMemory = VK_NULL_HANDLE;
+
+	VkBufferCreateInfo bufferInfo;
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.pNext = NULL;
+	bufferInfo.flags = 0;
+	bufferInfo.size = deviceSize;
+	bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufferInfo.queueFamilyIndexCount = 0;
+	bufferInfo.pQueueFamilyIndices = NULL;
+	if(vkCreateBuffer(m_device, &bufferInfo, NULL, &staggingBuffer) != VK_SUCCESS)
+		return false;
+
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(m_device, m_indexBuffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo;
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.pNext = NULL;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+	if(vkAllocateMemory(m_device, &allocInfo, NULL, &staggingBufferMemory) != VK_SUCCESS)
+		return false;
+	vkBindBufferMemory(m_device, staggingBuffer, staggingBufferMemory, 0);
+
+	void* mappedMem;
+	if(vkMapMemory(m_device, staggingBufferMemory, 0, deviceSize, 0, &mappedMem) != VK_SUCCESS)
+		return false;
+
+	UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, mappedMem), SDL_reinterpret_cast(const Uint8*, indexData), SDL_static_cast(size_t, dataSize));
+	vkUnmapMemory(m_device, staggingBufferMemory);
+
+	VkBufferCopy copyRegion;
+	copyRegion.srcOffset = 0;
+	copyRegion.dstOffset = 0;
+	copyRegion.size = deviceSize;
+	vkCmdCopyBuffer(m_commandDataBuffer, staggingBuffer, m_indexBuffer, 1, &copyRegion);
+
+	VkSubmitInfo submitInfo;
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext = NULL;
+	submitInfo.waitSemaphoreCount = 0;
+	submitInfo.pWaitSemaphores = NULL;
+	submitInfo.pWaitDstStageMask = NULL;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &m_commandDataBuffer;
+	submitInfo.signalSemaphoreCount = 0;
+	submitInfo.pSignalSemaphores = NULL;
+	vkEndCommandBuffer(m_commandDataBuffer);
+	vkQueueSubmit(m_queue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(m_queue);
 	return true;
 }
 
@@ -1312,6 +1326,7 @@ bool SurfaceVulkan::isSupported()
 		UTIL_MessageBox(false, "Vulkan: Failed to fetch Vulkan extensions.");
 		return false;
 	}
+	std::vector<const char*> needExtensions(extensions, extensions + extensionCount);
 
 	VkApplicationInfo app;
 	app.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -1329,8 +1344,8 @@ bool SurfaceVulkan::isSupported()
 	inst_info.pApplicationInfo = &app;
 	inst_info.enabledLayerCount = 0;
 	inst_info.ppEnabledLayerNames = SDL_reinterpret_cast(const char* const*, NULL);
-	inst_info.enabledExtensionCount = extensionCount;
-	inst_info.ppEnabledExtensionNames = SDL_reinterpret_cast(const char* const*, extensions);
+	inst_info.enabledExtensionCount = SDL_static_cast(Uint32, needExtensions.size());
+	inst_info.ppEnabledExtensionNames = needExtensions.data();
 	if(vkCreateInstance(&inst_info, NULL, &m_instance) != VK_SUCCESS)
 	{
 		UTIL_MessageBox(false, "Vulkan: Failed to create Vulkan instance.");
@@ -1407,7 +1422,7 @@ bool SurfaceVulkan::isSupported()
 	VKLoadFunction(vkAllocateDescriptorSets);
 	VKLoadFunction(vkUpdateDescriptorSets);
 	VKLoadFunction(vkCmdBindDescriptorSets);
-	VKLoadFunction(vkFreeDescriptorSets);
+	VKLoadFunction(vkResetDescriptorPool);
 	VKLoadFunction(vkCreateImage);
 	VKLoadFunction(vkDestroyImage);
 	VKLoadFunction(vkCreateImageView);
@@ -1427,7 +1442,9 @@ bool SurfaceVulkan::isSupported()
 	VKLoadFunction(vkCmdBindPipeline);
 	VKLoadFunction(vkCmdPushConstants);
 	VKLoadFunction(vkCmdBindVertexBuffers);
+	VKLoadFunction(vkCmdBindIndexBuffer);
 	VKLoadFunction(vkCmdDraw);
+	VKLoadFunction(vkCmdDrawIndexed);
 	VKLoadFunction(vkCmdCopyImage);
 	VKLoadFunction(vkCmdCopyBufferToImage);
 	VKLoadFunction(vkFlushMappedMemoryRanges);
@@ -1488,8 +1505,6 @@ bool SurfaceVulkan::isSupported()
 			if(queue_props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
 				m_graphicsQueueNodeIndex = i;
 		}
-		if(m_graphicsQueuePresentIndex != SDL_MAX_UINT32 && m_graphicsQueueNodeIndex != SDL_MAX_UINT32)
-			break;
 	}
 	if(m_graphicsQueueNodeIndex == SDL_MAX_UINT32 || m_graphicsQueuePresentIndex == SDL_MAX_UINT32)
 	{
@@ -1587,16 +1602,6 @@ bool SurfaceVulkan::isSupported()
 	allocInfo.commandPool = m_commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandBufferCount = VULKAN_INFLIGHT_FRAMES;
-	if(vkAllocateCommandBuffers(m_device, &allocInfo, m_commandVertexBuffers) != VK_SUCCESS)
-	{
-		UTIL_MessageBox(false, "Vulkan: Failed to allocate commandbuffers.");
-		return false;
-	}
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.pNext = NULL;
-	allocInfo.commandPool = m_commandPool;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-	allocInfo.commandBufferCount = VULKAN_INFLIGHT_FRAMES;
 	if(vkAllocateCommandBuffers(m_device, &allocInfo, m_commandBuffers) != VK_SUCCESS)
 	{
 		UTIL_MessageBox(false, "Vulkan: Failed to allocate commandbuffers.");
@@ -1690,22 +1695,12 @@ bool SurfaceVulkan::isSupported()
 void SurfaceVulkan::renderTargetsRecreate()
 {
 	if(m_scaled_gameWindow)
-	{
 		releaseVulkanTexture(m_scaled_gameWindow);
-		m_scaled_gameWindow = NULL;
-	}
-	if(m_gameWindow)
-	{
-		releaseVulkanTexture(m_gameWindow);
-		m_gameWindow = NULL;
-	}
 
-	m_gameWindow = createVulkanTexture(RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, (g_engine.getAntialiasing() == CLIENT_ANTIALIASING_NORMAL), true);
-	if(!m_gameWindow || !createTextureFramebuffer(m_gameWindow))
+	if(!createVulkanTexture(m_gameWindow, RENDERTARGET_WIDTH, RENDERTARGET_HEIGHT, (g_engine.getAntialiasing() == CLIENT_ANTIALIASING_NORMAL), true) || !createTextureFramebuffer(m_gameWindow))
 	{
 		UTIL_MessageBox(true, "Vulkan: Out of video memory.");
 		exit(-1);
-		return;
 	}
 }
 
@@ -1744,33 +1739,18 @@ void SurfaceVulkan::generateSpriteAtlases()
 
 	for(Uint32 i = 0; i < m_spriteAtlases; ++i)
 	{
-		VulkanTexture* texture = createVulkanTexture(m_spritesPerModulo, m_spritesPerModulo, false);
-		if(!texture)
+		m_spritesAtlas.emplace_back();
+		if(!createVulkanTexture(m_spritesAtlas.back(), m_spritesPerModulo, m_spritesPerModulo, false))
 		{
 			UTIL_MessageBox(true, "Vulkan: Out of video memory.");
 			exit(-1);
-			return;
 		}
-		m_spritesAtlas.push_back(texture);
-	}
-}
-
-void SurfaceVulkan::checkScheduledSprites()
-{
-	if(m_gameVertices > 0)
-	{
-		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_TRIANGLES);
-		setupTextureRendering(m_spriteAtlas);
-
-		vkCmdDraw(m_commandBuffer, m_gameVertices, 1, m_vertexOffset, 0);
-		m_vertexOffset += m_gameVertices;
-		m_gameVertices = 0;
 	}
 }
 
 void SurfaceVulkan::init()
 {
-	m_pictures = SDL_reinterpret_cast(VulkanTexture**, SDL_calloc(g_pictureCounts, sizeof(VulkanTexture*)));
+	m_pictures = SDL_reinterpret_cast(VulkanTexture*, SDL_calloc(g_pictureCounts, sizeof(VulkanTexture)));
 	if(!m_pictures)
 	{
 		SDL_OutOfMemory();
@@ -1779,6 +1759,97 @@ void SurfaceVulkan::init()
 		exit(-1);
 	}
 	renderTargetsRecreate();
+
+	#if VULKAN_USE_UINT_INDICES > 0
+	std::vector<Uint32> indices(VULKAN_MAX_INDICES);
+	Uint32 offset = 0;
+	#else
+	std::vector<Uint16> indices(VULKAN_MAX_INDICES);
+	Uint16 offset = 0;
+	#endif
+	for(Sint32 i = 0; i < VULKAN_MAX_INDICES; i += 6)
+	{
+		indices[i + 0] = 0 + offset;
+		indices[i + 1] = 1 + offset;
+		indices[i + 2] = 2 + offset;
+
+		indices[i + 3] = 3 + offset;
+		indices[i + 4] = 2 + offset;
+		indices[i + 5] = 1 + offset;
+
+		offset += 4;
+	}
+
+	#if VULKAN_USE_UINT_INDICES > 0
+	if(!updateIndexBuffer(&indices[0], SDL_static_cast(Uint32, sizeof(Uint32) * indices.size())))
+	#else
+	if(!updateIndexBuffer(&indices[0], SDL_static_cast(Uint32, sizeof(Uint16) * indices.size())))
+	#endif
+	{
+		UTIL_MessageBox(true, "SurfaceVulkan::updateIndexBuffer: Failed to upload buffer to gpu.");
+		exit(-1);
+	}
+
+	VkDeviceSize deviceSize = VULKAN_PREALLOCATED_VERTICES * sizeof(VertexVulkan);
+	for(size_t i = 0; i < VULKAN_INFLIGHT_FRAMES; ++i)
+	{
+		VkBufferCreateInfo bufferInfo;
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.pNext = NULL;
+		bufferInfo.flags = 0;
+		bufferInfo.size = deviceSize;
+		bufferInfo.usage = (VK_BUFFER_USAGE_TRANSFER_DST_BIT|VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		bufferInfo.queueFamilyIndexCount = 0;
+		bufferInfo.pQueueFamilyIndices = NULL;
+		if(vkCreateBuffer(m_device, &bufferInfo, NULL, &m_vertexBuffer[i]) != VK_SUCCESS)
+		{
+			UTIL_MessageBox(true, "Vulkan: Out of video memory.");
+			exit(-1);
+		}
+
+		VkMemoryRequirements memRequirements;
+		vkGetBufferMemoryRequirements(m_device, m_vertexBuffer[i], &memRequirements);
+
+		VkMemoryAllocateInfo allocInfo;
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = NULL;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		if(vkAllocateMemory(m_device, &allocInfo, NULL, &m_vertexBufferMemory[i]) != VK_SUCCESS)
+		{
+			UTIL_MessageBox(true, "Vulkan: Out of video memory.");
+			exit(-1);
+		}
+		vkBindBufferMemory(m_device, m_vertexBuffer[i], m_vertexBufferMemory[i], 0);
+
+		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+		bufferInfo.pNext = NULL;
+		bufferInfo.flags = 0;
+		bufferInfo.size = deviceSize;
+		bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+		bufferInfo.queueFamilyIndexCount = 0;
+		bufferInfo.pQueueFamilyIndices = NULL;
+		if(vkCreateBuffer(m_device, &bufferInfo, NULL, &m_staggingBuffer[i]) != VK_SUCCESS)
+		{
+			UTIL_MessageBox(true, "Vulkan: Out of video memory.");
+			exit(-1);
+		}
+
+		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+		allocInfo.pNext = NULL;
+		allocInfo.allocationSize = memRequirements.size;
+		allocInfo.memoryTypeIndex = findMemoryType(memRequirements.memoryTypeBits, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+		if(vkAllocateMemory(m_device, &allocInfo, NULL, &m_staggingBufferMemory[i]) != VK_SUCCESS)
+		{
+			UTIL_MessageBox(true, "Vulkan: Out of video memory.");
+			exit(-1);
+		}
+
+		vkBindBufferMemory(m_device, m_staggingBuffer[i], m_staggingBufferMemory[i], 0);
+		m_vertexBufferSize[i] = SDL_static_cast(Uint32, deviceSize);
+	}
 }
 
 void SurfaceVulkan::doResize(Sint32, Sint32)
@@ -1793,7 +1864,7 @@ void SurfaceVulkan::spriteManagerReset()
 	for(U32BImages::iterator it = m_automapTiles.begin(), end = m_automapTiles.end(); it != end; ++it)
 		releaseVulkanTexture(it->second);
 
-	for(std::vector<VulkanTexture*>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
+	for(std::vector<VulkanTexture>::iterator it = m_spritesAtlas.begin(), end = m_spritesAtlas.end(); it != end; ++it)
 		releaseVulkanTexture((*it));
 
 	m_sprites.clear();
@@ -1946,28 +2017,41 @@ void SurfaceVulkan::beginScene()
 
 	m_vkWidth = 2.0f / width;
 	m_vkHeight = 2.0f / height;
-
-	vkWaitForFences(m_device, 1, &m_renderFences[m_renderFrame], VK_TRUE, SDL_MAX_UINT64);
-	vkResetFences(m_device, 1, &m_renderFences[m_renderFrame]);
-
-	VkResult result = vkAcquireNextImageKHR(m_device, m_swapChain, SDL_MAX_UINT64, m_presentCompleteSemaphores[m_renderFrame], VK_NULL_HANDLE, &m_imageIndex);
-	if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+	if(!m_needRedrawFrame)
 	{
-		vkDeviceWaitIdle(m_device);
-		reinitSwapChainResources();
-		renderTargetsRecreate();
-		vkAcquireNextImageKHR(m_device, m_swapChain, SDL_MAX_UINT64, m_presentCompleteSemaphores[m_renderFrame], VK_NULL_HANDLE, &m_imageIndex);
+		vkWaitForFences(m_device, 1, &m_renderFences[m_renderFrame], VK_TRUE, SDL_MAX_UINT64);
+		vkResetFences(m_device, 1, &m_renderFences[m_renderFrame]);
+
+		VkResult result = vkAcquireNextImageKHR(m_device, m_swapChain, SDL_MAX_UINT64, m_presentCompleteSemaphores[m_renderFrame], VK_NULL_HANDLE, &m_imageIndex);
+		if(result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+		{
+			vkDeviceWaitIdle(m_device);
+			reinitSwapChainResources();
+			renderTargetsRecreate();
+			vkAcquireNextImageKHR(m_device, m_swapChain, SDL_MAX_UINT64, m_presentCompleteSemaphores[m_renderFrame], VK_NULL_HANDLE, &m_imageIndex);
+		}
+		else if(result != VK_SUCCESS)
+		{
+			vkDeviceWaitIdle(m_device);
+			return;
+		}
 	}
-	else if(result != VK_SUCCESS)
+	else
 	{
-		vkDeviceWaitIdle(m_device);
-		return;
+		if(!m_buffersMemoryToDelete[m_renderFrame].empty() || !m_buffersToDelete[m_renderFrame].empty())
+		{
+			//Incase we had any pending sprite transfer we need to reset our sprite atlas
+			//because we can't recover from it
+			m_sprites.clear();
+			m_spritesIds.clear();
+		}
+		m_needRedrawFrame = false;
 	}
 
-	std::vector<VulkanTexture*>& texturesToDelete = m_texturesToDelete[m_renderFrame];
+	std::vector<VulkanTexture>& texturesToDelete = m_texturesToDelete[m_renderFrame];
 	if(!texturesToDelete.empty())
 	{
-		for(std::vector<VulkanTexture*>::iterator it = texturesToDelete.begin(), end = texturesToDelete.end(); it != end; ++it)
+		for(std::vector<VulkanTexture>::iterator it = texturesToDelete.begin(), end = texturesToDelete.end(); it != end; ++it)
 			releaseVulkanTexture((*it));
 
 		texturesToDelete.clear();
@@ -2001,25 +2085,14 @@ void SurfaceVulkan::beginScene()
 	beginInfo.pInheritanceInfo = NULL;
 	vkResetCommandBuffer(m_commandBuffer, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 	vkBeginCommandBuffer(m_commandBuffer, &beginInfo);
-	if(m_graphicsQueueNodeIndex != m_graphicsQueuePresentIndex)
-	{
-		VkImageMemoryBarrier barrier;
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.pNext = NULL;
-		barrier.srcQueueFamilyIndex = m_graphicsQueuePresentIndex;
-		barrier.dstQueueFamilyIndex = m_graphicsQueueNodeIndex;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
-		barrier.image = m_swapChainImages[m_imageIndex];
-		barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		barrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		barrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
-	}
+
+	VkDeviceSize offset = 0;
+	vkCmdBindVertexBuffers(m_commandBuffer, 0, 1, &m_vertexBuffer[m_renderFrame], &offset);
+	#if VULKAN_USE_UINT_INDICES > 0
+	vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	#else
+	vkCmdBindIndexBuffer(m_commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+	#endif
 	
 	VkRenderPassBeginInfo rpBeginInfo;
 	rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2033,6 +2106,8 @@ void SurfaceVulkan::beginScene()
 	rpBeginInfo.pClearValues = NULL;
 	vkCmdBeginRenderPass(m_commandBuffer, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	m_currentGraphicPipeline = GRAPHIC_PIPELINE_LAST;
+	m_isInsideRenderpass = true;
+	m_binded_framebuffer = NULL;
 
 	VkViewport viewport;
 	viewport.x = viewport.y = 0.0f;
@@ -2053,49 +2128,26 @@ void SurfaceVulkan::beginScene()
 
 	m_spriteChecker = 0;
 	++m_currentFrame;
-	m_scheduleSpriteDraw = false;
 }
 
 void SurfaceVulkan::endScene()
 {
+	scheduleBatch();
 	vkCmdEndRenderPass(m_commandBuffer);
-	if(m_graphicsQueueNodeIndex != m_graphicsQueuePresentIndex)
-	{
-		VkImageMemoryBarrier barrier;
-		barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		barrier.pNext = NULL;
-		barrier.srcQueueFamilyIndex = m_graphicsQueueNodeIndex;
-		barrier.dstQueueFamilyIndex = m_graphicsQueuePresentIndex;
-		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		barrier.subresourceRange.baseMipLevel = 0;
-		barrier.subresourceRange.levelCount = 1;
-		barrier.subresourceRange.baseArrayLayer = 0;
-		barrier.subresourceRange.layerCount = 1;
-		barrier.image = m_swapChainImages[m_imageIndex];
-		barrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-		vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
-	}
 	vkEndCommandBuffer(m_commandBuffer);
-
-	VkCommandBufferBeginInfo beginInfo;
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.pNext = NULL;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	beginInfo.pInheritanceInfo = NULL;
-	vkResetCommandBuffer(m_commandVertexBuffers[m_renderFrame], VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-	vkBeginCommandBuffer(m_commandVertexBuffers[m_renderFrame], &beginInfo);
-	if(!updateVertexBuffer(&m_vulkanVertices[0], SDL_static_cast(Uint32, sizeof(VertexVulkan) * m_vulkanVertices.size())))
+	m_isInsideRenderpass = false;
+	if(!updateVertexBuffer(&m_vulkanVertices[0], SDL_static_cast(Uint32, sizeof(VertexVulkan) * m_vulkanVertices.size()), m_needRedrawFrame))
 	{
-		UTIL_MessageBox(true, "SurfaceVulkan::updateVertexBuffer: Failed to upload vbo to gpu.");
+		UTIL_MessageBox(true, "SurfaceVulkan::updateVertexBuffer: Failed to upload buffer to gpu.");
 		exit(-1);
 	}
-	VkDeviceSize offset = 0;
-	vkCmdBindVertexBuffers(m_commandVertexBuffers[m_renderFrame], 0, 1, &m_vertexBuffer[m_renderFrame], &offset);
-	vkCmdExecuteCommands(m_commandVertexBuffers[m_renderFrame], 1, &m_commandBuffer);
-	vkEndCommandBuffer(m_commandVertexBuffers[m_renderFrame]);
+	if(m_needRedrawFrame)
+	{
+		//Since we acquired new vertex buffer due to insufficient buffer size let's recreate our command buffer
+		//not the most efficient thing to do but let's hope we don't get here frequently
+		g_engine.redraw();
+		return;
+	}
 
 	VkSubmitInfo submitInfo;
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -2107,7 +2159,7 @@ void SurfaceVulkan::endScene()
 	submitInfo.pWaitDstStageMask = &waitStages;
 
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &m_commandVertexBuffers[m_renderFrame];
+	submitInfo.pCommandBuffers = &m_commandBuffer;
 
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = &m_renderCompleteSemaphores[m_renderFrame];
@@ -2138,6 +2190,105 @@ void SurfaceVulkan::endScene()
 	m_commandBuffer = m_commandBuffers[m_renderFrame];
 }
 
+VulkanTexture* SurfaceVulkan::getTextureIndex(VulkanTexture* texture)
+{
+	if(texture != m_binded_texture)
+	{
+		scheduleBatch();
+		if(m_isInsideRenderpass)
+			setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
+		else
+			m_currentGraphicPipeline = GRAPHIC_PIPELINE_TEXTURE;
+
+		m_binded_texture = texture;
+	}
+	return m_binded_texture;
+}
+
+void SurfaceVulkan::drawQuad(VulkanTexture*, float vertices[8], float texcoords[8])
+{
+	m_vulkanVertices.emplace_back(vertices[0], vertices[1], texcoords[0], texcoords[1], 0xFFFFFFFF);
+	m_vulkanVertices.emplace_back(vertices[2], vertices[3], texcoords[2], texcoords[3], 0xFFFFFFFF);
+	m_vulkanVertices.emplace_back(vertices[4], vertices[5], texcoords[4], texcoords[5], 0xFFFFFFFF);
+	m_vulkanVertices.emplace_back(vertices[6], vertices[7], texcoords[6], texcoords[7], 0xFFFFFFFF);
+	m_cachedIndices += 6;
+	m_cachedVertices += 4;
+}
+
+void SurfaceVulkan::drawQuad(VulkanTexture*, float vertices[8], float texcoords[8], DWORD color)
+{
+	m_vulkanVertices.emplace_back(vertices[0], vertices[1], texcoords[0], texcoords[1], color);
+	m_vulkanVertices.emplace_back(vertices[2], vertices[3], texcoords[2], texcoords[3], color);
+	m_vulkanVertices.emplace_back(vertices[4], vertices[5], texcoords[4], texcoords[5], color);
+	m_vulkanVertices.emplace_back(vertices[6], vertices[7], texcoords[6], texcoords[7], color);
+	m_cachedIndices += 6;
+	m_cachedVertices += 4;
+}
+
+void SurfaceVulkan::scheduleBatch()
+{
+	if(m_cachedIndices > 0)
+	{
+		if(!m_isInsideRenderpass)
+		{
+			if(!m_binded_framebuffer)
+			{
+				VkRenderPassBeginInfo rpBeginInfo;
+				rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				rpBeginInfo.pNext = NULL;
+				rpBeginInfo.renderPass = m_storeRenderPass;
+				rpBeginInfo.framebuffer = m_swapChainFrameBuffer[m_imageIndex];
+				rpBeginInfo.renderArea.offset = {0, 0};
+				rpBeginInfo.renderArea.extent.width = g_engine.getWindowWidth();
+				rpBeginInfo.renderArea.extent.height = g_engine.getWindowHeight();
+				rpBeginInfo.clearValueCount = 0;
+				rpBeginInfo.pClearValues = NULL;
+				vkCmdBeginRenderPass(m_commandBuffer, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+			}
+			else
+			{
+				VkRenderPassBeginInfo rpBeginInfo;
+				rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+				rpBeginInfo.pNext = NULL;
+				rpBeginInfo.renderPass = m_textureStoreRenderPass;
+				rpBeginInfo.framebuffer = m_binded_framebuffer->m_framebuffer;
+				rpBeginInfo.renderArea.offset = {0, 0};
+				rpBeginInfo.renderArea.extent.width = m_binded_framebuffer->m_width;
+				rpBeginInfo.renderArea.extent.height = m_binded_framebuffer->m_height;
+				rpBeginInfo.clearValueCount = 0;
+				rpBeginInfo.pClearValues = NULL;
+				vkCmdBeginRenderPass(m_commandBuffer, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+			}
+
+			vkCmdBindPipeline(m_commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphicsPipeline[m_currentGraphicPipeline]);
+			m_isInsideRenderpass = true;
+		}
+
+		if(m_binded_texture)
+			setupTextureRendering(*m_binded_texture);
+
+		if(m_cachedIndices > VULKAN_MAX_INDICES)
+		{
+			do
+			{
+				Uint32 passVertices = UTIL_min<Uint32>(m_cachedVertices, VULKAN_MAX_VERTICES);
+				Uint32 passIndices = UTIL_min<Uint32>(m_cachedIndices, VULKAN_MAX_INDICES);
+				vkCmdDrawIndexed(m_commandBuffer, passIndices, 1, 0, m_vertexOffset, 0);
+				m_vertexOffset += passVertices;
+				m_cachedIndices -= passIndices;
+				m_cachedVertices -= passVertices;
+			} while(m_cachedIndices > 0);
+		}
+		else
+		{
+			vkCmdDrawIndexed(m_commandBuffer, m_cachedIndices, 1, 0, m_vertexOffset, 0);
+			m_vertexOffset += m_cachedVertices;
+		}
+		m_cachedIndices = 0;
+		m_cachedVertices = 0;
+	}
+}
+
 bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
 	Sint32 width = RENDERTARGET_WIDTH;
@@ -2145,14 +2296,7 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	UTIL_integer_scale(width, height, w, h, m_maxTextureSize, m_maxTextureSize);
 	if(m_integer_scaling_width < width || m_integer_scaling_height < height || !m_scaled_gameWindow)
 	{
-		if(m_scaled_gameWindow)
-		{
-			releaseVulkanTexture(m_scaled_gameWindow);
-			m_scaled_gameWindow = NULL;
-		}
-
-		m_scaled_gameWindow = createVulkanTexture(width, height, true, true);
-		if(!m_scaled_gameWindow || !createTextureFramebuffer(m_scaled_gameWindow))
+		if(!createVulkanTexture(m_scaled_gameWindow, width, height, true, true) || !createTextureFramebuffer(m_scaled_gameWindow))
 			return false;
 
 		m_integer_scaling_width = width;
@@ -2162,70 +2306,72 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	float cvkw = m_vkWidth;
 	float cvkh = m_vkHeight;
 
-	m_vkWidth = 2.0f / m_scaled_gameWindow->m_width;
-	m_vkHeight = 2.0f / m_scaled_gameWindow->m_height;
+	m_vkWidth = 2.0f / m_scaled_gameWindow.m_width;
+	m_vkHeight = 2.0f / m_scaled_gameWindow.m_height;
+
+	scheduleBatch();
 
 	VkRenderPassBeginInfo rpBeginInfo;
 	rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	rpBeginInfo.pNext = NULL;
-	rpBeginInfo.renderPass = m_storeRenderPass;
-	rpBeginInfo.framebuffer = m_scaled_gameWindow->m_framebuffer;
+	rpBeginInfo.renderPass = m_textureStoreRenderPass;
+	rpBeginInfo.framebuffer = m_scaled_gameWindow.m_framebuffer;
 	rpBeginInfo.renderArea.offset = {0, 0};
-	rpBeginInfo.renderArea.extent.width = m_scaled_gameWindow->m_width;
-	rpBeginInfo.renderArea.extent.height = m_scaled_gameWindow->m_height;
+	rpBeginInfo.renderArea.extent.width = m_scaled_gameWindow.m_width;
+	rpBeginInfo.renderArea.extent.height = m_scaled_gameWindow.m_height;
 	rpBeginInfo.clearValueCount = 0;
 	rpBeginInfo.pClearValues = NULL;
 	vkCmdEndRenderPass(m_commandBuffer);
 	vkCmdBeginRenderPass(m_commandBuffer, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	m_currentGraphicPipeline = GRAPHIC_PIPELINE_LAST;
+	m_isInsideRenderpass = true;
+	m_binded_framebuffer = &m_scaled_gameWindow;
 
 	VkViewport viewport;
 	viewport.x = viewport.y = 0.0f;
-	viewport.width = SDL_static_cast(float, m_scaled_gameWindow->m_width);
-	viewport.height = SDL_static_cast(float, m_scaled_gameWindow->m_height);
+	viewport.width = SDL_static_cast(float, m_scaled_gameWindow.m_width);
+	viewport.height = SDL_static_cast(float, m_scaled_gameWindow.m_height);
 	viewport.minDepth = 0;
 	viewport.maxDepth = 1;
 	vkCmdSetViewport(m_commandBuffer, 0, 1, &viewport);
 
 	VkRect2D scissor;
 	scissor.offset = {0, 0};
-	scissor.extent.width = m_scaled_gameWindow->m_width;
-	scissor.extent.height = m_scaled_gameWindow->m_height;
+	scissor.extent.width = m_scaled_gameWindow.m_width;
+	scissor.extent.height = m_scaled_gameWindow.m_height;
 	vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
-
-	VkMemoryBarrier barrier;
-	barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-	barrier.pNext = NULL;
-	barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
 
 	PushConstant_Projection projection;
 	projection.vkWidth = m_vkWidth;
 	projection.vkHeight = m_vkHeight;
-	setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_NON_BLEND);
+	setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
 	vkCmdPushConstants(m_commandBuffer, m_pipelineLayout[m_currentGraphicPipeline], VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct PushConstant_Projection), SDL_reinterpret_cast(void*, &projection));
-	vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
-
+	
 	float minx = 0.0f;
 	float maxx = SDL_static_cast(float, width);
 	float miny = 0.0f;
 	float maxy = SDL_static_cast(float, height);
 
-	float minu = sx * m_gameWindow->m_scaleW;
-	float maxu = (sx + sw) * m_gameWindow->m_scaleW;
-	float minv = sy * m_gameWindow->m_scaleH;
-	float maxv = (sy + sh) * m_gameWindow->m_scaleH;
+	float minu = sx * m_gameWindow.m_scaleW;
+	float maxu = (sx + sw) * m_gameWindow.m_scaleW;
+	float minv = sy * m_gameWindow.m_scaleH;
+	float maxv = (sy + sh) * m_gameWindow.m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	setupTextureRendering(m_gameWindow);
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+
+	m_binded_texture = &m_gameWindow;
+	drawQuad(&m_gameWindow, vertices, texcoords);
+	scheduleBatch();
 
 	m_vkWidth = cvkw;
 	m_vkHeight = cvkh;
@@ -2242,6 +2388,8 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	vkCmdEndRenderPass(m_commandBuffer);
 	vkCmdBeginRenderPass(m_commandBuffer, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	m_currentGraphicPipeline = GRAPHIC_PIPELINE_LAST;
+	m_isInsideRenderpass = true;
+	m_binded_framebuffer = NULL;
 
 	viewport.x = viewport.y = 0.0f;
 	viewport.width = SDL_static_cast(float, g_engine.getWindowWidth());
@@ -2255,14 +2403,13 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	scissor.extent.height = g_engine.getWindowHeight();
 	vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 
-	vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
 	if(g_engine.isSharpening() && m_haveSharpening)
 	{
 		PushConstant_Sharpen prj;
 		prj.vkWidth = m_vkWidth;
 		prj.vkHeight = m_vkHeight;
-		prj.pxWidth = 1.0f / w * (sw * m_gameWindow->m_scaleW);
-		prj.pxHeight = 1.0f / h * (sh * m_gameWindow->m_scaleH);
+		prj.pxWidth = 1.0f / w * (sw * m_gameWindow.m_scaleW);
+		prj.pxHeight = 1.0f / h * (sh * m_gameWindow.m_scaleH);
 		setupGraphicPipeline(GRAPHIC_PIPELINE_SHARPEN);
 		vkCmdPushConstants(m_commandBuffer, m_pipelineLayout[m_currentGraphicPipeline], VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct PushConstant_Sharpen), SDL_reinterpret_cast(void*, &prj));
 	}
@@ -2270,10 +2417,9 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	{
 		projection.vkWidth = m_vkWidth;
 		projection.vkHeight = m_vkHeight;
-		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_NON_BLEND);
+		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
 		vkCmdPushConstants(m_commandBuffer, m_pipelineLayout[m_currentGraphicPipeline], VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct PushConstant_Projection), SDL_reinterpret_cast(void*, &projection));
 	}
-	vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
 
 	minx = SDL_static_cast(float, x);
 	maxx = SDL_static_cast(float, x + w);
@@ -2281,18 +2427,23 @@ bool SurfaceVulkan::integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, 
 	maxy = SDL_static_cast(float, y + h);
 
 	minu = 0.0f;
-	maxu = width * m_scaled_gameWindow->m_scaleW;
+	maxu = width * m_scaled_gameWindow.m_scaleW;
 	minv = 0.0f;
-	maxv = height * m_scaled_gameWindow->m_scaleH;
+	maxv = height * m_scaled_gameWindow.m_scaleH;
 
-	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	setupTextureRendering(m_scaled_gameWindow);
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+
+	m_binded_texture = &m_scaled_gameWindow;
+	drawQuad(&m_scaled_gameWindow, vertices, texcoords);
+	scheduleBatch();
 	setupProjection();
 	return true;
 }
@@ -2311,52 +2462,56 @@ void SurfaceVulkan::drawGameScene(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Si
 		}
 	}
 
+	scheduleBatch();
 	if(g_engine.isSharpening() && m_haveSharpening)
 	{
-		VkMemoryBarrier barrier;
-		barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-		barrier.pNext = NULL;
-		barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
-
 		PushConstant_Sharpen prj;
 		prj.vkWidth = m_vkWidth;
 		prj.vkHeight = m_vkHeight;
-		prj.pxWidth = 1.0f / w * (sw * m_gameWindow->m_scaleW);
-		prj.pxHeight = 1.0f / h * (sh * m_gameWindow->m_scaleH);
+		prj.pxWidth = 1.0f / w * (sw * m_gameWindow.m_scaleW);
+		prj.pxHeight = 1.0f / h * (sh * m_gameWindow.m_scaleH);
 		setupGraphicPipeline(GRAPHIC_PIPELINE_SHARPEN);
 		vkCmdPushConstants(m_commandBuffer, m_pipelineLayout[m_currentGraphicPipeline], VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(struct PushConstant_Sharpen), SDL_reinterpret_cast(void*, &prj));
-		vkCmdPipelineBarrier(m_commandBuffer, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_SHADER_BIT, 0, 1, &barrier, 0, NULL, 0, NULL);
 	}
 	else
-		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_NON_BLEND);
-	setupTextureRendering(m_gameWindow);
+		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
+
+	m_binded_texture = &m_gameWindow;
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
 	float maxy = SDL_static_cast(float, y + h);
 
-	float minu = sx * m_gameWindow->m_scaleW;
-	float maxu = (sx + sw) * m_gameWindow->m_scaleW;
-	float minv = sy * m_gameWindow->m_scaleH;
-	float maxv = (sy + sh) * m_gameWindow->m_scaleH;
+	float minu = sx * m_gameWindow.m_scaleW;
+	float maxu = (sx + sw) * m_gameWindow.m_scaleW;
+	float minv = sy * m_gameWindow.m_scaleH;
+	float maxv = (sy + sh) * m_gameWindow.m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+
+	drawQuad(&m_gameWindow, vertices, texcoords);
+	scheduleBatch();
+	if(g_engine.isSharpening() && m_haveSharpening)
+		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
 }
 
 void SurfaceVulkan::beginGameScene()
 {
-	Sint32 width = m_gameWindow->m_width;
-	Sint32 height = m_gameWindow->m_height;
+	scheduleBatch();
+
+	Sint32 width = m_gameWindow.m_width;
+	Sint32 height = m_gameWindow.m_height;
 
 	m_vkWidth = 2.0f / width;
 	m_vkHeight = 2.0f / height;
@@ -2366,7 +2521,7 @@ void SurfaceVulkan::beginGameScene()
 	rpBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	rpBeginInfo.pNext = NULL;
 	rpBeginInfo.renderPass = m_textureClearRenderPass;
-	rpBeginInfo.framebuffer = m_gameWindow->m_framebuffer;
+	rpBeginInfo.framebuffer = m_gameWindow.m_framebuffer;
 	rpBeginInfo.renderArea.offset = {0, 0};
 	rpBeginInfo.renderArea.extent.width = width;
 	rpBeginInfo.renderArea.extent.height = height;
@@ -2375,6 +2530,8 @@ void SurfaceVulkan::beginGameScene()
 	vkCmdEndRenderPass(m_commandBuffer);
 	vkCmdBeginRenderPass(m_commandBuffer, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	m_currentGraphicPipeline = GRAPHIC_PIPELINE_LAST;
+	m_isInsideRenderpass = true;
+	m_binded_framebuffer = &m_gameWindow;
 
 	VkViewport viewport;
 	viewport.x = viewport.y = 0.0f;
@@ -2392,15 +2549,11 @@ void SurfaceVulkan::beginGameScene()
 	m_scissorHeight = height;
 	vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 	setupProjection();
-
-	m_gameVertices = 0;
-	m_scheduleSpriteDraw = true;
 }
 
 void SurfaceVulkan::endGameScene()
 {
-	checkScheduledSprites();
-	m_scheduleSpriteDraw = false;
+	scheduleBatch();
 
 	Sint32 width = g_engine.getWindowWidth();
 	Sint32 height = g_engine.getWindowHeight();
@@ -2421,6 +2574,8 @@ void SurfaceVulkan::endGameScene()
 	vkCmdEndRenderPass(m_commandBuffer);
 	vkCmdBeginRenderPass(m_commandBuffer, &rpBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 	m_currentGraphicPipeline = GRAPHIC_PIPELINE_LAST;
+	m_isInsideRenderpass = true;
+	m_binded_framebuffer = NULL;
 
 	VkViewport viewport;
 	viewport.x = viewport.y = 0.0f;
@@ -2442,6 +2597,7 @@ void SurfaceVulkan::endGameScene()
 
 void SurfaceVulkan::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
+	scheduleBatch();
 	setupGraphicPipeline(GRAPHIC_PIPELINE_LIGHT_MAP);
 
 	Sint32 drawY = y - scale - (scale / 2);
@@ -2458,8 +2614,8 @@ void SurfaceVulkan::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sin
 			float minx = SDL_static_cast(float, drawX);
 			float miny = SDL_static_cast(float, drawY);
 			float maxy = miny + SDL_static_cast(float, scale);
-			m_vulkanVertices.emplace_back(minx, maxy, 0.0f, 0.0f, MAKE_RGBA_COLOR(lightmap[offset1 + offset].r, lightmap[offset + offset1].g, lightmap[offset1 + offset].b, 255));
-			m_vulkanVertices.emplace_back(minx, miny, 0.0f, 0.0f, MAKE_RGBA_COLOR(lightmap[offset2 + offset].r, lightmap[offset2 + offset].g, lightmap[offset2 + offset].b, 255));
+			m_vulkanVertices.emplace_back(minx, maxy, MAKE_RGBA_COLOR(lightmap[offset1 + offset].r, lightmap[offset + offset1].g, lightmap[offset1 + offset].b, 255));
+			m_vulkanVertices.emplace_back(minx, miny, MAKE_RGBA_COLOR(lightmap[offset2 + offset].r, lightmap[offset2 + offset].g, lightmap[offset2 + offset].b, 255));
 
 			verticeCount += 2;
 			drawX += scale;
@@ -2472,7 +2628,7 @@ void SurfaceVulkan::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sin
 
 void SurfaceVulkan::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
 {
-	static const float inv255f = (1.0f / 255.0f);
+	scheduleBatch();
 	setupGraphicPipeline(GRAPHIC_PIPELINE_LIGHT_MAP);
 
 	Sint32 halfScale = (scale / 2);
@@ -2585,34 +2741,34 @@ void SurfaceVulkan::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sin
 			#undef VEC_MAX
 
 			//Draw Top-Left square
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + halfScale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, leftCenter[0][0] * 255.f), SDL_static_cast(Uint8, leftCenter[0][1] * 255.f), SDL_static_cast(Uint8, leftCenter[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topLeft[0][0] * 255.f), SDL_static_cast(Uint8, topLeft[0][1] * 255.f), SDL_static_cast(Uint8, topLeft[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, leftCenter[0][0] * 255.f), SDL_static_cast(Uint8, leftCenter[0][1] * 255.f), SDL_static_cast(Uint8, leftCenter[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topLeft[0][0] * 255.f), SDL_static_cast(Uint8, topLeft[0][1] * 255.f), SDL_static_cast(Uint8, topLeft[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
 			vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 			m_vertexOffset += 4;
 
 			//Draw Bottom-Left square
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + halfScale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, leftCenter[0][0] * 255.f), SDL_static_cast(Uint8, leftCenter[0][1] * 255.f), SDL_static_cast(Uint8, leftCenter[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + scale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomLeft[0][0] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][1] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + scale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, leftCenter[0][0] * 255.f), SDL_static_cast(Uint8, leftCenter[0][1] * 255.f), SDL_static_cast(Uint8, leftCenter[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomLeft[0][0] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][1] * 255.f), SDL_static_cast(Uint8, bottomLeft[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
 			vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 			m_vertexOffset += 4;
 
 			//Draw Top-Right square
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topRight[0][0] * 255.f), SDL_static_cast(Uint8, topRight[0][1] * 255.f), SDL_static_cast(Uint8, topRight[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + halfScale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topCenter[0][0] * 255.f), SDL_static_cast(Uint8, topCenter[0][1] * 255.f), SDL_static_cast(Uint8, topCenter[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, topRight[0][0] * 255.f), SDL_static_cast(Uint8, topRight[0][1] * 255.f), SDL_static_cast(Uint8, topRight[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
 			vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 			m_vertexOffset += 4;
 
 			//Draw Bottom-Right square
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + scale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + scale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomRight[0][0] * 255.f), SDL_static_cast(Uint8, bottomRight[0][1] * 255.f), SDL_static_cast(Uint8, bottomRight[0][2] * 255.f), 255));
-			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + halfScale), 0.0f, 0.0f, MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomCenter[0][0] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][1] * 255.f), SDL_static_cast(Uint8, bottomCenter[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + halfScale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, center[0][0] * 255.f), SDL_static_cast(Uint8, center[0][1] * 255.f), SDL_static_cast(Uint8, center[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + scale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, bottomRight[0][0] * 255.f), SDL_static_cast(Uint8, bottomRight[0][1] * 255.f), SDL_static_cast(Uint8, bottomRight[0][2] * 255.f), 255));
+			m_vulkanVertices.emplace_back(SDL_static_cast(float, drawX + scale), SDL_static_cast(float, drawY + halfScale), MAKE_RGBA_COLOR(SDL_static_cast(Uint8, rightCenter[0][0] * 255.f), SDL_static_cast(Uint8, rightCenter[0][1] * 255.f), SDL_static_cast(Uint8, rightCenter[0][2] * 255.f), 255));
 			vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
 			m_vertexOffset += 4;
 
@@ -2624,6 +2780,8 @@ void SurfaceVulkan::drawLightMap_new(LightMap* lightmap, Sint32 x, Sint32 y, Sin
 
 void SurfaceVulkan::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
+	scheduleBatch();
+
 	VkRect2D scissor;
 	scissor.offset.x = x;
 	scissor.offset.y = y;
@@ -2634,6 +2792,8 @@ void SurfaceVulkan::setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 
 void SurfaceVulkan::disableClipRect()
 {
+	scheduleBatch();
+
 	VkRect2D scissor;
 	scissor.offset = {0, 0};
 	scissor.extent.width = m_scissorWidth;
@@ -2641,32 +2801,68 @@ void SurfaceVulkan::disableClipRect()
 	vkCmdSetScissor(m_commandBuffer, 0, 1, &scissor);
 }
 
-void SurfaceVulkan::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+void SurfaceVulkan::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
+	if(m_binded_texture)
+	{
+		scheduleBatch();
+		setupGraphicPipeline(GRAPHIC_PIPELINE_RGBA);
+		m_binded_texture = NULL;
+	}
 
-	float minx = SDL_static_cast(float, x) + 0.5f;
-	float maxx = SDL_static_cast(float, x + w);
-	float miny = SDL_static_cast(float, y) + 0.5f;
-	float maxy = SDL_static_cast(float, y + h);
+	//First Quad
+	float minx0 = SDL_static_cast(float, x);
+	float maxx0 = SDL_static_cast(float, x + lineWidth);
+	float miny0 = SDL_static_cast(float, y);
+	float maxy0 = SDL_static_cast(float, y + h);
+
+	//Second Quad
+	float minx1 = SDL_static_cast(float, x + w - lineWidth);
+	float maxx1 = minx1 + SDL_static_cast(float, lineWidth);
+	float miny1 = SDL_static_cast(float, y);
+	float maxy1 = SDL_static_cast(float, y + h);
+
+	//Third Quad
+	float minx2 = SDL_static_cast(float, x + lineWidth);
+	float maxx2 = minx2 + SDL_static_cast(float, w - (lineWidth << 1));
+	float miny2 = SDL_static_cast(float, y);
+	float maxy2 = SDL_static_cast(float, y + lineWidth);
+
+	//Fourth Quad
+	float minx3 = SDL_static_cast(float, x + lineWidth);
+	float maxx3 = minx3 + SDL_static_cast(float, w - (lineWidth << 1));
+	float miny3 = SDL_static_cast(float, y + h - lineWidth);
+	float maxy3 = miny3 + SDL_static_cast(float, lineWidth);
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-	m_vulkanVertices.emplace_back(minx, miny, 0.0f, 0.0f, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, 0.0f, 0.0f, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, 0.0f, 0.0f, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, 0.0f, 0.0f, texColor);
-	m_vulkanVertices.emplace_back(minx, miny, 0.0f, 0.0f, texColor);
-
-	setupGraphicPipeline(GRAPHIC_PIPELINE_RGBA_LINES);
-	vkCmdDraw(m_commandBuffer, 5, 1, m_vertexOffset, 0);
-	m_vertexOffset += 5;
+	m_vulkanVertices.emplace_back(minx0, miny0, texColor);
+	m_vulkanVertices.emplace_back(minx0, maxy0, texColor);
+	m_vulkanVertices.emplace_back(maxx0, miny0, texColor);
+	m_vulkanVertices.emplace_back(maxx0, maxy0, texColor);
+	m_vulkanVertices.emplace_back(minx1, miny1, texColor);
+	m_vulkanVertices.emplace_back(minx1, maxy1, texColor);
+	m_vulkanVertices.emplace_back(maxx1, miny1, texColor);
+	m_vulkanVertices.emplace_back(maxx1, maxy1, texColor);
+	m_vulkanVertices.emplace_back(minx2, miny2, texColor);
+	m_vulkanVertices.emplace_back(minx2, maxy2, texColor);
+	m_vulkanVertices.emplace_back(maxx2, miny2, texColor);
+	m_vulkanVertices.emplace_back(maxx2, maxy2, texColor);
+	m_vulkanVertices.emplace_back(minx3, miny3, texColor);
+	m_vulkanVertices.emplace_back(minx3, maxy3, texColor);
+	m_vulkanVertices.emplace_back(maxx3, miny3, texColor);
+	m_vulkanVertices.emplace_back(maxx3, maxy3, texColor);
+	m_cachedIndices += 24;
+	m_cachedVertices += 16;
 }
 
 void SurfaceVulkan::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-	if(m_scheduleSpriteDraw)
-		checkScheduledSprites();
+	if(m_binded_texture)
+	{
+		scheduleBatch();
+		setupGraphicPipeline(GRAPHIC_PIPELINE_RGBA);
+		m_binded_texture = NULL;
+	}
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
@@ -2674,14 +2870,12 @@ void SurfaceVulkan::fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 
 	float maxy = SDL_static_cast(float, y + h);
 
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, a);
-	m_vulkanVertices.emplace_back(minx, miny, 0.0f, 0.0f, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, 0.0f, 0.0f, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, 0.0f, 0.0f, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, 0.0f, 0.0f, texColor);
-
-	setupGraphicPipeline(GRAPHIC_PIPELINE_RGBA);
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	m_vulkanVertices.emplace_back(minx, miny, texColor);
+	m_vulkanVertices.emplace_back(minx, maxy, texColor);
+	m_vulkanVertices.emplace_back(maxx, miny, texColor);
+	m_vulkanVertices.emplace_back(maxx, maxy, texColor);
+	m_cachedIndices += 6;
+	m_cachedVertices += 4;
 }
 
 VulkanTexture* SurfaceVulkan::loadPicture(Uint16 pictureId, bool linearSampler)
@@ -2691,30 +2885,31 @@ VulkanTexture* SurfaceVulkan::loadPicture(Uint16 pictureId, bool linearSampler)
 	if(!pixels)
 		return NULL;
 
-	VulkanTexture* s = createVulkanTexture(width, height, linearSampler);
-	if(!s)
+	VulkanTexture* s = &m_pictures[pictureId];
+	if(!createVulkanTexture(*s, width, height, linearSampler))
 	{
 		SDL_free(pixels);
 		return NULL;
 	}
-	updateTextureData(s, pixels);
+	updateTextureData(*s, pixels);
 	SDL_free(pixels);
-	m_pictures[pictureId] = s;
 	return s;
 }
 
 void SurfaceVulkan::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256])
 {
-	VulkanTexture* tex = m_pictures[pictureId];
-	if(!tex)
+	VulkanTexture* tex = &m_pictures[pictureId];
+	if(!tex->m_textureImage)
 	{
 		tex = loadPicture(pictureId, false);
 		if(!tex)
 			return;//load failed
 	}
 
+	float vertices[8];
+	float texcoords[8];
 	DWORD texColor = MAKE_RGBA_COLOR(r, g, b, 255);
-	Uint32 drawTriangles = 0;
+	tex = getTextureIndex(tex);
 
 	Sint32 rx = x, ry = y;
 	Uint8 character;
@@ -2761,42 +2956,33 @@ void SurfaceVulkan::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::st
 				float minv = cY[character] * tex->m_scaleH;
 				float maxv = (cY[character] + cH[character]) * tex->m_scaleH;
 
-				m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-				m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-				m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
+				vertices[0] = minx; vertices[1] = miny;
+				vertices[2] = minx; vertices[3] = maxy;
+				vertices[4] = maxx; vertices[5] = miny;
+				vertices[6] = maxx; vertices[7] = maxy;
 
-				m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-				m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-				m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
+				texcoords[0] = minu; texcoords[1] = minv;
+				texcoords[2] = minu; texcoords[3] = maxv;
+				texcoords[4] = maxu; texcoords[5] = minv;
+				texcoords[6] = maxu; texcoords[7] = maxv;
 
-				drawTriangles += 6;
+				drawQuad(tex, vertices, texcoords, texColor);
 				rx += cW[character] + cX[0];
 			}
 			break;
 		}
 	}
-
-	if(drawTriangles > 0)
-	{
-		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_TRIANGLES);
-		setupTextureRendering(tex);
-		vkCmdDraw(m_commandBuffer, drawTriangles, 1, m_vertexOffset, 0);
-		m_vertexOffset += drawTriangles;
-	}
 }
 
 void SurfaceVulkan::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
-	VulkanTexture* tex = m_pictures[pictureId];
-	if(!tex)
+	VulkanTexture* tex = &m_pictures[pictureId];
+	if(!tex->m_textureImage)
 	{
 		tex = loadPicture(pictureId, g_engine.hasAntialiasing());
 		if(!tex)
 			return;//load failed
 	}
-
-	setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_NON_BLEND);
-	setupTextureRendering(tex);
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
@@ -2808,28 +2994,34 @@ void SurfaceVulkan::drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint3
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + sh) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 void SurfaceVulkan::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
-	VulkanTexture* tex = m_pictures[pictureId];
-	if(!tex)
+	VulkanTexture* tex = &m_pictures[pictureId];
+	if(!tex->m_textureImage)
 	{
 		tex = loadPicture(pictureId, false);
 		if(!tex)
 			return;//load failed
 	}
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	Uint32 drawTriangles = 0;
+	float vertices[8];
+	float texcoords[8];
+	tex = getTextureIndex(tex);
+
 	Sint32 curW, curH, cx;
 	for(Sint32 j = h; j > 0; j -= sh)
 	{
@@ -2848,41 +3040,32 @@ void SurfaceVulkan::drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Si
 			float minv = sy * tex->m_scaleH;
 			float maxv = (sy + curH) * tex->m_scaleH;
 
-			m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-			m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-			m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
+			vertices[0] = minx; vertices[1] = miny;
+			vertices[2] = minx; vertices[3] = maxy;
+			vertices[4] = maxx; vertices[5] = miny;
+			vertices[6] = maxx; vertices[7] = maxy;
 
-			m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-			m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-			m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
+			texcoords[0] = minu; texcoords[1] = minv;
+			texcoords[2] = minu; texcoords[3] = maxv;
+			texcoords[4] = maxu; texcoords[5] = minv;
+			texcoords[6] = maxu; texcoords[7] = maxv;
 
-			drawTriangles += 6;
+			drawQuad(tex, vertices, texcoords);
 			cx += sw;
 		}
 		y += sh;
-	}
-
-	if(drawTriangles > 0)
-	{
-		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE_TRIANGLES);
-		setupTextureRendering(tex);
-		vkCmdDraw(m_commandBuffer, drawTriangles, 1, m_vertexOffset, 0);
-		m_vertexOffset += drawTriangles;
 	}
 }
 
 void SurfaceVulkan::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
-	VulkanTexture* tex = m_pictures[pictureId];
-	if(!tex)
+	VulkanTexture* tex = &m_pictures[pictureId];
+	if(!tex->m_textureImage)
 	{
 		tex = loadPicture(pictureId, false);
 		if(!tex)
 			return;//load failed
 	}
-
-	setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
-	setupTextureRendering(tex);
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
@@ -2894,18 +3077,28 @@ void SurfaceVulkan::drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + h) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 bool SurfaceVulkan::loadSprite(Uint32 spriteId, VulkanTexture* texture, Uint32 xoff, Uint32 yoff)
 {
+	if(m_isInsideRenderpass)
+	{
+		vkCmdEndRenderPass(m_commandBuffer);
+		m_isInsideRenderpass = false;
+	}
+
 	static const VkDeviceSize imageSize = (32 * 32 * 4);
 	VkBuffer stagingBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
@@ -2988,6 +3181,12 @@ bool SurfaceVulkan::loadSprite(Uint32 spriteId, VulkanTexture* texture, Uint32 x
 
 bool SurfaceVulkan::loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 outfitColor, VulkanTexture* texture, Uint32 xoff, Uint32 yoff)
 {
+	if(m_isInsideRenderpass)
+	{
+		vkCmdEndRenderPass(m_commandBuffer);
+		m_isInsideRenderpass = false;
+	}
+
 	static const VkDeviceSize imageSize = (32 * 32 * 4);
 	VkBuffer stagingBuffer = VK_NULL_HANDLE;
 	VkDeviceMemory stagingBufferMemory = VK_NULL_HANDLE;
@@ -3070,141 +3269,7 @@ bool SurfaceVulkan::loadSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Uint32 
 
 void SurfaceVulkan::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y)
 {
-	if(spriteId > g_spriteCounts)
-		return;
-
-	#if SIZEOF_VOIDP == 4
-	Uint64 tempPos;
-	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = spriteId;
-	u32p[1] = 0;
-	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, spriteId);
-	#endif
-	Uint32 xOffset;
-	Uint32 yOffset;
-	VulkanTexture* tex;
-	U64BImages::iterator it = m_sprites.find(tempPos);
-	if(it == m_sprites.end())
-	{
-		if(m_sprites.size() >= MAX_SPRITES)
-		{
-			while(++m_spriteChecker < MAX_SPRITES)
-			{
-				Uint64 oldSpriteId = m_spritesIds.front();
-				it = m_sprites.find(oldSpriteId);
-				if(it == m_sprites.end())
-				{
-					UTIL_MessageBox(true, "Vulkan: Sprite Manager failure.");
-					exit(-1);
-				}
-
-				m_spritesIds.pop_front();
-				if(it->second.m_lastUsage == m_currentFrame)
-					m_spritesIds.push_back(oldSpriteId);
-				else
-					goto Skip_Search;
-			}
-
-			if(m_scheduleSpriteDraw)
-				checkScheduledSprites();
-
-			it = m_sprites.find(m_spritesIds.front());
-			if(it == m_sprites.end())
-			{
-				UTIL_MessageBox(true, "Vulkan: Sprite Manager failure.");
-				exit(-1);
-			}
-			m_spritesIds.pop_front();
-
-			Skip_Search:
-			VulkanSpriteData sprData = it->second;
-			sprData.m_lastUsage = m_currentFrame;
-			m_sprites.erase(it);
-			m_sprites[tempPos] = sprData;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		else
-		{
-			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
-			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
-			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
-			if(spriteAtlas >= m_spritesAtlas.size())
-				return;
-
-			VulkanSpriteData& sprData = m_sprites[tempPos];
-			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
-			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
-			sprData.m_surface = spriteAtlas;
-			sprData.m_lastUsage = m_currentFrame;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		if(!loadSprite(spriteId, tex, xOffset, yOffset))
-			return;//load failed
-	}
-	else
-	{
-		xOffset = it->second.m_xOffset;
-		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
-		it->second.m_lastUsage = m_currentFrame;
-		if(m_spritesIds.front() == tempPos)
-		{
-			m_spritesIds.pop_front();
-			m_spritesIds.push_back(tempPos);
-		}
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = minx + 32.0f;
-	float miny = SDL_static_cast(float, y);
-	float maxy = miny + 32.0f;
-
-	float minu = xOffset * tex->m_scaleW;
-	float maxu = (xOffset + 32) * tex->m_scaleW;
-	float minv = yOffset * tex->m_scaleH;
-	float maxv = (yOffset + 32) * tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	if(m_scheduleSpriteDraw)
-	{
-		if(tex != m_spriteAtlas)
-		{
-			checkScheduledSprites();
-			m_spriteAtlas = tex;
-		}
-
-		m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-
-		m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-
-		m_gameVertices += 6;
-	}
-	else
-	{
-		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
-		setupTextureRendering(tex);
-
-		m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-
-		vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-		m_vertexOffset += 4;
-	}
+	drawSprite(spriteId, x, y, 32, 32, 0, 0, 32, 32);
 }
 
 void SurfaceVulkan::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh)
@@ -3244,6 +3309,7 @@ void SurfaceVulkan::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Si
 				else
 					goto Skip_Search;
 			}
+			scheduleBatch();
 
 			it = m_sprites.find(m_spritesIds.front());
 			if(it == m_sprites.end())
@@ -3262,7 +3328,7 @@ void SurfaceVulkan::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Si
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		else
 		{
@@ -3281,7 +3347,7 @@ void SurfaceVulkan::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Si
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		if(!loadSprite(spriteId, tex, xOffset, yOffset))
 			return;//load failed
@@ -3290,7 +3356,7 @@ void SurfaceVulkan::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Si
 	{
 		xOffset = it->second.m_xOffset;
 		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
+		tex = &m_spritesAtlas[it->second.m_surface];
 		it->second.m_lastUsage = m_currentFrame;
 		if(m_spritesIds.front() == tempPos)
 		{
@@ -3298,9 +3364,6 @@ void SurfaceVulkan::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Si
 			m_spritesIds.push_back(tempPos);
 		}
 	}
-
-	setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
-	setupTextureRendering(tex);
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
@@ -3315,153 +3378,23 @@ void SurfaceVulkan::drawSprite(Uint32 spriteId, Sint32 x, Sint32 y, Sint32 w, Si
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + sh) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Uint32 outfitColor)
 {
-	if(spriteId > g_spriteCounts || maskSpriteId > g_spriteCounts)
-		return;
-
-	#if SIZEOF_VOIDP == 4
-	Uint64 tempPos;
-	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = maskSpriteId;
-	u32p[1] = outfitColor;
-	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
-	#endif
-	Uint32 xOffset;
-	Uint32 yOffset;
-	VulkanTexture* tex;
-	U64BImages::iterator it = m_sprites.find(tempPos);
-	if(it == m_sprites.end())
-	{
-		if(m_sprites.size() >= MAX_SPRITES)
-		{
-			while(++m_spriteChecker < MAX_SPRITES)
-			{
-				Uint64 oldSpriteId = m_spritesIds.front();
-				it = m_sprites.find(oldSpriteId);
-				if(it == m_sprites.end())
-				{
-					UTIL_MessageBox(true, "Vulkan: Sprite Manager failure.");
-					exit(-1);
-				}
-
-				m_spritesIds.pop_front();
-				if(it->second.m_lastUsage == m_currentFrame)
-					m_spritesIds.push_back(oldSpriteId);
-				else
-					goto Skip_Search;
-			}
-
-			if(m_scheduleSpriteDraw)
-				checkScheduledSprites();
-
-			it = m_sprites.find(m_spritesIds.front());
-			if(it == m_sprites.end())
-			{
-				UTIL_MessageBox(true, "Vulkan: Sprite Manager failure.");
-				exit(-1);
-			}
-			m_spritesIds.pop_front();
-
-			Skip_Search:
-			VulkanSpriteData sprData = it->second;
-			sprData.m_lastUsage = m_currentFrame;
-			m_sprites.erase(it);
-			m_sprites[tempPos] = sprData;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		else
-		{
-			Uint32 spriteIndex = SDL_static_cast(Uint32, m_sprites.size());
-			Uint32 spriteAtlas = spriteIndex / m_spritesPerAtlas;
-			spriteIndex = (spriteIndex % m_spritesPerAtlas) * 32;
-			if(spriteAtlas >= m_spritesAtlas.size())
-				return;
-
-			VulkanSpriteData& sprData = m_sprites[tempPos];
-			sprData.m_xOffset = spriteIndex % m_spritesPerModulo;
-			sprData.m_yOffset = (spriteIndex / m_spritesPerModulo) * 32;
-			sprData.m_surface = spriteAtlas;
-			sprData.m_lastUsage = m_currentFrame;
-			m_spritesIds.push_back(tempPos);
-
-			xOffset = sprData.m_xOffset;
-			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
-		}
-		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
-			return;//load failed
-	}
-	else
-	{
-		xOffset = it->second.m_xOffset;
-		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
-		it->second.m_lastUsage = m_currentFrame;
-		if(m_spritesIds.front() == tempPos)
-		{
-			m_spritesIds.pop_front();
-			m_spritesIds.push_back(tempPos);
-		}
-	}
-
-	float minx = SDL_static_cast(float, x);
-	float maxx = minx + 32.0f;
-	float miny = SDL_static_cast(float, y);
-	float maxy = miny + 32.0f;
-
-	float minu = xOffset * tex->m_scaleW;
-	float maxu = (xOffset + 32) * tex->m_scaleW;
-	float minv = yOffset * tex->m_scaleH;
-	float maxv = (yOffset + 32) * tex->m_scaleH;
-
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	if(m_scheduleSpriteDraw)
-	{
-		if(tex != m_spriteAtlas)
-		{
-			checkScheduledSprites();
-			m_spriteAtlas = tex;
-		}
-
-		m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-
-		m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-
-		m_gameVertices += 6;
-	}
-	else
-	{
-		setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
-		setupTextureRendering(tex);
-
-		m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-		m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-		m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-		m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
-
-		vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-		m_vertexOffset += 4;
-	}
+	drawSpriteMask(spriteId, maskSpriteId, x, y, 32, 32, 0, 0, 32, 32, outfitColor);
 }
 
 void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Uint32 outfitColor)
@@ -3472,10 +3405,10 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = maskSpriteId;
+	u32p[0] = spriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
 	Uint32 xOffset;
 	Uint32 yOffset;
@@ -3501,6 +3434,7 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 				else
 					goto Skip_Search;
 			}
+			scheduleBatch();
 
 			it = m_sprites.find(m_spritesIds.front());
 			if(it == m_sprites.end())
@@ -3519,7 +3453,7 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		else
 		{
@@ -3538,7 +3472,7 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 
 			xOffset = sprData.m_xOffset;
 			yOffset = sprData.m_yOffset;
-			tex = m_spritesAtlas[sprData.m_surface];
+			tex = &m_spritesAtlas[sprData.m_surface];
 		}
 		if(!loadSpriteMask(spriteId, maskSpriteId, outfitColor, tex, xOffset, yOffset))
 			return;//load failed
@@ -3547,7 +3481,7 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 	{
 		xOffset = it->second.m_xOffset;
 		yOffset = it->second.m_yOffset;
-		tex = m_spritesAtlas[it->second.m_surface];
+		tex = &m_spritesAtlas[it->second.m_surface];
 		it->second.m_lastUsage = m_currentFrame;
 		if(m_spritesIds.front() == tempPos)
 		{
@@ -3555,9 +3489,6 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 			m_spritesIds.push_back(tempPos);
 		}
 	}
-
-	setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
-	setupTextureRendering(tex);
 
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
@@ -3572,14 +3503,18 @@ void SurfaceVulkan::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint32 
 	float minv = sy * tex->m_scaleH;
 	float maxv = (sy + sh) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 
 VulkanTexture* SurfaceVulkan::createAutomapTile(Uint32 currentArea)
@@ -3593,17 +3528,17 @@ VulkanTexture* SurfaceVulkan::createAutomapTile(Uint32 currentArea)
 			exit(-1);
 		}
 
-		m_texturesToDelete[m_renderFrame].push_back(it->second);
+		m_texturesToDelete[m_renderFrame].emplace_back(std::move(it->second));
 		m_automapTiles.erase(it);
 		m_automapTilesBuff.pop_front();
 	}
-	VulkanTexture* s = createVulkanTexture(256, 256, false);
-	if(!s)
+	std::unique_ptr<VulkanTexture> s = std::make_unique<VulkanTexture>();
+	if(!createVulkanTexture(*s, 256, 256, false))
 		return NULL;
 
-	m_automapTiles[currentArea] = s;
+	m_automapTiles[currentArea] = std::move(*s.get());
 	m_automapTilesBuff.push_back(currentArea);
-	return s;
+	return &m_automapTiles[currentArea];
 }
 
 void SurfaceVulkan::uploadAutomapTile(VulkanTexture* texture, Uint8 color[256][256])
@@ -3627,7 +3562,7 @@ void SurfaceVulkan::uploadAutomapTile(VulkanTexture* texture, Uint8 color[256][2
 		}
 	}
 	vkQueueWaitIdle(m_queue);
-	updateTextureData(texture, pixels);
+	updateTextureData(*texture, pixels);
 	SDL_free(pixels);
 }
 
@@ -3646,7 +3581,7 @@ void SurfaceVulkan::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint8 co
 	}
 	else
 	{
-		tex = it->second;
+		tex = &it->second;
 		if(m_automapTilesBuff.front() == currentArea)
 		{
 			m_automapTilesBuff.pop_front();
@@ -3659,9 +3594,6 @@ void SurfaceVulkan::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint8 co
 		}
 	}
 
-	setupGraphicPipeline(GRAPHIC_PIPELINE_TEXTURE);
-	setupTextureRendering(tex);
-
 	float minx = SDL_static_cast(float, x);
 	float maxx = SDL_static_cast(float, x + w);
 	float miny = SDL_static_cast(float, y);
@@ -3672,13 +3604,17 @@ void SurfaceVulkan::drawAutomapTile(Uint32 currentArea, bool& recreate, Uint8 co
 	float minv = sy * tex->m_scaleW;
 	float maxv = (sy + sh) * tex->m_scaleH;
 
-	DWORD texColor = MAKE_RGBA_COLOR(255, 255, 255, 255);
-	m_vulkanVertices.emplace_back(minx, miny, minu, minv, texColor);
-	m_vulkanVertices.emplace_back(minx, maxy, minu, maxv, texColor);
-	m_vulkanVertices.emplace_back(maxx, miny, maxu, minv, texColor);
-	m_vulkanVertices.emplace_back(maxx, maxy, maxu, maxv, texColor);
+	float vertices[8];
+	vertices[0] = minx; vertices[1] = miny;
+	vertices[2] = minx; vertices[3] = maxy;
+	vertices[4] = maxx; vertices[5] = miny;
+	vertices[6] = maxx; vertices[7] = maxy;
 
-	vkCmdDraw(m_commandBuffer, 4, 1, m_vertexOffset, 0);
-	m_vertexOffset += 4;
+	float texcoords[8];
+	texcoords[0] = minu; texcoords[1] = minv;
+	texcoords[2] = minu; texcoords[3] = maxv;
+	texcoords[4] = maxu; texcoords[5] = minv;
+	texcoords[6] = maxu; texcoords[7] = maxv;
+	drawQuad(getTextureIndex(tex), vertices, texcoords);
 }
 #endif

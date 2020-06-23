@@ -25,31 +25,13 @@
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-GUI_TextBox::GUI_TextBox(iRect boxRect, const std::string text, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue)
+GUI_TextBox::GUI_TextBox(iRect boxRect, const std::string text, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue) :
+	m_sText(std::move(text)), m_red(red), m_green(green), m_blue(blue)
 {
 	setRect(boxRect);
-	m_eventHandlerFunction = NULL;
-	m_sText = std::move(text);
 	m_sVisibleText.assign(m_sText);
 	m_internalID = internalID;
-	m_evtParam = 0;
-	m_maxLength = SDL_MAX_UINT32;
 	m_cursorTimer = g_frameTime;
-	m_cursorPosition = 0;
-	m_cursorRelativePosition = 0;
-	m_textStartPosition = 4;
-	m_positionOfFirstShownLetter = 0;
-	m_selectionReference = 0;
-	m_selectionStart = 0;
-	m_selectionEnd = 0;
-	m_red = red;
-	m_green = green;
-	m_blue = blue;
-	m_font = CLIENT_FONT_NONOUTLINED;
-	m_hideCharacter = '\0';
-	m_bShowCursor = false;
-	m_onlyNumbers = false;
-	m_selecting = false;
 }
 
 void GUI_TextBox::setTextEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent)
@@ -253,6 +235,7 @@ void GUI_TextBox::onKeyDown(SDL_Event& event)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -317,7 +300,7 @@ void GUI_TextBox::render()
 		m_bShowCursor = !m_bShowCursor;
 	}
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	Uint32 numberOfLetters = getNumberOfLettersToShow();
 	renderer->fillRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 54, 54, 54, 255);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);

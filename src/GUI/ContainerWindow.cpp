@@ -200,6 +200,7 @@ void container_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -375,11 +376,10 @@ void UTIL_createContainerWindow(Uint8 index)
 	container->resetDirty();
 }
 
-GUI_ContainerImage::GUI_ContainerImage(iRect boxRect, Uint8 index, Uint32 internalID)
+GUI_ContainerImage::GUI_ContainerImage(iRect boxRect, Uint8 index, Uint32 internalID) : m_index(index)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_index = index;
 }
 
 void GUI_ContainerImage::render()
@@ -399,11 +399,6 @@ void GUI_ContainerImage::render()
 	ItemUI* item = container->getItem();
 	if(item)
 		item->render(m_tRect.x1, m_tRect.y1, m_tRect.y2);
-}
-
-GUI_ContainerContainer::GUI_ContainerContainer(iRect boxRect, Uint8 index, GUI_PanelWindow* parent, Uint32 internalID) : GUI_Container(boxRect, parent, internalID)
-{
-	m_index = index;
 }
 
 void GUI_ContainerContainer::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
@@ -445,21 +440,19 @@ void GUI_ContainerContainer::render()
 		Container* container = g_game.findContainer(m_index);
 		if(container)
 		{
-			Surface* renderer = g_engine.getRender();
+			auto& renderer = g_engine.getRender();
 			if(container->isUnlocked())
-				renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 255, 255, 255, 255);
+				renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 1, 255, 255, 255, 255);
 			else
-				renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 255, 0, 0, 255);
+				renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 1, 255, 0, 0, 255);
 		}
 	}
 }
 
-GUI_ContainerItem::GUI_ContainerItem(iRect boxRect, Uint8 cid, size_t index, Uint32 internalID)
+GUI_ContainerItem::GUI_ContainerItem(iRect boxRect, Uint8 cid, size_t index, Uint32 internalID) : m_index(index), m_cid(cid)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_index = index;
-	m_cid = cid;
 }
 
 void* GUI_ContainerItem::onAction(Sint32, Sint32)
@@ -523,7 +516,7 @@ void GUI_ContainerItem::onRMouseDown(Sint32, Sint32)
 
 void GUI_ContainerItem::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2);
 
 	Container* container = g_game.findContainer(m_cid);
@@ -543,9 +536,9 @@ void GUI_ContainerItem::render()
 			}
 
 			if(container->isUnlocked())
-				renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 255, 255, 255, 255);
+				renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 1, 255, 255, 255, 255);
 			else
-				renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 255, 0, 0, 255);
+				renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 1, 255, 0, 0, 255);
 		}
 	}
 }

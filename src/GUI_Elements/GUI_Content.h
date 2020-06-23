@@ -30,6 +30,14 @@ class GUI_Content : public GUI_Element
 		GUI_Content(iRect boxRect, Uint32 internalID = 0);
 		~GUI_Content();
 
+		// non-copyable
+		GUI_Content(const GUI_Content&) = delete;
+		GUI_Content& operator=(const GUI_Content&) = delete;
+
+		// non-moveable
+		GUI_Content(GUI_Content&&) = delete;
+		GUI_Content& operator=(GUI_Content&&) = delete;
+
 		void setRect(iRect& NewRect);
 		bool isInsideRect(Sint32 x, Sint32 y) {return m_tRect.isPointInside(x, y);}
 		void makeVisible() {m_visible = true;}
@@ -54,8 +62,8 @@ class GUI_Content : public GUI_Element
 
 	protected:
 		std::vector<GUI_Element*> m_childs;
-		GUI_Element* m_actElement;
-		bool m_visible;
+		GUI_Element* m_actElement = NULL;
+		bool m_visible = true;
 };
 
 #endif /* __FILE_GUI_CONTENT_h_ */

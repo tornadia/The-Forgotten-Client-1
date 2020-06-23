@@ -28,14 +28,21 @@ class RSA
 {
 	public:
 		RSA();
-		~RSA();
+
+		// non-copyable
+		RSA(const RSA&) = delete;
+		RSA& operator=(const RSA&) = delete;
+
+		// non-moveable
+		RSA(RSA&&) = delete;
+		RSA& operator=(RSA&&) = delete;
 
 		void setKey(const char* publicKey);
 		void encrypt(Uint8* msg) const;
 
 	private:
 		Uint1024 m_mod;
-		Uint32 m_e;
+		Uint32 m_e = 65537;
 };
 
 #endif /* __FILE_RSA_h_ */

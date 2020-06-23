@@ -23,12 +23,7 @@
 
 RSA::RSA()
 {
-	m_e = 65537;
 	m_mod.fromString(CLIENT_RSA_KEY, 10);
-}
-
-RSA::~RSA()
-{
 }
 
 void RSA::setKey(const char* publicKey)

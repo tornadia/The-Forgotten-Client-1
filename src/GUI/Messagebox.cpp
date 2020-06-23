@@ -25,12 +25,12 @@
 #include "../GUI_Elements/GUI_Button.h"
 #include "../GUI_Elements/GUI_Separator.h"
 #include "../GUI_Elements/GUI_Label.h"
-#include "../protocollogin11.h"
+#include "../protocolloginHttp.h"
 
 #define MESSAGEBOX_OK_EVENTID 1000
 
 extern Engine g_engine;
-extern ProtocolLogin11 g_protocolLogin11;
+extern ProtocolLoginHttp g_protocolLoginHttp;
 
 void messagebox_Events(Uint32 event, Sint32)
 {
@@ -45,11 +45,12 @@ void messagebox_Events(Uint32 event, Sint32)
 				if(!g_engine.isIngame())
 				{
 					g_engine.releaseConnection();
-					g_protocolLogin11.closeConnection();
+					g_protocolLoginHttp.closeConnection();
 				}
 			}
 		}
 		break;
+		default: break;
 	}
 }
 

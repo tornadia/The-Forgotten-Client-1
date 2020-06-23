@@ -23,7 +23,6 @@
 #include "engine.h"
 #include "thingManager.h"
 #include "rsa.h"
-#include "thing.h"
 #include "creature.h"
 #include "item.h"
 #include "map.h"
@@ -49,25 +48,13 @@ extern Connection* g_connection;
 extern Uint32 g_datRevision;
 extern Uint16 g_ping;
 
-ProtocolGame::ProtocolGame()
-{
-	m_expectChannels = 0;
-	m_pingReceived = 0;
-	m_pingSent = 0;
-	m_pingTime = 0;
-
-	m_lastError = CONNECTION_ERROR_INVALID;
-	m_skipErrors = false;
-	m_gameInitialized = false;
-	m_pendingGame = false;
-}
-
 void ProtocolGame::parseMessage(InputMessage& msg)
 {
 	Uint8 header = msg.getU8();
 	switch(header)
 	{
 		case RecvCreatureDataOpcode: parseCreatureData(msg); break;
+		case RecvSessionDumpStartOpcode: parseSessionDumpStart(msg); break;
 		case RecvLoginOrPendingOpcode: parseLoginOrPending(msg); break;
 		case RecvGMActionsOpcode: (g_clientVersion < 1100 ? parseGMActions(msg) : parseReadyForSecondaryConnection(msg)); break;
 		case RecvEnterGameOpcode: parseEnterGame(msg); break;
@@ -85,6 +72,8 @@ void ProtocolGame::parseMessage(InputMessage& msg)
 		case RecvStashOpcode: parseStash(msg); break;
 		case RecvSpecialContainersAvailableOpcode: parseSpecialContainersAvailable(msg); break;
 		case RecvPartyHuntAnalyserOpcode: parsePartyHuntAnalyser(msg); break;
+		case RecvTeamFinderTeamLeaderOpcode: parseTeamFinderTeamLeader(msg); break;
+		case RecvTeamFinderTeamMemberOpcode: parseTeamFinderTeamMember(msg); break;
 		case RecvOtclientOpcode: parseOtclient(msg); break;
 		case RecvClientCheckOpcode: parseClientCheck(msg); break;
 		case RecvMapDescriptionOpcode: parseMapDescription(msg); break;
@@ -158,7 +147,7 @@ void ProtocolGame::parseMessage(InputMessage& msg)
 		case RecvRuleViolationChannelOpcode: (g_clientVersion >= 1070 ? parseEditGuildMessage(msg) : parseRuleViolationChannel(msg)); break;
 		case RecvRuleViolationRemoveOpcode: parseRuleViolationRemove(msg); break;
 		case RecvRuleViolationCancelOpcode: parseRuleViolationCancel(msg); break;
-		case RecvRuleViolationLockOpcode: parseRuleViolationLock(msg); break;
+		case RecvRuleViolationLockOpcode: (g_clientVersion >= 1070 ? parseHighscores(msg) : parseRuleViolationLock(msg)); break;
 		case RecvOpenOwnChannelOpcode: parseOpenOwnChannel(msg); break;
 		case RecvCloseChannelOpcode: parseCloseChannel(msg); break;
 		case RecvTextMessageOpcode: parseTextMessage(msg); break;
@@ -253,6 +242,15 @@ void ProtocolGame::parseOtclient(InputMessage& msg)
 void ProtocolGame::parseCreatureData(InputMessage& msg)
 {
 	getCreature(msg, 0x61, Position(0xFFFF, 0xFFFF, 0xFF));
+}
+
+void ProtocolGame::parseSessionDumpStart(InputMessage& msg)
+{
+	msg.getU32();//??
+	msg.getU16();//??
+	msg.getDouble();//??
+	msg.getDouble();//??
+	msg.getDouble();//??
 }
 
 void ProtocolGame::parseLogin(InputMessage& msg)
@@ -1153,6 +1151,9 @@ void ProtocolGame::parseNpcOpenTrade(InputMessage& msg)
 	if(g_clientVersion >= 1203)
 		currencyId = msg.getU16();
 
+	if(g_clientVersion >= 1240)
+		msg.getRawString();//??
+
 	size_t listCount;
 	if(g_clientVersion >= 980)
 		listCount = SDL_static_cast(size_t, msg.getU16());
@@ -1476,6 +1477,27 @@ void ProtocolGame::parseCreatureUpdate(InputMessage& msg)
 			}
 		}
 		break;
+		case 14:
+		{
+			Uint8 icons = msg.getU8();
+			for(Uint8 i = 0; i < icons; ++i)
+			{
+				Uint8 iconId = msg.getU8();
+				Uint16 iconValue = msg.getU16();
+				(void)iconId;
+				(void)iconValue;
+			}
+			/*Creature* creature = g_map.getCreatureById(creatureId);
+			if(creature)
+				creature->setIcons(icons);
+			else
+			{
+				Sint32 len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s(ID: %u).", "[ProtocolGame::parseCreatureUpdate] Creature not found", creatureId);
+				g_logger.addLog(LOG_CATEGORY_ERROR, std::string(g_buffer, SDL_static_cast(size_t, len)));
+			}*/
+		}
+		break;
+		default: break;
 	}
 }
 
@@ -2415,6 +2437,7 @@ void ProtocolGame::parsePlayerStoreDeepLink(InputMessage& msg)
 				msg.getRawString();//??
 			}
 			break;
+			default: break;
 		}
 		msg.getU8();//??
 		msg.getU8();//??
@@ -2658,7 +2681,57 @@ void ProtocolGame::parseChannelEvent(InputMessage& msg)
 		case CHANNEL_EVENT_EXCLUDE:
 		case CHANNEL_EVENT_PENDING:
 			break;
+		default: break;
 	}
+}
+
+void ProtocolGame::parseHighscores(InputMessage& msg)
+{
+	bool noData = msg.getBool();
+	if(noData)
+		return;
+
+	Uint8 unknown = msg.getU8();//?? - suggestion worlds
+	for(Uint8 i = 0; i < unknown; ++i)
+	{
+		msg.getRawString();//??
+	}
+
+	msg.getRawString();//??
+
+	unknown = msg.getU8();//??
+	for(Uint8 i = 0; i < unknown; ++i)
+	{
+		msg.getU32();//??
+		msg.getRawString();//??
+	}
+
+	msg.getU32();//??
+		
+	unknown = msg.getU8();//?? - suggestion players
+	for(Uint8 i = 0; i < unknown; ++i)
+	{
+		msg.getU8();//??
+		msg.getRawString();//??
+		msg.getU8();//??
+		msg.getU16();//??
+		msg.getU16();//??
+		msg.getU8();//??
+		msg.getU32();//??
+		msg.getRawString();//??
+		msg.getRawString();//??
+		Uint8 vocation = msg.getU8() % 10;
+		(void)vocation;
+		msg.getRawString();//??
+		msg.getU16();//??
+		msg.getU8();//??
+		msg.getU64();//??
+	}
+
+	msg.getU8();//??
+	msg.getU8();//??
+	msg.getU8();//??
+	msg.getU32();//??
 }
 
 void ProtocolGame::parseVipAdd(InputMessage& msg)
@@ -2923,6 +2996,7 @@ void ProtocolGame::parseFriendSystemData(InputMessage& msg)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -2966,21 +3040,29 @@ void ProtocolGame::parseTrackedQuestFlags(InputMessage& msg)
 	bool full = msg.getBool();
 	if(full)
 	{
-		msg.getU8();
-		Uint8 size = msg.getU8();
-		for(Uint8 i = 0; i < size; ++i)
+		Uint8 allowedTrackers = msg.getU8();
+		Uint8 missions = msg.getU8();
+		for(Uint8 i = 0; i < missions; ++i)
 		{
-			msg.getU16();
-			msg.getRawString();
-			msg.getRawString();
-			msg.getRawString();
+			Uint16 missionId = msg.getU16();
+			std::string qusetName = msg.getString();
+			std::string missionName = msg.getString();
+			std::string missionDescription = msg.getString();
+			(void)missionId;
+			(void)qusetName;
+			(void)missionName;
+			(void)missionDescription;
 		}
+		(void)allowedTrackers;
 	}
 	else
 	{
-		msg.getU16();
-		msg.getRawString();
-		msg.getRawString();
+		Uint16 missionId = msg.getU16();
+		std::string missionName = msg.getString();
+		std::string missionDescription = msg.getString();
+		(void)missionId;
+		(void)missionName;
+		(void)missionDescription;
 	}
 }
 
@@ -3004,9 +3086,9 @@ void ProtocolGame::parseMarketEnter(InputMessage& msg)
 	else
 		balance = SDL_static_cast(Uint64, msg.getU32());
 
-	Sint16 vocation;
+	Sint8 vocation;
 	if(g_clientVersion < 950)
-		vocation = SDL_static_cast(Sint16, SDL_static_cast(Sint8, msg.getU8()));
+		vocation = SDL_static_cast(Sint8, msg.getU8());
 	else
 		vocation = -1;
 
@@ -3202,56 +3284,75 @@ void ProtocolGame::parseStoreRequestPurchase(InputMessage& msg)
 		case 9:
 		{
 			msg.getBool();//??
-			Uint8 size = msg.getU8();
-			for(Uint8 i = 0; i < size; ++i)
+			Uint8 worlds = msg.getU8();
+			for(Uint8 i = 0; i < worlds; ++i)
 			{
-				msg.getRawString();//??
-				msg.getBool();//??
-				msg.getBool();//??
-				msg.getU8();//??
+				std::string worldName = msg.getString();
+				bool premiumOnly = msg.getBool();
+				bool locked = msg.getBool();
+				Uint8 worldType = msg.getU8();
+				(void)worldName;
+				(void)premiumOnly;
+				(void)locked;
+				(void)worldType;
 			}
 
-			msg.getBool();//??
-			msg.getBool();//??
-			msg.getBool();//??
-			msg.getBool();//??
-			msg.getBool();//??
+			bool redSkull = msg.getBool();
+			bool blackSkull = msg.getBool();
+			bool guildLeader = msg.getBool();
+			bool haveHouse = msg.getBool();
+			bool tcAuctions = msg.getBool();
+			(void)redSkull;
+			(void)blackSkull;
+			(void)guildLeader;
+			(void)haveHouse;
+			(void)tcAuctions;
 		}
 		break;
 		case 11:
 		{
-			msg.getRawString();//??
-			Uint8 size = msg.getU8();
-			for(Uint8 i = 0; i < size; ++i)
+			std::string characterName = msg.getString();
+			(void)characterName;
+
+			Uint8 locations = msg.getU8();
+			for(Uint8 i = 0; i < locations; ++i)
 			{
-				msg.getRawString();//??
+				std::string gameWorld = msg.getString();
+				(void)gameWorld;
 			}
 
-			size = msg.getU8();
-			for(Uint8 i = 0; i < size; ++i)
+			Uint8 vocations = msg.getU8();
+			for(Uint8 i = 0; i < vocations; ++i)
 			{
-				msg.getU8();//??
+				Uint8 vocationId = msg.getU8();
+				(void)vocationId;
 			}
 
-			size = msg.getU8();
-			for(Uint8 i = 0; i < size; ++i)
+			Uint8 startCities = msg.getU8();
+			for(Uint8 i = 0; i < startCities; ++i)
 			{
-				msg.getRawString();//??
+				std::string city = msg.getString();
+				(void)city;
 			}
 		}
 		break;
 		case 12:
 		{
-			Uint8 size = msg.getU8();
-			for(Uint8 i = 0; i < size; ++i)
+			Uint8 characters = msg.getU8();
+			for(Uint8 i = 0; i < characters; ++i)
 			{
-				msg.getRawString();//??
-				msg.getRawString();//??
-				msg.getRawString();//??
-				msg.getU16();//??
+				std::string characterName = msg.getString();
+				std::string worldName = msg.getString();
+				std::string vocation = msg.getString();
+				Uint16 level = msg.getU16();
+				(void)characterName;
+				(void)worldName;
+				(void)vocation;
+				(void)level;
 			}
 		}
 		break;
+		default: break;
 	}
 	(void)transactionId;
 }
@@ -3398,15 +3499,23 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 				break;
 				case 4:
 				{
-					msg.getU8();//??
-					msg.getU16();//??
-					msg.getU16();//??
-					msg.getU8();//??
-					msg.getU8();//??
-					msg.getU8();//??
-					msg.getU8();//??
+					Uint8 gender = msg.getU8();
+					Uint16 maleLookType = msg.getU16();
+					Uint16 femaleLookType = msg.getU16();
+					Uint8 lookHead = msg.getU8();
+					Uint8 lookBody = msg.getU8();
+					Uint8 lookLegs = msg.getU8();
+					Uint8 lookFeet = msg.getU8();
+					(void)gender;
+					(void)maleLookType;
+					(void)femaleLookType;
+					(void)lookHead;
+					(void)lookBody;
+					(void)lookLegs;
+					(void)lookFeet;
 				}
 				break;
+				default: break;
 			}
 			if(g_clientVersion >= 1212)
 			{
@@ -3468,15 +3577,23 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 					break;
 					case 4:
 					{
-						msg.getU8();//??
-						msg.getU16();//??
-						msg.getU16();//??
-						msg.getU8();//??
-						msg.getU8();//??
-						msg.getU8();//??
-						msg.getU8();//??
+						Uint8 gender = msg.getU8();
+						Uint16 maleLookType = msg.getU16();
+						Uint16 femaleLookType = msg.getU16();
+						Uint8 lookHead = msg.getU8();
+						Uint8 lookBody = msg.getU8();
+						Uint8 lookLegs = msg.getU8();
+						Uint8 lookFeet = msg.getU8();
+						(void)gender;
+						(void)maleLookType;
+						(void)femaleLookType;
+						(void)lookHead;
+						(void)lookBody;
+						(void)lookLegs;
+						(void)lookFeet;
 					}
 					break;
+					default: break;
 				}
 			}
 		}
@@ -3518,10 +3635,11 @@ void ProtocolGame::parseStoreOffers(InputMessage& msg)
 					break;
 					case 5:
 					{
-						const std::string featuredCategoryName = msg.getString();
-						(void)featuredCategoryName;
+						const std::string featuredOfferName = msg.getString();
+						(void)featuredOfferName;
 					}
 					break;
+					default: break;
 				}
 
 				msg.getU8();//??
@@ -3618,7 +3736,7 @@ void ProtocolGame::parseStoreTransactionHistory(InputMessage& msg)
 	Uint8 entries = msg.getU8();
 	for(Uint8 i = 0; i < entries; ++i)
 	{
-		if(g_clientVersion >= 1220)//Detect client version
+		if(g_clientVersion >= 1208)//Detect client version
 		{
 			msg.getU32();//Offer id?
 			msg.getU32();//Timestamp?
@@ -3633,6 +3751,9 @@ void ProtocolGame::parseStoreTransactionHistory(InputMessage& msg)
 			Uint32 time = msg.getU32();
 			Uint8 productType = msg.getU8();
 			Uint32 coinChange = msg.getU32();
+			if(g_clientVersion >= 1200)
+				msg.getU8();//Coin type?
+
 			const std::string productName = msg.getString();
 			(void)time;
 			(void)productType;
@@ -3644,11 +3765,11 @@ void ProtocolGame::parseStoreTransactionHistory(InputMessage& msg)
 
 void ProtocolGame::parseStoreCompletePurchase(InputMessage& msg)
 {
-	Uint8 unknown = msg.getU8();
-	(void)unknown;
+	Uint8 messageId = msg.getU8();
+	(void)messageId;
 
 	const std::string message = msg.getString();
-	if(g_clientVersion < 1220)//Detect clientversion
+	if(g_clientVersion < 1215)
 	{
 		Uint32 coins = msg.getU32();
 		Uint32 transferableCoins = msg.getU32();
@@ -3693,6 +3814,7 @@ void ProtocolGame::parseTransactionDetails(InputMessage& msg)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -3855,6 +3977,95 @@ void ProtocolGame::parsePreyHuntingTaskData(InputMessage& msg)
 	}
 }
 
+void ProtocolGame::parseTeamFinderTeamLeader(InputMessage& msg)
+{
+	bool noData = msg.getBool();
+	if(noData)
+		return;
+
+	msg.getU16();//??
+	msg.getU16();//??
+	msg.getU8();//??
+	msg.getU16();//??
+	msg.getU16();//??
+	msg.getU32();//??
+	Uint8 type = msg.getU8();//??
+	switch(type)
+	{
+		case 1:
+		{
+			msg.getU16();//??
+		}
+		break;
+		case 2:
+		{
+			msg.getU16();//??
+			msg.getU16();//??
+		}
+		break;
+		case 3:
+		{
+			msg.getU16();//??
+		}
+		break;
+		default: break;
+	}
+
+	Uint16 size = msg.getU16();//??
+	for(Uint16 i = 0; i < size; ++i)
+	{
+		msg.getU32();//??
+		msg.getRawString();//??
+		msg.getU16();//??
+		msg.getU8();//??
+		msg.getU8();//??
+	}
+}
+
+void ProtocolGame::parseTeamFinderTeamMember(InputMessage& msg)
+{
+	bool noData = msg.getBool();
+	if(noData)
+		return;
+
+	Uint16 size = msg.getU16();//??
+	for(Uint16 i = 0; i < size; ++i)
+	{
+		msg.getU32();//??
+		msg.getRawString();//??
+
+		msg.getU16();//??
+		msg.getU16();//??
+		msg.getU8();//??
+		msg.getU16();//??
+		msg.getU16();//??
+		msg.getU32();//??
+		Uint8 type = msg.getU8();//??
+		switch(type)
+		{
+			case 1:
+			{
+				msg.getU16();//??
+			}
+			break;
+			case 2:
+			{
+				msg.getU16();//??
+				msg.getU16();//??
+			}
+			break;
+			case 3:
+			{
+				msg.getU16();//??
+			}
+			break;
+			default: break;
+		}
+
+		msg.getU8();//??
+	}
+}
+
 void ProtocolGame::parseRefreshImbuingDialog(InputMessage& msg)
 {
 	msg.getU16();//??
@@ -3931,6 +4142,11 @@ void ProtocolGame::parseResourceBalance(InputMessage& msg)
 	{
 		Sint32 charmPoints = SDL_static_cast(Sint32, msg.getU32());
 		g_game.setCharmPoints(charmPoints);
+	}
+	else if(type == RESOURCETYPE_UNKNOWN60)
+	{
+		Sint32 balance = SDL_static_cast(Sint32, msg.getU32());
+		(void)balance;
 	}
 	else
 	{
@@ -4110,6 +4326,7 @@ void ProtocolGame::parsePreyData(InputMessage& msg)
 			}
 		}
 		break;
+		default: break;
 	}
 
 	msg.getU16();//??
@@ -4837,6 +5054,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(InputMessage& msg)
 			(void)currentTitleId;
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -4976,6 +5194,7 @@ void ProtocolGame::parseCyclopediaMapData(InputMessage& msg)
 			msg.getU16();//??
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -5119,6 +5338,7 @@ void ProtocolGame::parseCyclopediaCurrentHouseData(InputMessage& msg)
 				(void)moveOutDate;
 			}
 			break;
+			default: break;
 		}
 	}
 }
@@ -5188,10 +5408,12 @@ void ProtocolGame::parseDailyRewardBasic(InputMessage& msg)
 							msg.getU16();//??
 						}
 						break;
+						default: break;
 					}
 				}
 			}
 			break;
+			default: break;
 		}
 		type = msg.getU8();
 		switch(type)
@@ -5233,10 +5455,12 @@ void ProtocolGame::parseDailyRewardBasic(InputMessage& msg)
 							msg.getU16();//??
 						}
 						break;
+						default: break;
 					}
 				}
 			}
 			break;
+			default: break;
 		}
 	}
 
@@ -5277,8 +5501,35 @@ void ProtocolGame::parseGameNews(InputMessage& msg)
 
 void ProtocolGame::parsePlayerDataTournament(InputMessage& msg)
 {
-	Uint32 dailyPlaytime = msg.getU32();
-	(void)dailyPlaytime;
+	if(g_clientVersion >= 1240)
+	{
+		Uint8 type = msg.getU8();
+		switch(type)
+		{
+			case 0:
+			{
+				msg.getU32();//??
+			}
+			break;
+			case 1:
+			{
+				msg.getU32();//??
+			}
+			break;
+			case 2:
+			{
+				msg.getU32();//??
+				msg.getU32();//??
+			}
+			break;
+			default: break;
+		}
+	}
+	else
+	{
+		Uint32 dailyPlaytime = msg.getU32();
+		(void)dailyPlaytime;
+	}
 }
 
 void ProtocolGame::parseTournamentInformation(InputMessage& msg)
@@ -5292,8 +5543,8 @@ void ProtocolGame::parseTournamentInformation(InputMessage& msg)
 			Uint32 regularWorldCost = msg.getU32();
 			bool enableRestrictedWorld = msg.getBool();
 			Uint32 restrictedWorldCost = msg.getU32();
-			bool something = msg.getBool();
-			if(something)
+			Uint8 something = msg.getU8();
+			if(something == 1 || something == 2)
 			{
 				msg.getBool();//need more tests to determine what it is, ??
 				msg.getBool();//need more tests to determine what it is, ??
@@ -5322,7 +5573,36 @@ void ProtocolGame::parseTournamentInformation(InputMessage& msg)
 		case TOURNAMENT_INFORMATION_RULES:
 		{
 			RulePvPType pvpType = SDL_static_cast(RulePvPType, msg.getU8());
-			Uint32 dailyPlaytime = msg.getU32();
+			if(g_clientVersion >= 1240)
+			{
+				msg.getBool();//??
+				Uint8 type = msg.getU8();//??
+				switch(type)
+				{
+					case 0:
+					{
+						msg.getU32();//??
+					}
+					break;
+					case 1:
+					{
+						msg.getU32();//??
+					}
+					break;
+					case 2:
+					{
+						msg.getU32();//??
+						msg.getU32();//??
+					}
+					break;
+					default: break;
+				}
+			}
+			else
+			{
+				Uint32 dailyPlaytime = msg.getU32();
+				(void)dailyPlaytime;
+			}
 			Uint16 deathPenaltyModifier = msg.getU16();
 			Uint16 expMultiplier = msg.getU16();
 			Uint16 skillMultiplier = msg.getU16();
@@ -5332,8 +5612,10 @@ void ProtocolGame::parseTournamentInformation(InputMessage& msg)
 			Uint8 houseAuctionDurations = msg.getU8();
 			msg.getRawString();//need more tests to determine what it is, ??
 			msg.getRawString();//need more tests to determine what it is, ??
+			if(g_clientVersion >= 1240)
+				msg.getRawString();//??
+
 			(void)pvpType;
-			(void)dailyPlaytime;
 			(void)deathPenaltyModifier;
 			(void)expMultiplier;
 			(void)skillMultiplier;
@@ -5403,6 +5685,23 @@ void ProtocolGame::parseTournamentInformation(InputMessage& msg)
 				(void)tibiaCoinsRewarded;
 				(void)tournamentVouchersRewarded;
 
+				if(g_clientVersion >= 1240)
+				{
+					Uint8 size = msg.getU8();//??
+					for(Uint8 i = 0; i < size; ++i)
+					{
+						msg.getU8();//??
+						msg.getU16();//??
+					}
+
+					size = msg.getU8();//??
+					for(Uint8 i = 0; i < size; ++i)
+					{
+						msg.getU16();//??
+						msg.getU8();//??
+					}
+				}
+
 				Uint16 lookType;
 				if(g_game.hasGameFeature(GAME_FEATURE_LOOKTYPE_U16))
 					lookType = msg.getU16();
@@ -5463,6 +5762,23 @@ void ProtocolGame::parseTournamentInformation(InputMessage& msg)
 				(void)tibiaCoinsRewarded;
 				(void)tournamentVouchersRewarded;
 
+				if(g_clientVersion >= 1240)
+				{
+					Uint8 size = msg.getU8();//??
+					for(Uint8 i = 0; i < size; ++i)
+					{
+						msg.getU8();//??
+						msg.getU16();//??
+					}
+
+					size = msg.getU8();//??
+					for(Uint8 i = 0; i < size; ++i)
+					{
+						msg.getU16();//??
+						msg.getU8();//??
+					}
+				}
+
 				Uint16 lookType;
 				if(g_game.hasGameFeature(GAME_FEATURE_LOOKTYPE_U16))
 					lookType = msg.getU16();
@@ -5502,6 +5818,12 @@ void ProtocolGame::parseTournamentInformation(InputMessage& msg)
 			}
 		}
 		break;
+		case TOURNAMENT_INFORMATION_UNKNOWN5:
+		{
+			msg.getBool();//??
+		}
+		break;
+		default: break;
 	}
 }
 
@@ -5524,6 +5846,8 @@ void ProtocolGame::parseTournamentLeaderboard(InputMessage& msg)
 			{
 				std::string worldName = msg.getRawString();
 				(void)worldName;
+				if(g_clientVersion >= 1240)
+					msg.getRawString();//??
 			}
 
 			std::string currentWorld = msg.getString();
@@ -5569,6 +5893,7 @@ void ProtocolGame::parseTournamentLeaderboard(InputMessage& msg)
 			(void)unk4;
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -5622,8 +5947,7 @@ void ProtocolGame::onDisconnect()
 			case CONNECTION_ERROR_PROTOCOL_FAIL:
 				UTIL_messageBox("Connection Failed", "Cannot connect to a game server.\n\nError: Protocol mismatched.");
 				break;
-			default:
-				break;
+			default: break;
 		}
 	}
 	UTIL_createCharacterList();
@@ -6228,8 +6552,7 @@ void ProtocolGame::sendSay(MessageMode mode, Uint16 channelId, const std::string
 		case MessageGamemasterChannel:
 			msg.addU16(channelId);
 			break;
-		default:
-			break;
+		default: break;
 	}
 	msg.addString(message);
 	onSend(msg);
@@ -6603,6 +6926,7 @@ void ProtocolGame::sendFriendSystemAction()
 			msg.addBool(0);//??
 		}
 		break;
+		default: break;
 	}
 	onSend(msg);
 }
@@ -6634,8 +6958,7 @@ void ProtocolGame::sendNewBugReport(BugReportCategory category, const std::strin
 			msg.addString(typoText);
 		}
 		break;
-		default:
-			break;
+		default: break;
 	}
 	onSend(msg);
 }
@@ -6685,8 +7008,7 @@ void ProtocolGame::sendNewRuleViolation(Uint8 reason, Uint8 action, const std::s
 			msg.addU32(statementId);
 		}
 		break;
-		default:
-			break;
+		default: break;
 	}
 	onSend(msg);
 }
@@ -6774,6 +7096,7 @@ void ProtocolGame::sendRequestStore(Uint8 serviceType, const std::string& catego
 				msg.addString("");//??
 			}
 			break;
+			default: break;
 		}
 
 		msg.addU8(0);//??
@@ -6833,7 +7156,7 @@ void ProtocolGame::sendRequestTransactionHistory(Uint32 page, Uint8 entriesPerPa
 	if(g_clientVersion <= 1096)
 	{
 		msg.addU16(SDL_static_cast(Uint16, page));
-		msg.addU8(SDL_static_cast(Uint32, entriesPerPage));
+		msg.addU8(entriesPerPage);
 	}
 	else
 	{
@@ -6892,6 +7215,7 @@ void ProtocolGame::sendStoreEvent()
 			msg.addU32(0);//??
 		}
 		break;
+		default: break;
 	}
 	onSend(msg);
 }
@@ -7005,6 +7329,7 @@ void ProtocolGame::sendPartyHuntAnalyser()
 			}
 		}
 		break;
+		default: break;
 	}
 	onSend(msg);
 }
@@ -7017,6 +7342,89 @@ void ProtocolGame::sendFeatureEvent(FeatureEventType type, bool active)
 	msg.addBool(active);
 	if(!active)
 		msg.addU32(0);//timestamp??
+	onSend(msg);
+}
+
+void ProtocolGame::sendTeamFinderAssembleTeam()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GameTeamFinderAssembleTeamOpcode);
+	Uint8 type = 0;//??
+	msg.addU8(type);
+	switch(type)
+	{
+		case 3:
+		{
+			msg.addU16(0);//??
+			msg.addU16(0);//??
+			msg.addU8(0);//??
+			msg.addU16(0);//??
+			msg.addU16(0);//??
+			msg.addBool(false);//??
+			msg.addU32(0);//??
+
+			Uint8 type2 = 0;//??
+			msg.addU8(type2);
+			switch(type2)
+			{
+				case 3:
+				{
+					msg.addU16(0);//??
+				}
+				break;
+				case 2:
+				{
+					msg.addU16(0);//??
+					msg.addU16(0);//??
+				}
+				break;
+				case 1:
+				{
+					msg.addU16(0);//??
+				}
+				break;
+				default: break;
+			}
+		}
+		break;
+		case 2:
+		{
+			msg.addU32(0);//??
+			msg.addU8(0);//??
+		}
+		break;
+		default: break;
+	}
+	onSend(msg);
+}
+
+void ProtocolGame::sendTeamFinderJoinTeam()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GameTeamFinderJoinTeamOpcode);
+	Uint8 type = 0;//??
+	msg.addU8(type);
+	if(type <= 1)
+	{
+		msg.addU32(0);//??
+	}
+	onSend(msg);
+}
+
+void ProtocolGame::sendHighscores()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GameHighscoresOpcode);
+	Uint8 type = 0;//??
+	msg.addU8(type);
+	msg.addU8(0);//??
+	msg.addU32(0);//??
+	msg.addString("");//??
+	if(type == 0)
+	{
+		msg.addU16(0);//??
+	}
+	msg.addU8(0);//??
 	onSend(msg);
 }
 
@@ -7056,6 +7464,7 @@ void ProtocolGame::sendInspectObject(InspectObjectData& inspectData)
 			msg.addU8(0);//??
 		}
 		break;
+		default: break;
 	}
 	onSend(msg);
 }
@@ -7140,10 +7549,12 @@ void ProtocolGame::sendOpenMonsterCyclopediaMonsters(const std::string& race)
 				*/
 			}
 			break;
+			default: break;
 		}
 	}
 	else
 		msg.addString(race);
+
 	onSend(msg);
 }
 
@@ -7215,6 +7626,11 @@ void ProtocolGame::sendCyclopediaHouseAction()
 			msg.addString("");//??
 		}
 		break;
+		case 2:
+		{
+			msg.addU32(0);//??
+		}
+		break;
 		case 3:
 		{
 			msg.addU32(0);//??
@@ -7225,11 +7641,7 @@ void ProtocolGame::sendCyclopediaHouseAction()
 			msg.addU64(0);//??
 		}
 		break;
-		case 2:
-		{
-			msg.addU32(0);//??
-		}
-		break;
+		default: break;
 	}
 	onSend(msg);
 }
@@ -7294,23 +7706,20 @@ void ProtocolGame::sendLootContainer(LootContainerData& lootData)
 	OutputMessage msg(getHeaderPos());
 	msg.addU8(GameLootContainerOpcode);
 	msg.addU8(lootData.action);
-	switch(lootData.action)
+	if(lootData.action == LOOTACTION_SETUSEFALLBACK)
 	{
-		case LOOTACTION_ASSIGNCONTAINER:
-		{
-			Position position(lootData.assignContainer.posX, lootData.assignContainer.posY, lootData.assignContainer.posZ);
-			msg.addU8(lootData.assignContainer.objectCategory);
-			msg.addPosition(position);
-			msg.addU16(lootData.assignContainer.itemId);
-			msg.addU8(lootData.assignContainer.itemCount);
-		}
-		break;
-		case LOOTACTION_CLEARCONTAINER:
-			msg.addU8(lootData.clearContainer.objectCategory);
-			break;
-		case LOOTACTION_SETUSEFALLBACK:
-			msg.addBool(lootData.setUseFallback.useFallback);
-			break;
+		msg.addBool(lootData.setUseFallback.useFallback);
+		onSend(msg);
+		return;
+	}
+
+	msg.addU8(lootData.clearContainer.objectCategory);
+	if(lootData.action == LOOTACTION_ASSIGNCONTAINER)
+	{
+		Position position(lootData.assignContainer.posX, lootData.assignContainer.posY, lootData.assignContainer.posZ);
+		msg.addPosition(position);
+		msg.addU16(lootData.assignContainer.itemId);
+		msg.addU8(lootData.assignContainer.itemCount);
 	}
 	onSend(msg);
 }
@@ -7345,6 +7754,14 @@ void ProtocolGame::sendMarkGameNewsAsRead(Uint32 newsId, bool readed)
 	onSend(msg);
 }
 
+void ProtocolGame::sendClaimTournamentReward(Uint8 rewardId)
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GameClaimTournamentReward);
+	msg.addU8(rewardId);
+	onSend(msg);
+}
+
 void ProtocolGame::sendTournamentInformation()
 {
 	OutputMessage msg(getHeaderPos());
@@ -7373,6 +7790,7 @@ void ProtocolGame::sendTournamentLeaderboard(const std::string& worldName, Uint1
 			msg.addString(searchCharacter);
 		}
 		break;
+		default: break;
 	}
 	msg.addU8(elementsPerPage);
 	onSend(msg);
@@ -8059,6 +8477,19 @@ Creature* ProtocolGame::getCreature(InputMessage& msg, Uint16 thingId, const Pos
 	light[1] = SDL_static_cast(Uint16, msg.getU8());
 
 	Uint16 speed = msg.getU16();
+
+	if(g_clientVersion >= 1240)
+	{
+		Uint8 icons = msg.getU8();
+		for(Uint8 i = 0; i < icons; ++i)
+		{
+			Uint8 iconId = msg.getU8();
+			Uint16 iconValue = msg.getU16();
+			(void)iconId;
+			(void)iconValue;
+		}
+	}
+
 	Uint8 skull = msg.getU8();
 	Uint8 shield = msg.getU8();
 

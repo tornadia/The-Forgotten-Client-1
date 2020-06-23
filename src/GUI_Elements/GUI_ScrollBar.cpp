@@ -28,13 +28,7 @@ extern Uint32 g_frameTime;
 GUI_HScrollBar::GUI_HScrollBar(iRect boxRect, Sint32 sSize, Sint32 sPos, Uint32 internalID)
 {
 	setRect(boxRect);
-	m_eventHandlerFunction = NULL;
-	m_scrollScale = m_scrollInvScale = 0.f;
-	m_evtParam = 0;
 	m_lastUpdate = g_frameTime;
-	m_mouseClickX = m_scrollPosSize = m_scrollPos[0] = m_scrollPos[1] = m_scrollSize = 0;
-	m_buttonDown = 0;
-	m_haveHandle = false;
 	m_internalID = internalID;
 	if(sSize != 0)
 		setScrollSize(sSize);
@@ -191,7 +185,7 @@ void GUI_HScrollBar::onWheel(Sint32, Sint32, bool wheelUP)
 
 void GUI_HScrollBar::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_HORIZONTAL_TEXTURE_X, GUI_UI_ICON_SCROLLBAR_HORIZONTAL_TEXTURE_Y, GUI_UI_ICON_SCROLLBAR_HORIZONTAL_TEXTURE_W, GUI_UI_ICON_SCROLLBAR_HORIZONTAL_TEXTURE_H, m_tRect.x1 + 12, m_tRect.y1, m_tRect.x2 - 24, 12);
 	if(m_buttonDown == 1)
 	{
@@ -254,13 +248,7 @@ void GUI_HScrollBar::render()
 GUI_VScrollBar::GUI_VScrollBar(iRect boxRect, Sint32 sSize, Sint32 sPos, Uint32 internalID)
 {
 	setRect(boxRect);
-	m_eventHandlerFunction = NULL;
-	m_scrollScale = m_scrollInvScale = 0.f;
-	m_evtParam = 0;
 	m_lastUpdate = g_frameTime;
-	m_mouseClickY = m_scrollPosSize = m_scrollPos[0] = m_scrollPos[1] = m_scrollSize = 0;
-	m_buttonDown = 0;
-	m_haveHandle = false;
 	m_internalID = internalID;
 	if(sSize != 0)
 		setScrollSize(sSize);
@@ -417,7 +405,7 @@ void GUI_VScrollBar::onWheel(Sint32, Sint32, bool wheelUP)
 
 void GUI_VScrollBar::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_SCROLLBAR_VERTICAL_TEXTURE_X, GUI_UI_ICON_SCROLLBAR_VERTICAL_TEXTURE_Y, GUI_UI_ICON_SCROLLBAR_VERTICAL_TEXTURE_W, GUI_UI_ICON_SCROLLBAR_VERTICAL_TEXTURE_H, m_tRect.x1, m_tRect.y1 + 12, 12, m_tRect.y2 - 24);
 	if(m_buttonDown == 1)
 	{

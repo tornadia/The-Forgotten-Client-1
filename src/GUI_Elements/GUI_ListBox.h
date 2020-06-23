@@ -31,6 +31,14 @@ class GUI_ListBox : public GUI_Element
 		GUI_ListBox(iRect boxRect, Uint32 internalID = 0);
 		~GUI_ListBox();
 
+		// non-copyable
+		GUI_ListBox(const GUI_ListBox&) = delete;
+		GUI_ListBox& operator=(const GUI_ListBox&) = delete;
+
+		// non-moveable
+		GUI_ListBox(GUI_ListBox&&) = delete;
+		GUI_ListBox& operator=(GUI_ListBox&&) = delete;
+
 		void setRect(iRect& NewRect);
 		void setEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);
 
@@ -49,14 +57,14 @@ class GUI_ListBox : public GUI_Element
 		void render();
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32, Sint32);
+		void (*m_eventHandlerFunction)(Uint32, Sint32) = NULL;
 		std::vector<std::string> m_listBox;
 		GUI_VScrollBar* m_scrollBar;
-		Uint32 m_evtParam;
-		Uint32 m_lastClick;
-		Sint32 m_maxDisplay;
-		Sint32 m_select;
-		bool m_doubleClicked;
+		Uint32 m_evtParam = 0;
+		Uint32 m_lastClick = 0;
+		Sint32 m_maxDisplay = 0;
+		Sint32 m_select = -1;
+		bool m_doubleClicked = false;
 };
 
 #endif /* __FILE_GUI_LISTBOX_h_ */

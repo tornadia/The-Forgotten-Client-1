@@ -119,6 +119,7 @@ void buttons_Events(Uint32 event, Sint32)
 		case BUTTONS_LEADERBOARD_EVENTID: break;
 		case BUTTONS_FRIENDS_EVENTID: break;
 		case BUTTONS_PARTY_EVENTID: UTIL_togglePartyWindow(); break;
+		default: break;
 	}
 }
 

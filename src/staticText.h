@@ -40,7 +40,15 @@ struct StaticTextMessageLine
 class StaticText
 {
 	public:
-		StaticText(const Position& pos);
+		StaticText(const Position& pos) : m_position(pos) {}
+
+		// non-copyable
+		StaticText(const StaticText&) = delete;
+		StaticText& operator=(const StaticText&) = delete;
+
+		// non-moveable
+		StaticText(StaticText&&) = delete;
+		StaticText& operator=(StaticText&&) = delete;
 		
 		SDL_FORCE_INLINE std::string& getName() {return m_name;}
 		SDL_FORCE_INLINE MessageMode getMode() {return m_mode;}
@@ -60,14 +68,14 @@ class StaticText
 		std::string m_text;
 		std::string m_name;
 
-		Uint32 m_textWidth;
+		Uint32 m_textWidth = 0;
 		Position m_position;
 
-		MessageMode m_mode;
-		Uint8 m_red;
-		Uint8 m_green;
-		Uint8 m_blue;
-		bool m_isCompleted;
+		MessageMode m_mode = MessageNone;
+		Uint8 m_red = 255;
+		Uint8 m_green = 255;
+		Uint8 m_blue = 255;
+		bool m_isCompleted = false;
 };
 
 #endif /* __FILE_STATICTEXT_h_ */

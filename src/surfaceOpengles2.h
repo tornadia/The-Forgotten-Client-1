@@ -26,6 +26,14 @@
 
 #if defined(SDL_VIDEO_RENDER_OGL_ES2)
 
+#define OPENGLES2_MAX_VERTICES 43656
+#define OPENGLES2_MAX_INDICES (OPENGLES2_MAX_VERTICES * 6 / 4)
+#if OPENGLES2_MAX_INDICES >= 65500
+#define OPENGLES2_USE_UINT_INDICES 1
+#else
+#define OPENGLES2_USE_UINT_INDICES 0
+#endif
+
 typedef void (APIENTRY *PFN_OglActiveTexture)(unsigned int texture);
 typedef void (APIENTRY *PFN_OglBindTexture)(unsigned int target, unsigned int texture);
 typedef void (APIENTRY *PFN_OglGenTextures)(int n, unsigned int* textures);
@@ -41,6 +49,7 @@ typedef void (APIENTRY *PFN_OglDisable)(unsigned int cap);
 typedef void (APIENTRY *PFN_OglEnableVertexAttribArray)(unsigned int index);
 typedef void (APIENTRY *PFN_OglDisableVertexAttribArray)(unsigned int index);
 typedef void (APIENTRY *PFN_OglDrawArrays)(unsigned int mode, int first, int count);
+typedef void (APIENTRY *PFN_OglDrawElements)(unsigned int mode, int count, unsigned int type, const void* indices);
 typedef void (APIENTRY *PFN_OglVertexAttribPointer)(unsigned int index, int size, unsigned int type, unsigned char normalized, int stride, const void* pointer);
 typedef void (APIENTRY *PFN_OglBlendFuncSeparate)(unsigned int sfactorRGB, unsigned int dfactorRGB, unsigned int sfactorAlpha, unsigned int dfactorAlpha);
 typedef void (APIENTRY *PFN_OglBlendEquationSeparate)(unsigned int modeRGB, unsigned int modeAlpha);
@@ -86,19 +95,47 @@ typedef void (APIENTRY *PFN_OglUniformMatrix4fv)(int location, int count, unsign
 
 struct OpenglES2Program
 {
-	OpenglES2Program() : program(0), vert_shader(0), pix_shader(0), modulationLocation(-1), projectionLocation(-1) {}
+	OpenglES2Program() : program(0), vert_shader(0), pix_shader(0), projectionLocation(-1) {}
 
 	unsigned int program;
 	unsigned int vert_shader;
 	unsigned int pix_shader;
 
-	int modulationLocation;
 	int projectionLocation;
 };
 
 struct OpenglES2Texture
 {
 	OpenglES2Texture() : m_texture(0), m_framebuffer(0) {}
+
+	operator bool() const {return (m_texture != 0);}
+
+	// non-copyable
+	OpenglES2Texture(const OpenglES2Texture&) = delete;
+	OpenglES2Texture& operator=(const OpenglES2Texture&) = delete;
+
+	// moveable
+	OpenglES2Texture(OpenglES2Texture&& rhs) noexcept : m_texture(rhs.m_texture), m_framebuffer(rhs.m_framebuffer),
+		m_width(rhs.m_width), m_height(rhs.m_height), m_scaleW(rhs.m_scaleW), m_scaleH(rhs.m_scaleH)
+	{
+		rhs.m_texture = 0;
+		rhs.m_framebuffer = 0;
+	}
+	OpenglES2Texture& operator=(OpenglES2Texture&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			m_texture = rhs.m_texture;
+			m_framebuffer = rhs.m_framebuffer;
+			m_width = rhs.m_width;
+			m_height = rhs.m_height;
+			m_scaleW = rhs.m_scaleW;
+			m_scaleH = rhs.m_scaleH;
+			rhs.m_texture = 0;
+			rhs.m_framebuffer = 0;
+		}
+		return (*this);
+	}
 
 	unsigned int m_texture;
 	unsigned int m_framebuffer;
@@ -118,6 +155,16 @@ struct OpenglES2SpriteData
 	Uint32 m_lastUsage;
 };
 
+struct OpenglES2Vertex
+{
+	OpenglES2Vertex(float x, float y, float u, float v, DWORD color) : x(x), y(y), u(u), v(v), color(color) {}
+	OpenglES2Vertex(float x, float y, DWORD color) : x(x), y(y), u(0.0f), v(0.0f), color(color) {}
+
+	float x, y;
+	float u, v;
+	DWORD color;
+};
+
 typedef enum
 {
 	GLES_ATTRIBUTE_POSITION = 0,
@@ -126,11 +173,7 @@ typedef enum
 	GLES_ATTRIBUTES = 3,
 } GLES_Attribute;
 
-#ifdef SDL_VIDEO_DRIVER_EMSCRIPTEN
-#define GLES2_FORCE_VBOS 1
-#endif
-
-typedef std::unordered_map<Uint32, OpenglES2Texture*> U32BGLES2Textures;
+typedef std::unordered_map<Uint32, OpenglES2Texture> U32BGLES2Textures;
 typedef std::unordered_map<Uint64, OpenglES2SpriteData> U64BGLES2Textures;
 
 class SurfaceOpenglES2 : public Surface
@@ -139,18 +182,25 @@ class SurfaceOpenglES2 : public Surface
 		SurfaceOpenglES2();
 		virtual ~SurfaceOpenglES2();
 
+		// non-copyable
+		SurfaceOpenglES2(const SurfaceOpenglES2&) = delete;
+		SurfaceOpenglES2& operator=(const SurfaceOpenglES2&) = delete;
+
+		// non-moveable
+		SurfaceOpenglES2(const SurfaceOpenglES2&&) = delete;
+		SurfaceOpenglES2& operator=(const SurfaceOpenglES2&&) = delete;
+
 		bool createOpenGLES2Shader(unsigned int& shader, const char* data, bool vertex_shader);
 		bool createOpenGLES2Program(OpenglES2Program& program, unsigned int vertex_shader, unsigned int pixel_shader);
 		void selectShader(OpenglES2Program& program);
 		void releaseOpenGLES2Program(OpenglES2Program& program);
 		void releaseOpenGLES2Shader(unsigned int& shader);
 
-		OpenglES2Texture* createOpenGLES2Texture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
-		bool updateTextureData(OpenglES2Texture* texture, unsigned char* data);
-		void releaseOpenGLES2Texture(OpenglES2Texture* texture);
+		bool createOpenGLES2Texture(OpenglES2Texture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
+		bool updateTextureData(OpenglES2Texture& texture, unsigned char* data);
+		void releaseOpenGLES2Texture(OpenglES2Texture& texture);
 
-		void updateVertexBuffer(Sint32 attribute, Sint32 size, const void* vertexData, ptrdiff_t dataSizeInBytes);
-		void drawTriangles(std::vector<float>& vertices, std::vector<float>& texCoords);
+		void updateVertexBuffer(const void* vertexData, ptrdiff_t dataSizeInBytes);
 		void updateViewport();
 		void updateRenderer();
 
@@ -161,7 +211,6 @@ class SurfaceOpenglES2 : public Surface
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
 		void generateSpriteAtlases();
-		void checkScheduledSprites();
 
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
@@ -170,6 +219,11 @@ class SurfaceOpenglES2 : public Surface
 
 		virtual void beginScene();
 		virtual void endScene();
+
+		OpenglES2Texture* getTextureIndex(OpenglES2Texture* texture);
+		void drawQuad(OpenglES2Texture* texture, float vertices[8], float texcoords[8]);
+		void drawQuad(OpenglES2Texture* texture, float vertices[8], float texcoords[8], DWORD color);
+		void scheduleBatch();
 
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
@@ -180,7 +234,7 @@ class SurfaceOpenglES2 : public Surface
 
 		virtual void setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void disableClipRect();
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		OpenglES2Texture* loadPicture(Uint16 pictureId, bool linear);
@@ -201,24 +255,23 @@ class SurfaceOpenglES2 : public Surface
 		virtual void drawAutomapTile(Uint32 m_currentArea, bool& m_recreate, Uint8 m_color[256][256], Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 
 	protected:
-		std::vector<float> m_vertices;
-		std::vector<float> m_texCoords;
-		std::vector<OpenglES2Texture*> m_spritesAtlas;
+		std::vector<OpenglES2Vertex> m_vertices;
+		std::vector<OpenglES2Texture> m_spritesAtlas;
 		U32BGLES2Textures m_automapTiles;
 		U64BGLES2Textures m_sprites;
-		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesIds;
+		std::circular_buffer<Uint32, MAX_AUTOMAPTILES> m_automapTilesBuff;
+		std::circular_buffer<Uint64, MAX_SPRITES> m_spritesIds;
 
-		OpenglES2Texture* m_spriteAtlas;
-		OpenglES2Texture** m_pictures;
-		char* m_software;
-		char* m_hardware;
+		OpenglES2Texture* m_pictures = NULL;
+		char* m_software = NULL;
+		char* m_hardware = NULL;
 
-		SDL_GLContext m_oglContext;
-		OpenglES2Texture* m_renderTarget;
+		SDL_GLContext m_oglContext = NULL;
+		OpenglES2Texture* m_renderTarget = NULL;
 
-		OpenglES2Texture* m_gameWindow;
-		OpenglES2Texture* m_scaled_gameWindow;
+		OpenglES2Texture m_gameWindow;
+		OpenglES2Texture m_scaled_gameWindow;
+		OpenglES2Texture* m_binded_texture = NULL;
 
 		PFN_OglActiveTexture OglActiveTexture;
 		PFN_OglBindTexture OglBindTexture;
@@ -235,6 +288,7 @@ class SurfaceOpenglES2 : public Surface
 		PFN_OglEnableVertexAttribArray OglEnableVertexAttribArray;
 		PFN_OglDisableVertexAttribArray OglDisableVertexAttribArray;
 		PFN_OglDrawArrays OglDrawArrays;
+		PFN_OglDrawElements OglDrawElements;
 		PFN_OglVertexAttribPointer OglVertexAttribPointer;
 		PFN_OglBlendFuncSeparate OglBlendFuncSeparate;
 		PFN_OglBlendEquationSeparate OglBlendEquationSeparate;
@@ -278,54 +332,50 @@ class SurfaceOpenglES2 : public Surface
 		PFN_OglUniform4f OglUniform4f;
 		PFN_OglUniformMatrix4fv OglUniformMatrix4fv;
 
-		OpenglES2Program m_programSolidColors;
-		OpenglES2Program m_programSolidColors2;
+		OpenglES2Program m_programSolid;
 		OpenglES2Program m_programTexture;
 		OpenglES2Program m_programSharpen;
 
-		Sint32 m_maxTextureSize;
-		Sint32 m_integer_scaling_width;
-		Sint32 m_integer_scaling_height;
+		Sint32 m_maxTextureSize = 1024;
+		Sint32 m_integer_scaling_width = 0;
+		Sint32 m_integer_scaling_height = 0;
 
-		Sint32 m_sharpen_textureSize;
-		unsigned int window_framebuffer;
+		Sint32 m_sharpen_textureSize = -1;
+		unsigned int window_framebuffer = 0;
 
-		unsigned int m_vertex_shader;
-		unsigned int m_solidcolors_pixel_shader;
-		unsigned int m_solidcolors2_pixel_shader;
-		unsigned int m_texture_pixel_shader;
-		unsigned int m_colortexture_pixel_shader;
-		unsigned int m_sharpen_pixel_shader;
+		unsigned int m_vertex_shader = 0;
+		unsigned int m_solid_pixel_shader = 0;
+		unsigned int m_texture_pixel_shader = 0;
+		unsigned int m_sharpen_pixel_shader = 0;
 
-		#ifdef GLES2_FORCE_VBOS
-		unsigned int m_vertex_buffers[GLES_ATTRIBUTES];
-		ptrdiff_t m_vertex_buffer_size[GLES_ATTRIBUTES];
-		#endif
+		unsigned int m_index_buffer = 0;
+		unsigned int m_vertex_buffer = 0;
+		ptrdiff_t m_vertex_buffer_size = 0;
 
-		Uint32 m_totalVRAM;
-		Uint32 m_spriteChecker;
-		Uint32 m_currentFrame;
+		Uint32 m_totalVRAM = 0;
+		Uint32 m_spriteChecker = 0;
+		Uint32 m_currentFrame = 0;
+		Uint32 m_cachedVertices = 0;
 
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
+		Uint32 m_spriteAtlases = 0;
+		Uint32 m_spritesPerAtlas = 0;
+		Uint32 m_spritesPerModulo = 0;
 
-		Sint32 m_viewPortX;
-		Sint32 m_viewPortY;
-		Sint32 m_viewPortW;
-		Sint32 m_viewPortH;
+		Sint32 m_viewPortX = 0;
+		Sint32 m_viewPortY = 0;
+		Sint32 m_viewPortW = 0;
+		Sint32 m_viewPortH = 0;
 
-		bool m_haveSharpening;
-		bool m_scheduleSpriteDraw;
+		bool m_haveSharpening = false;
 };
 
 #define GLES_VERTEX_SHADER                                       \
 "uniform mat4 u_projection;\n"                                   \
 "attribute vec2 a_position;\n"                                   \
 "attribute vec2 a_texCoord;\n"                                   \
-"attribute vec3 a_color;\n"                                      \
+"attribute vec4 a_color;\n"                                      \
 "varying vec2 v_texCoord;\n"                                     \
-"varying vec3 v_color;\n\n"                                      \
+"varying vec4 v_color;\n\n"                                      \
 "void main() {\n"                                                \
 "    gl_Position = u_projection * vec4(a_position, 0.0, 1.0);\n" \
 "    gl_PointSize = 1.0;\n"                                      \
@@ -333,50 +383,32 @@ class SurfaceOpenglES2 : public Surface
 "    v_color = a_color;\n"                                       \
 "}"                                                              \
 
-#define GLES_COLOR_PIXEL_SHADER                                  \
+#define GLES_PIXEL_SHADER                                        \
 "precision mediump float;\n"                                     \
-"uniform vec4 u_modulation;\n\n"                                 \
+"varying vec4 v_color;\n\n"                                      \
 "void main() {\n"                                                \
-"    gl_FragColor = u_modulation;\n"                             \
-"}"                                                              \
-
-#define GLES_COLORS_PIXEL_SHADER                                 \
-"precision mediump float;\n"                                     \
-"varying vec3 v_color;\n\n"                                      \
-"void main() {\n"                                                \
-"    gl_FragColor = vec4(v_color, 1.0);\n"                       \
+"    gl_FragColor = v_color.bgra;\n"                             \
 "}"                                                              \
 
 #define GLES_TEXTURE_PIXEL_SHADER                                \
 "precision mediump float;\n"                                     \
 "uniform sampler2D u_texture;\n"                                 \
-"uniform vec4 u_modulation;\n"                                   \
+"varying vec4 v_color;\n"                                        \
 "varying vec2 v_texCoord;\n\n"                                   \
 "void main() {\n"                                                \
 "    gl_FragColor = texture2D(u_texture, v_texCoord);\n"         \
-"    gl_FragColor *= u_modulation;\n"                            \
-"}"                                                              \
-
-#define GLES_COLOR_TEXTURE_PIXEL_SHADER                          \
-"precision mediump float;\n"                                     \
-"uniform sampler2D u_texture;\n"                                 \
-"varying vec3 v_color;\n"                                        \
-"varying vec2 v_texCoord;\n\n"                                   \
-"void main() {\n"                                                \
-"    gl_FragColor = texture2D(u_texture, v_texCoord);\n"         \
-"    gl_FragColor *= vec4(v_color, 1.0);\n"                      \
+"    gl_FragColor *= v_color.bgra;\n"                            \
 "}"                                                              \
 
 #define GLES_SHARPEN_PIXEL_SHADER                                                              \
 "precision mediump float;\n"                                                                   \
 "uniform sampler2D u_texture;\n"                                                               \
-"uniform vec4 u_modulation;\n"                                                                 \
+"uniform vec2 textureSize;\n"                                                                  \
 "varying vec2 v_texCoord;\n\n"                                                                 \
 "#define sharp_clamp ( 0.050000 )\n"                                                           \
-"#define sharp_strength ( 2.000000 )\n"                                                        \
+"#define sharp_strength ( 0.500000 )\n"                                                        \
 "#define CoefLuma vec3(0.2126, 0.7152, 0.0722)\n\n"                                            \
 "void main() {\n"                                                                              \
-"    vec2 textureSize = u_modulation.rg;\n"                                                    \
 "    vec3 origset = texture2D(u_texture, v_texCoord).rgb;\n"                                   \
 "    vec3 sharp_strength_luma = (CoefLuma * sharp_strength);\n"                                \
 "	 vec2 textureSize2 = vec2(textureSize.x, -textureSize.y);\n"                               \

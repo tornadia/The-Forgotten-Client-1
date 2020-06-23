@@ -31,23 +31,9 @@ extern Engine g_engine;
 extern Uint32 g_spriteCounts;
 extern Uint16 g_pictureCounts;
 
-SurfaceSoftware::SurfaceSoftware() : m_automapTilesBuff(MAX_AUTOMAPTILES), m_spritesIds(MAX_SPRITES)
+SurfaceSoftware::SurfaceSoftware()
 {
 	g_engine.RecreateWindow(false);
-	m_integer_scaling_width = 0;
-	m_integer_scaling_height = 0;
-
-	m_totalVRAM = 0;
-	m_spriteChecker = 0;
-	m_currentFrame = 0;
-	m_convertFormat = SDL_PIXELFORMAT_UNKNOWN;
-	m_gameWindow = NULL;
-	m_renderSurface = NULL;
-	m_background = NULL;
-	m_scaled_gameWindow = NULL;
-
-	m_hardware = NULL;
-	m_pictures = NULL;
 
 	m_sprites.reserve(MAX_SPRITES);
 	m_automapTiles.reserve(MAX_AUTOMAPTILES);
@@ -86,6 +72,9 @@ SurfaceSoftware::~SurfaceSoftware()
 	m_pictureOptimizations.clear();
 	m_automapTilesBuff.clear();
 	m_automapTiles.clear();
+	if(m_convertSurface)
+		SDL_FreeSurface(m_convertSurface);
+
 	if(m_scaled_gameWindow)
 		SDL_FreeSurface(m_scaled_gameWindow);
 
@@ -127,13 +116,16 @@ bool SurfaceSoftware::isSupported()
 				m_convertFormat = SDL_PIXELFORMAT_BGRA8888;
 				break;
 
-			default: //Only 24-32 bits support
+			default:
 			{
-				if(backbuffer->format->format == SDL_PIXELFORMAT_ARGB2101010)
-					UTIL_MessageBox(false, "Software: ARGB2101010 pixel format isn't supported for now.");
-				else
-					UTIL_MessageBox(false, "Software: Backbuffer doesn't have atleast 24bit color depth.");
-				return false;
+				#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+				m_convertSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, g_engine.getWindowWidth(), g_engine.getWindowHeight(), 32, 0x0000FF00, 0x00FF0000, 0xFF000000, 0x000000FF);
+				#else
+				m_convertSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, g_engine.getWindowWidth(), g_engine.getWindowHeight(), 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+				#endif
+				m_convertFormat = SDL_PIXELFORMAT_BGRA32;
+				m_useConvertSurface = true;
+				break;
 			}
 		}
 		m_hardware = SDL_strdup(SDL_GetCPUName());
@@ -176,7 +168,6 @@ void SurfaceSoftware::init()
 	{
 		UTIL_MessageBox(true, "Software: Out of system memory.");
 		exit(-1);
-		return;
 	}
 
 	SDL_Surface* n = convertSurface(m_gameWindow);
@@ -186,6 +177,21 @@ void SurfaceSoftware::init()
 		m_gameWindow = n;
 	}
 	SDL_SetSurfaceBlendMode(m_gameWindow, SDL_BLENDMODE_NONE);
+}
+
+void SurfaceSoftware::doResize(Sint32 w, Sint32 h)
+{
+	if(m_useConvertSurface)
+	{
+		if(m_convertSurface)
+			SDL_FreeSurface(m_convertSurface);
+		
+		#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+		m_convertSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, 0x0000FF00, 0x00FF0000, 0xFF000000, 0x000000FF);
+		#else
+		m_convertSurface = SDL_CreateRGBSurface(SDL_SWSURFACE, w, h, 32, 0x00FF0000, 0x0000FF00, 0x000000FF, 0xFF000000);
+		#endif
+	}
 }
 
 void SurfaceSoftware::spriteManagerReset()
@@ -204,7 +210,7 @@ void SurfaceSoftware::spriteManagerReset()
 
 unsigned char* SurfaceSoftware::getScreenPixels(Sint32& width, Sint32& height, bool& bgra)
 {
-	SDL_Surface* backbuffer = SDL_GetWindowSurface(g_engine.m_window);
+	SDL_Surface* backbuffer = (m_useConvertSurface ? m_convertSurface : SDL_GetWindowSurface(g_engine.m_window));
 	if(backbuffer)
 	{
 		width = SDL_static_cast(Sint32, backbuffer->w);
@@ -257,11 +263,17 @@ void SurfaceSoftware::beginScene()
 	m_spriteChecker = 0;
 	++m_currentFrame;
 
-	m_renderSurface = SDL_GetWindowSurface(g_engine.m_window);
+	if(m_useConvertSurface)
+		m_renderSurface = m_convertSurface;
+	else
+		m_renderSurface = SDL_GetWindowSurface(g_engine.m_window);
 }
 
 void SurfaceSoftware::endScene()
 {
+	if(m_useConvertSurface)
+		SDL_BlitSurface(m_convertSurface, NULL, SDL_GetWindowSurface(g_engine.m_window), NULL);
+
 	SDL_UpdateWindowSurface(g_engine.m_window);
 }
 
@@ -339,7 +351,10 @@ void SurfaceSoftware::beginGameScene()
 
 void SurfaceSoftware::endGameScene()
 {
-	m_renderSurface = SDL_GetWindowSurface(g_engine.m_window);
+	if(m_useConvertSurface)
+		m_renderSurface = m_convertSurface;
+	else
+		m_renderSurface = SDL_GetWindowSurface(g_engine.m_window);
 }
 
 void SurfaceSoftware::drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height)
@@ -378,35 +393,31 @@ void SurfaceSoftware::disableClipRect()
 	SDL_SetClipRect(m_renderSurface, NULL);
 }
 
-void SurfaceSoftware::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
+void SurfaceSoftware::drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
 	if(a == 0)
 		return;
 	else if(a == 255)
 	{
-		Uint32 color = SDL_MapRGBA(m_renderSurface->format, r, g, b, 255);
-
-		SDL_Rect rect1 = {x,y,1,h};
-		SDL_FillRect(m_renderSurface, &rect1, color);
-		SDL_Rect rect2 = {x + w - 1,y,1,h};
-		SDL_FillRect(m_renderSurface, &rect2, color);
-		SDL_Rect rect3 = {x + 1,y,w - 2,1};
-		SDL_FillRect(m_renderSurface, &rect3, color);
-		SDL_Rect rect4 = {x + 1,y + h - 1,w - 2,1};
-		SDL_FillRect(m_renderSurface, &rect4, color);
+		SDL_Rect rect0 = {x,y,lineWidth,h};
+		SDL_FillRect(m_renderSurface, &rect0, SDL_MapRGBA(m_renderSurface->format, r, g, b, 255));
+		SDL_Rect rect1 = {x + w - lineWidth,y,lineWidth,h};
+		SDL_FillRect(m_renderSurface, &rect1, SDL_MapRGBA(m_renderSurface->format, r, g, b, 255));
+		SDL_Rect rect2 = {x + lineWidth,y,w - (lineWidth << 1),lineWidth};
+		SDL_FillRect(m_renderSurface, &rect2, SDL_MapRGBA(m_renderSurface->format, r, g, b, 255));
+		SDL_Rect rect3 = {x + lineWidth,y + h - lineWidth,w - (lineWidth << 1),lineWidth};
+		SDL_FillRect(m_renderSurface, &rect3, SDL_MapRGBA(m_renderSurface->format, r, g, b, 255));
 	}
 	else
 	{
-		Uint32 color = SDL_MapRGBA(m_renderSurface->format, r, g, b, 255);
-
-		SDL_Rect rect1 = {x,y,1,h};
-		SDL_FillRect_BLEND(m_renderSurface, &rect1, color, SDL_static_cast(Uint32, a));
-		SDL_Rect rect2 = {x + w - 1,y,1,h};
-		SDL_FillRect_BLEND(m_renderSurface, &rect2, color, SDL_static_cast(Uint32, a));
-		SDL_Rect rect3 = {x + 1,y,w - 2,1};
-		SDL_FillRect_BLEND(m_renderSurface, &rect3, color, SDL_static_cast(Uint32, a));
-		SDL_Rect rect4 = {x + 1,y + h - 1,w - 2,1};
-		SDL_FillRect_BLEND(m_renderSurface, &rect4, color, SDL_static_cast(Uint32, a));
+		SDL_Rect rect0 = {x,y,lineWidth,h};
+		SDL_FillRect_BLEND(m_renderSurface, &rect0, SDL_MapRGBA(m_renderSurface->format, r, g, b, a), SDL_static_cast(Uint32, a));
+		SDL_Rect rect1 = {x + w - lineWidth,y,lineWidth,h};
+		SDL_FillRect_BLEND(m_renderSurface, &rect1, SDL_MapRGBA(m_renderSurface->format, r, g, b, a), SDL_static_cast(Uint32, a));
+		SDL_Rect rect2 = {x + lineWidth,y,w - (lineWidth << 1),lineWidth};
+		SDL_FillRect_BLEND(m_renderSurface, &rect2, SDL_MapRGBA(m_renderSurface->format, r, g, b, a), SDL_static_cast(Uint32, a));
+		SDL_Rect rect3 = {x + lineWidth,y + h - lineWidth,w - (lineWidth << 1),lineWidth};
+		SDL_FillRect_BLEND(m_renderSurface, &rect3, SDL_MapRGBA(m_renderSurface->format, r, g, b, a), SDL_static_cast(Uint32, a));
 	}
 }
 
@@ -893,10 +904,10 @@ void SurfaceSoftware::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = maskSpriteId;
+	u32p[0] = spriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
 	SDL_Surface* surf;
 	U64BSurfaces::iterator it = m_sprites.find(tempPos);
@@ -930,10 +941,10 @@ void SurfaceSoftware::drawSpriteMask(Uint32 spriteId, Uint32 maskSpriteId, Sint3
 	#if SIZEOF_VOIDP == 4
 	Uint64 tempPos;
 	Uint32* u32p = SDL_reinterpret_cast(Uint32*, &tempPos);
-	u32p[0] = maskSpriteId;
+	u32p[0] = spriteId;
 	u32p[1] = outfitColor;
 	#else
-	Uint64 tempPos = SDL_static_cast(Uint64, maskSpriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
+	Uint64 tempPos = SDL_static_cast(Uint64, spriteId) | (SDL_static_cast(Uint64, outfitColor) << 32);
 	#endif
 	SDL_Surface* surf;
 	U64BSurfaces::iterator it = m_sprites.find(tempPos);

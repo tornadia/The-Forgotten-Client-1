@@ -29,6 +29,14 @@ class GUI_StaticImage : public GUI_Element
 	public:
 		GUI_StaticImage(iRect boxRect, Uint16 pictureId, Sint32 pictureX, Sint32 pictureY, Uint32 internalID = 0, const std::string description = "");
 
+		// non-copyable
+		GUI_StaticImage(const GUI_StaticImage&) = delete;
+		GUI_StaticImage& operator=(const GUI_StaticImage&) = delete;
+
+		// non-moveable
+		GUI_StaticImage(GUI_StaticImage&&) = delete;
+		GUI_StaticImage& operator=(GUI_StaticImage&&) = delete;
+
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 
 		void render();

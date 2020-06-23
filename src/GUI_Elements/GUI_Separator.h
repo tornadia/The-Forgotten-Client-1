@@ -29,6 +29,14 @@ class GUI_Separator : public GUI_Element
 	public:
 		GUI_Separator(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_Separator(const GUI_Separator&) = delete;
+		GUI_Separator& operator=(const GUI_Separator&) = delete;
+
+		// non-moveable
+		GUI_Separator(GUI_Separator&&) = delete;
+		GUI_Separator& operator=(GUI_Separator&&) = delete;
+
 		void render();
 };
 

@@ -65,6 +65,14 @@ class GUI_PanelWindow
 		GUI_PanelWindow(iRect boxRect, bool windowed, Uint32 internalID = 0, bool parentChangeable = false);
 		~GUI_PanelWindow();
 
+		// non-copyable
+		GUI_PanelWindow(const GUI_PanelWindow&) = delete;
+		GUI_PanelWindow& operator=(const GUI_PanelWindow&) = delete;
+
+		// non-moveable
+		GUI_PanelWindow(GUI_PanelWindow&&) = delete;
+		GUI_PanelWindow& operator=(GUI_PanelWindow&&) = delete;
+
 		void setEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 widthEvent, Uint32 heightEvent, Uint32 exitEvent);
 
 		void setRect(iRect& NewRect, bool NewPos = false);
@@ -110,22 +118,22 @@ class GUI_PanelWindow
 		void render();
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32, Sint32);
+		void (*m_eventHandlerFunction)(Uint32, Sint32) = NULL;
 		std::vector<GUI_Element*> m_childs;
-		GUI_Element* m_actElement;
-		GUI_Panel* m_parent;
+		GUI_Element* m_actElement = NULL;
+		GUI_Panel* m_parent = NULL;
 		iRect m_mouseEvent;
 		iRect m_nRect;
 		iRect m_tRect;
-		Uint32 m_resizeWidth;
-		Uint32 m_resizeHeight;
-		Uint32 m_exitEvent;
+		Uint32 m_resizeWidth = 0;
+		Uint32 m_resizeHeight = 0;
+		Uint32 m_exitEvent = 0;
 		Uint32 m_internalID;
 		Sint32 m_cachedHeight;
-		Sint32 m_minHeight;
-		Sint32 m_maxHeight;
-		bool m_bMouseDragging;
-		bool m_bMouseResizing;
+		Sint32 m_minHeight = GAME_PANEL_MINIMUM_HEIGHT;
+		Sint32 m_maxHeight = 0;
+		bool m_bMouseDragging = false;
+		bool m_bMouseResizing = false;
 		bool m_windowed;
 		bool m_parentChangeable;
 };

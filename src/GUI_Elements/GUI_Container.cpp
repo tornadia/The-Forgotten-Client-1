@@ -27,19 +27,11 @@
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-GUI_Container::GUI_Container(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID)
+GUI_Container::GUI_Container(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID) : m_parent(parent)
 {
-	m_parent = parent;
 	m_scrollBar = new GUI_VScrollBar(iRect(0, 0, 0, 0), 0, 0);
 	setRect(boxRect);
-	m_contentSize = 0;
-	m_lastPosX = 0;
-	m_lastPosY = 0;
-	m_maxDisplay = 0;
 	m_internalID = internalID;
-	m_visible = true;
-	m_resetPosition = false;
-	m_actElement = NULL;
 }
 
 GUI_Container::~GUI_Container()
@@ -262,10 +254,11 @@ void GUI_Container::onWheel(Sint32 x, Sint32 y, bool wheelUP)
 		}
 	}*/
 
+	Sint32 scrolling = UTIL_max<Sint32>(1, m_maxDisplay / 16);
 	if(wheelUP)
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() - 1);
+		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() - scrolling);
 	else
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() + 1);
+		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() + scrolling);
 }
 
 void GUI_Container::render()
@@ -273,7 +266,7 @@ void GUI_Container::render()
 	if(!m_visible)
 		return;
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->setClipRect(m_tRect.x1, m_tRect.y1, m_tRect.x2 - 12, m_tRect.y2);
 
 	Sint32 posY = m_tRect.y1 - (m_scrollBar->getScrollPos() * 4) + 10;
@@ -291,8 +284,9 @@ void GUI_Container::render()
 			newChildRect.y2 = childRect.y2;
 			(*it)->setRect(newChildRect);
 
-			Sint32 npy = newChildRect.y1 + newChildRect.y2;
-			if((newChildRect.y1 >= m_tRect.y1 && newChildRect.y1 <= m_tRect.y1 + m_tRect.y2) || (npy >= m_tRect.y1 && npy <= m_tRect.y1 + m_tRect.y2))
+			Sint32 min = UTIL_max<Sint32>(newChildRect.y1, m_tRect.y1);
+			Sint32 max = UTIL_min<Sint32>(newChildRect.y1 + newChildRect.y2, m_tRect.y1 + m_tRect.y2);
+			if(max > min)
 				m_drawns.push_back((*it));
 		}
 		m_lastPosX = m_tRect.x1;

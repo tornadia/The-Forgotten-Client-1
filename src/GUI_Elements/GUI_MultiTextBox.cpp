@@ -26,31 +26,13 @@
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-GUI_MultiTextBox::GUI_MultiTextBox(iRect boxRect, bool allowEdit, const std::string text, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue)
+GUI_MultiTextBox::GUI_MultiTextBox(iRect boxRect, bool allowEdit, const std::string text, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue) : 
+	m_sText(std::move(text)), m_red(red), m_green(green), m_blue(blue), m_allowEdit(allowEdit)
 {
 	m_scrollBar = new GUI_VScrollBar(iRect(0, 0, 0, 0), 0, 0);
 	setRect(boxRect);
-	m_eventHandlerFunction = NULL;
-	m_sText = std::move(text);
 	m_internalID = internalID;
-	m_evtParam = 0;
-	m_maxLength = SDL_MAX_UINT32;
 	m_cursorTimer = g_frameTime;
-	m_cursorPosition = 0;
-	m_textStartPosition = 4;
-	m_selectionReference = 0;
-	m_selectionStart = 0;
-	m_selectionEnd = 0;
-	m_maxDisplay = 0;
-	m_red = red;
-	m_green = green;
-	m_blue = blue;
-	m_font = CLIENT_FONT_NONOUTLINED;
-	m_allowEdit = allowEdit;
-	m_bShowCursor = false;
-	m_selecting = false;
-	m_needUpdate = true;
-	m_needUpdateSelection = false;
 }
 
 GUI_MultiTextBox::~GUI_MultiTextBox()
@@ -339,6 +321,7 @@ void GUI_MultiTextBox::onKeyDown(SDL_Event& event)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -482,7 +465,7 @@ void GUI_MultiTextBox::render()
 		m_bShowCursor = !m_bShowCursor;
 	}
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1 + 1, 1, m_tRect.y2 - 1);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1 + 1, m_tRect.y1 + m_tRect.y2 - 1, m_tRect.x2 - 1, 1);

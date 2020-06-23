@@ -29,7 +29,25 @@
 
 struct MapMark
 {
-	MapMark(Uint16 x, Uint16 y, Uint8 type, std::string text) : x(x), y(y), type(type) {this->text = std::move(text);}
+	MapMark(Uint16 x, Uint16 y, Uint8 type, std::string text) : text(std::move(text)), x(x), y(y), type(type) {}
+
+	// non-copyable
+	MapMark(const MapMark&) = delete;
+	MapMark& operator=(const MapMark&) = delete;
+
+	// moveable
+	MapMark(MapMark&& rhs) noexcept : text(std::move(rhs.text)), x(rhs.x), y(rhs.y), type(rhs.type) {}
+	MapMark& operator=(MapMark&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			text = std::move(rhs.text);
+			x = rhs.x;
+			y = rhs.y;
+			type = rhs.type;
+		}
+		return (*this);
+	}
 
 	std::string text;
 	Uint16 x, y;
@@ -41,6 +59,32 @@ class AutomapArea
 	public:
 		AutomapArea(Uint16 x, Uint16 y, Uint8 z, Uint32 area);
 		~AutomapArea();
+
+		// non-copyable
+		AutomapArea(const AutomapArea&) = delete;
+		AutomapArea& operator=(const AutomapArea&) = delete;
+
+		// moveable
+		AutomapArea(AutomapArea&& rhs) noexcept :
+			m_fileName(std::move(rhs.m_fileName)), m_marks(std::move(rhs.m_marks)), m_basepos(std::move(rhs.m_basepos)), m_currentArea(rhs.m_currentArea), m_recreate(rhs.m_recreate)
+		{
+			memcpy(m_color, rhs.m_color, sizeof(m_color));
+			memcpy(m_speed, rhs.m_speed, sizeof(m_speed));
+		}
+		AutomapArea& operator=(AutomapArea&& rhs) noexcept
+		{
+			if(this != &rhs)
+			{
+				m_fileName = std::move(rhs.m_fileName);
+				m_marks = std::move(rhs.m_marks);
+				m_basepos = std::move(rhs.m_basepos);
+				m_currentArea = rhs.m_currentArea;
+				m_recreate = rhs.m_recreate;
+				memcpy(m_color, rhs.m_color, sizeof(m_color));
+				memcpy(m_speed, rhs.m_speed, sizeof(m_speed));
+			}
+			return (*this);
+		}
 		
 		MapMark* getMark(Sint32 zoom, Sint32 diff, Sint32 x, Sint32 y, Sint32 x1, Sint32 y1, Sint32 x2, Sint32 y2);
 		void render(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
@@ -68,13 +112,20 @@ class AutomapArea
 		Uint8 m_speed[256][256];
 };
 
-typedef std::unordered_map<Uint32, AutomapArea*> AutomapAreas;
+typedef std::unordered_map<Uint32, AutomapArea> AutomapAreas;
 
 class Automap
 {
 	public:
 		Automap();
-		~Automap();
+
+		// non-copyable
+		Automap(const Automap&) = delete;
+		Automap& operator=(const Automap&) = delete;
+
+		// non-moveable
+		Automap(Automap&&) = delete;
+		Automap& operator=(Automap&&) = delete;
 
 		AutomapArea* getArea(Uint16 x, Uint16 y, Uint8 z);
 
@@ -98,6 +149,7 @@ class Automap
 		void zoomIn();
 
 	protected:
+		std::vector<AutomapArea*> cachedAreas;
 		AutomapAreas m_areas;
 		Position m_centerPosition;
 		Position m_position;

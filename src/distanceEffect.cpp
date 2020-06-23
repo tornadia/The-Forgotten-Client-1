@@ -32,12 +32,8 @@ extern Uint32 g_frameTime;
 
 Uint32 DistanceEffect::distanceEffectCount = 0;
 
-DistanceEffect::DistanceEffect(const Position& from, const Position& to, Uint16 delay, ThingType* type)
+DistanceEffect::DistanceEffect(const Position& from, const Position& to, Uint16 delay, ThingType* type) : m_thingType(type), m_fromPosition(from), m_toPosition(to)
 {
-	m_thingType = type;
-	m_fromPosition = from;
-	m_toPosition = to;
-
 	m_startTime = g_frameTime + delay;
 
 	float tan;
@@ -183,7 +179,7 @@ bool DistanceEffect::isDelayed()
 
 void DistanceEffect::render(Sint32 posX, Sint32 posY)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 	{
 		Uint16* light = m_thingType->m_light;
@@ -204,14 +200,6 @@ void DistanceEffect::render(Sint32 posX, Sint32 posY)
 	}
 }
 
-DistanceEffectNULL::DistanceEffectNULL(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type) {;}
-void DistanceEffectNULL::render(Sint32, Sint32) {;}
-
-DistanceEffect1X1::DistanceEffect1X1(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type)
-{
-	m_1X1Sprites = 0;
-}
-
 void DistanceEffect1X1::render(Sint32 posX, Sint32 posY)
 {
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
@@ -226,15 +214,9 @@ void DistanceEffect1X1::render(Sint32 posX, Sint32 posY)
 		g_engine.getRender()->drawSprite(drawSprite, posX, posY);
 }
 
-DistanceEffect2X1::DistanceEffect2X1(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type)
-{
-	m_1X1Sprites = 0;
-	m_2X1Sprites = 0;
-}
-
 void DistanceEffect2X1::render(Sint32 posX, Sint32 posY)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 	{
 		Uint16* light = m_thingType->m_light;
@@ -251,15 +233,9 @@ void DistanceEffect2X1::render(Sint32 posX, Sint32 posY)
 		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
-DistanceEffect1X2::DistanceEffect1X2(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type)
-{
-	m_1X1Sprites = 0;
-	m_1X2Sprites = 0;
-}
-
 void DistanceEffect1X2::render(Sint32 posX, Sint32 posY)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 	{
 		Uint16* light = m_thingType->m_light;
@@ -276,17 +252,9 @@ void DistanceEffect1X2::render(Sint32 posX, Sint32 posY)
 		renderer->drawSprite(drawSprite, posX, posY - 32);
 }
 
-DistanceEffect2X2::DistanceEffect2X2(const Position& pos, const Position& to, Uint16 delay, ThingType* type) : DistanceEffect(pos, to, delay, type)
-{
-	m_1X1Sprites = 0;
-	m_1X2Sprites = 0;
-	m_1X2Sprites = 0;
-	m_2X2Sprites = 0;
-}
-
 void DistanceEffect2X2::render(Sint32 posX, Sint32 posY)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 	{
 		Uint16* light = m_thingType->m_light;

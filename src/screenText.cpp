@@ -25,18 +25,6 @@
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-ScreenText::ScreenText(OnscreenMessages position)
-{
-	m_textWidth = 0;
-	m_allowedWidth = 240;
-	m_screenPosition = position;
-	m_red = 255;
-	m_green = 255;
-	m_blue = 255;
-	m_mode = MessageNone;
-	m_dirty = true;
-}
-
 void ScreenText::addMessage(MessageMode mode, std::string text)
 {
 	Uint32 extraTime = g_frameTime;

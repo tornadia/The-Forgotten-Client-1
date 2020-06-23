@@ -30,6 +30,14 @@ class GUI_TradeContainer : public GUI_Container
 	public:
 		GUI_TradeContainer(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID = 0) : GUI_Container(boxRect, parent, internalID) {}
 
+		// non-copyable
+		GUI_TradeContainer(const GUI_TradeContainer&) = delete;
+		GUI_TradeContainer& operator=(const GUI_TradeContainer&) = delete;
+
+		// non-moveable
+		GUI_TradeContainer(GUI_TradeContainer&&) = delete;
+		GUI_TradeContainer& operator=(GUI_TradeContainer&&) = delete;
+
 		void render();
 };
 
@@ -39,6 +47,14 @@ class GUI_TradeItem : public GUI_Element
 	public:
 		GUI_TradeItem(iRect boxRect, ItemUI* item, Uint8 index, bool counterOffer, Uint32 internalID = 0);
 		~GUI_TradeItem();
+
+		// non-copyable
+		GUI_TradeItem(const GUI_TradeItem&) = delete;
+		GUI_TradeItem& operator=(const GUI_TradeItem&) = delete;
+
+		// non-moveable
+		GUI_TradeItem(GUI_TradeItem&&) = delete;
+		GUI_TradeItem& operator=(GUI_TradeItem&&) = delete;
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 		void onLMouseDown(Sint32 x, Sint32 y);
@@ -51,7 +67,7 @@ class GUI_TradeItem : public GUI_Element
 	protected:
 		ItemUI* m_item;
 		Uint8 m_index;
-		Uint8 m_haveMouse;
+		Uint8 m_haveMouse = 0;
 		bool m_counterOffer;
 };
 

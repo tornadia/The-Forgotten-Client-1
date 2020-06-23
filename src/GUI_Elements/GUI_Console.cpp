@@ -31,16 +31,6 @@ GUI_Console::GUI_Console(iRect boxRect, Uint32 internalID)
 	m_scrollBar = new GUI_VScrollBar(iRect(0, 0, 0, 0), 0, 0);
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_cursorPosition = 0;
-	m_selectionReference = 0;
-	m_selectionStart = 0;
-	m_selectionEnd = 0;
-	m_maxDisplay = 0;
-	m_font = CLIENT_FONT_NONOUTLINED;
-	m_selecting = false;
-	m_needUpdate = true;
-	m_needUpdateSelection = false;
-	m_keepLastScrollPos = false;
 }
 
 GUI_Console::~GUI_Console()
@@ -249,6 +239,7 @@ void GUI_Console::onKeyDown(SDL_Event& event)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -448,7 +439,7 @@ void GUI_Console::render()
 		m_keepLastScrollPos = false;
 	}
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	m_scrollBar->render();
 
 	Sint32 count = m_scrollBar->getScrollPos();

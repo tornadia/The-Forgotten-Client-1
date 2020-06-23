@@ -38,6 +38,36 @@
 class GUI_Console;
 struct Channel
 {
+	Channel() = default;
+
+	// copyable
+	Channel(const Channel&) = default;
+	Channel& operator=(const Channel&) = default;
+
+	// moveable
+	Channel(Channel&& rhs) noexcept : channelName(std::move(rhs.channelName)), channelConsole(rhs.channelConsole), channelId(rhs.channelId), highlightTime(rhs.highlightTime),
+		workAsServerLog(rhs.workAsServerLog), channelClosable(rhs.channelClosable), privateChannel(rhs.privateChannel), alreadyClosed(rhs.alreadyClosed), unreadMessage(rhs.unreadMessage)
+	{
+		rhs.channelConsole = NULL;
+	}
+	Channel& operator=(Channel&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			channelName = std::move(rhs.channelName);
+			channelConsole = rhs.channelConsole;
+			channelId = rhs.channelId;
+			highlightTime = rhs.highlightTime;
+			workAsServerLog = rhs.workAsServerLog;
+			channelClosable = rhs.channelClosable;
+			privateChannel = rhs.privateChannel;
+			alreadyClosed = rhs.alreadyClosed;
+			unreadMessage = rhs.unreadMessage;
+			rhs.channelConsole = NULL;
+		}
+		return (*this);
+	}
+
 	std::string channelName;
 	GUI_Console* channelConsole;
 	Uint32 channelId;
@@ -68,6 +98,14 @@ class Chat
 	public:
 		Chat();
 		~Chat();
+
+		// non-copyable
+		Chat(const Chat&) = delete;
+		Chat& operator=(const Chat&) = delete;
+
+		// non-moveable
+		Chat(Chat&&) = delete;
+		Chat& operator=(Chat&&) = delete;
 
 		void clear();
 		void gameStart();
@@ -108,22 +146,22 @@ class Chat
 		std::list<std::string> m_savedMessages;
 		std::vector<Channel> m_channels;
 		GUI_TextBox* m_textbox;
-		size_t m_selectedChannel;
-		size_t m_currentPage;
-		Sint32 m_resizingY;
-		Sint32 m_historyNavigator;
-		Uint32 m_ownPrivatechannel;
-		Uint32 m_ignoreListTime;
-		Uint8 m_ignoreListStatus;
-		Uint8 m_channelListStatus;
-		Uint8 m_serverLogStatus;
-		Uint8 m_closeChannelStatus;
-		Uint8 m_volumeStatus;
-		Uint8 m_volumeAdjustement;
-		Uint8 m_buttonNext;
-		Uint8 m_buttonPrevious;
-		bool m_haveRMouse;
-		bool m_bMouseResizing;
+		size_t m_selectedChannel = 0;
+		size_t m_currentPage = 0;
+		Sint32 m_resizingY = 0;
+		Sint32 m_historyNavigator = SDL_MIN_SINT32;
+		Uint32 m_ownPrivatechannel = SDL_static_cast(Uint32, -1);
+		Uint32 m_ignoreListTime = 0;
+		Uint8 m_ignoreListStatus = 0;
+		Uint8 m_channelListStatus = 0;
+		Uint8 m_serverLogStatus = 0;
+		Uint8 m_closeChannelStatus = 0;
+		Uint8 m_volumeStatus = 0;
+		Uint8 m_volumeAdjustement = VOLUME_SAY;
+		Uint8 m_buttonNext = 0;
+		Uint8 m_buttonPrevious = 0;
+		bool m_haveRMouse = false;
+		bool m_bMouseResizing = false;
 };
 
 #endif /* __FILE_CHAT_h_ */

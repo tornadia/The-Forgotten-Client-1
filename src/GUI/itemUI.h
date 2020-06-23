@@ -29,7 +29,15 @@ class ThingType;
 class ItemUI
 {
 	public:
-		ItemUI(ThingType* type);
+		ItemUI(ThingType* type) : m_thingType(type), m_position(0xFFFF, 0, 0) {}
+
+		// non-copyable
+		ItemUI(const ItemUI&) = delete;
+		ItemUI& operator=(const ItemUI&) = delete;
+
+		// non-moveable
+		ItemUI(ItemUI&&) = delete;
+		ItemUI& operator=(ItemUI&&) = delete;
 
 		static ItemUI* createItemUI(Uint16 itemId, Uint16 count, Sint32 phase = AnimationPhase_Automatic);
 		static ItemUI* createItemUI(ThingType* type, Uint16 count, Sint32 phase = AnimationPhase_Automatic);
@@ -48,19 +56,19 @@ class ItemUI
 
 	protected:
 		ThingType* m_thingType;
-		Animator* m_animator;
+		Animator* m_animator = NULL;
 		Animation m_animation;
 
 		Position m_position;
 		std::string m_stringCount;
 
-		Uint16 m_count;
-		Uint8 m_subtype;
-		Uint8 m_animCount;
-		Uint8 m_xPattern;
-		Uint8 m_yPattern;
-		Uint8 m_zPattern;
-		bool m_displayCount;
+		Uint16 m_count = 1;
+		Uint8 m_subtype = 0;
+		Uint8 m_animCount = 0;
+		Uint8 m_xPattern = 0;
+		Uint8 m_yPattern = 0;
+		Uint8 m_zPattern = 0;
+		bool m_displayCount = false;
 };
 
 #endif /* __FILE_ITEM_h_ */

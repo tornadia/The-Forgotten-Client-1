@@ -399,6 +399,7 @@ void chat_Events(Uint32 event, Sint32)
 				selectedchannel->channelConsole->clearConsole();
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -406,22 +407,6 @@ Chat::Chat()
 {
 	m_textbox = new GUI_TextBox(iRect(0, 0, 0, 0), "", 0, 223, 223, 223);
 	m_textbox->setMaxLength(255);
-	m_selectedChannel = 0;
-	m_currentPage = 0;
-	m_resizingY = 0;
-	m_historyNavigator = SDL_MIN_SINT32;
-	m_ownPrivatechannel = SDL_static_cast(Uint32, -1);
-	m_ignoreListTime = 0;
-	m_ignoreListStatus = 0;
-	m_channelListStatus = 0;
-	m_serverLogStatus = 0;
-	m_closeChannelStatus = 0;
-	m_volumeStatus = 0;
-	m_volumeAdjustement = VOLUME_SAY;
-	m_buttonNext = 0;
-	m_buttonPrevious = 0;
-	m_haveRMouse = false;
-	m_bMouseResizing = false;
 }
 
 Chat::~Chat()
@@ -906,6 +891,7 @@ void Chat::sendMessage()
 			g_game.sendSay(mode, 0, receiver, message);
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -1498,7 +1484,7 @@ void Chat::onMouseMove(iRect& rect, Sint32 x, Sint32 y)
 
 void Chat::render(iRect& rect)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, rect.x1, rect.y1, rect.x2, 1);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, rect.x1, rect.y1 + 1, rect.x2, 3);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, rect.x1, rect.y1 + 4, rect.x2, 1);

@@ -31,12 +31,6 @@ extern Uint32 g_datRevision;
 extern Uint32 g_sprRevision;
 extern Uint32 g_spriteCounts;
 
-SpriteManager::SpriteManager()
-{
-	m_cachedSprites = NULL;
-	m_sprLoaded = false;
-}
-
 SpriteManager::~SpriteManager()
 {
 	unloadSprites();
@@ -44,18 +38,20 @@ SpriteManager::~SpriteManager()
 
 void SpriteManager::unloadSprites()
 {
-	if(m_cachedSprites)
+	if(m_cachedSprites && m_sprCached)
 	{
 		SDL_free(m_cachedSprites->hidden.mem.base);//Our pointer saved in rwops - let's free it
 		SDL_RWclose(m_cachedSprites);
 		m_cachedSprites = NULL;
 	}
+
 	for(std::map<Uint32, SpriteData>::iterator it = m_spriteData.begin(), end = m_spriteData.end(); it != end; ++it)
 	{
 		SpriteData& spriteData = it->second;
 		if(spriteData.data)
 			SDL_free(spriteData.data);
 	}
+
 	m_spriteData.clear();
 	m_spriteSheets.clear();
 	m_spriteOffsets.clear();
@@ -95,6 +91,7 @@ void SpriteManager::manageSprites(std::vector<Uint32>& fromSprites, std::vector<
 				height = 2;
 			}
 			break;
+			default: return;
 		}
 	}
 	for(std::vector<Uint32>::iterator it = fromSprites.begin(), end = fromSprites.end(); it != end; ++it)
@@ -130,24 +127,38 @@ void SpriteManager::manageSprites(std::vector<Uint32>& fromSprites, std::vector<
 					toSprites.emplace_back(currentOffset.spriteIndex + 3);
 				}
 				break;
+				default: return;
 			}
 		}
 	}
+	toSprites.shrink_to_fit();
 }
 
 unsigned char* SpriteManager::LoadSpriteSheet_BMP(const std::string& spriteFile, size_t& outputSize)
 {
-	#if CLIENT_OVVERIDE_VERSION > 0
-	SDL_snprintf(g_buffer, sizeof(g_buffer), "%s%s%c%s", g_basePath.c_str(), ASSETS_CATALOG, PATH_PLATFORM_SLASH, spriteFile.c_str());
-	#else
-	SDL_snprintf(g_buffer, sizeof(g_buffer), "%s%s%c%u%c%s", g_basePath.c_str(), ASSETS_CATALOG, PATH_PLATFORM_SLASH, g_clientVersion, PATH_PLATFORM_SLASH, spriteFile.c_str());
-	#endif
+	size_t fileSize = spriteFile.size();
+	if(spriteFile[fileSize - 1] != 'a' || spriteFile[fileSize - 2] != 'm' || spriteFile[fileSize - 3] != 'z' || spriteFile[fileSize - 4] != 'l' || spriteFile[fileSize - 5] != '.')
+	{
+		#if CLIENT_OVVERIDE_VERSION > 0
+		SDL_snprintf(g_buffer, sizeof(g_buffer), "%s%s%c%s.lzma", g_basePath.c_str(), ASSETS_CATALOG, PATH_PLATFORM_SLASH, spriteFile.c_str());
+		#else
+		SDL_snprintf(g_buffer, sizeof(g_buffer), "%s%s%c%u%c%s.lzma", g_basePath.c_str(), ASSETS_CATALOG, PATH_PLATFORM_SLASH, g_clientVersion, PATH_PLATFORM_SLASH, spriteFile.c_str());
+		#endif
+	}
+	else
+	{
+		#if CLIENT_OVVERIDE_VERSION > 0
+		SDL_snprintf(g_buffer, sizeof(g_buffer), "%s%s%c%s", g_basePath.c_str(), ASSETS_CATALOG, PATH_PLATFORM_SLASH, spriteFile.c_str());
+		#else
+		SDL_snprintf(g_buffer, sizeof(g_buffer), "%s%s%c%u%c%s", g_basePath.c_str(), ASSETS_CATALOG, PATH_PLATFORM_SLASH, g_clientVersion, PATH_PLATFORM_SLASH, spriteFile.c_str());
+		#endif
+	}
+	
 	SDL_RWops* fp = SDL_RWFromFile(g_buffer, "rb");
 	if(!fp)
 		return NULL;
 
-	SDL_RWseek(fp, 0, RW_SEEK_END);
-	size_t sizeData = SDL_static_cast(size_t, SDL_RWtell(fp));
+	size_t sizeData = SDL_static_cast(size_t, SDL_RWsize(fp));
 	if(sizeData <= 43)
 	{
 		SDL_RWclose(fp);
@@ -161,12 +172,13 @@ unsigned char* SpriteManager::LoadSpriteSheet_BMP(const std::string& spriteFile,
 		return NULL;
 	}
 
-	SDL_RWseek(fp, 0, RW_SEEK_SET);
 	SDL_RWread(fp, srcData, 1, sizeData);
 	SDL_RWclose(fp);
 
 	//Cipsoft specific header
-	size_t position = 30;
+	size_t position = 0;
+	while(srcData[position++] == 0x00) {}
+	position += 4;
 	while((srcData[position++] & 0x80) == 0x80) {}
 
 	//LZMA file
@@ -251,10 +263,9 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 							if(currentSprite > spriteCount)
 								goto Exit_Nest_Loop;
 
-							SpriteData newSpriteData0;
+							SpriteData& newSpriteData0 = m_spriteData[currentSprite++];
 							newSpriteData0.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData0.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData0;
 						}
 					}
 				}
@@ -268,13 +279,13 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 							if(currentSprite > spriteCount)
 								goto Exit_Nest_Loop;
 
-							SpriteData newSpriteData0, newSpriteData1;
+							SpriteData& newSpriteData0 = m_spriteData[currentSprite++];
 							newSpriteData0.data = SplitSpriteSheet(bmpSurface, x * 32, (y + 1) * 32);
 							newSpriteData0.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData0;
+
+							SpriteData& newSpriteData1 = m_spriteData[currentSprite++];
 							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData1.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData1;
 						}
 					}
 				}
@@ -288,13 +299,13 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 							if(currentSprite > spriteCount)
 								goto Exit_Nest_Loop;
 
-							SpriteData newSpriteData0, newSpriteData1;
+							SpriteData& newSpriteData0 = m_spriteData[currentSprite++];
 							newSpriteData0.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, y * 32);
 							newSpriteData0.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData0;
+
+							SpriteData& newSpriteData1 = m_spriteData[currentSprite++];
 							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData1.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData1;
 						}
 					}
 				}
@@ -308,23 +319,27 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 							if(currentSprite > spriteCount)
 								goto Exit_Nest_Loop;
 
-							SpriteData newSpriteData0, newSpriteData1, newSpriteData2, newSpriteData3;
+							SpriteData& newSpriteData0 = m_spriteData[currentSprite++];
 							newSpriteData0.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, (y + 1) * 32);
 							newSpriteData0.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData0;
+
+							SpriteData& newSpriteData1 = m_spriteData[currentSprite++];
 							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, (y + 1) * 32);
 							newSpriteData1.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData1;
+
+							SpriteData& newSpriteData2 = m_spriteData[currentSprite++];
 							newSpriteData2.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, y * 32);
 							newSpriteData2.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData2;
+
+							SpriteData& newSpriteData3 = m_spriteData[currentSprite++];
 							newSpriteData3.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData3.bgra = bgra;
-							m_spriteData[currentSprite++] = newSpriteData3;
 						}
 					}
 				}
 				break;
+				default:
+					return false;
 			}
 			Exit_Nest_Loop:
 			SDL_FreeSurface(bmpSurface);
@@ -345,9 +360,11 @@ unsigned char* SpriteManager::LoadSprite_NEW(Uint32 spriteId, bool bgra)
 
 		it = m_spriteData.find(spriteId);
 	}
+
 	SpriteData& spriteData = it->second;
 	if(!spriteData.data)
 		return NULL;
+
 	if(spriteData.bgra != bgra)
 	{
 		for(Sint32 i = 0; i < 4096; i += 4)
@@ -359,6 +376,7 @@ unsigned char* SpriteManager::LoadSprite_NEW(Uint32 spriteId, bool bgra)
 		}
 		spriteData.bgra = bgra;
 	}
+
 	unsigned char* newSpriteData = SDL_reinterpret_cast(unsigned char*, SDL_malloc(4096));
 	if(newSpriteData)
 	{
@@ -468,22 +486,22 @@ bool SpriteManager::loadSprites(const char* filename)
 	if(!sprites)
 		return false;
 
-	SDL_RWseek(sprites, 0, RW_SEEK_END);
-	Sint32 sizeSprites = SDL_static_cast(Sint32, SDL_RWtell(sprites));
+	size_t sizeSprites = SDL_static_cast(size_t, SDL_RWsize(sprites));
 	unsigned char* data = SDL_reinterpret_cast(unsigned char*, SDL_malloc(sizeSprites));
 	if(!data)
 	{
-		SDL_RWseek(sprites, 0, RW_SEEK_SET);
 		m_cachedSprites = sprites;
+		g_sprRevision = SDL_ReadLE32(m_cachedSprites);
+		g_spriteCounts = (g_game.hasGameFeature(GAME_FEATURE_EXTENDED_SPRITES) ? SDL_ReadLE32(m_cachedSprites) : SDL_static_cast(Uint32, SDL_ReadLE16(m_cachedSprites)));
 		m_sprLoaded = true;
+		m_sprCached = false;
 		return true;
 	}
 
-	SDL_RWseek(sprites, 0, RW_SEEK_SET);
-	SDL_RWread(sprites, data, 1, SDL_static_cast(size_t, sizeSprites));
+	SDL_RWread(sprites, data, 1, sizeSprites);
 	SDL_RWclose(sprites);
 	
-	m_cachedSprites = SDL_RWFromMem(data, sizeSprites);
+	m_cachedSprites = SDL_RWFromMem(data, SDL_static_cast(Sint32, sizeSprites));
 	if(!m_cachedSprites)
 	{
 		SDL_free(data);
@@ -492,6 +510,7 @@ bool SpriteManager::loadSprites(const char* filename)
 	g_sprRevision = SDL_ReadLE32(m_cachedSprites);
 	g_spriteCounts = (g_game.hasGameFeature(GAME_FEATURE_EXTENDED_SPRITES) ? SDL_ReadLE32(m_cachedSprites) : SDL_static_cast(Uint32, SDL_ReadLE16(m_cachedSprites)));
 	m_sprLoaded = true;
+	m_sprCached = true;
 	return true;
 }
 
@@ -502,13 +521,11 @@ bool SpriteManager::loadCatalog(const char* filename)
 	if(!fp)
 		return false;
 
-	SDL_RWseek(fp, 0, RW_SEEK_END);
-	size_t sizeData = SDL_static_cast(size_t, SDL_RWtell(fp));
+	size_t sizeData = SDL_static_cast(size_t, SDL_RWsize(fp));
 	if(sizeData == 0)
 		return false;
 
 	std::vector<char> msgData(sizeData);
-	SDL_RWseek(fp, 0, RW_SEEK_SET);
 	SDL_RWread(fp, &msgData[0], 1, sizeData);
 	SDL_RWclose(fp);
 
@@ -562,23 +579,20 @@ bool SpriteManager::loadCatalog(const char* filename)
 								if(spriteOffset >= m_spriteOffsets.size())
 									m_spriteOffsets.resize(lastSpriteId + j + 1);
 
-								m_spriteOffsets[spriteOffset].spriteIndex = startSpriteIndex;
-								m_spriteOffsets[spriteOffset].spriteType = spriteType;
+								SpriteOffset& sprOffset = m_spriteOffsets[spriteOffset];
+								sprOffset.spriteIndex = startSpriteIndex;
+								sprOffset.spriteType = spriteType;
 								switch(spriteType)
 								{
 									case 0: startSpriteIndex += 1; break;
 									case 1: startSpriteIndex += 2; break;
 									case 2: startSpriteIndex += 2; break;
 									case 3: startSpriteIndex += 4; break;
+									default: break;
 								}
 							}
 
-							SpriteSheet newSpriteSheet;
-							newSpriteSheet.spriteFile = fileName->AsString();
-							newSpriteSheet.firstSpriteId = spriteIndex;
-							newSpriteSheet.lastSpriteId = startSpriteIndex - 1;
-							newSpriteSheet.spriteType = spriteType;
-							m_spriteSheets.push_back(newSpriteSheet);
+							m_spriteSheets.emplace_back(fileName->AsString(), spriteIndex, startSpriteIndex - 1, spriteType);
 						}
 					}
 				}
@@ -591,6 +605,9 @@ bool SpriteManager::loadCatalog(const char* filename)
 	}
 	else
 		return false;
+
+	m_spriteSheets.shrink_to_fit();
+	m_spriteOffsets.shrink_to_fit();
 
 	g_sprRevision = 0x73434654;
 	g_spriteCounts = startSpriteIndex - 1;

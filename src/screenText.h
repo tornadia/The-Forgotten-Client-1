@@ -41,7 +41,15 @@ struct ScreenTextMessageLine
 class ScreenText
 {
 	public:
-		ScreenText(OnscreenMessages position);
+		ScreenText(OnscreenMessages position) : m_screenPosition(position) {}
+
+		// non-copyable
+		ScreenText(const ScreenText&) = delete;
+		ScreenText& operator=(const ScreenText&) = delete;
+
+		// non-moveable
+		ScreenText(ScreenText&&) = delete;
+		ScreenText& operator=(ScreenText&&) = delete;
 		
 		void addMessage(MessageMode mode, std::string text);
 		void composeText();
@@ -54,15 +62,15 @@ class ScreenText
 		std::vector<ScreenTextMessageLine> m_messagesLine;
 		std::string m_text;
 
-		Uint32 m_textWidth;
-		Uint32 m_allowedWidth;
+		Uint32 m_textWidth = 0;
+		Uint32 m_allowedWidth = 240;
 		OnscreenMessages m_screenPosition;
 
-		MessageMode m_mode;
-		Uint8 m_red;
-		Uint8 m_green;
-		Uint8 m_blue;
-		bool m_dirty;
+		MessageMode m_mode = MessageNone;
+		Uint8 m_red = 255;
+		Uint8 m_green = 255;
+		Uint8 m_blue = 255;
+		bool m_dirty = true;
 };
 
 #endif /* __FILE_SCREENTEXT_h_ */

@@ -25,12 +25,6 @@
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-GUI_ContextMenu::GUI_ContextMenu()
-{
-	m_eventHandlerFunction = NULL;
-	m_hoverEvent = -1;
-}
-
 void GUI_ContextMenu::addContextMenu(Uint8 style, Uint32 eventId, const std::string text, const std::string shortcut)
 {
 	ContextMenuChild newChild;
@@ -161,7 +155,7 @@ void GUI_ContextMenu::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 
 void GUI_ContextMenu::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_BACKGROUND_GREY_X, GUI_UI_BACKGROUND_GREY_Y, GUI_UI_BACKGROUND_GREY_W, GUI_UI_BACKGROUND_GREY_H, m_tRect.x1 + 3, m_tRect.y1 + 3, m_tRect.x2 - 6, m_tRect.y2 - 6);
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_TOPLEFT_BORDER_X, GUI_UI_ICON_TOPLEFT_BORDER_Y, m_tRect.x1, m_tRect.y1, GUI_UI_ICON_TOPLEFT_BORDER_W, GUI_UI_ICON_TOPLEFT_BORDER_H);
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_TOPRIGHT_BORDER_X, GUI_UI_ICON_TOPRIGHT_BORDER_Y, m_tRect.x1 + m_tRect.x2 - 3, m_tRect.y1, GUI_UI_ICON_TOPRIGHT_BORDER_W, GUI_UI_ICON_TOPRIGHT_BORDER_H);

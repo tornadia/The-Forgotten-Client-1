@@ -31,6 +31,14 @@ class GUI_ReadWriteItem : public GUI_Element
 		GUI_ReadWriteItem(iRect boxRect, ItemUI* item, Uint32 internalID = 0);
 		~GUI_ReadWriteItem();
 
+		// non-copyable
+		GUI_ReadWriteItem(const GUI_ReadWriteItem&) = delete;
+		GUI_ReadWriteItem& operator=(const GUI_ReadWriteItem&) = delete;
+
+		// non-moveable
+		GUI_ReadWriteItem(GUI_ReadWriteItem&&) = delete;
+		GUI_ReadWriteItem& operator=(GUI_ReadWriteItem&&) = delete;
+
 		void render();
 
 	protected:

@@ -29,6 +29,14 @@ class GUI_CheckBox : public GUI_Element
 	public:
 		GUI_CheckBox(iRect boxRect, const std::string labelName, bool checked = false, Uint32 internalID = 0, Uint8 red = 180, Uint8 green = 180, Uint8 blue = 180);
 
+		// non-copyable
+		GUI_CheckBox(const GUI_CheckBox&) = delete;
+		GUI_CheckBox& operator=(const GUI_CheckBox&) = delete;
+
+		// non-moveable
+		GUI_CheckBox(GUI_CheckBox&&) = delete;
+		GUI_CheckBox& operator=(GUI_CheckBox&&) = delete;
+
 		void setBoxEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent);
 		void render();
 
@@ -41,9 +49,9 @@ class GUI_CheckBox : public GUI_Element
 		SDL_FORCE_INLINE bool isChecked() {return m_Checked;}
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32,Sint32);
-		Uint32 m_evtParam;
+		void (*m_eventHandlerFunction)(Uint32,Sint32) = NULL;
 		std::string m_Label;
+		Uint32 m_evtParam = 0;
 		Uint8 m_red;
 		Uint8 m_green;
 		Uint8 m_blue;

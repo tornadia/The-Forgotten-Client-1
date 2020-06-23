@@ -29,6 +29,14 @@ class GUI_BattleChecker : public GUI_Element
 	public:
 		GUI_BattleChecker(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_BattleChecker(const GUI_BattleChecker&) = delete;
+		GUI_BattleChecker& operator=(const GUI_BattleChecker&) = delete;
+
+		// non-moveable
+		GUI_BattleChecker(GUI_BattleChecker&&) = delete;
+		GUI_BattleChecker& operator=(GUI_BattleChecker&&) = delete;
+
 		void render();
 };
 
@@ -37,6 +45,14 @@ class GUI_PartyChecker : public GUI_Element
 	public:
 		GUI_PartyChecker(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_PartyChecker(const GUI_PartyChecker&) = delete;
+		GUI_PartyChecker& operator=(const GUI_PartyChecker&) = delete;
+
+		// non-moveable
+		GUI_PartyChecker(GUI_PartyChecker&&) = delete;
+		GUI_PartyChecker& operator=(GUI_PartyChecker&&) = delete;
+
 		void render();
 };
 
@@ -44,6 +60,14 @@ class GUI_BattleCreature : public GUI_Element
 {
 	public:
 		GUI_BattleCreature(iRect boxRect, size_t index, bool partyWindow = false, Uint32 internalID = 0);
+
+		// non-copyable
+		GUI_BattleCreature(const GUI_BattleCreature&) = delete;
+		GUI_BattleCreature& operator=(const GUI_BattleCreature&) = delete;
+
+		// non-moveable
+		GUI_BattleCreature(GUI_BattleCreature&&) = delete;
+		GUI_BattleCreature& operator=(GUI_BattleCreature&&) = delete;
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 		void onLMouseDown(Sint32 x, Sint32 y);

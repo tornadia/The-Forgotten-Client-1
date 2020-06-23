@@ -149,6 +149,7 @@ void death_notification_Events(Uint32 event, Sint32)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 

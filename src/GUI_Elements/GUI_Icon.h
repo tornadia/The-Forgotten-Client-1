@@ -29,6 +29,14 @@ class GUI_Icon : public GUI_Element
 	public:
 		GUI_Icon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID = 0, const std::string description = "");
 
+		// non-copyable
+		GUI_Icon(const GUI_Icon&) = delete;
+		GUI_Icon& operator=(const GUI_Icon&) = delete;
+
+		// non-moveable
+		GUI_Icon(GUI_Icon&&) = delete;
+		GUI_Icon& operator=(GUI_Icon&&) = delete;
+
 		void setButtonEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent);
 		void setData(Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY);
 
@@ -39,19 +47,28 @@ class GUI_Icon : public GUI_Element
 		void render();
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32,Sint32);
+		void (*m_eventHandlerFunction)(Uint32,Sint32) = NULL;
 		std::string m_description;
-		Uint32 m_evtParam;
+		Uint32 m_evtParam = 0;
 		Sint32 m_sx[2];
 		Sint32 m_sy[2];
 		Uint16 m_picture;
-		Uint8 m_pressed;
+		Uint8 m_pressed = 0;
 };
 
 class GUI_RadioIcon : public GUI_Icon
 {
 	public:
-		GUI_RadioIcon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID = 0, const std::string description = "");
+		GUI_RadioIcon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID = 0, const std::string description = "") :
+			GUI_Icon(boxRect, picture, pictureX, pictureY, cPictureX, cPictureY, internalID, description) {}
+
+		// non-copyable
+		GUI_RadioIcon(const GUI_RadioIcon&) = delete;
+		GUI_RadioIcon& operator=(const GUI_RadioIcon&) = delete;
+
+		// non-moveable
+		GUI_RadioIcon(GUI_RadioIcon&&) = delete;
+		GUI_RadioIcon& operator=(GUI_RadioIcon&&) = delete;
 
 		void setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description = "");
 
@@ -60,7 +77,7 @@ class GUI_RadioIcon : public GUI_Icon
 		void render();
 
 	protected:
-		bool (*m_eventRadioChecked)(void);
+		bool (*m_eventRadioChecked)(void) = NULL;
 		std::string m_radioDescription;
 };
 

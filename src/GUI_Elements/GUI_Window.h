@@ -67,6 +67,14 @@ class GUI_Window
 		GUI_Window(iRect boxRect, const std::string title, Uint32 internalID = 0);
 		~GUI_Window();
 
+		// non-copyable
+		GUI_Window(const GUI_Window&) = delete;
+		GUI_Window& operator=(const GUI_Window&) = delete;
+
+		// non-moveable
+		GUI_Window(GUI_Window&&) = delete;
+		GUI_Window& operator=(GUI_Window&&) = delete;
+
 		void setRect(iRect& NewRect);
 		iRect& getRect() {return m_tRect;}
 		bool isInsideRect(Sint32 x, Sint32 y) {return m_tRect.isPointInside(x, y);}
@@ -107,13 +115,13 @@ class GUI_Window
 
 	protected:
 		std::vector<GUI_Element*> m_childs;
-		GUI_Element* m_actElement;
+		std::string m_Title;
+		GUI_Element* m_actElement = NULL;
 		Uint32 m_internalID;
 		iRect m_mouseEvent;
 		iRect m_tRect;
-		std::string m_Title;
-		bool m_bMouseDragging;
-		bool m_bActive;
+		bool m_bMouseDragging = false;
+		bool m_bActive = true;
 };
 
 #endif /* __FILE_GUI_WINDOW_h_ */

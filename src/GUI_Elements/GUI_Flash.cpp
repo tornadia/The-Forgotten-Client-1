@@ -30,9 +30,6 @@ GUI_Flash::GUI_Flash(iRect boxRect, Uint32 internalID)
 	setRect(boxRect);
 	m_startFlash = g_frameTime;
 	m_lastControlFlash = g_frameTime;
-	m_controlFlash = true;
-	m_evtParam = 0;
-	m_eventHandlerFunction = NULL;
 	m_internalID = internalID;
 }
 
@@ -68,6 +65,6 @@ void GUI_Flash::render()
 		return;
 	}
 
-	Surface* renderer = g_engine.getRender();
-	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 255, 160, 0, 255);
+	auto& renderer = g_engine.getRender();
+	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 1, 255, 160, 0, 255);
 }

@@ -43,6 +43,7 @@ void GUI_Log::addLog(Sint32 category, const std::string& text)
 		case LOG_CATEGORY_INFO: m_console->addMessage(0, time(NULL), "Information", 0, text, 255, 255, 255); break;
 		case LOG_CATEGORY_WARNING: m_console->addMessage(0, time(NULL), "Warning", 0, text, 255, 255, 0); break;
 		case LOG_CATEGORY_ERROR: m_console->addMessage(0, time(NULL), "Error", 0, text, 255, 0, 0); break;
+		default: break;
 	}
 }
 
@@ -93,7 +94,7 @@ void GUI_Log::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 
 void GUI_Log::render(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->fillRectangle(x, y, w - 12, h, 0, 0, 0, 128);
 
 	iRect nRect = iRect(x, y, w, h);

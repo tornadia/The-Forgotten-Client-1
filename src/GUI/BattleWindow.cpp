@@ -358,6 +358,7 @@ void battle_Events(Uint32 event, Sint32 status)
 		}
 		break;
 		case PARTY_EXIT_WINDOW_EVENTID: {g_engine.setContentWindowHeight(GUI_PANEL_WINDOW_PARTY, status - 19); g_havePartyOpen = false;} break;
+		default: break;
 	}
 }
 
@@ -391,6 +392,7 @@ void UTIL_sortWindows()
 		case Sort_Descending_HP: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getHealth() > b->getHealth();}); break;
 		case Sort_Ascending_Name: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getName() < b->getName();}); break;
 		case Sort_Descending_Name: std::sort(g_battleCreatures.begin(), g_battleCreatures.end(), [](Creature* a, Creature* b) -> bool {return a->getName() > b->getName();}); break;
+		default: break;
 	}
 	g_recreateBattleWindow = true;
 	g_recreatePartyWindow = true;
@@ -470,6 +472,7 @@ void UTIL_addBattleCreature(void* creature)
 					}
 				}
 				break;
+				default: break;
 			}
 		}
 	}
@@ -799,12 +802,10 @@ void GUI_PartyChecker::render()
 	}
 }
 
-GUI_BattleCreature::GUI_BattleCreature(iRect boxRect, size_t index, bool partyWindow, Uint32 internalID)
+GUI_BattleCreature::GUI_BattleCreature(iRect boxRect, size_t index, bool partyWindow, Uint32 internalID) : m_index(index), m_partyWindow(partyWindow)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_index = index;
-	m_partyWindow = partyWindow;
 }
 
 void GUI_BattleCreature::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)

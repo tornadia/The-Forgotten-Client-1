@@ -29,6 +29,14 @@ class GUI_Button : public GUI_Element
 	public:
 		GUI_Button(iRect boxRect, const std::string labelName, Uint32 internalID = 0, const std::string description = "");
 
+		// non-copyable
+		GUI_Button(const GUI_Button&) = delete;
+		GUI_Button& operator=(const GUI_Button&) = delete;
+
+		// non-moveable
+		GUI_Button(GUI_Button&&) = delete;
+		GUI_Button& operator=(GUI_Button&&) = delete;
+
 		void cacheUI();
 		void setButtonEventCallback(void (*eventHandlerFunction)(Uint32,Sint32), Uint32 mEvent);
 
@@ -39,20 +47,28 @@ class GUI_Button : public GUI_Element
 		void render();
 
 	protected:
-		void (*m_eventHandlerFunction)(Uint32,Sint32);
+		void (*m_eventHandlerFunction)(Uint32,Sint32) = NULL;
 		std::string m_description;
 		std::string m_label;
-		Uint32 m_evtParam;
+		Uint32 m_evtParam = 0;
 		Uint32 m_startX;
-		Sint32 m_sx[2];
-		Sint32 m_sy[2];
-		Uint8 m_pressed;
+		Sint32 m_sx[2] = {};
+		Sint32 m_sy[2] = {};
+		Uint8 m_pressed = 0;
 };
 
 class GUI_RadioButton : public GUI_Button
 {
 	public:
-		GUI_RadioButton(iRect boxRect, const std::string labelName, Uint32 internalID = 0, const std::string description = "");
+		GUI_RadioButton(iRect boxRect, const std::string labelName, Uint32 internalID = 0, const std::string description = "") : GUI_Button(boxRect, labelName, internalID, description) {}
+
+		// non-copyable
+		GUI_RadioButton(const GUI_RadioButton&) = delete;
+		GUI_RadioButton& operator=(const GUI_RadioButton&) = delete;
+
+		// non-moveable
+		GUI_RadioButton(GUI_RadioButton&&) = delete;
+		GUI_RadioButton& operator=(GUI_RadioButton&&) = delete;
 
 		void setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description = "");
 
@@ -61,7 +77,7 @@ class GUI_RadioButton : public GUI_Button
 		void render();
 
 	protected:
-		bool (*m_eventRadioChecked)(void);
+		bool (*m_eventRadioChecked)(void) = NULL;
 		std::string m_radioDescription;
 };
 

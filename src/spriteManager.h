@@ -32,6 +32,17 @@ struct SpriteData
 
 struct SpriteSheet
 {
+	SpriteSheet(std::string spriteFile, Uint32 firstSpriteId, Uint32 lastSpriteId, Uint32 spriteType) :
+		spriteFile(std::move(spriteFile)), firstSpriteId(firstSpriteId), lastSpriteId(lastSpriteId), spriteType(spriteType) {}
+
+	// non-copyable
+	SpriteSheet(const SpriteSheet&) = delete;
+	SpriteSheet& operator=(const SpriteSheet&) = delete;
+
+	// move-constructible
+	SpriteSheet(SpriteSheet&& rhs) noexcept : spriteFile(std::move(rhs.spriteFile)), firstSpriteId(rhs.firstSpriteId), lastSpriteId(rhs.lastSpriteId), spriteType(rhs.spriteType) {}
+	SpriteSheet& operator=(SpriteSheet&&) = delete;
+
 	std::string spriteFile;
 	Uint32 firstSpriteId;
 	Uint32 lastSpriteId;
@@ -47,8 +58,16 @@ struct SpriteOffset
 class SpriteManager
 {
 	public:
-		SpriteManager();
+		SpriteManager() = default;
 		~SpriteManager();
+
+		// non-copyable
+		SpriteManager(const SpriteManager&) = delete;
+		SpriteManager& operator=(const SpriteManager&) = delete;
+
+		// non-moveable
+		SpriteManager(SpriteManager&&) = delete;
+		SpriteManager& operator=(SpriteManager&&) = delete;
 
 		void unloadSprites();
 		void manageSprites(std::vector<Uint32>& fromSprites, std::vector<Uint32>& toSprites, Uint8& width, Uint8& height);
@@ -69,9 +88,10 @@ class SpriteManager
 		std::map<Uint32, SpriteData> m_spriteData;
 		std::vector<SpriteSheet> m_spriteSheets;
 		std::vector<SpriteOffset> m_spriteOffsets;
-		SDL_RWops* m_cachedSprites;
+		SDL_RWops* m_cachedSprites = NULL;
 
-		bool m_sprLoaded;
+		bool m_sprLoaded = false;
+		bool m_sprCached = false;
 };
 
 #endif /* __FILE_SPRITEMANAGER_h_ */

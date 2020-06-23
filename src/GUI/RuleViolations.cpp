@@ -66,6 +66,7 @@ const char* rvs_get_reason(Uint8 id)
 			case 27: return "Excessive unjustified player killing";
 			case 28: return "Destructive behaviour";
 			case 29: return "Invalid payment";
+			default: return "Unknown reason";
 		}
 	}
 	else if(g_clientVersion >= 820)
@@ -96,6 +97,7 @@ const char* rvs_get_reason(Uint8 id)
 			case 20: return "Excessive Unjustified Player Killing";
 			case 21: return "Invalid Payment";
 			case 22: return "Spoiling Auction";
+			default: return "Unknown reason";
 		}
 	}
 	else
@@ -134,9 +136,9 @@ const char* rvs_get_reason(Uint8 id)
 			case 29: return "Destructive behaviour";
 			case 30: return "Spoiling auction";
 			case 31: return "Invalid payment";
+			default: return "Unknown reason";
 		}
 	}
-	return "Unknown reason";
 }
 
 const char* rvs_get_action(Uint8 id)
@@ -153,6 +155,7 @@ const char* rvs_get_action(Uint8 id)
 			case 5: return "Name Report + Banishment + Final Warning";
 			case 6: return "Statement Report";
 			case 7: return "IP Banishment";
+			default: return "Unknown action";
 		}
 	}
 	else
@@ -166,9 +169,9 @@ const char* rvs_get_action(Uint8 id)
 			case 4: return "AccountBan + FinalWarning";
 			case 5: return "Namelock/AccountBan + FinalWarning";
 			case 6: return "IP Banishment";
+			default: return "Unknown action";
 		}
 	}
-	return "Unknown action";
 }
 
 void rvs_Events(Uint32, Sint32)

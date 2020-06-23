@@ -42,6 +42,14 @@ class GUI_Panel
 		GUI_Panel(iRect boxRect, Sint32 internalId = 0);
 		~GUI_Panel();
 
+		// non-copyable
+		GUI_Panel(const GUI_Panel&) = delete;
+		GUI_Panel& operator=(const GUI_Panel&) = delete;
+
+		// non-moveable
+		GUI_Panel(GUI_Panel&&) = delete;
+		GUI_Panel& operator=(GUI_Panel&&) = delete;
+
 		void setRect(iRect& NewRect);
 		iRect& getRect() {return m_tRect;}
 		bool isInsideRect(Sint32 x, Sint32 y) {return m_tRect.isPointInside(x, y);}
@@ -58,7 +66,6 @@ class GUI_Panel
 		GUI_PanelWindow* getPanel(Uint32 internalID);
 		std::vector<GUI_PanelWindow*>& getPanelWindows() {return m_panels;}
 
-		void setActPanel(GUI_PanelWindow* panel) {m_actPanel = panel;}
 		void setInternalID(Sint32 internalId) {m_internalID = internalId;}
 		Sint32 getInternalID() {return m_internalID;}
 
@@ -70,11 +77,10 @@ class GUI_Panel
 		void onWheel(Sint32 x, Sint32 y, bool wheelUP);
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 
-		GUI_PanelWindow* render();
+		void render();
 
 	protected:
 		std::vector<GUI_PanelWindow*> m_panels;
-		GUI_PanelWindow* m_actPanel;
 		iRect m_tRect;
 		Sint32 m_lastPosY;
 		Sint32 m_freeHeight;

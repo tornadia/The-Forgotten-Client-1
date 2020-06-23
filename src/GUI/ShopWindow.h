@@ -28,7 +28,15 @@
 class GUI_ShopContainer : public GUI_Container
 {
 	public:
-		GUI_ShopContainer(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID = 0);
+		GUI_ShopContainer(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID = 0) : GUI_Container(boxRect, parent, internalID) {}
+
+		// non-copyable
+		GUI_ShopContainer(const GUI_ShopContainer&) = delete;
+		GUI_ShopContainer& operator=(const GUI_ShopContainer&) = delete;
+
+		// non-moveable
+		GUI_ShopContainer(GUI_ShopContainer&&) = delete;
+		GUI_ShopContainer& operator=(GUI_ShopContainer&&) = delete;
 
 		void onRMouseDown(Sint32 x, Sint32 y);
 		void onRMouseUp(Sint32 x, Sint32 y);
@@ -36,7 +44,7 @@ class GUI_ShopContainer : public GUI_Container
 		void render();
 
 	protected:
-		bool m_rmouse;
+		bool m_rmouse = 0;
 };
 
 class ItemUI;
@@ -45,6 +53,14 @@ class GUI_ShopItem : public GUI_Element
 	public:
 		GUI_ShopItem(iRect boxRect, Uint16 itemId, Uint16 itemCount, Uint32 internalID = 0);
 		~GUI_ShopItem();
+
+		// non-copyable
+		GUI_ShopItem(const GUI_ShopItem&) = delete;
+		GUI_ShopItem& operator=(const GUI_ShopItem&) = delete;
+
+		// non-moveable
+		GUI_ShopItem(GUI_ShopItem&&) = delete;
+		GUI_ShopItem& operator=(GUI_ShopItem&&) = delete;
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 		void onLMouseDown(Sint32 x, Sint32 y);
@@ -57,7 +73,7 @@ class GUI_ShopItem : public GUI_Element
 
 	protected:
 		ItemUI* m_item;
-		Uint8 m_haveMouse;
+		Uint8 m_haveMouse = 0;
 };
 
 class GUI_DynamicLabel;
@@ -66,6 +82,14 @@ class GUI_ShopSelectItem : public GUI_Element
 	public:
 		GUI_ShopSelectItem(iRect boxRect, const std::string& itemName, const std::string& itemDescription, Uint16 itemId, Uint8 itemSubtype, size_t index, Uint32 internalID = 0);
 		~GUI_ShopSelectItem();
+
+		// non-copyable
+		GUI_ShopSelectItem(const GUI_ShopSelectItem&) = delete;
+		GUI_ShopSelectItem& operator=(const GUI_ShopSelectItem&) = delete;
+
+		// non-moveable
+		GUI_ShopSelectItem(GUI_ShopSelectItem&&) = delete;
+		GUI_ShopSelectItem& operator=(GUI_ShopSelectItem&&) = delete;
 
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 		void onLMouseDown(Sint32 x, Sint32 y);

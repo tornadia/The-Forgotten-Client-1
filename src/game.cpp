@@ -39,72 +39,14 @@ extern Automap g_automap;
 extern Connection* g_connection;
 extern Uint32 g_frameTime;
 
-Game::Game()
+Game::Game() : m_autoWalkDestination(0xFFFF, 0xFFFF, 0xFF), m_limitWalkDestination(0xFFFF, 0xFFFF, 0xFF), m_lastCancelWalkPos(0xFFFF, 0xFFFF, 0xFF)
 {
-	m_playerExperience = 0;
-	m_playerExpBonus = 0.0;
-	m_playerExpSpeed = 0.0;
-	m_playerCapacity = 0.0;
-	m_playerTotalCapacity = 0.0;
-
-	m_localPlayerId = 0;
-	m_attackId = 0;
-	m_followId = 0;
-	m_selectId = 0;
-	m_sequence = 0;
-	m_playerHealth = 100;
-	m_playerMaxHealth = 100;
-	m_playerMana = 0;
-	m_playerMaxMana = 0;
-
-	m_autoWalkDestination = Position(0xFFFF, 0xFFFF, 0xFF);
-	m_limitWalkDestination = Position(0xFFFF, 0xFFFF, 0xFF);
-	m_lastCancelWalkPos = Position(0xFFFF, 0xFFFF, 0xFF);
-	m_cancelWalkCounter = 0;
-
-	m_playerLevel = 1;
-	m_playerMagicLevel = 0;
-	m_playerBaseMagicLevel = 0;
-	m_playerStamina = 2520;
-	m_playerBaseSpeed = 200;
-	m_playerRegeneration = 0;
-	m_playerOfflineTraining = 0;
-	m_playerBaseXpGain = 100;
-	m_playerTournamentFactor = 0;
-	m_playerVoucherXpGain = 0;
-	m_playerGrindingXpGain = 0;
-	m_playerStoreXpGain = 0;
-	m_playerHuntingXpGain = 100;
-	m_serverBeat = 50;
-	m_storePackages = 25;
-	m_gameTime = 58;
-	m_icons = 0;
-	m_cached_stats = 0;
-	m_cached_skills = 0;
-
-	m_playerLevelPercent = 0;
-	m_playerMagicLevelPercent = 0;
-	m_playerSoul = 0;
 	for(Uint8 skill = 0; skill < Skills_LastAdditionalSkill; ++skill)
 	{
 		m_playerSkillsLevel[skill] = 10;
 		m_playerSkillsBaseLevel[skill] = 10;
 		m_playerSkillsLevelPercent[skill] = 0;
 	}
-	m_playerMovement = DIRECTION_INVALID;
-	m_playerCurrentDir = DIRECTION_INVALID;
-	m_playerLastDir = DIRECTION_INVALID;
-	for(size_t i = SLOT_HEAD; i < SLOT_LAST; ++i)
-		m_inventoryItem[i] = NULL;
-
-	for(size_t i = 0; i < GAME_MAX_CONTAINERS; ++i)
-		m_containers[i] = NULL;
-
-	m_canReportBugs = false;
-	m_expertPvpMode = false;
-	m_canChangePvpFrames = true;
-	m_haveExivaRestrictions = false;
-	m_tournamentEnabled = false;
 }
 
 Game::~Game()
@@ -213,10 +155,9 @@ void Game::clientChangeVersion(Uint32 clientVersion, Uint32 fileVersion)
 	if(clientVersion >= 940)
 		enableGameFeature(GAME_FEATURE_MARKET);
 	if(clientVersion >= 953)
-	{
 		enableGameFeature(GAME_FEATURE_PING);
+	if(clientVersion >= 953 && clientVersion < 1080)
 		enableGameFeature(GAME_FEATURE_PURSE_SLOT);
-	}
 	if(clientVersion >= 960)
 		enableGameFeature(GAME_FEATURE_OFFLINE_TRAINING);
 	if(fileVersion >= 960)
@@ -752,6 +693,7 @@ void Game::processTalk(const std::string& name, Uint32 statementId, Uint16 playe
 				g_chat.addChannelMessage(CHANNEL_ID_SERVERLOG, mode, statementId, name, playerLevel, text, time(NULL));
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -866,6 +808,7 @@ void Game::sendTurn(Direction dir)
 				case DIRECTION_EAST: game->sendTurnEast(); break;
 				case DIRECTION_SOUTH: game->sendTurnSouth(); break;
 				case DIRECTION_WEST: game->sendTurnWest(); break;
+				default: break;
 			}
 		}
 	}
@@ -1506,6 +1449,7 @@ void Game::startAutoWalk(const Position& toPosition)
 			case PathFind_ReturnFirstGoDownStairs: g_game.processTextMessage(MessageFailure, "First go downstairs."); break;
 			case PathFind_ReturnFirstGoUpStairs: g_game.processTextMessage(MessageFailure, "First go upstairs."); break;
 			case PathFind_ReturnNoWay: g_game.processTextMessage(MessageFailure, "There is no way."); break;
+			default: break;
 		}
 		m_autoWalkDestination.x = 0xFFFF;
 		return;
@@ -1678,6 +1622,7 @@ void Game::checkLocalCreatureMovement()
 					}
 				}
 				break;
+				default: break;
 			}
 		}
 
@@ -2091,6 +2036,7 @@ void Game::setPlayerSkill(Skills skill, Uint16 level, Uint16 baseLevel, Uint8 le
 			case Skills_LifeLeechAmount: m_cached_skills |= CACHED_SKILL_LIFELEECH;
 			case Skills_ManaLeechChance: m_cached_skills |= CACHED_SKILL_MANALEECH;
 			case Skills_ManaLeechAmount: m_cached_skills |= CACHED_SKILL_MANALEECH;
+			default: break;
 		}
 	}
 }

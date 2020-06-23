@@ -69,7 +69,7 @@ void AutomapArea::render(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 sx, Sint
 
 void AutomapArea::renderMark(Uint8 type, Sint32 x, Sint32 y)
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	switch(type)
 	{
 		case MAPMARK_TICK: renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_MINIMAP_MARK_TICK_X, GUI_UI_ICON_MINIMAP_MARK_TICK_Y, x, y, GUI_UI_ICON_MINIMAP_MARK_TICK_W, GUI_UI_ICON_MINIMAP_MARK_TICK_H); break;
@@ -92,6 +92,7 @@ void AutomapArea::renderMark(Uint8 type, Sint32 x, Sint32 y)
 		case MAPMARK_REDSOUTH: renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_MINIMAP_MARK_REDSOUTH_X, GUI_UI_ICON_MINIMAP_MARK_REDSOUTH_Y, x, y, GUI_UI_ICON_MINIMAP_MARK_REDSOUTH_W, GUI_UI_ICON_MINIMAP_MARK_REDSOUTH_H); break;
 		case MAPMARK_REDWEST: renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_MINIMAP_MARK_REDWEST_X, GUI_UI_ICON_MINIMAP_MARK_REDWEST_Y, x, y, GUI_UI_ICON_MINIMAP_MARK_REDWEST_W, GUI_UI_ICON_MINIMAP_MARK_REDWEST_H); break;
 		case MAPMARK_GREENSOUTH: renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_MINIMAP_MARK_GREENSOUTH_X, GUI_UI_ICON_MINIMAP_MARK_GREENSOUTH_Y, x, y, GUI_UI_ICON_MINIMAP_MARK_GREENSOUTH_W, GUI_UI_ICON_MINIMAP_MARK_GREENSOUTH_H); break;
+		default: break;
 	}
 }
 
@@ -166,8 +167,8 @@ bool AutomapArea::load()
 	SDL_RWops* areafile = SDL_RWFromFile(m_fileName.c_str(), "rb");
 	if(!areafile)
 	{
-		SDL_memset(m_color, 0, 256 * 256);
-		SDL_memset(m_speed, 250, 256 * 256);
+		SDL_memset(m_color, 0, sizeof(m_color));
+		SDL_memset(m_speed, 250, sizeof(m_speed));
 		return false;
 	}
 	
@@ -175,8 +176,8 @@ bool AutomapArea::load()
 	size_t fileSize = SDL_static_cast(size_t, SDL_RWtell(areafile));
 	SDL_RWseek(areafile, 0, RW_SEEK_SET);
 
-	SDL_RWread(areafile, m_color, 1, 256 * 256);
-	SDL_RWread(areafile, m_speed, 1, 256 * 256);
+	SDL_RWread(areafile, m_color, 1, sizeof(m_color));
+	SDL_RWread(areafile, m_speed, 1, sizeof(m_speed));
 	if(fileSize > SDL_static_cast(size_t, SDL_RWtell(areafile)))
 	{
 		Uint32 marks = SDL_ReadLE32(areafile);
@@ -225,12 +226,8 @@ Automap::Automap()
 	m_currentArea = 0;
 	m_centerPosition = Position(0, 0, 7);
 	m_position = Position(0, 0, 7);
-}
 
-Automap::~Automap()
-{
-	for(AutomapAreas::iterator it = m_areas.begin(), end = m_areas.end(); it != end; ++it)
-		delete it->second;
+	cachedAreas.reserve(4);
 }
 
 AutomapArea* Automap::getArea(Uint16 x, Uint16 y, Uint8 z)
@@ -238,19 +235,14 @@ AutomapArea* Automap::getArea(Uint16 x, Uint16 y, Uint8 z)
 	Uint32 posindex = ((z & 0xFF) | ((y & 0xFF00) << 8) | ((x & 0xFF00) << 16));
 	AutomapAreas::iterator it = m_areas.find(posindex);
 	if(it != m_areas.end())
-		return it->second;
+		return &it->second;
 	else
 	{
 		if(m_areas.size() == AUTOMAP_MAXTILES)//Probably never happen but let's just prevent massive memory usage
-		{
-			for(AutomapAreas::iterator ait = m_areas.begin(), end = m_areas.end(); ait != end; ++ait)
-				delete ait->second;
-
 			m_areas.clear();
-		}
-		AutomapArea* area = new AutomapArea(x, y, z, m_currentArea++);
-		m_areas[posindex] = area;
-		return area;
+
+		auto res = m_areas.emplace(std::piecewise_construct, std::forward_as_tuple(posindex), std::forward_as_tuple(x, y, z, m_currentArea++));
+		return &res.first->second;
 	}
 }
 
@@ -272,8 +264,7 @@ Position Automap::getMapDetail(Sint32 x, Sint32 y, Sint32 w, Sint32 h, MapMark*&
 	Sint32 y2 = m_position.y + SDL_static_cast(Sint32, (h / 2.0f / zoom));
 
 	//Cache minimap areas to checks marks later
-	std::vector<AutomapArea*> cachedAreas;
-	cachedAreas.reserve(4);
+	cachedAreas.clear();
 
 	//(i,j) is the pixel position where we will check the area
 	//(g) is the precached y pixel start position
@@ -359,7 +350,7 @@ void Automap::setTileDetail(Uint16 x, Uint16 y, Uint8 z, Uint8 color, Uint8 spee
 void Automap::render(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 {
 	Sint32 zoom = m_zoom;
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->setClipRect(x, y, w, h);
 
 	//Coordinates of the top-left, bottom-right minimap corner
@@ -369,8 +360,7 @@ void Automap::render(Sint32 x, Sint32 y, Sint32 w, Sint32 h)
 	Sint32 y2 = m_position.y + SDL_static_cast(Sint32, (h / 2.0f / zoom));
 
 	//Cache minimap areas to render marks later
-	std::vector<AutomapArea*> cachedAreas;
-	cachedAreas.reserve(4);
+	cachedAreas.clear();
 
 	//(i,j) is the pixel position where we will draw the area
 	//(g) is the precached y pixel start position

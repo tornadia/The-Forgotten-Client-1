@@ -24,19 +24,15 @@
 
 extern Engine g_engine;
 
-GUI_Icon::GUI_Icon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID, const std::string description)
+GUI_Icon::GUI_Icon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID, const std::string description) :
+	m_description(std::move(description)), m_picture(picture)
 {
-	m_picture = picture;
 	m_sx[0] = pictureX;
 	m_sy[0] = pictureY;
 	m_sx[1] = cPictureX;
 	m_sy[1] = cPictureY;
 
 	setRect(boxRect);
-	m_description = std::move(description);
-	m_pressed = 0;
-	m_evtParam = 0;
-	m_eventHandlerFunction = NULL;
 	m_internalID = internalID;
 }
 
@@ -92,14 +88,8 @@ void GUI_Icon::render()
 {
 	bool pressed = (m_pressed == 1 ? true : false);
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(m_picture, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
-}
-
-GUI_RadioIcon::GUI_RadioIcon(iRect boxRect, Uint16 picture, Sint32 pictureX, Sint32 pictureY, Sint32 cPictureX, Sint32 cPictureY, Uint32 internalID, const std::string description):
-	GUI_Icon(boxRect, picture, pictureX, pictureY, cPictureX, cPictureY, internalID, description)
-{
-	m_eventRadioChecked = NULL;
 }
 
 void GUI_RadioIcon::setRadioEventCallback(bool (*eventRadioChecked)(void), const std::string description)
@@ -133,6 +123,6 @@ void GUI_RadioIcon::render()
 	if(m_eventRadioChecked && m_eventRadioChecked())
 		pressed = true;
 
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(m_picture, m_sx[(pressed ? 1 : 0)], m_sy[(pressed ? 1 : 0)], m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 }

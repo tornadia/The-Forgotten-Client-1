@@ -445,6 +445,7 @@ void skills_Events(Uint32 event, Sint32 status)
 			}
 		}
 		break;
+		default: break;
 	}
 }
 
@@ -630,6 +631,7 @@ std::string getSkillData(Uint32 skillId)
 			result = UTIL_formatStringCommas(std::string(g_buffer, SDL_static_cast(size_t, len)));
 		}
 		break;
+		default: break;
 	}
 	return result;
 }
@@ -1442,11 +1444,6 @@ void UTIL_createSkillsPopupMenu(Sint32 x, Sint32 y)
 	g_engine.showContextMenu(newMenu, x, y);
 }
 
-GUI_SkillsContainer::GUI_SkillsContainer(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID) : GUI_Container(boxRect, parent, internalID)
-{
-	m_rmouse = false;
-}
-
 void GUI_SkillsContainer::onRMouseDown(Sint32 x, Sint32 y)
 {
 	if(!m_visible)
@@ -1503,10 +1500,6 @@ GUI_SkillBar::GUI_SkillBar(iRect boxRect, Uint32 internalID)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-	m_percent = 0;
-	m_red = 0;
-	m_green = 192;
-	m_blue = 0;
 }
 
 void GUI_SkillBar::setPercent(Uint8 percent)
@@ -1518,8 +1511,8 @@ void GUI_SkillBar::setPercent(Uint8 percent)
 
 void GUI_SkillBar::render()
 {
-	Surface* renderer = g_engine.getRender();
-	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 0, 0, 0, 255);
+	auto& renderer = g_engine.getRender();
+	renderer->drawRectangle(m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2, 1, 0, 0, 0, 255);
 	if(m_percent > 0)
 		renderer->fillRectangle(m_tRect.x1 + 1, m_tRect.y1 + 1, m_percent, m_tRect.y2 - 2, m_red, m_green, m_blue, 255);
 }
@@ -1528,19 +1521,6 @@ GUI_SkillDescription::GUI_SkillDescription(iRect boxRect, Uint32 internalID)
 {
 	setRect(boxRect);
 	m_internalID = internalID;
-
-	skillName.m_font = CLIENT_FONT_NONOUTLINED;
-	skillName.m_red = 175;
-	skillName.m_green = 175;
-	skillName.m_blue = 175;
-	skillName.m_align = CLIENT_FONT_ALIGN_LEFT;
-
-	skillValue.m_font = CLIENT_FONT_NONOUTLINED;
-	skillValue.m_red = 175;
-	skillValue.m_green = 175;
-	skillValue.m_blue = 175;
-	skillValue.m_align = CLIENT_FONT_ALIGN_LEFT;
-	skillValue.m_nameLen = 0;
 }
 
 void GUI_SkillDescription::setName(bool value, const std::string labelName)
@@ -1895,6 +1875,7 @@ void GUI_SkillDescription::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 				g_engine.showDescription(x, y, std::string(g_buffer, SDL_static_cast(size_t, len)));
 			}
 			break;
+			default: break;
 		}
 	}
 }

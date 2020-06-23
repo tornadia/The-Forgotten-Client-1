@@ -110,7 +110,7 @@
     <ClCompile Include="..\..\protocol.cpp" />
     <ClCompile Include="..\..\protocolgame.cpp" />
     <ClCompile Include="..\..\protocollogin.cpp" />
-    <ClCompile Include="..\..\protocollogin11.cpp" />
+    <ClCompile Include="..\..\protocolloginHttp.cpp" />
     <ClCompile Include="..\..\rsa.cpp" />
     <ClCompile Include="..\..\screenText.cpp" />
     <ClCompile Include="..\..\softwareDrawning.cpp" />
@@ -123,6 +123,7 @@
     </ClCompile>
     <ClCompile Include="..\..\surfaceDirectDraw.cpp" />
     <ClCompile Include="..\..\surfaceOpengl.cpp" />
+    <ClCompile Include="..\..\surfaceOpenglCore.cpp" />
     <ClCompile Include="..\..\surfaceOpengles.cpp" />
     <ClCompile Include="..\..\surfaceOpengles2.cpp" />
     <ClCompile Include="..\..\surfaceSoftware.cpp" />
@@ -209,7 +210,7 @@
     <ClInclude Include="..\..\protocol.h" />
     <ClInclude Include="..\..\protocolgame.h" />
     <ClInclude Include="..\..\protocollogin.h" />
-    <ClInclude Include="..\..\protocollogin11.h" />
+    <ClInclude Include="..\..\protocolloginHttp.h" />
     <ClInclude Include="..\..\Rect.h" />
     <ClInclude Include="..\..\rsa.h" />
     <ClInclude Include="..\..\screenText.h" />
@@ -224,6 +225,7 @@
     </ClInclude>
     <ClInclude Include="..\..\surfaceDirectDraw.h" />
     <ClInclude Include="..\..\surfaceOpengl.h" />
+    <ClInclude Include="..\..\surfaceOpenglCore.h" />
     <ClInclude Include="..\..\surfaceOpengles.h" />
     <ClInclude Include="..\..\surfaceOpengles2.h" />
     <ClInclude Include="..\..\surfaceSoftware.h" />
@@ -330,7 +332,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>setupapi.lib;winmm.lib;imm32.lib;version.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;wldap32.lib;crypt32.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>setupapi.lib;winmm.lib;imm32.lib;version.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;zlib1.lib;wldap32.lib;crypt32.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -349,7 +351,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>setupapi.lib;winmm.lib;imm32.lib;version.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;wldap32.lib;crypt32.lib;libcurl.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>setupapi.lib;winmm.lib;imm32.lib;version.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;zlib1.lib;wldap32.lib;crypt32.lib;libcurl.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -376,7 +378,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>setupapi.lib;winmm.lib;imm32.lib;version.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;wldap32.lib;crypt32.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>setupapi.lib;winmm.lib;imm32.lib;version.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;zlib1.lib;wldap32.lib;crypt32.lib;libcurl.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreAllDefaultLibraries>
       </IgnoreAllDefaultLibraries>
     </Link>
@@ -403,7 +405,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <AdditionalLibraryDirectories>..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>setupapi.lib;winmm.lib;imm32.lib;version.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;wldap32.lib;crypt32.lib;libcurl.lib;kernel32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>setupapi.lib;winmm.lib;imm32.lib;version.lib;ws2_32.lib;dxguid.lib;SDL2main.lib;SDL2.lib;zlib1.lib;wldap32.lib;crypt32.lib;libcurl.lib;kernel32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

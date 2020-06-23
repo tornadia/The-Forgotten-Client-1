@@ -141,6 +141,7 @@ void graphics_options_Events(Uint32 event, Sint32)
 				UTIL_advancedGraphicsOptions();
 		}
 		break;
+		default: break;
 	}
 }
 

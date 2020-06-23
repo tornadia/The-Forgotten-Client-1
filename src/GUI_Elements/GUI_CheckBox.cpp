@@ -24,16 +24,10 @@
 
 extern Engine g_engine;
 
-GUI_CheckBox::GUI_CheckBox(iRect boxRect, const std::string labelName, bool checked, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue)
+GUI_CheckBox::GUI_CheckBox(iRect boxRect, const std::string labelName, bool checked, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue) :
+	m_Label(std::move(labelName)), m_red(red), m_green(green), m_blue(blue), m_Checked(checked)
 {
 	setRect(boxRect);
-	m_Label = std::move(labelName);
-	m_Checked = checked;
-	m_evtParam = 0;
-	m_eventHandlerFunction = NULL;
-	m_red = red;
-	m_green = green;
-	m_blue = blue;
 	m_internalID = internalID;
 }
 
@@ -63,7 +57,7 @@ void GUI_CheckBox::onLMouseUp(Sint32 x, Sint32 y)
 
 void GUI_CheckBox::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_DARK_X, GUI_UI_ICON_HORIZONTAL_LINE_DARK_Y, GUI_UI_ICON_HORIZONTAL_LINE_DARK_W, GUI_UI_ICON_HORIZONTAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1, m_tRect.x2, 1);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_DARK_X, GUI_UI_ICON_VERTICAL_LINE_DARK_Y, GUI_UI_ICON_VERTICAL_LINE_DARK_W, GUI_UI_ICON_VERTICAL_LINE_DARK_H, m_tRect.x1, m_tRect.y1 + 1, 1, m_tRect.y2 - 1);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1 + 1, m_tRect.y1 + m_tRect.y2 - 1, m_tRect.x2 - 1, 1);

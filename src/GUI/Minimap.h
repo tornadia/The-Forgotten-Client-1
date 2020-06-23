@@ -29,6 +29,14 @@ class GUI_MinimapTime : public GUI_Element
 	public:
 		GUI_MinimapTime(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_MinimapTime(const GUI_MinimapTime&) = delete;
+		GUI_MinimapTime& operator=(const GUI_MinimapTime&) = delete;
+
+		// non-moveable
+		GUI_MinimapTime(GUI_MinimapTime&&) = delete;
+		GUI_MinimapTime& operator=(GUI_MinimapTime&&) = delete;
+
 		void render();
 };
 
@@ -37,6 +45,14 @@ class GUI_MinimapFlag : public GUI_Element
 	public:
 		GUI_MinimapFlag(iRect boxRect, Uint8 type, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_MinimapFlag(const GUI_MinimapFlag&) = delete;
+		GUI_MinimapFlag& operator=(const GUI_MinimapFlag&) = delete;
+
+		// non-moveable
+		GUI_MinimapFlag(GUI_MinimapFlag&&) = delete;
+		GUI_MinimapFlag& operator=(GUI_MinimapFlag&&) = delete;
+
 		void onMouseMove(Sint32 x, Sint32 y, bool isInsideParent);
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
@@ -44,7 +60,7 @@ class GUI_MinimapFlag : public GUI_Element
 		void render();
 
 	protected:
-		Uint8 m_pressed;
+		Uint8 m_pressed = 0;
 		Uint8 m_type;
 };
 
@@ -52,6 +68,14 @@ class GUI_Minimap : public GUI_Element
 {
 	public:
 		GUI_Minimap(iRect boxRect, Uint32 internalID = 0);
+
+		// non-copyable
+		GUI_Minimap(const GUI_Minimap&) = delete;
+		GUI_Minimap& operator=(const GUI_Minimap&) = delete;
+
+		// non-moveable
+		GUI_Minimap(GUI_Minimap&&) = delete;
+		GUI_Minimap& operator=(GUI_Minimap&&) = delete;
 
 		void onLMouseDown(Sint32 x, Sint32 y);
 		void onLMouseUp(Sint32 x, Sint32 y);
@@ -64,9 +88,9 @@ class GUI_Minimap : public GUI_Element
 
 	protected:
 		iRect m_mouseEvent;
-		bool m_haveRMouse;
-		bool m_bMouseDragging;
-		bool m_bMouseAutowalk;
+		bool m_haveRMouse = false;
+		bool m_bMouseDragging = false;
+		bool m_bMouseAutowalk = false;
 };
 
 #endif /* __FILE_GUI_MINIMAP_h_ */

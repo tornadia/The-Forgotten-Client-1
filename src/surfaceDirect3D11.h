@@ -26,6 +26,14 @@
 
 #if defined(SDL_VIDEO_RENDER_D3D11)
 
+#define DIRECT3D11_MAX_VERTICES 43656
+#define DIRECT3D11_MAX_INDICES (DIRECT3D11_MAX_VERTICES * 6 / 4)
+#if DIRECT3D11_MAX_INDICES >= 65500
+#define DIRECT3D11_USE_UINT_INDICES 1
+#else
+#define DIRECT3D11_USE_UINT_INDICES 0
+#endif
+
 typedef struct
 {
 	float pv_11, pv_12, pv_13, pv_14;
@@ -48,6 +56,39 @@ struct Direct3D11Texture
 {
 	Direct3D11Texture() : m_texture(NULL), m_resource(NULL), m_frameBuffer(NULL) {}
 
+	operator bool() const {return m_texture;}
+
+	// non-copyable
+	Direct3D11Texture(const Direct3D11Texture&) = delete;
+	Direct3D11Texture& operator=(const Direct3D11Texture&) = delete;
+
+	// moveable
+	Direct3D11Texture(Direct3D11Texture&& rhs) noexcept : m_texture(rhs.m_texture), m_resource(rhs.m_resource), m_frameBuffer(rhs.m_frameBuffer),
+		m_width(rhs.m_width), m_height(rhs.m_height), m_scaleW(rhs.m_scaleW), m_scaleH(rhs.m_scaleH), m_linearSample(rhs.m_linearSample)
+	{
+		rhs.m_texture = NULL;
+		rhs.m_resource = NULL;
+		rhs.m_frameBuffer = NULL;
+	}
+	Direct3D11Texture& operator=(Direct3D11Texture&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			m_texture = rhs.m_texture;
+			m_resource = rhs.m_resource;
+			m_frameBuffer = rhs.m_frameBuffer;
+			m_width = rhs.m_width;
+			m_height = rhs.m_height;
+			m_scaleW = rhs.m_scaleW;
+			m_scaleH = rhs.m_scaleH;
+			m_linearSample = rhs.m_linearSample;
+			rhs.m_texture = NULL;
+			rhs.m_resource = NULL;
+			rhs.m_frameBuffer = NULL;
+		}
+		return (*this);
+	}
+
 	void* m_texture;
 	void* m_resource;
 	void* m_frameBuffer;
@@ -68,7 +109,7 @@ struct Direct3D11SpriteData
 	Uint32 m_lastUsage;
 };
 
-typedef std::unordered_map<Uint32, Direct3D11Texture*> U32BD3D11Textures;
+typedef std::unordered_map<Uint32, Direct3D11Texture> U32BD3D11Textures;
 typedef std::unordered_map<Uint64, Direct3D11SpriteData> U64BD3D11Textures;
 
 class SurfaceDirect3D11 : public Surface
@@ -77,11 +118,18 @@ class SurfaceDirect3D11 : public Surface
 		SurfaceDirect3D11();
 		virtual ~SurfaceDirect3D11();
 
-		Direct3D11Texture* createDirect3DTexture(Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
-		bool updateTextureData(Direct3D11Texture* texture, unsigned char* data);
-		void releaseDirect3DTexture(Direct3D11Texture* texture);
-		void updateTextureScaling(Direct3D11Texture* texture);
-		void drawTriangles(std::vector<VertexD3D11>& vertices);
+		// non-copyable
+		SurfaceDirect3D11(const SurfaceDirect3D11&) = delete;
+		SurfaceDirect3D11& operator=(const SurfaceDirect3D11&) = delete;
+
+		// non-moveable
+		SurfaceDirect3D11(const SurfaceDirect3D11&&) = delete;
+		SurfaceDirect3D11& operator=(const SurfaceDirect3D11&&) = delete;
+
+		bool createDirect3DTexture(Direct3D11Texture& texture, Uint32 width, Uint32 height, bool linearSampler, bool frameBuffer = false);
+		bool updateTextureData(Direct3D11Texture& texture, unsigned char* data);
+		void releaseDirect3DTexture(Direct3D11Texture& texture);
+		void updateTextureScaling(Direct3D11Texture& texture);
 
 		HRESULT createSwapChain(int w, int h);
 		void createWindowSizeDependentResources();
@@ -98,7 +146,6 @@ class SurfaceDirect3D11 : public Surface
 		virtual Uint32 getVRAM() {return m_totalVRAM;}
 
 		void generateSpriteAtlases();
-		void checkScheduledSprites();
 
 		virtual void init();
 		virtual void doResize(Sint32 w, Sint32 h);
@@ -107,6 +154,11 @@ class SurfaceDirect3D11 : public Surface
 
 		virtual void beginScene();
 		virtual void endScene();
+
+		Direct3D11Texture* getTextureIndex(Direct3D11Texture* texture);
+		void drawQuad(Direct3D11Texture* texture, float vertices[8], float texcoords[8]);
+		void drawQuad(Direct3D11Texture* texture, float vertices[8], float texcoords[8], DWORD color);
+		void scheduleBatch();
 
 		bool integer_scaling(Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawLightMap_old(LightMap* lightmap, Sint32 x, Sint32 y, Sint32 scale, Sint32 width, Sint32 height);
@@ -117,7 +169,7 @@ class SurfaceDirect3D11 : public Surface
 
 		virtual void setClipRect(Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void disableClipRect();
-		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		Direct3D11Texture* loadPicture(Uint16 pictureId, bool linear);
@@ -139,74 +191,77 @@ class SurfaceDirect3D11 : public Surface
 
 	protected:
 		std::vector<VertexD3D11> m_vertices;
-		std::vector<Direct3D11Texture*> m_spritesAtlas;
+		std::vector<Direct3D11Texture> m_spritesAtlas;
 		U32BD3D11Textures m_automapTiles;
 		U64BD3D11Textures m_sprites;
-		std::circular_buffer<Uint32> m_automapTilesBuff;
-		std::circular_buffer<Uint64> m_spritesIds;
+		std::circular_buffer<Uint32, MAX_AUTOMAPTILES> m_automapTilesBuff;
+		std::circular_buffer<Uint64, MAX_SPRITES> m_spritesIds;
 
-		Direct3D11Texture* m_spriteAtlas;
-		Direct3D11Texture** m_pictures;
-		char* m_software;
-		char* m_hardware;
+		Direct3D11Texture* m_pictures = NULL;
+		char* m_software = "Direct3D";
+		char* m_hardware = NULL;
 
-		Direct3D11Texture* m_gameWindow;
-		Direct3D11Texture* m_scaled_gameWindow;
+		Direct3D11Texture m_gameWindow;
+		Direct3D11Texture m_scaled_gameWindow;
+		Direct3D11Texture* m_binded_texture = NULL;
 
+		#ifndef SDL_VIDEO_DRIVER_WINRT
 		void* m_d3d11Handle;
 		void* m_dxgiHandle;
+		#endif
 
-		void* m_dxgiFactory;
-		void* m_dxgiAdapter;
-		void* m_swapChain;
-		void* m_device;
-		void* m_context;
+		void* m_dxgiFactory = NULL;
+		void* m_dxgiAdapter = NULL;
+		void* m_swapChain = NULL;
+		void* m_device = NULL;
+		void* m_context = NULL;
 
-		void* m_samplers[2];
-		void* m_mainRasterizer;
-		void* m_clippedRasterizer;
-		void* m_inputLayout;
-		void* m_vertexShader;
-		void* m_pixelShaderSolid;
-		void* m_pixelShaderTexture;
-		void* m_pixelShaderSharpen;
+		void* m_samplers[2] = {};
+		void* m_mainRasterizer = NULL;
+		void* m_clippedRasterizer = NULL;
+		void* m_inputLayout = NULL;
+		void* m_vertexShader = NULL;
+		void* m_pixelShaderSolid = NULL;
+		void* m_pixelShaderTexture = NULL;
+		void* m_pixelShaderSharpen = NULL;
 
-		void* m_blendBlend;
-		void* m_blendAdd;
-		void* m_blendMod;
+		void* m_blendBlend = NULL;
+		void* m_blendAdd = NULL;
+		void* m_blendMod = NULL;
 
-		void* m_mainRenderTargetView;
-		void* m_currentRenderTargetView;
+		void* m_mainRenderTargetView = NULL;
+		void* m_currentRenderTargetView = NULL;
 
-		void* m_pixelShaderConstants;
-		void* m_vertexShaderConstants;
-		void* m_vertexBuffer;
-		size_t m_vertexBufferSize;
+		void* m_pixelShaderConstants = NULL;
+		void* m_vertexShaderConstants = NULL;
+		void* m_indexBuffer = NULL;
+		void* m_vertexBuffer = NULL;
+		size_t m_vertexBufferSize = 0;
 
 		VertexShaderConstants m_vertexShaderConstantsData;
 
-		Sint32 m_maxTextureSize;
-		Sint32 m_integer_scaling_width;
-		Sint32 m_integer_scaling_height;
+		Sint32 m_maxTextureSize = 0;
+		Sint32 m_integer_scaling_width = 0;
+		Sint32 m_integer_scaling_height = 0;
 
-		Uint32 m_totalVRAM;
-		Uint32 m_spriteChecker;
-		Uint32 m_currentFrame;
+		Uint32 m_totalVRAM = 0;
+		Uint32 m_spriteChecker = 0;
+		Uint32 m_currentFrame = 0;
+		Uint32 m_cachedVertices = 0;
 
-		Uint32 m_spriteAtlases;
-		Uint32 m_spritesPerAtlas;
-		Uint32 m_spritesPerModulo;
+		Uint32 m_spriteAtlases = 0;
+		Uint32 m_spritesPerAtlas = 0;
+		Uint32 m_spritesPerModulo = 0;
 
-		Sint32 m_viewPortX;
-		Sint32 m_viewPortY;
-		Sint32 m_viewPortW;
-		Sint32 m_viewPortH;
+		Sint32 m_viewPortX = 0;
+		Sint32 m_viewPortY = 0;
+		Sint32 m_viewPortW = 0;
+		Sint32 m_viewPortH = 0;
 
-		bool m_usingLinearSample;
-		bool m_needReset;
-		bool m_haveSharpening;
-		bool m_useOldDXGIinterface;
-		bool m_scheduleSpriteDraw;
+		bool m_usingLinearSample = false;
+		bool m_needReset = true;
+		bool m_haveSharpening = false;
+		bool m_useOldDXGIinterface = false;
 };
 
 #if WINAPI_FAMILY != WINAPI_FAMILY_PHONE_APP
@@ -458,13 +513,13 @@ static const DWORD D3D11_VertexShader[] =
 #if defined(D3D11_USE_SHADER_MODEL_4_0_level_9_1)
 static const DWORD D3D11_sharpen[] =
 {
-	0x43425844, 0x6a141d80, 0x90296ed4, 0xc284f2f4, 0x2851745b, 0x00000001,
+	0x43425844, 0x3db92f1a, 0xb1c6d66e, 0xbfdb15e8, 0xec6f6053, 0x00000001,
 	0x0000073c, 0x00000006, 0x00000038, 0x00000218, 0x000004f4, 0x00000570,
 	0x00000694, 0x00000708, 0x396e6f41, 0x000001d8, 0x000001d8, 0xffff0200,
 	0x000001a4, 0x00000034, 0x00280001, 0x00340000, 0x00340000, 0x00240001,
 	0x00340000, 0x00000000, 0x00000000, 0x00000001, 0x00000000, 0xffff0200,
 	0x05000051, 0xa00f0001, 0x3e800000, 0x3f800000, 0x3dcccccd, 0xbd4ccccd,
-	0x05000051, 0xa00f0002, 0x40881062, 0x4164dd2f, 0x3fb8d4fe, 0x3f000000,
+	0x05000051, 0xa00f0002, 0x3f881062, 0x4064dd2f, 0x3eb8d4fe, 0x3f000000,
 	0x0200001f, 0x80000000, 0xb0030000, 0x0200001f, 0x90000000, 0xa00f0800,
 	0x03000002, 0x80010000, 0xb0000000, 0xa0000000, 0x03000002, 0x80020000,
 	0xb0550000, 0xa1550000, 0x03000002, 0x80030001, 0xb0e40000, 0xa1e40000,
@@ -506,7 +561,7 @@ static const DWORD D3D11_sharpen[] =
 	0x80100246, 0x00000041, 0x00000000, 0x00004002, 0x3e800000, 0x3e800000,
 	0x3e800000, 0x00000000, 0x00100246, 0x00000001, 0x05000036, 0x00100082,
 	0x00000000, 0x00004001, 0x3f800000, 0x0a002011, 0x00100012, 0x00000000,
-	0x00100e46, 0x00000000, 0x00004002, 0x40881062, 0x4164dd2f, 0x3fb8d4fe,
+	0x00100e46, 0x00000000, 0x00004002, 0x3f881062, 0x4064dd2f, 0x3eb8d4fe,
 	0x3f000000, 0x09000032, 0x00100012, 0x00000000, 0x0010000a, 0x00000000,
 	0x00004001, 0x3dcccccd, 0x00004001, 0xbd4ccccd, 0x07002000, 0x00102072,
 	0x00000000, 0x00100006, 0x00000000, 0x00100246, 0x00000001, 0x05000036,
@@ -540,13 +595,13 @@ static const DWORD D3D11_sharpen[] =
 #elif defined(D3D11_USE_SHADER_MODEL_4_0_level_9_3)
 static const DWORD D3D11_sharpen[] =
 {
-	0x43425844, 0x2165a61b, 0x8ec35f75, 0x6cf5aef7, 0xbdae7ba0, 0x00000001,
+	0x43425844, 0x302ff757, 0x01efa8b6, 0xe47b65b9, 0xd2b6d2ce, 0x00000001,
 	0x00000740, 0x00000006, 0x00000038, 0x0000021c, 0x000004f8, 0x00000574,
 	0x00000698, 0x0000070c, 0x396e6f41, 0x000001dc, 0x000001dc, 0xffff0200,
 	0x000001a8, 0x00000034, 0x00280001, 0x00340000, 0x00340000, 0x00240001,
 	0x00340000, 0x00000000, 0x00000000, 0x00000001, 0x00000000, 0xffff0201,
 	0x05000051, 0xa00f0001, 0x3f800000, 0xbf800000, 0x3e800000, 0x00000000,
-	0x05000051, 0xa00f0002, 0x40881062, 0x4164dd2f, 0x3fb8d4fe, 0x3f000000,
+	0x05000051, 0xa00f0002, 0x3f881062, 0x4064dd2f, 0x3eb8d4fe, 0x3f000000,
 	0x05000051, 0xa00f0003, 0x3dcccccd, 0xbd4ccccd, 0x00000000, 0x00000000,
 	0x0200001f, 0x80000000, 0xb0030000, 0x0200001f, 0x90000000, 0xa00f0800,
 	0x02000001, 0x80030000, 0xa0e40001, 0x04000004, 0x80030001, 0xa0e40000,
@@ -588,8 +643,8 @@ static const DWORD D3D11_sharpen[] =
 	0x00000000, 0x80100246, 0x00000041, 0x00000000, 0x00004002, 0x3e800000,
 	0x3e800000, 0x3e800000, 0x00000000, 0x00100246, 0x00000001, 0x05000036,
 	0x00100082, 0x00000000, 0x00004001, 0x3f800000, 0x0a002011, 0x00100012,
-	0x00000000, 0x00100e46, 0x00000000, 0x00004002, 0x40881062, 0x4164dd2f,
-	0x3fb8d4fe, 0x3f000000, 0x09000032, 0x00100012, 0x00000000, 0x0010000a,
+	0x00000000, 0x00100e46, 0x00000000, 0x00004002, 0x3f881062, 0x4064dd2f,
+	0x3eb8d4fe, 0x3f000000, 0x09000032, 0x00100012, 0x00000000, 0x0010000a,
 	0x00000000, 0x00004001, 0x3dcccccd, 0x00004001, 0xbd4ccccd, 0x07002000,
 	0x00102072, 0x00000000, 0x00100006, 0x00000000, 0x00100246, 0x00000001,
 	0x05000036, 0x00102082, 0x00000000, 0x00004001, 0x3f800000, 0x0100003e,

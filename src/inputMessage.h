@@ -34,6 +34,14 @@ class InputMessage
 	public:
 		InputMessage() {reset();}
 
+		// non-copyable
+		InputMessage(const InputMessage&) = delete;
+		InputMessage& operator=(const InputMessage&) = delete;
+
+		// non-moveable
+		InputMessage(InputMessage&&) = delete;
+		InputMessage& operator=(InputMessage&&) = delete;
+
 		void reset() {m_readPos = 0; m_messageSize = 0;}
 		void setReadPos(Uint16 readPos) {m_readPos = readPos;}
 		void setMessageSize(Uint16 size) {m_messageSize = size;}

@@ -110,6 +110,7 @@ void inventory_Events(Uint32 event, Sint32)
 		case INVENTORY_REDFIST_EVENTID: {g_engine.setPvpMode(PVPMODE_RED_FIST); g_game.sendAttackModes();} break;
 		case INVENTORY_MINIMIZE_EVENTID: {UTIL_createInventoryPanel(true); g_engine.recalculateGameWindow();} break;
 		case INVENTORY_MAXIMIZE_EVENTID: {UTIL_createInventoryPanel(false); g_engine.recalculateGameWindow();} break;
+		default: break;
 	}
 }
 
@@ -760,7 +761,7 @@ void GUI_Icons::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 
 void GUI_Icons::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_ICON_STATUS_BAR_X, GUI_UI_ICON_STATUS_BAR_Y, m_tRect.x1, m_tRect.y1, m_tRect.x2, m_tRect.y2);
 	
 	Sint32 posX = m_tRect.x1 + 2;
@@ -922,12 +923,9 @@ void GUI_Icons::render()
 	}
 }
 
-GUI_InventoryItem::GUI_InventoryItem(iRect boxRect, Sint32 skinX, Sint32 skinY, Uint8 slot, Uint32 internalID)
+GUI_InventoryItem::GUI_InventoryItem(iRect boxRect, Sint32 skinX, Sint32 skinY, Uint8 slot, Uint32 internalID) : m_skinX(skinX), m_skinY(skinY), m_slot(slot)
 {
 	setRect(boxRect);
-	m_skinX = skinX;
-	m_skinY = skinY;
-	m_slot = slot;
 	m_internalID = internalID;
 }
 
@@ -981,7 +979,7 @@ void GUI_InventoryItem::onRMouseDown(Sint32, Sint32)
 
 void GUI_InventoryItem::render()
 {
-	Surface* renderer = g_engine.getRender();
+	auto& renderer = g_engine.getRender();
 	renderer->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2);
 
 	ItemUI* item = g_game.getInventoryItem(m_slot);
@@ -998,6 +996,6 @@ void GUI_InventoryItem::render()
 			return;
 		}
 
-		renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 255, 255, 255, 255);
+		renderer->drawRectangle(m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2, 1, 255, 255, 255, 255);
 	}
 }

@@ -29,6 +29,14 @@ class GUI_Label : public GUI_Element
 	public:
 		GUI_Label(iRect boxRect, const std::string labelName, Uint32 internalID = 0, Uint8 red = 180, Uint8 green = 180, Uint8 blue = 180);
 
+		// non-copyable
+		GUI_Label(const GUI_Label&) = delete;
+		GUI_Label& operator=(const GUI_Label&) = delete;
+
+		// non-moveable
+		GUI_Label(GUI_Label&&) = delete;
+		GUI_Label& operator=(GUI_Label&&) = delete;
+
 		std::string& getName() {return m_Label;}
 
 		void setName(const std::string labelName);
@@ -39,8 +47,8 @@ class GUI_Label : public GUI_Element
 
 	protected:
 		std::string m_Label;
-		Sint32 m_align;
-		Uint8 m_font;
+		Sint32 m_align = CLIENT_FONT_ALIGN_LEFT;
+		Uint8 m_font = CLIENT_FONT_NONOUTLINED;
 		Uint8 m_red;
 		Uint8 m_green;
 		Uint8 m_blue;
@@ -50,6 +58,14 @@ class GUI_DynamicLabel : public GUI_Element
 {
 	public:
 		GUI_DynamicLabel(iRect boxRect, const std::string labelName, Uint32 internalID = 0, Uint8 red = 180, Uint8 green = 180, Uint8 blue = 180);
+
+		// non-copyable
+		GUI_DynamicLabel(const GUI_DynamicLabel&) = delete;
+		GUI_DynamicLabel& operator=(const GUI_DynamicLabel&) = delete;
+
+		// non-moveable
+		GUI_DynamicLabel(GUI_DynamicLabel&&) = delete;
+		GUI_DynamicLabel& operator=(GUI_DynamicLabel&&) = delete;
 
 		std::string& getName() {return m_Label;}
 		bool isFullDisplay() {return m_fullDisplay;}
@@ -67,12 +83,12 @@ class GUI_DynamicLabel : public GUI_Element
 	protected:
 		std::string m_displayLabel;
 		std::string m_Label;
-		Sint32 m_align;
-		Uint8 m_font;
+		Sint32 m_align = CLIENT_FONT_ALIGN_LEFT;
+		Uint8 m_font = CLIENT_FONT_NONOUTLINED;
 		Uint8 m_red;
 		Uint8 m_green;
 		Uint8 m_blue;
-		bool m_fullDisplay;
+		bool m_fullDisplay = true;
 };
 
 #endif /* __FILE_GUI_LABEL_h_ */

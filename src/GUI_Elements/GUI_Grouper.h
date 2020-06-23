@@ -29,6 +29,14 @@ class GUI_Grouper : public GUI_Element
 	public:
 		GUI_Grouper(iRect boxRect, Uint32 internalID = 0);
 
+		// non-copyable
+		GUI_Grouper(const GUI_Grouper&) = delete;
+		GUI_Grouper& operator=(const GUI_Grouper&) = delete;
+
+		// non-moveable
+		GUI_Grouper(GUI_Grouper&&) = delete;
+		GUI_Grouper& operator=(GUI_Grouper&&) = delete;
+
 		void render();
 };
 

@@ -29,18 +29,6 @@ extern Game g_game;
 extern ThingManager g_thingManager;
 extern Uint32 g_frameTime;
 
-ItemUI::ItemUI(ThingType* type)
-{
-	m_thingType = type;
-	m_animator = NULL;
-	m_position = Position(0xFFFF, 0, 0);
-	m_count = 1;
-	m_subtype = 0;
-	m_animCount = 0;
-	m_xPattern = m_yPattern = m_zPattern = 0;
-	m_displayCount = false;
-}
-
 ItemUI* ItemUI::createItemUI(Uint16 itemId, Uint16 count, Sint32 phase)
 {
 	return ItemUI::createItemUI(g_thingManager.getThingType(ThingCategory_Item, itemId), count, phase);
