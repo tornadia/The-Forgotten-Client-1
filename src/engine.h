@@ -65,7 +65,7 @@ class Surface
 		virtual void drawRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Sint32 lineWidth, Uint8 r, Uint8 g, Uint8 b, Uint8 a) = 0;
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a) = 0;
 
-		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256]) = 0;
+		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint16 cX[256], Sint16 cY[256], Sint16 cW[256], Sint16 cH[256]) = 0;
 		virtual void drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h) = 0;
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h) = 0;
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h) = 0;
@@ -111,9 +111,11 @@ class Engine
 		bool RecreateWindow(bool vulkan, bool opengl = false);
 		bool init();
 
-		void initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Sint32 vchars, Sint32 maxchw, Sint32 maxchh, Sint32 spaceh);
+		void initFont(Uint8 font, Sint32 width, Sint32 height, Sint16 hchars, Sint16 vchars, Sint16 maxchw, Sint16 maxchh, Sint16 spaceh);
 		Uint32 calculateFontWidth(Uint8 fontId, const std::string& text, size_t pos, size_t len);
 		Uint32 calculateFontWidth(Uint8 fontId, const std::string& text);
+		SDL_FORCE_INLINE Uint32 calculateFontGlyphWidth(Uint8 fontId, const Uint8 glyph) {return (m_charw[fontId][glyph] + m_charx[fontId][0]);}
+		SDL_FORCE_INLINE Sint32 getFontSpace(Uint8 fontId) {return m_chary[fontId][0];}
 
 		void exitGame();
 		void checkReleaseQueue();
@@ -427,7 +429,7 @@ class Engine
 		Sint32 m_fullScreenHZ = 60;
 
 		Sint32 m_characterSelectId = 0;
-		Sint32 m_charx[CLIENT_FONT_LAST][256], m_chary[CLIENT_FONT_LAST][256], m_charw[CLIENT_FONT_LAST][256], m_charh[CLIENT_FONT_LAST][256];
+		Sint16 m_charx[CLIENT_FONT_LAST][256], m_chary[CLIENT_FONT_LAST][256], m_charw[CLIENT_FONT_LAST][256], m_charh[CLIENT_FONT_LAST][256];
 		Sint32 m_windowX = SDL_WINDOWPOS_CENTERED;
 		Sint32 m_windowY = SDL_WINDOWPOS_CENTERED;
 		Sint32 m_windowW = 640;

@@ -22,9 +22,8 @@
 #ifndef __FILE_GUI_CONTAINER_h_
 #define __FILE_GUI_CONTAINER_h_
 
-#include "GUI_Element.h"
+#include "GUI_ScrollBar.h"
 
-class GUI_VScrollBar;
 class GUI_PanelWindow;
 class GUI_Container : public GUI_Element
 {
@@ -72,7 +71,7 @@ class GUI_Container : public GUI_Element
 		std::vector<GUI_Element*> m_drawns;
 		GUI_Element* m_actElement = NULL;
 		GUI_PanelWindow* m_parent;
-		GUI_VScrollBar* m_scrollBar;
+		GUI_VScrollBar m_scrollBar;
 		Sint32 m_contentSize = 0;
 		Sint32 m_lastPosX = 0;
 		Sint32 m_lastPosY = 0;

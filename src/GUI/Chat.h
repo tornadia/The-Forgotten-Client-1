@@ -38,11 +38,11 @@
 class GUI_Console;
 struct Channel
 {
-	Channel() = default;
+	Channel(std::string channelName, Uint32 channelId, bool closable, bool privateChannel);
 
-	// copyable
-	Channel(const Channel&) = default;
-	Channel& operator=(const Channel&) = default;
+	// non-copyable
+	Channel(const Channel&) = delete;
+	Channel& operator=(const Channel&) = delete;
 
 	// moveable
 	Channel(Channel&& rhs) noexcept : channelName(std::move(rhs.channelName)), channelConsole(rhs.channelConsole), channelId(rhs.channelId), highlightTime(rhs.highlightTime),
@@ -71,12 +71,12 @@ struct Channel
 	std::string channelName;
 	GUI_Console* channelConsole;
 	Uint32 channelId;
-	Uint32 highlightTime;
-	bool workAsServerLog;
+	Uint32 highlightTime = 0;
+	bool workAsServerLog = false;
 	bool channelClosable;
 	bool privateChannel;
-	bool alreadyClosed;
-	bool unreadMessage;
+	bool alreadyClosed = false;
+	bool unreadMessage = false;
 };
 
 enum Volumes

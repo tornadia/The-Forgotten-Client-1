@@ -25,6 +25,8 @@
 #include "effect.h"
 #include "thingManager.h"
 
+extern std::vector<Effect*> g_effects;
+
 Tile::~Tile()
 {
 	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
@@ -103,33 +105,36 @@ void Tile::render(Sint32 posX, Sint32 posY, bool visible_tile)
 	for(std::vector<Creature*>::reverse_iterator it = m_creatures.rbegin(), end = m_creatures.rend(); it != end; ++it)
 	{
 		Creature* creature = (*it);
-		if(!creature->isWalking())
+		if(!creature->isWalkingCheck())
 			creature->render(posX, posY);
 	}
 
 	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
 	{
 		Creature* creature = (*it);
-		if(creature->isWalking())
+		if(creature->isWalkingCheck())
 			creature->render(posX - creature->getWalkOffsetX(), posY - creature->getWalkOffsetY());
 	}
 
 	for(std::vector<Effect*>::iterator it = m_effects.begin(); it != m_effects.end();)
 	{
-		if((*it)->isDelayed())
+		Effect* effect = (*it);
+		if(effect->isDelayed())
 		{
 			++it;
 			continue;
 		}
-
-		if((*it)->canBeDeleted())
+		
+		if(effect->canBeDeleted())
 		{
-			delete (*it);
+			delete effect;
 			it = m_effects.erase(it);
 		}
 		else
 		{
-			(*it)->render(posX, posY, visible_tile);
+			effect->setCachedX(posX);
+			effect->setCachedY(posY);
+			g_effects.push_back(effect);
 			++it;
 		}
 	}
@@ -142,6 +147,32 @@ void Tile::render(Sint32 posX, Sint32 posY, bool visible_tile)
 	}
 }
 
+void Tile::reRenderTile(Sint32 posX, Sint32 posY)
+{
+	posX -= m_tileElevation;
+	posY -= m_tileElevation;
+	for(std::vector<Creature*>::reverse_iterator it = m_creatures.rbegin(), end = m_creatures.rend(); it != end; ++it)
+	{
+		Creature* creature = (*it);
+		if(!creature->isWalkingCheck())
+			creature->render(posX, posY);
+	}
+
+	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
+	{
+		Creature* creature = (*it);
+		if(creature->isWalkingCheck())
+			creature->render(posX - creature->getWalkOffsetX(), posY - creature->getWalkOffsetY());
+	}
+
+	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
+	{
+		Item* item = (*it);
+		if(item->getTopOrder() == 3)
+			item->render(posX + m_tileElevation, posY + m_tileElevation, true);
+	}
+}
+
 void Tile::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 drawY, float scale, bool visible)
 {
 	drawX -= m_tileElevation;
@@ -149,14 +180,14 @@ void Tile::renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 dra
 	for(std::vector<Creature*>::reverse_iterator it = m_creatures.rbegin(), end = m_creatures.rend(); it != end; ++it)
 	{
 		Creature* creature = (*it);
-		if(!creature->isWalking())
+		if(!creature->isWalkingCheck())
 			creature->renderInformations(posX, posY, drawX, drawY, scale, visible);
 	}
 
 	for(std::vector<Creature*>::iterator it = m_walkCreatures.begin(), end = m_walkCreatures.end(); it != end; ++it)
 	{
 		Creature* creature = (*it);
-		if(creature->isWalking())
+		if(creature->isWalkingCheck())
 			creature->renderInformations(posX, posY, drawX - creature->getWalkOffsetX(), drawY - creature->getWalkOffsetY(), scale, visible);
 	}
 }
@@ -181,6 +212,38 @@ Uint32 Tile::getThingStackPos(Thing* thing)
 	}
 
 	for(std::vector<Creature*>::iterator it = m_creatures.begin(), end = m_creatures.end(); it != end; ++it)
+	{
+		if((*it) == thing)
+			return index;
+
+		++index;
+	}
+
+	for(std::vector<Item*>::iterator it = m_downItems.begin(), end = m_downItems.end(); it != end; ++it)
+	{
+		if((*it) == thing)
+			return index;
+
+		++index;
+	}
+	return index;
+}
+
+Uint32 Tile::getUseStackPos(Thing* thing)
+{
+	if(g_clientVersion < 1230)
+		return getThingStackPos(thing);
+
+	Uint32 index = 0;
+	if(m_ground)
+	{
+		if(m_ground == thing)
+			return index;
+
+		++index;
+	}
+
+	for(std::vector<Item*>::iterator it = m_topItems.begin(), end = m_topItems.end(); it != end; ++it)
 	{
 		if((*it) == thing)
 			return index;
@@ -233,7 +296,7 @@ Creature* Tile::getTopCreature(Sint32 x, Sint32 y, iRect& rect, float scale)
 	for(std::vector<Creature*>::reverse_iterator it = m_walkCreatures.rbegin(), end = m_walkCreatures.rend(); it != end; ++it)
 	{
 		Creature* creature = (*it);
-		if(creature->isWalking())
+		if(creature->isWalkingCheck())
 		{
 			std::pair<Sint32, Sint32> displacement = creature->getDisplacement();
 			Sint32 xOffset = SDL_static_cast(Sint32, scale * (creature->getOffsetX() - creature->getWalkOffsetX() - displacement.first));
@@ -247,7 +310,7 @@ Creature* Tile::getTopCreature(Sint32 x, Sint32 y, iRect& rect, float scale)
 	for(std::vector<Creature*>::iterator it = m_creatures.begin(), end = m_creatures.end(); it != end; ++it)
 	{
 		Creature* creature = (*it);
-		if(!creature->isWalking())
+		if(!creature->isWalkingCheck())
 		{
 			std::pair<Sint32, Sint32> displacement = creature->getDisplacement();
 			Sint32 xOffset = SDL_static_cast(Sint32, scale * displacement.first);
@@ -583,26 +646,21 @@ void Tile::removeWalkCreature(Creature* creature)
 		m_walkCreatures.erase(it);
 }
 
-void Tile::checkMagicEffects()
-{
-	for(std::vector<Effect*>::iterator it = m_effects.begin(); it != m_effects.end();)
-	{
-		if(!(*it)->isDelayed() && (*it)->canBeDeleted())
-		{
-			delete (*it);
-			it = m_effects.erase(it);
-		}
-		else
-			++it;
-	}
-}
-
 void Tile::addEffect(Effect* effect)
 {
 	if(effect->isTopEffect())
 		m_effects.insert(m_effects.begin(), effect);
 	else
 		m_effects.push_back(effect);
+}
+
+void Tile::removeMagicEffect(Effect* effect)
+{
+	std::vector<Effect*>::iterator it = std::find(m_effects.begin(), m_effects.end(), effect);
+	if(it != m_effects.end())
+		m_effects.erase(it);
+
+	delete effect;
 }
 
 void Tile::removeMagicEffects(Uint16 effectId)

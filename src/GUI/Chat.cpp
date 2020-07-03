@@ -19,7 +19,7 @@
   3. This notice may not be removed or altered from any source distribution.
 */
 
-//TODO: channel buttons moving, ignore list
+//TODO: channel buttons moving
 
 #include "Chat.h"
 #include "../GUI_Elements/GUI_Window.h"
@@ -101,6 +101,12 @@ ConsoleMessage g_lastMessage;
 #define CHANNEL_MESSAGE_ADVERTISING "Here you can advertise all kinds of things. Among others, you can trade Tibia items, advertise ingame events, seek characters for a quest or a hunting group, find members for your guild or look for somebody to help you with something.\nIt goes without saying that all advertisements must be conform to the Tibia Rules.Keep in mind that it is illegal to advertise trades including premium time, real money or Tibia characters."
 #define CHANNEL_MESSAGE_CLOSED "The channel has been closed. You need to re-join the channel if you get invited."
 
+Channel::Channel(std::string channelName, Uint32 channelId, bool closable, bool privateChannel) :
+	channelName(std::move(channelName)), channelId(channelId), channelClosable(closable), privateChannel(privateChannel)
+{
+	channelConsole = new GUI_Console(iRect(0, 0, 0, 0));
+}
+
 void chat_Events(Uint32 event, Sint32)
 {
 	switch(event)
@@ -129,16 +135,15 @@ void chat_Events(Uint32 event, Sint32)
 			Sint32 len;
 			if(g_engine.hasShowTimestamps())
 			{
-				std::string timeStr = UTIL_formatDate("%H:%M", g_lastMessage.timestamp);
 				if(!g_lastMessage.name.empty())
 				{
 					if(g_engine.hasShowLevels() && g_lastMessage.level > 0)
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s[%u]: %s", timeStr.c_str(), g_lastMessage.name.c_str(), SDL_static_cast(Uint32, g_lastMessage.level), g_lastMessage.message.c_str());
+						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s[%u]: %s", g_lastMessage.timestamp.c_str(), g_lastMessage.name.c_str(), SDL_static_cast(Uint32, g_lastMessage.level), g_lastMessage.message.c_str());
 					else
-						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s: %s", timeStr.c_str(), g_lastMessage.name.c_str(), g_lastMessage.message.c_str());
+						len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s: %s", g_lastMessage.timestamp.c_str(), g_lastMessage.name.c_str(), g_lastMessage.message.c_str());
 				}
 				else
-					len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s", timeStr.c_str(), g_lastMessage.message.c_str());
+					len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s", g_lastMessage.timestamp.c_str(), g_lastMessage.message.c_str());
 			}
 			else
 			{
@@ -498,17 +503,7 @@ void Chat::openChannel(Uint32 channelId, const std::string channelName, bool pri
 		}
 	}
 
-	Channel newChannel;
-	newChannel.channelName = std::move(channelName);
-	newChannel.channelConsole = new GUI_Console(iRect(0, 0, 0, 0));
-	newChannel.channelId = channelId;
-	newChannel.highlightTime = 0;
-	newChannel.workAsServerLog = false;
-	newChannel.channelClosable = closable;
-	newChannel.privateChannel = privateChannel;
-	newChannel.alreadyClosed = false;
-	newChannel.unreadMessage = false;
-	m_channels.push_back(newChannel);
+	m_channels.emplace_back(std::move(channelName), channelId, closable, privateChannel);
 	if(g_clientVersion >= 871)
 	{
 		if(channelId == 7)//Help Channel

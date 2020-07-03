@@ -53,8 +53,7 @@ void ProtocolLoginHttp::parseMessage()
 		return;
 	}
 
-	SDL_RWseek(fp, 0, RW_SEEK_END);
-	size_t sizeData = SDL_static_cast(size_t, SDL_RWtell(fp));
+	size_t sizeData = SDL_static_cast(size_t, SDL_RWsize(fp));
 	if(sizeData <= 0)
 	{
 		SDL_RWclose(fp);
@@ -68,7 +67,6 @@ void ProtocolLoginHttp::parseMessage()
 	}
 
 	std::vector<char> msgData(sizeData);
-	SDL_RWseek(fp, 0, RW_SEEK_SET);
 	SDL_RWread(fp, &msgData[0], 1, sizeData);
 	SDL_RWclose(fp);
 	#ifdef SDL_FILESYSTEM_WINDOWS

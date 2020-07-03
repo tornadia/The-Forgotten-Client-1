@@ -152,7 +152,7 @@ void Effect::update()
 		(*it)->m_currentAnim = (*it)->calculateAnimationPhase();
 }
 
-void Effect::render(Sint32 posX, Sint32 posY, bool)
+void Effect::render(Sint32 posX, Sint32 posY)
 {
 	auto& renderer = g_engine.getRender();
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
@@ -188,7 +188,7 @@ Uint8 Effect::calculateAnimationPhase()
 	return SDL_static_cast(Uint8, (g_frameTime - m_startTime) / EFFECT_TICKS_PER_FRAME);
 }
 
-void Effect1X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
+void Effect1X1::render(Sint32 posX, Sint32 posY)
 {
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 	{
@@ -197,15 +197,12 @@ void Effect1X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 			g_light.addLightSource(posX, posY, light);
 	}
 
-	if(!visible_tile)
-		return;
-
 	Uint32 drawSprite = m_1X1Sprites[m_currentAnim];
 	if(drawSprite != 0)
 		g_engine.getRender()->drawSprite(drawSprite, posX, posY);
 }
 
-void Effect2X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
+void Effect2X1::render(Sint32 posX, Sint32 posY)
 {
 	auto& renderer = g_engine.getRender();
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
@@ -215,20 +212,16 @@ void Effect2X1::render(Sint32 posX, Sint32 posY, bool visible_tile)
 			g_light.addLightSource(posX, posY, light);
 	}
 
-	Uint32 drawSprite;
-	if(visible_tile)
-	{
-		drawSprite = m_2X1Sprites[m_currentAnim][0];
-		if(drawSprite != 0)
-			renderer->drawSprite(drawSprite, posX, posY);
-	}
+	Uint32 drawSprite = m_2X1Sprites[m_currentAnim][0];
+	if(drawSprite != 0)
+		renderer->drawSprite(drawSprite, posX, posY);
 
 	drawSprite = m_2X1Sprites[m_currentAnim][1];
 	if(drawSprite != 0)
 		renderer->drawSprite(drawSprite, posX - 32, posY);
 }
 
-void Effect1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
+void Effect1X2::render(Sint32 posX, Sint32 posY)
 {
 	auto& renderer = g_engine.getRender();
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
@@ -239,19 +232,15 @@ void Effect1X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 	}
 
 	Uint32 drawSprite = m_1X2Sprites[m_currentAnim][0];
-	if(visible_tile)
-	{
-		drawSprite = m_1X2Sprites[m_currentAnim][0];
-		if(drawSprite != 0)
-			renderer->drawSprite(drawSprite, posX, posY);
-	}
+	if(drawSprite != 0)
+		renderer->drawSprite(drawSprite, posX, posY);
 
 	drawSprite = m_1X2Sprites[m_currentAnim][1];
 	if(drawSprite != 0)
 		renderer->drawSprite(drawSprite, posX, posY - 32);
 }
 
-void Effect2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
+void Effect2X2::render(Sint32 posX, Sint32 posY)
 {
 	auto& renderer = g_engine.getRender();
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
@@ -261,13 +250,9 @@ void Effect2X2::render(Sint32 posX, Sint32 posY, bool visible_tile)
 			g_light.addLightSource(posX, posY, light);
 	}
 
-	Uint32 drawSprite;
-	if(visible_tile)
-	{
-		drawSprite = m_2X2Sprites[m_currentAnim][0];
-		if(drawSprite != 0)
-			renderer->drawSprite(drawSprite, posX, posY);
-	}
+	Uint32 drawSprite = m_2X2Sprites[m_currentAnim][0];
+	if(drawSprite != 0)
+		renderer->drawSprite(drawSprite, posX, posY);
 
 	drawSprite = m_2X2Sprites[m_currentAnim][1];
 	if(drawSprite != 0)

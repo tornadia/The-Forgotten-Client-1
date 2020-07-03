@@ -504,7 +504,7 @@ SDL_Surface* SurfaceSoftware::loadPicture(Uint16 pictureId, SDL_BlendMode blendM
 	return s;
 }
 
-void SurfaceSoftware::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256])
+void SurfaceSoftware::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint16 cX[256], Sint16 cY[256], Sint16 cW[256], Sint16 cH[256])
 {
 	SDL_Surface* surf = m_pictures[pictureId];
 	if(!surf)
@@ -550,8 +550,8 @@ void SurfaceSoftware::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::
 				break;
 			default:
 			{
-				SDL_Rect srcr = {cX[character],cY[character],cW[character],cH[character]};
-				SDL_Rect dstr = {rx,ry,cW[character],cH[character]};
+				SDL_Rect srcr = {SDL_static_cast(Sint32, cX[character]),SDL_static_cast(Sint32, cY[character]),SDL_static_cast(Sint32, cW[character]),SDL_static_cast(Sint32, cH[character])};
+				SDL_Rect dstr = {rx,ry,SDL_static_cast(Sint32, cW[character]),SDL_static_cast(Sint32, cH[character])};
 				SDL_BlitSurface(surf, &srcr, m_renderSurface, &dstr);
 				rx += cW[character] + cX[0];
 			}

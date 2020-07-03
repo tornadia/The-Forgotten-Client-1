@@ -36,8 +36,8 @@
 
 struct VertexD3D9
 {
-	VertexD3D9(float x, float y, float u, float v, DWORD color) : x(x), y(y), z(0.0), color(color), u(u), v(v) {}
-	VertexD3D9(float x, float y, DWORD color) : x(x), y(y), z(0.0), color(color), u(0.0f), v(0.0f) {}
+	VertexD3D9(float x, float y, float u, float v, DWORD color) : x(x), y(y), z(0.0f), color(color), u(u), v(v) {}
+	VertexD3D9(float x, float y, DWORD color) : x(x), y(y), z(0.0f), color(color), u(0.0f), v(0.0f) {}
 
 	float x, y, z;
 	DWORD color;
@@ -94,8 +94,8 @@ struct Direct3D9SpriteData
 	Uint32 m_lastUsage;
 };
 
-typedef std::unordered_map<Uint32, Direct3D9Texture> U32BD3D9Textures;
-typedef std::unordered_map<Uint64, Direct3D9SpriteData> U64BD3D9Textures;
+typedef robin_hood::unordered_map<Uint32, Direct3D9Texture> U32BD3D9Textures;
+typedef robin_hood::unordered_map<Uint64, Direct3D9SpriteData> U64BD3D9Textures;
 
 typedef struct IDirect3D9 IDirect3D9;
 typedef struct IDirect3D9Ex IDirect3D9Ex;
@@ -162,7 +162,7 @@ class SurfaceDirect3D9 : public Surface
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		Direct3D9Texture* loadPicture(Uint16 pictureId, bool linear);
-		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256]);
+		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint16 cX[256], Sint16 cY[256], Sint16 cW[256], Sint16 cH[256]);
 		virtual void drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);

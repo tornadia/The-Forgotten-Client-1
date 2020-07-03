@@ -22,15 +22,44 @@
 #ifndef __FILE_GUI_CONSOLE_h_
 #define __FILE_GUI_CONSOLE_h_
 
-#include "GUI_Element.h"
+#include "GUI_ScrollBar.h"
 
 #define MAX_CONSOLE_MESSAGES 1000
 
 struct ConsoleMessage
 {
+	ConsoleMessage() : messageId(0), flags(0), statementId(0), level(0), red(0), green(0), blue(0) {}
+	ConsoleMessage(Uint64 messageId, std::string name, std::string message, std::string timestamp, Uint32 flags, Uint32 statementId, Uint16 level, Uint8 red, Uint8 green, Uint8 blue) :
+		messageId(messageId), name(std::move(name)), message(std::move(message)), timestamp(std::move(timestamp)), flags(flags), statementId(statementId), level(level), red(red), green(green), blue(blue) {}
+
+	// copyable
+	ConsoleMessage(const ConsoleMessage&) = default;
+	ConsoleMessage& operator=(const ConsoleMessage&) = default;
+
+	// moveable
+	ConsoleMessage(ConsoleMessage&& rhs) noexcept : name(std::move(rhs.name)), message(std::move(rhs.message)), timestamp(std::move(rhs.timestamp)),
+		flags(rhs.flags), statementId(rhs.statementId), level(rhs.level), red(rhs.red), green(rhs.green), blue(rhs.blue) {}
+	ConsoleMessage& operator=(ConsoleMessage&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			name = std::move(rhs.name);
+			message = std::move(rhs.message);
+			timestamp = std::move(rhs.timestamp);
+			flags = rhs.flags;
+			statementId = rhs.statementId;
+			level = rhs.level;
+			red = rhs.red;
+			green = rhs.green;
+			blue = rhs.blue;
+		}
+		return (*this);
+	}
+
+	Uint64 messageId;
 	std::string name;
 	std::string message;
-	time_t timestamp;
+	std::string timestamp;
 	Uint32 flags;
 	Uint32 statementId;
 	Uint16 level;
@@ -41,23 +70,24 @@ struct ConsoleMessage
 
 struct ConsoleLine
 {
+	ConsoleLine(Uint64 messageId, size_t lineStart, size_t lineLength, Uint32 startPosition, Uint8 red, Uint8 green, Uint8 blue) :
+		messageId(messageId), lineStart(lineStart), lineLength(lineLength), startPosition(startPosition), red(red), green(green), blue(blue) {}
+
+	Uint64 messageId;
 	size_t lineStart;
 	size_t lineLength;
 	Uint32 startPosition;
 	Sint32 selectionStart;
-	Sint32 selectionWidth;
-	Sint32 messageIndex;
+	Sint32 selectionWidth = 0;
 	Uint8 red;
 	Uint8 green;
 	Uint8 blue;
 };
 
-class GUI_VScrollBar;
 class GUI_Console : public GUI_Element
 {
 	public:
 		GUI_Console(iRect boxRect, Uint32 internalID = 0);
-		~GUI_Console();
 
 		// non-copyable
 		GUI_Console(const GUI_Console&) = delete;
@@ -92,14 +122,16 @@ class GUI_Console : public GUI_Element
 		void onWheel(Sint32 x, Sint32 y, bool wheelUP);
 		void deActivate();
 		void update();
+		void updatePartially();
 		void updateSelection();
 		void render();
 
 	protected:
+		Uint64 m_messageIndex = 0;
 		std::list<ConsoleMessage> m_messages;
 		std::vector<ConsoleLine> m_lines;
-		std::string m_sText;
-		GUI_VScrollBar* m_scrollBar;
+		std::stringExtended m_sText;
+		GUI_VScrollBar m_scrollBar;
 		Uint32 m_cursorPosition = 0;
 		Uint32 m_selectionReference = 0;
 		Uint32 m_selectionStart = 0;
@@ -108,8 +140,11 @@ class GUI_Console : public GUI_Element
 		Uint8 m_font = CLIENT_FONT_NONOUTLINED;
 		bool m_selecting = false;
 		bool m_needUpdate = true;
+		bool m_needUpdatePartially = false;
 		bool m_needUpdateSelection = false;
 		bool m_keepLastScrollPos = false;
+		bool m_showLevels = false;
+		bool m_showTimestamps = false;
 };
 
 #endif /* __FILE_GUI_CONSOLE_h_ */

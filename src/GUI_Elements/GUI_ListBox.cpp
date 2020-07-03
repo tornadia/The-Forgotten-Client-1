@@ -20,22 +20,19 @@
 */
 
 #include "GUI_ListBox.h"
-#include "GUI_ScrollBar.h"
 #include "../engine.h"
 
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-GUI_ListBox::GUI_ListBox(iRect boxRect, Uint32 internalID)
+GUI_ListBox::GUI_ListBox(iRect boxRect, Uint32 internalID) : m_scrollBar(iRect(0, 0, 0, 0), 0, 0)
 {
-	m_scrollBar = new GUI_VScrollBar(iRect(0, 0, 0, 0), 0, 0);
 	setRect(boxRect);
 	m_internalID = internalID;
 }
 
 GUI_ListBox::~GUI_ListBox()
 {
-	delete m_scrollBar;
 	m_listBox.clear();
 }
 
@@ -51,17 +48,17 @@ void GUI_ListBox::setRect(iRect& NewRect)
 		return;
 
 	iRect nRect = iRect(NewRect.x1 + NewRect.x2 - 13, NewRect.y1 + 1, 12, NewRect.y2 - 2);
-	m_scrollBar->setRect(nRect);
+	m_scrollBar.setRect(nRect);
 	m_tRect = NewRect;
 	m_maxDisplay = (m_tRect.y2 - 4) / 12;
-	m_scrollBar->setScrollSize(SDL_static_cast(Sint32, m_listBox.size()) - m_maxDisplay);
+	m_scrollBar.setScrollSize(SDL_static_cast(Sint32, m_listBox.size()) - m_maxDisplay);
 }
 
 void GUI_ListBox::setSelect(Sint32 select)
 {
 	Sint32 lastSelect = m_select;
 	m_select = UTIL_max<Sint32>(0, UTIL_min<Sint32>(SDL_static_cast(Sint32, m_listBox.size() - 1), select));
-	m_scrollBar->setScrollPos(m_select - m_maxDisplay / 2);//Keep the scrollbar in the center
+	m_scrollBar.setScrollPos(m_select - m_maxDisplay / 2);//Keep the scrollbar in the center
 	if(lastSelect != m_select && m_eventHandlerFunction)
 		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, m_select);
 }
@@ -69,7 +66,7 @@ void GUI_ListBox::setSelect(Sint32 select)
 void GUI_ListBox::add(const std::string data)
 {
 	m_listBox.push_back(std::move(data));
-	m_scrollBar->setScrollSize(SDL_static_cast(Sint32, m_listBox.size()) - m_maxDisplay);
+	m_scrollBar.setScrollSize(SDL_static_cast(Sint32, m_listBox.size()) - m_maxDisplay);
 }
 
 void GUI_ListBox::set(Sint32 select, const std::string data)
@@ -86,7 +83,7 @@ void GUI_ListBox::erase(Sint32 select)
 	if(SDL_static_cast(size_t, select) < m_listBox.size())
 	{
 		m_listBox.erase(m_listBox.begin() + select);
-		m_scrollBar->setScrollSize(SDL_static_cast(Sint32, m_listBox.size()) - m_maxDisplay);
+		m_scrollBar.setScrollSize(SDL_static_cast(Sint32, m_listBox.size()) - m_maxDisplay);
 	}
 }
 
@@ -98,10 +95,10 @@ void GUI_ListBox::onKeyDown(SDL_Event& event)
 		{
 			m_select = UTIL_max<Sint32>(0, UTIL_min<Sint32>(SDL_static_cast(Sint32, m_listBox.size() - 1), m_select - 1));
 
-			Sint32 actualPos = m_scrollBar->getScrollPos();
+			Sint32 actualPos = m_scrollBar.getScrollPos();
 			Sint32 cachePos = m_select;
 			if(actualPos > cachePos)
-				m_scrollBar->setScrollPos(cachePos);
+				m_scrollBar.setScrollPos(cachePos);
 			if(m_eventHandlerFunction)
 				UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, m_select);
 			return;
@@ -111,10 +108,10 @@ void GUI_ListBox::onKeyDown(SDL_Event& event)
 		{
 			m_select = UTIL_max<Sint32>(0, UTIL_min<Sint32>(SDL_static_cast(Sint32, m_listBox.size() - 1), m_select + 1));
 
-			Sint32 actualPos = m_scrollBar->getScrollPos();
+			Sint32 actualPos = m_scrollBar.getScrollPos();
 			Sint32 cachePos = m_select - m_maxDisplay + 1;
 			if(actualPos < cachePos)
-				m_scrollBar->setScrollPos(cachePos);
+				m_scrollBar.setScrollPos(cachePos);
 			if(m_eventHandlerFunction)
 				UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, m_select);
 			return;
@@ -130,7 +127,7 @@ void GUI_ListBox::onLMouseDown(Sint32 x, Sint32 y)
 	iRect rect = iRect(m_tRect.x1 + 2, m_tRect.y1 + 2, m_tRect.x2 - 16, m_tRect.y2 - 4);
 	if(rect.isPointInside(x, y))
 	{
-		Sint32 count = m_scrollBar->getScrollPos();
+		Sint32 count = m_scrollBar.getScrollPos();
 		std::vector<std::string>::iterator it = m_listBox.begin();
 		std::advance(it, count);
 
@@ -160,13 +157,13 @@ void GUI_ListBox::onLMouseDown(Sint32 x, Sint32 y)
 		}
 		return;
 	}
-	if(m_scrollBar->getRect().isPointInside(x, y))
-		m_scrollBar->onLMouseDown(x, y);
+	if(m_scrollBar.getRect().isPointInside(x, y))
+		m_scrollBar.onLMouseDown(x, y);
 }
 
 void GUI_ListBox::onLMouseUp(Sint32 x, Sint32 y)
 {
-	m_scrollBar->onLMouseUp(x, y);
+	m_scrollBar.onLMouseUp(x, y);
 	if(m_doubleClicked)
 	{
 		m_doubleClicked = false;
@@ -177,15 +174,15 @@ void GUI_ListBox::onLMouseUp(Sint32 x, Sint32 y)
 
 void GUI_ListBox::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
-	m_scrollBar->onMouseMove(x, y, isInsideParent);
+	m_scrollBar.onMouseMove(x, y, isInsideParent);
 }
 
 void GUI_ListBox::onWheel(Sint32, Sint32, bool wheelUP)
 {
 	if(wheelUP)
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() - 1);
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollPos() - 1);
 	else
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() + 1);
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollPos() + 1);
 }
 
 void GUI_ListBox::render()
@@ -198,7 +195,7 @@ void GUI_ListBox::render()
 	renderer->fillRectangle(m_tRect.x1 + 1, m_tRect.y1 + 1, m_tRect.x2 - 14, m_tRect.y2 - 2, 64, 64, 64, 255);
 	renderer->setClipRect(m_tRect.x1 + 2, m_tRect.y1 + 2, m_tRect.x2 - 16, m_tRect.y2 - 4);
 
-	Sint32 count = m_scrollBar->getScrollPos();
+	Sint32 count = m_scrollBar.getScrollPos();
 	std::vector<std::string>::iterator it = m_listBox.begin();
 	std::advance(it, count);
 
@@ -221,5 +218,5 @@ void GUI_ListBox::render()
 		++it;
 	}
 	renderer->disableClipRect();
-	m_scrollBar->render();
+	m_scrollBar.render();
 }

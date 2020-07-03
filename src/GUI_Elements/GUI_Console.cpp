@@ -20,22 +20,18 @@
 */
 
 #include "GUI_Console.h"
-#include "GUI_ScrollBar.h"
 #include "../engine.h"
+
+#include <chrono>
 
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-GUI_Console::GUI_Console(iRect boxRect, Uint32 internalID)
+GUI_Console::GUI_Console(iRect boxRect, Uint32 internalID) : m_scrollBar(iRect(0, 0, 0, 0), 0, 0)
 {
-	m_scrollBar = new GUI_VScrollBar(iRect(0, 0, 0, 0), 0, 0);
 	setRect(boxRect);
 	m_internalID = internalID;
-}
-
-GUI_Console::~GUI_Console()
-{
-	delete m_scrollBar;
+	m_sText.reserve(MAX_CONSOLE_MESSAGES * 255);//Pre-allocate a little space
 }
 
 void GUI_Console::setRect(iRect& NewRect)
@@ -44,17 +40,18 @@ void GUI_Console::setRect(iRect& NewRect)
 		return;
 
 	iRect nRect = iRect(NewRect.x1 + NewRect.x2 - 13, NewRect.y1 + 1, 12, NewRect.y2 - 2);
-	m_scrollBar->setRect(nRect);
+	m_scrollBar.setRect(nRect);
 	m_tRect = NewRect;
 	m_maxDisplay = m_tRect.y2 / 14;
 	m_needUpdate = true;
-	m_keepLastScrollPos = (m_scrollBar->getScrollPos() == m_scrollBar->getScrollSize());
+	m_keepLastScrollPos = (m_scrollBar.getScrollPos() == m_scrollBar.getScrollSize());
 }
 
 void GUI_Console::clearConsole()
 {
-	m_scrollBar->setScrollSize(0);
-	m_scrollBar->setScrollPos(0);
+	m_messageIndex = 0;
+	m_scrollBar.setScrollSize(0);
+	m_scrollBar.setScrollPos(0);
 	m_messages.clear();
 	m_needUpdate = true;
 }
@@ -245,9 +242,9 @@ void GUI_Console::onKeyDown(SDL_Event& event)
 
 void GUI_Console::onLMouseDown(Sint32 x, Sint32 y)
 {
-	if(m_scrollBar->getRect().isPointInside(x, y))
+	if(m_scrollBar.getRect().isPointInside(x, y))
 	{
-		m_scrollBar->onLMouseDown(x, y);
+		m_scrollBar.onLMouseDown(x, y);
 		return;
 	}
 	m_selecting = true;
@@ -259,13 +256,13 @@ void GUI_Console::onLMouseDown(Sint32 x, Sint32 y)
 
 void GUI_Console::onLMouseUp(Sint32 x, Sint32 y)
 {
-	m_scrollBar->onLMouseUp(x, y);
+	m_scrollBar.onLMouseUp(x, y);
 	m_selecting = false;
 }
 
 void GUI_Console::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
-	m_scrollBar->onMouseMove(x, y, isInsideParent);
+	m_scrollBar.onMouseMove(x, y, isInsideParent);
 	if(m_selecting)
 	{
 		m_cursorPosition = getCursorPosition(x, y);
@@ -276,9 +273,9 @@ void GUI_Console::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 void GUI_Console::onWheel(Sint32, Sint32, bool wheelUP)
 {
 	if(wheelUP)
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() - 1);
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollPos() - 1);
 	else
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() + 1);
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollPos() + 1);
 }
 
 void GUI_Console::deActivate()
@@ -291,8 +288,8 @@ void GUI_Console::update()
 {
 	struct PARSE_Console
 	{
+		Uint64 m_index;
 		GUI_Console* m_console;
-		Sint32 m_index;
 		Uint8 m_red;
 		Uint8 m_green;
 		Uint8 m_blue;
@@ -303,48 +300,43 @@ void GUI_Console::update()
 	m_lines.clear();
 
 	bool firstMessage = true;
-	Sint32 index = 0;
-	for(std::list<ConsoleMessage>::iterator it = m_messages.begin(), end = m_messages.end(); it != end; ++it, ++index)
+	for(std::list<ConsoleMessage>::iterator it = m_messages.begin(), end = m_messages.end(); it != end; ++it)
 	{
 		ConsoleMessage& cMessage = (*it);
-		Sint32 len;
-		if(g_engine.hasShowTimestamps())
-		{
-			std::string timeStr = UTIL_formatDate("%H:%M", cMessage.timestamp);
-			if(!cMessage.name.empty())
-			{
-				if(g_engine.hasShowLevels() && cMessage.level > 0)
-					len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s[%u]: %s", timeStr.c_str(), cMessage.name.c_str(), SDL_static_cast(Uint32, cMessage.level), cMessage.message.c_str());
-				else
-					len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s: %s", timeStr.c_str(), cMessage.name.c_str(), cMessage.message.c_str());
-			}
-			else
-				len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s %s", timeStr.c_str(), cMessage.message.c_str());
-		}
-		else
-		{
-			if(!cMessage.name.empty())
-			{
-				if(g_engine.hasShowLevels() && cMessage.level > 0)
-					len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s[%u]: %s", cMessage.name.c_str(), SDL_static_cast(Uint32, cMessage.level), cMessage.message.c_str());
-				else
-					len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s: %s", cMessage.name.c_str(), cMessage.message.c_str());
-			}
-			else
-				len = SDL_snprintf(g_buffer, sizeof(g_buffer), "%s", cMessage.message.c_str());
-		}
-
 		if(firstMessage)
 			firstMessage = false;
 		else
-			m_sText.append(1, '\n');
+			m_sText << '\n';
 
 		size_t start = m_sText.length();
-		m_sText.append(std::string(g_buffer, SDL_static_cast(size_t, len)));
-
+		if(g_engine.hasShowTimestamps())
+		{
+			if(!cMessage.name.empty())
+			{
+				if(g_engine.hasShowLevels() && cMessage.level > 0)
+					m_sText << cMessage.timestamp << ' ' << cMessage.name << '[' << cMessage.level << "]: " << cMessage.message;
+				else
+					m_sText << cMessage.timestamp << ' ' << cMessage.name << ": " << cMessage.message;
+			}
+			else
+				m_sText << cMessage.timestamp << ' ' << cMessage.message;
+		}
+		else
+		{
+			if(!cMessage.name.empty())
+			{
+				if(g_engine.hasShowLevels() && cMessage.level > 0)
+					m_sText << cMessage.name << '[' << cMessage.level << "]: " << cMessage.message;
+				else
+					m_sText << cMessage.name << ": " << cMessage.message;
+			}
+			else
+				m_sText << cMessage.message;
+		}
+		
 		PARSE_Console consoleParser;
 		consoleParser.m_console = this;
-		consoleParser.m_index = index;
+		consoleParser.m_index = cMessage.messageId;
 		consoleParser.m_red = cMessage.red;
 		consoleParser.m_green = cMessage.green;
 		consoleParser.m_blue = cMessage.blue;
@@ -354,36 +346,136 @@ void GUI_Console::update()
 		{
 			PARSE_Console* _THIS = reinterpret_cast<PARSE_Console*>(__THIS);
 
-			ConsoleLine newLine;
-			newLine.startPosition = (_THIS->m_firstLine ? 4 : 14);
-			newLine.selectionWidth = 0;
-			newLine.messageIndex = _THIS->m_index;
-			newLine.red = _THIS->m_red;
-			newLine.green = _THIS->m_green;
-			newLine.blue = _THIS->m_blue;
-			newLine.lineStart = start;
-			newLine.lineLength = length;
-			_THIS->m_console->m_lines.push_back(newLine);
+			_THIS->m_console->m_lines.emplace_back(_THIS->m_index, start, length, SDL_static_cast(Uint32, _THIS->m_firstLine ? 4 : 14), _THIS->m_red, _THIS->m_green, _THIS->m_blue);
 			_THIS->m_firstLine = false;
 			return 0;
 		});
 
 		if(m_sText[m_sText.length() - 1] == '\n')
+			m_lines.emplace_back(consoleParser.m_index, m_sText.length(), SDL_static_cast(size_t, 1), SDL_static_cast(Uint32, consoleParser.m_firstLine ? 4 : 14), consoleParser.m_red, consoleParser.m_green, consoleParser.m_blue);
+	}
+
+	m_scrollBar.setScrollSize(SDL_static_cast(Sint32, m_lines.size()) - m_maxDisplay);
+	if(hasSelection())
+		m_needUpdateSelection = true;
+}
+
+void GUI_Console::updatePartially()
+{
+	struct PARSE_Console
+	{
+		Uint64 m_index;
+		GUI_Console* m_console;
+		Uint8 m_red;
+		Uint8 m_green;
+		Uint8 m_blue;
+		bool m_firstLine;
+	};
+
+	if(m_messages.empty())
+	{
+		//Make sure we don't get crash by accessing front from empty list - shouldn't happen but just in case
+		m_messageIndex = 0;
+		m_sText.clear();
+		m_lines.clear();
+
+		m_scrollBar.setScrollSize(SDL_static_cast(Sint32, m_lines.size()) - m_maxDisplay);
+		if(hasSelection())
+			m_needUpdateSelection = true;
+
+		return;
+	}
+
+	Uint64 startIndex = m_messages.front().messageId, endIndex = 0;
+	if(!m_lines.empty())
+	{
+		endIndex = m_lines.back().messageId;
+		if(m_lines.front().messageId != startIndex)
 		{
-			ConsoleLine newLine;
-			newLine.startPosition = (consoleParser.m_firstLine ? 4 : 14);
-			newLine.selectionWidth = 0;
-			newLine.messageIndex = consoleParser.m_index;
-			newLine.red = consoleParser.m_red;
-			newLine.green = consoleParser.m_green;
-			newLine.blue = consoleParser.m_blue;
-			newLine.lineStart = m_sText.length();
-			newLine.lineLength = 1;
-			m_lines.push_back(newLine);
+			size_t adjustStartPosition = 0;
+			for(std::vector<ConsoleLine>::iterator it = m_lines.begin(), end = m_lines.end(); it != end; ++it)
+			{
+				ConsoleLine& messageLine = (*it);
+				if(messageLine.messageId == startIndex)
+				{
+					adjustStartPosition = messageLine.lineStart;
+					m_lines.erase(m_lines.begin(), it);
+					goto Skip_Line_Clear;
+				}
+			}
+			m_lines.clear();
+
+			Skip_Line_Clear:
+			for(std::vector<ConsoleLine>::iterator it = m_lines.begin(), end = m_lines.end(); it != end; ++it)
+			{
+				ConsoleLine& messageLine = (*it);
+				messageLine.lineStart -= adjustStartPosition;
+			}
 		}
 	}
 
-	m_scrollBar->setScrollSize(SDL_static_cast(Sint32, m_lines.size()) - m_maxDisplay);
+	m_sText.clear();
+
+	bool firstMessage = true;
+	for(std::list<ConsoleMessage>::iterator it = m_messages.begin(), end = m_messages.end(); it != end; ++it)
+	{
+		ConsoleMessage& cMessage = (*it);
+		if(firstMessage)
+			firstMessage = false;
+		else
+			m_sText << '\n';
+
+		size_t start = m_sText.length();
+		if(g_engine.hasShowTimestamps())
+		{
+			if(!cMessage.name.empty())
+			{
+				if(g_engine.hasShowLevels() && cMessage.level > 0)
+					m_sText << cMessage.timestamp << ' ' << cMessage.name << '[' << cMessage.level << "]: " << cMessage.message;
+				else
+					m_sText << cMessage.timestamp << ' ' << cMessage.name << ": " << cMessage.message;
+			}
+			else
+				m_sText << cMessage.timestamp << ' ' << cMessage.message;
+		}
+		else
+		{
+			if(!cMessage.name.empty())
+			{
+				if(g_engine.hasShowLevels() && cMessage.level > 0)
+					m_sText << cMessage.name << '[' << cMessage.level << "]: " << cMessage.message;
+				else
+					m_sText << cMessage.name << ": " << cMessage.message;
+			}
+			else
+				m_sText << cMessage.message;
+		}
+		
+		if(cMessage.messageId > endIndex)
+		{
+			PARSE_Console consoleParser;
+			consoleParser.m_console = this;
+			consoleParser.m_index = cMessage.messageId;
+			consoleParser.m_red = cMessage.red;
+			consoleParser.m_green = cMessage.green;
+			consoleParser.m_blue = cMessage.blue;
+			consoleParser.m_firstLine = true;
+
+			UTIL_parseSizedText(m_sText, start, m_font, SDL_static_cast(Uint32, m_tRect.x2 - 28), reinterpret_cast<void*>(&consoleParser), [](void* __THIS, bool, size_t start, size_t length) -> size_t
+			{
+				PARSE_Console* _THIS = reinterpret_cast<PARSE_Console*>(__THIS);
+
+				_THIS->m_console->m_lines.emplace_back(_THIS->m_index, start, length, SDL_static_cast(Uint32, _THIS->m_firstLine ? 4 : 14), _THIS->m_red, _THIS->m_green, _THIS->m_blue);
+				_THIS->m_firstLine = false;
+				return 0;
+			});
+
+			if(m_sText[m_sText.length() - 1] == '\n')
+				m_lines.emplace_back(consoleParser.m_index, m_sText.length(), SDL_static_cast(size_t, 1), SDL_static_cast(Uint32, consoleParser.m_firstLine ? 4 : 14), consoleParser.m_red, consoleParser.m_green, consoleParser.m_blue);
+		}
+	}
+
+	m_scrollBar.setScrollSize(SDL_static_cast(Sint32, m_lines.size()) - m_maxDisplay);
 	if(hasSelection())
 		m_needUpdateSelection = true;
 }
@@ -414,15 +506,28 @@ void GUI_Console::updateSelection()
 	}
 
 	//Keep us in the cursor sight
-	Sint32 actualPos = m_scrollBar->getScrollPos();
+	Sint32 actualPos = m_scrollBar.getScrollPos();
 	if(actualPos > cursorPos)
-		m_scrollBar->setScrollPos(cursorPos);
+		m_scrollBar.setScrollPos(cursorPos);
 	else if(actualPos < cursorPos - m_maxDisplay + 1)
-		m_scrollBar->setScrollPos(cursorPos - m_maxDisplay + 1);
+		m_scrollBar.setScrollPos(cursorPos - m_maxDisplay + 1);
 }
 
 void GUI_Console::render()
 {
+	if((g_engine.hasShowTimestamps() != m_showTimestamps) || (g_engine.hasShowLevels() != m_showLevels))
+	{
+		m_needUpdate = true;
+		m_showTimestamps = g_engine.hasShowTimestamps();
+		m_showLevels = g_engine.hasShowLevels();
+	}
+	if(m_needUpdatePartially)
+	{
+		if(!m_needUpdate)
+			updatePartially();
+
+		m_needUpdatePartially = false;
+	}
 	if(m_needUpdate)
 	{
 		update();
@@ -435,14 +540,14 @@ void GUI_Console::render()
 	}
 	if(m_keepLastScrollPos)
 	{
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollSize());
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollSize());
 		m_keepLastScrollPos = false;
 	}
 
 	auto& renderer = g_engine.getRender();
-	m_scrollBar->render();
+	m_scrollBar.render();
 
-	Sint32 count = m_scrollBar->getScrollPos();
+	Sint32 count = m_scrollBar.getScrollPos();
 	std::vector<ConsoleLine>::iterator it = m_lines.begin();
 	std::advance(it, count);
 
@@ -465,21 +570,11 @@ void GUI_Console::render()
 
 void GUI_Console::addMessage(Uint32 statementId, time_t timestamp, const std::string name, Uint16 level, const std::string message, Uint8 red, Uint8 green, Uint8 blue, Uint32 flags)
 {
-	ConsoleMessage newMessage;
-	newMessage.flags = flags;
-	newMessage.statementId = statementId;
-	newMessage.timestamp = timestamp;
-	newMessage.name = std::move(name);
-	newMessage.level = level;
-	newMessage.message = std::move(message);
-	newMessage.red = red;
-	newMessage.green = green;
-	newMessage.blue = blue;
-	m_messages.push_back(newMessage);
+	m_messages.emplace_back(++m_messageIndex, std::move(name), std::move(message), std::move(UTIL_formatDate("%H:%M", timestamp)), flags, statementId, level, red, green, blue);
 	if(m_messages.size() > MAX_CONSOLE_MESSAGES)
 		m_messages.pop_front();
-	m_needUpdate = true;
-	m_keepLastScrollPos = (m_scrollBar->getScrollPos() == m_scrollBar->getScrollSize());
+	m_needUpdatePartially = true;
+	m_keepLastScrollPos = (m_scrollBar.getScrollPos() == m_scrollBar.getScrollSize());
 }
 
 void GUI_Console::setCursor(Uint32 position)
@@ -547,7 +642,7 @@ Uint32 GUI_Console::getCursorPosition(Sint32 x, Sint32 y)
 	if(m_lines.empty())
 		return 0;
 
-	Sint32 count = m_scrollBar->getScrollPos();
+	Sint32 count = m_scrollBar.getScrollPos();
 	std::vector<ConsoleLine>::iterator it = m_lines.begin();
 	std::advance(it, count);
 
@@ -593,7 +688,7 @@ ConsoleMessage* GUI_Console::getConsoleMessage(Sint32, Sint32 y)
 	if(m_lines.empty())
 		return NULL;
 
-	Sint32 count = m_scrollBar->getScrollPos();
+	Sint32 count = m_scrollBar.getScrollPos();
 	std::vector<ConsoleLine>::iterator it = m_lines.begin();
 	std::advance(it, count);
 
@@ -617,7 +712,11 @@ ConsoleMessage* GUI_Console::getConsoleMessage(Sint32, Sint32 y)
 		return &m_messages.back();
 
 	ConsoleLine& currentLine = (*it);
-	std::list<ConsoleMessage>::iterator mit = m_messages.begin();
-	std::advance(mit, currentLine.messageIndex);
-	return &(*mit);
+	for(std::list<ConsoleMessage>::iterator mit = m_messages.begin(), mend = m_messages.end(); mit != mend; ++mit)
+	{
+		ConsoleMessage& message = (*mit);
+		if(message.messageId == currentLine.messageId)
+			return &message;
+	}
+	return NULL;
 }

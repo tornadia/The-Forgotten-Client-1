@@ -22,9 +22,8 @@
 #ifndef __FILE_GUI_LISTBOX_h_
 #define __FILE_GUI_LISTBOX_h_
 
-#include "GUI_Element.h"
+#include "GUI_ScrollBar.h"
 
-class GUI_VScrollBar;
 class GUI_ListBox : public GUI_Element
 {
 	public:
@@ -59,7 +58,7 @@ class GUI_ListBox : public GUI_Element
 	protected:
 		void (*m_eventHandlerFunction)(Uint32, Sint32) = NULL;
 		std::vector<std::string> m_listBox;
-		GUI_VScrollBar* m_scrollBar;
+		GUI_VScrollBar m_scrollBar;
 		Uint32 m_evtParam = 0;
 		Uint32 m_lastClick = 0;
 		Sint32 m_maxDisplay = 0;

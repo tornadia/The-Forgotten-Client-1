@@ -378,6 +378,9 @@
     <ClCompile Include="..\..\protocolloginHttp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\GUI\ServerBrowser.cpp">
+      <Filter>Source Files\GUI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\connection.h">
@@ -673,6 +676,15 @@
     </ClInclude>
     <ClInclude Include="..\..\protocolloginHttp.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stringExtend.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\robin_hood.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\GUI\ServerBrowser.h">
+      <Filter>Header Files\GUI</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

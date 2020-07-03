@@ -252,7 +252,6 @@ void Connection::sendMessage(OutputMessage& msg)
 			if(result != CURLE_AGAIN)
 			{
 				//Closing socket here is unsafe - schedule it to a safe switch
-				//closeConnectionError(CONNECTION_ERROR_SEND_FAIL);
 				m_connectionState = CONNECTION_STATE_SEND_ERROR;
 				return;
 			}

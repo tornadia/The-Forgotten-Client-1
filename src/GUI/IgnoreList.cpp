@@ -140,6 +140,23 @@ extern Game g_game;
 struct Black_White_List
 {
 	Black_White_List(std::string name, bool perm) : playerName(std::move(name)), permanently(perm) {}
+
+	// non-copyable
+	Black_White_List(const Black_White_List&) = delete;
+	Black_White_List& operator=(const Black_White_List&) = delete;
+
+	// non-moveable
+	Black_White_List(Black_White_List&& rhs) noexcept : playerName(std::move(rhs.playerName)), permanently(rhs.permanently) {}
+	Black_White_List& operator=(Black_White_List&& rhs) noexcept
+	{
+		if(this != &rhs)
+		{
+			playerName = std::move(rhs.playerName);
+			permanently = rhs.permanently;
+		}
+		return (*this);
+	}
+
 	bool operator<(const Black_White_List& b) const
 	{
 		return playerName < b.playerName;

@@ -48,9 +48,11 @@ class Tile
 		void reset();
 
 		void render(Sint32 posX, Sint32 posY, bool visible_tile);
+		void reRenderTile(Sint32 posX, Sint32 posY);
 		void renderInformations(Sint32 posX, Sint32 posY, Sint32 drawX, Sint32 drawY, float scale, bool visible);
 
 		Uint32 getThingStackPos(Thing* thing);
+		Uint32 getUseStackPos(Thing* thing);
 		Thing* getThingByStackPos(Uint32 index);
 		Creature* getTopCreature(Sint32 x, Sint32 y, iRect& rect, float scale);
 		Creature* getTopCreature();
@@ -65,8 +67,8 @@ class Tile
 		void addWalkCreature(Creature* creature);
 		void removeWalkCreature(Creature* creature);
 
-		void checkMagicEffects();
 		void addEffect(Effect* effect);
+		void removeMagicEffect(Effect* effect);
 		void removeMagicEffects(Uint16 effectId);
 
 		bool isLookingPossible();

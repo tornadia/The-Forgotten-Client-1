@@ -20,16 +20,14 @@
 */
 
 #include "GUI_Container.h"
-#include "GUI_ScrollBar.h"
 #include "GUI_PanelWindow.h"
 #include "../engine.h"
 
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
-GUI_Container::GUI_Container(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID) : m_parent(parent)
+GUI_Container::GUI_Container(iRect boxRect, GUI_PanelWindow* parent, Uint32 internalID) : m_parent(parent), m_scrollBar(iRect(0, 0, 0, 0), 0, 0)
 {
-	m_scrollBar = new GUI_VScrollBar(iRect(0, 0, 0, 0), 0, 0);
 	setRect(boxRect);
 	m_internalID = internalID;
 }
@@ -37,16 +35,15 @@ GUI_Container::GUI_Container(iRect boxRect, GUI_PanelWindow* parent, Uint32 inte
 GUI_Container::~GUI_Container()
 {
 	clearChilds();
-	delete m_scrollBar;
 }
 
 void GUI_Container::setRect(iRect& NewRect)
 {
 	iRect nRect = iRect(NewRect.x1 + NewRect.x2 - 12, NewRect.y1, 12, NewRect.y2);
-	m_scrollBar->setRect(nRect);
+	m_scrollBar.setRect(nRect);
 	m_tRect = NewRect;
 	m_maxDisplay = (m_tRect.y2 + 3) / 4;
-	m_scrollBar->setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
+	m_scrollBar.setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
 	m_resetPosition = true;
 }
 
@@ -65,7 +62,7 @@ void GUI_Container::setActiveElement(GUI_Element* actElement)
 
 void GUI_Container::validateScrollBar()
 {
-	m_scrollBar->setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
+	m_scrollBar.setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
 }
 
 void GUI_Container::clearChilds(bool resetScrollBar)
@@ -78,7 +75,7 @@ void GUI_Container::clearChilds(bool resetScrollBar)
 		delete (*it);
 	m_childs.clear();
 	if(resetScrollBar)
-		m_scrollBar->setScrollSize(0);
+		m_scrollBar.setScrollSize(0);
 }
 
 void GUI_Container::addChild(GUI_Element* pChild, bool resetScrollBar)
@@ -93,7 +90,7 @@ void GUI_Container::addChild(GUI_Element* pChild, bool resetScrollBar)
 	{
 		m_contentSize = posY;
 		if(resetScrollBar)
-			m_scrollBar->setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
+			m_scrollBar.setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
 	}
 	m_resetPosition = true;
 }
@@ -121,7 +118,7 @@ void GUI_Container::removeChild(GUI_Element* pChild, bool resetScrollBar)
 			iRect& childRect = pChild->getRect();
 			m_contentSize = UTIL_max<Sint32>(m_contentSize, childRect.y1 + childRect.y2);
 		}
-		m_scrollBar->setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
+		m_scrollBar.setScrollSize(((m_contentSize + 23) / 4) - m_maxDisplay);
 	}
 }
 
@@ -159,9 +156,9 @@ void GUI_Container::onLMouseDown(Sint32 x, Sint32 y)
 	if(!m_visible)
 		return;
 
-	if(m_scrollBar->getRect().isPointInside(x, y))
+	if(m_scrollBar.getRect().isPointInside(x, y))
 	{
-		m_scrollBar->onLMouseDown(x, y);
+		m_scrollBar.onLMouseDown(x, y);
 		return;
 	}
 
@@ -181,7 +178,7 @@ void GUI_Container::onLMouseUp(Sint32 x, Sint32 y)
 	if(!m_visible)
 		return;
 
-	m_scrollBar->onLMouseUp(x, y);
+	m_scrollBar.onLMouseUp(x, y);
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
 	{
 		if((*it)->isEventable())
@@ -194,9 +191,9 @@ void GUI_Container::onRMouseDown(Sint32 x, Sint32 y)
 	if(!m_visible)
 		return;
 
-	if(m_scrollBar->getRect().isPointInside(x, y))
+	if(m_scrollBar.getRect().isPointInside(x, y))
 	{
-		m_scrollBar->onRMouseDown(x, y);
+		m_scrollBar.onRMouseDown(x, y);
 		return;
 	}
 
@@ -216,7 +213,7 @@ void GUI_Container::onRMouseUp(Sint32 x, Sint32 y)
 	if(!m_visible)
 		return;
 
-	m_scrollBar->onRMouseUp(x, y);
+	m_scrollBar.onRMouseUp(x, y);
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
 	{
 		if((*it)->isEventable())
@@ -229,7 +226,7 @@ void GUI_Container::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 	if(!m_visible)
 		return;
 
-	m_scrollBar->onMouseMove(x, y, isInsideParent);
+	m_scrollBar.onMouseMove(x, y, isInsideParent);
 	if(isInsideParent)
 		isInsideParent = isInsideRect(x, y);
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
@@ -256,9 +253,9 @@ void GUI_Container::onWheel(Sint32 x, Sint32 y, bool wheelUP)
 
 	Sint32 scrolling = UTIL_max<Sint32>(1, m_maxDisplay / 16);
 	if(wheelUP)
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() - scrolling);
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollPos() - scrolling);
 	else
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() + scrolling);
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollPos() + scrolling);
 }
 
 void GUI_Container::render()
@@ -269,7 +266,7 @@ void GUI_Container::render()
 	auto& renderer = g_engine.getRender();
 	renderer->setClipRect(m_tRect.x1, m_tRect.y1, m_tRect.x2 - 12, m_tRect.y2);
 
-	Sint32 posY = m_tRect.y1 - (m_scrollBar->getScrollPos() * 4) + 10;
+	Sint32 posY = m_tRect.y1 - (m_scrollBar.getScrollPos() * 4) + 10;
 	if(m_resetPosition || posY != m_lastPosY || m_tRect.x1 != m_lastPosX)
 	{
 		m_drawns.clear();
@@ -297,5 +294,5 @@ void GUI_Container::render()
 		(*it)->render();
 
 	renderer->disableClipRect();
-	m_scrollBar->render();
+	m_scrollBar.render();
 }

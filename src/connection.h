@@ -94,7 +94,6 @@ class Connection
 
 		ReadState m_readState = READ_SIZE;
 		ConnectionState m_connectionState = CONNECTION_STATE_INIT;
-		Uint32 m_waiting = 0;
 		Uint16 m_messageSize = 0;
 };
 

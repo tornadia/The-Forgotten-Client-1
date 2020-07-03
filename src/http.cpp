@@ -154,7 +154,7 @@ void Http::handleResult(void* handle, Sint32 result)
 		if(currentRequest.easy_handle == handle)
 		{
 			SDL_RWclose(currentRequest.file_handle);
-			if(SDL_static_cast(CURLcode, result) == CURLE_OK)
+			if (SDL_static_cast(CURLcode, result) == CURLE_OK)
 				currentRequest.result = HTTP_RESULT_SUCCEEDED;
 			else
 				currentRequest.result = HTTP_RESULT_FAILED;

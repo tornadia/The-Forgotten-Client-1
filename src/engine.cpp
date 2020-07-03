@@ -921,7 +921,7 @@ bool Engine::init()
 	return true;
 }
 
-void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Sint32 vchars, Sint32 maxchw, Sint32 maxchh, Sint32 spaceh)
+void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint16 hchars, Sint16 vchars, Sint16 maxchw, Sint16 maxchh, Sint16 spaceh)
 {
 	Uint16 picture = 0;
 	switch(font)
@@ -958,9 +958,9 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 		m_charw[font][i] = 0; m_charh[font][i] = 0;
 	}
 
-	for(Sint32 j = 0; j < vchars; ++j)
+	for(Sint16 j = 0; j < vchars; ++j)
 	{
-		for(Sint32 k = 0; k < hchars; ++k)
+		for(Sint16 k = 0; k < hchars; ++k)
 		{
 			Sint32 ch = 32 + (j * hchars) + k;
 			if(ch > 255)
@@ -969,10 +969,10 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 			m_charx[font][ch] = k * maxchw;
 			m_chary[font][ch] = j * maxchh;
 
-			Sint32 chWidth = 0, chHeight = 0;
-			for(Sint32 xPos = m_charx[font][ch]; xPos < m_charx[font][ch] + maxchw; ++xPos)
+			Sint16 chWidth = 0, chHeight = 0;
+			for(Sint16 xPos = m_charx[font][ch]; xPos < m_charx[font][ch] + maxchw; ++xPos)
 			{
-				for(Sint32 yPos = m_chary[font][ch]; yPos < m_chary[font][ch] + maxchh; ++yPos)
+				for(Sint16 yPos = m_chary[font][ch]; yPos < m_chary[font][ch] + maxchh; ++yPos)
 				{
 					Uint32 offset = (yPos * width + xPos) * 4;
 					if(offset <= protectionSize && pixels[offset + 3] == 0xFF)
@@ -1016,9 +1016,6 @@ void Engine::initFont(Uint8 font, Sint32 width, Sint32 height, Sint32 hchars, Si
 
 Uint32 Engine::calculateFontWidth(Uint8 fontId, const std::string& text, size_t pos, size_t len)
 {
-	if(fontId >= CLIENT_FONT_LAST)
-		return 0;
-
 	len += pos;
 	if(len > text.length())
 		len = text.length();
@@ -1055,9 +1052,6 @@ Uint32 Engine::calculateFontWidth(Uint8 fontId, const std::string& text, size_t 
 
 Uint32 Engine::calculateFontWidth(Uint8 fontId, const std::string& text)
 {
-	if(fontId >= CLIENT_FONT_LAST)
-		return 0;
-
 	Sint32 xSpace = m_charx[fontId][0];
 	Sint32 ySpace = m_chary[fontId][0];
 	Uint32 calculatedWidth = 0;
@@ -1990,12 +1984,12 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 								{
 									if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
 									{
-										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getUseStackPos(item)));
 										setAction(CLIENT_ACTION_USEWITH);
 										return;
 									}
 									else
-										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)), g_game.findEmptyContainerId());
+										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getUseStackPos(item)), g_game.findEmptyContainerId());
 								}
 							}
 						}
@@ -2032,12 +2026,12 @@ void Engine::onLMouseUp(Sint32 x, Sint32 y)
 								{
 									if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
 									{
-										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getUseStackPos(item)));
 										setAction(CLIENT_ACTION_USEWITH);
 										return;
 									}
 									else
-										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)), g_game.findEmptyContainerId());
+										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getUseStackPos(item)), g_game.findEmptyContainerId());
 								}
 							}
 						}
@@ -2350,12 +2344,12 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 								{
 									if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
 									{
-										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getUseStackPos(item)));
 										setAction(CLIENT_ACTION_USEWITH);
 										return;
 									}
 									else
-										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)), g_game.findEmptyContainerId());
+										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getUseStackPos(item)), g_game.findEmptyContainerId());
 								}
 							}
 						}
@@ -2392,12 +2386,12 @@ void Engine::onRMouseUp(Sint32 x, Sint32 y)
 								{
 									if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
 									{
-										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getThingStackPos(item)));
+										setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), position.x, position.y, position.z, SDL_static_cast(Uint8, itemTile->getUseStackPos(item)));
 										setAction(CLIENT_ACTION_USEWITH);
 										return;
 									}
 									else
-										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getThingStackPos(item)), g_game.findEmptyContainerId());
+										g_game.sendUseItem(position, item->getID(), SDL_static_cast(Uint8, itemTile->getUseStackPos(item)), g_game.findEmptyContainerId());
 								}
 							}
 						}
@@ -3654,7 +3648,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* useThing = tile->getTopUseThing();
 					if(useThing)
-						g_game.sendUseItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)), g_game.findEmptyContainerId());
+						g_game.sendUseItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getUseStackPos(useThing)), g_game.findEmptyContainerId());
 				}
 			}
 		}
@@ -3671,7 +3665,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* useThing = tile->getTopUseThing();
 					if(useThing)
-						g_game.sendUseItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)), g_game.findEmptyContainerId());
+						g_game.sendUseItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getUseStackPos(useThing)), g_game.findEmptyContainerId());
 				}
 			}
 		}
@@ -3692,7 +3686,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 						Item* item = useThing->getItem();
 						if(item->getThingType() && item->getThingType()->hasFlag(ThingAttribute_MultiUse))
 						{
-							g_engine.setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), pos.x, pos.y, pos.z, SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+							g_engine.setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), pos.x, pos.y, pos.z, SDL_static_cast(Uint8, tile->getUseStackPos(useThing)));
 							g_engine.setAction(CLIENT_ACTION_USEWITH);
 						}
 					}
@@ -3710,7 +3704,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* useThing = tile->getTopUseThing();
 					if(useThing)
-						g_game.sendRotateItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+						g_game.sendRotateItem(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getUseStackPos(useThing)));
 				}
 			}
 		}
@@ -3730,7 +3724,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 					if(useThing && useThing->isItem())
 					{
 						Item* item = useThing->getItem();
-						g_engine.setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), pos.x, pos.y, pos.z, SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+						g_engine.setActionData(CLIENT_ACTION_FIRST, 0, item->getID(), pos.x, pos.y, pos.z, SDL_static_cast(Uint8, tile->getUseStackPos(useThing)));
 						g_engine.setAction(CLIENT_ACTION_TRADE);
 					}
 				}
@@ -3747,7 +3741,7 @@ void Engine::standardThingEvent(Uint32 event, Sint32)
 				{
 					Thing* useThing = tile->getTopUseThing();
 					if(useThing)
-						g_game.sendWrapState(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getThingStackPos(useThing)));
+						g_game.sendWrapState(pos, (useThing->isItem() ? useThing->getItem()->getID() : 0x62), SDL_static_cast(Uint8, tile->getUseStackPos(useThing)));
 				}
 			}
 		}

@@ -33,7 +33,7 @@ class Effect
 		static Uint32 effectCount;
 
 		Effect(const Position& pos, Uint16 delay, ThingType* type);
-		~Effect();
+		virtual ~Effect();
 
 		// non-copyable
 		Effect(const Effect&) = delete;
@@ -50,9 +50,14 @@ class Effect
 		bool canBeDeleted();
 		bool isDelayed();
 		bool isTopEffect() {return m_topEffect;}
+		
+		SDL_INLINE void setCachedX(Sint32 x) {m_cacheX = x;}
+		SDL_INLINE void setCachedY(Sint32 y) {m_cacheY = y;}
+		SDL_FORCE_INLINE Sint32 getCachedX() {return m_cacheX;}
+		SDL_FORCE_INLINE Sint32 getCachedY() {return m_cacheY;}
 
 		static void update();
-		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
+		virtual void render(Sint32 posX, Sint32 posY);
 
 		Uint8 calculateAnimationPhase();
 
@@ -61,6 +66,9 @@ class Effect
 		Animator* m_animator = NULL;
 		Animation m_animation;
 		Position m_position;
+
+		Sint32 m_cacheX = 0;
+		Sint32 m_cacheY = 0;
 
 		Uint32 m_startTime;
 		Uint8 m_currentAnim = 0;
@@ -84,7 +92,7 @@ class EffectNULL : public Effect
 		EffectNULL(EffectNULL&&) = delete;
 		EffectNULL& operator=(EffectNULL&&) = delete;
 
-		virtual void render(Sint32, Sint32, bool) {}
+		virtual void render(Sint32, Sint32) {}
 };
 
 class Effect1X1 : public Effect
@@ -100,7 +108,7 @@ class Effect1X1 : public Effect
 		Effect1X1(Effect1X1&&) = delete;
 		Effect1X1& operator=(Effect1X1&&) = delete;
 
-		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
+		virtual void render(Sint32 posX, Sint32 posY);
 
 		Uint32 m_1X1Sprites[EFFECT_MAX_CACHED_ANIMATIONS] = {};
 };
@@ -118,7 +126,7 @@ class Effect2X1 : public Effect
 		Effect2X1(Effect2X1&&) = delete;
 		Effect2X1& operator=(Effect2X1&&) = delete;
 
-		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
+		virtual void render(Sint32 posX, Sint32 posY);
 
 		Uint32 m_2X1Sprites[EFFECT_MAX_CACHED_ANIMATIONS][2] = {};
 };
@@ -136,7 +144,7 @@ class Effect1X2 : public Effect
 		Effect1X2(const Effect1X2&&) = delete;
 		Effect1X2& operator=(const Effect1X2&&) = delete;
 
-		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
+		virtual void render(Sint32 posX, Sint32 posY);
 
 		Uint32 m_1X2Sprites[EFFECT_MAX_CACHED_ANIMATIONS][2] = {};
 };
@@ -154,7 +162,7 @@ class Effect2X2 : public Effect
 		Effect2X2(Effect2X2&&) = delete;
 		Effect2X2& operator=(Effect2X2&&) = delete;
 
-		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
+		virtual void render(Sint32 posX, Sint32 posY);
 
 		Uint32 m_2X2Sprites[EFFECT_MAX_CACHED_ANIMATIONS][4] = {};
 };

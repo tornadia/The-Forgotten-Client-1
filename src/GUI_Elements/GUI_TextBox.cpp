@@ -66,6 +66,12 @@ void GUI_TextBox::clearSelection()
 void GUI_TextBox::deleteSelection()
 {
 	Sint32 n = SDL_static_cast(Sint32, m_selectionEnd - m_selectionStart);
+	if(n <= 0)
+	{
+		clearSelection();
+		return;
+	}
+
 	removeTextToTextBox(n, m_selectionStart);
 	if(m_cursorPosition != m_selectionStart)
 		moveCursor(-n);

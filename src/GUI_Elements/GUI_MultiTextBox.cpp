@@ -20,24 +20,17 @@
 */
 
 #include "GUI_MultiTextBox.h"
-#include "GUI_ScrollBar.h"
 #include "../engine.h"
 
 extern Engine g_engine;
 extern Uint32 g_frameTime;
 
 GUI_MultiTextBox::GUI_MultiTextBox(iRect boxRect, bool allowEdit, const std::string text, Uint32 internalID, Uint8 red, Uint8 green, Uint8 blue) : 
-	m_sText(std::move(text)), m_red(red), m_green(green), m_blue(blue), m_allowEdit(allowEdit)
+	m_sText(std::move(text)), m_scrollBar(iRect(0, 0, 0, 0), 0, 0), m_red(red), m_green(green), m_blue(blue), m_allowEdit(allowEdit)
 {
-	m_scrollBar = new GUI_VScrollBar(iRect(0, 0, 0, 0), 0, 0);
 	setRect(boxRect);
 	m_internalID = internalID;
 	m_cursorTimer = g_frameTime;
-}
-
-GUI_MultiTextBox::~GUI_MultiTextBox()
-{
-	delete m_scrollBar;
 }
 
 void GUI_MultiTextBox::setRect(iRect& NewRect)
@@ -46,7 +39,7 @@ void GUI_MultiTextBox::setRect(iRect& NewRect)
 		return;
 
 	iRect nRect = iRect(NewRect.x1 + NewRect.x2 - 13, NewRect.y1 + 1, 12, NewRect.y2 - 2);
-	m_scrollBar->setRect(nRect);
+	m_scrollBar.setRect(nRect);
 	m_tRect = NewRect;
 	m_maxDisplay = (m_tRect.y2 - 8) / 14;
 	m_needUpdate = true;
@@ -89,6 +82,12 @@ void GUI_MultiTextBox::clearSelection()
 void GUI_MultiTextBox::deleteSelection()
 {
 	Sint32 n = SDL_static_cast(Sint32, m_selectionEnd - m_selectionStart);
+	if(n <= 0)
+	{
+		clearSelection();
+		return;
+	}
+
 	removeTextToTextBox(n, m_selectionStart);
 	if(m_cursorPosition != m_selectionStart)
 		moveCursor(-n);
@@ -327,9 +326,9 @@ void GUI_MultiTextBox::onKeyDown(SDL_Event& event)
 
 void GUI_MultiTextBox::onLMouseDown(Sint32 x, Sint32 y)
 {
-	if(m_scrollBar->getRect().isPointInside(x, y))
+	if(m_scrollBar.getRect().isPointInside(x, y))
 	{
-		m_scrollBar->onLMouseDown(x, y);
+		m_scrollBar.onLMouseDown(x, y);
 		return;
 	}
 	m_selecting = true;
@@ -341,13 +340,13 @@ void GUI_MultiTextBox::onLMouseDown(Sint32 x, Sint32 y)
 
 void GUI_MultiTextBox::onLMouseUp(Sint32 x, Sint32 y)
 {
-	m_scrollBar->onLMouseUp(x, y);
+	m_scrollBar.onLMouseUp(x, y);
 	m_selecting = false;
 }
 
 void GUI_MultiTextBox::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
-	m_scrollBar->onMouseMove(x, y, isInsideParent);
+	m_scrollBar.onMouseMove(x, y, isInsideParent);
 	if(m_selecting)
 	{
 		m_cursorPosition = getCursorPosition(x, y);
@@ -358,9 +357,9 @@ void GUI_MultiTextBox::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 void GUI_MultiTextBox::onWheel(Sint32, Sint32, bool wheelUP)
 {
 	if(wheelUP)
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() - 1);
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollPos() - 1);
 	else
-		m_scrollBar->setScrollPos(m_scrollBar->getScrollPos() + 1);
+		m_scrollBar.setScrollPos(m_scrollBar.getScrollPos() + 1);
 }
 
 void GUI_MultiTextBox::activate()
@@ -409,7 +408,7 @@ void GUI_MultiTextBox::update()
 		m_lines.push_back(newLine);
 	}
 
-	m_scrollBar->setScrollSize(SDL_static_cast(Sint32, m_lines.size()) - m_maxDisplay);
+	m_scrollBar.setScrollSize(SDL_static_cast(Sint32, m_lines.size()) - m_maxDisplay);
 	if(hasSelection())
 		m_needUpdateSelection = true;
 }
@@ -440,11 +439,11 @@ void GUI_MultiTextBox::updateSelection()
 	}
 
 	//Keep us in the cursor sight
-	Sint32 actualPos = m_scrollBar->getScrollPos();
+	Sint32 actualPos = m_scrollBar.getScrollPos();
 	if(actualPos > cursorPos)
-		m_scrollBar->setScrollPos(cursorPos);
+		m_scrollBar.setScrollPos(cursorPos);
 	else if(actualPos < cursorPos - m_maxDisplay + 1)
-		m_scrollBar->setScrollPos(cursorPos - m_maxDisplay + 1);
+		m_scrollBar.setScrollPos(cursorPos - m_maxDisplay + 1);
 }
 
 void GUI_MultiTextBox::render()
@@ -471,9 +470,9 @@ void GUI_MultiTextBox::render()
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_X, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_Y, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_W, GUI_UI_ICON_HORIZONTAL_LINE_BRIGHT_H, m_tRect.x1 + 1, m_tRect.y1 + m_tRect.y2 - 1, m_tRect.x2 - 1, 1);
 	renderer->drawPictureRepeat(GUI_UI_IMAGE, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_X, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_Y, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_W, GUI_UI_ICON_VERTICAL_LINE_BRIGHT_H, m_tRect.x1 + m_tRect.x2 - 1, m_tRect.y1 + 1, 1, m_tRect.y2 - 2);
 	renderer->fillRectangle(m_tRect.x1 + 1, m_tRect.y1 + 1, m_tRect.x2 - 14, m_tRect.y2 - 2, 54, 54, 54, 255);
-	m_scrollBar->render();
+	m_scrollBar.render();
 
-	Sint32 count = m_scrollBar->getScrollPos();
+	Sint32 count = m_scrollBar.getScrollPos();
 	std::vector<MultiLine>::iterator it = m_lines.begin();
 	std::advance(it, count);
 
@@ -631,7 +630,7 @@ Uint32 GUI_MultiTextBox::getCursorPosition(Sint32 x, Sint32 y)
 	if(m_lines.empty())
 		return 0;
 
-	Sint32 count = m_scrollBar->getScrollPos();
+	Sint32 count = m_scrollBar.getScrollPos();
 	std::vector<MultiLine>::iterator it = m_lines.begin();
 	std::advance(it, count);
 

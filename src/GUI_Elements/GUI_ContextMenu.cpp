@@ -27,12 +27,12 @@ extern Uint32 g_frameTime;
 
 void GUI_ContextMenu::addContextMenu(Uint8 style, Uint32 eventId, const std::string text, const std::string shortcut)
 {
-	ContextMenuChild newChild;
+	m_childs.emplace_back();
+	ContextMenuChild& newChild = m_childs.back();
 	newChild.text = std::move(text);
 	newChild.shortcut = std::move(shortcut);
 	newChild.eventId = eventId;
 	newChild.childStyle = style;
-	m_childs.push_back(newChild);
 }
 
 void GUI_ContextMenu::addSeparator()

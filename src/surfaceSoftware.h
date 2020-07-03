@@ -44,9 +44,9 @@ struct SoftwareSpriteData
 	Uint32 m_lastUsage;
 };
 
-typedef std::unordered_map<Uint32, PictureOptimization> U32BOptimizer;
-typedef std::unordered_map<Uint32, SDL_Surface*> U32BSurfaces;
-typedef std::unordered_map<Uint64, SoftwareSpriteData> U64BSurfaces;
+typedef robin_hood::unordered_map<Uint32, PictureOptimization> U32BOptimizer;
+typedef robin_hood::unordered_map<Uint32, SDL_Surface*> U32BSurfaces;
+typedef robin_hood::unordered_map<Uint64, SoftwareSpriteData> U64BSurfaces;
 
 class SurfaceSoftware : public Surface
 {
@@ -91,7 +91,7 @@ class SurfaceSoftware : public Surface
 
 		SDL_Surface* loadPicture(SDL_Surface* s, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh);
 		SDL_Surface* loadPicture(Uint16 pictureId, SDL_BlendMode blendMode);
-		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256]);
+		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint16 cX[256], Sint16 cY[256], Sint16 cW[256], Sint16 cH[256]);
 		virtual void drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);

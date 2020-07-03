@@ -22,7 +22,7 @@
 #ifndef __FILE_GUI_MULTITEXTBOX_h_
 #define __FILE_GUI_MULTITEXTBOX_h_
 
-#include "GUI_Element.h"
+#include "GUI_ScrollBar.h"
 
 struct MultiLine
 {
@@ -32,12 +32,10 @@ struct MultiLine
 	Sint32 selectionWidth;
 };
 
-class GUI_VScrollBar;
 class GUI_MultiTextBox : public GUI_Element
 {
 	public:
 		GUI_MultiTextBox(iRect boxRect, bool allowEdit, const std::string text, Uint32 internalID = 0, Uint8 red = 223, Uint8 green = 223, Uint8 blue = 223);
-		~GUI_MultiTextBox();
 
 		// non-copyable
 		GUI_MultiTextBox(const GUI_MultiTextBox&) = delete;
@@ -85,7 +83,7 @@ class GUI_MultiTextBox : public GUI_Element
 		std::vector<MultiLine> m_lines;
 		void (*m_eventHandlerFunction)(Uint32,Sint32) = NULL;
 		std::string m_sText;
-		GUI_VScrollBar* m_scrollBar;
+		GUI_VScrollBar m_scrollBar;
 		Uint32 m_evtParam = 0;
 		Uint32 m_maxLength = SDL_MAX_UINT32;
 		Uint32 m_cursorTimer;

@@ -34,7 +34,7 @@
 #define INFO_FIRST_LABEL_TEXT PRODUCT_NAME
 #define INFO_FIRST_LABEL_X 132
 #define INFO_FIRST_LABEL_Y 41
-#define INFO_SECOND_LABEL_TEXT "Version 0.5.5 Pre-Alpha"
+#define INFO_SECOND_LABEL_TEXT "Version 0.5.6 Pre-Alpha"
 #define INFO_SECOND_LABEL_X 132
 #define INFO_SECOND_LABEL_Y 55
 #define INFO_THIRD_LABEL_TEXT "Written by: Saiyans King"

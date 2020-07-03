@@ -77,7 +77,7 @@ class Creature : public Thing
 		void setHealth(Uint8 health);
 		void turnDirection(Direction direction);
 		void setOutfit(Uint16 lookType, Uint16 lookTypeEx, Uint8 lookHead, Uint8 lookBody, Uint8 lookLegs, Uint8 lookFeet, Uint8 lookAddons, Uint16 lookMount);
-		SDL_INLINE void setSpeed(Uint16 speed) {m_speed = speed;}
+		void setSpeed(Uint16 speed);
 		SDL_INLINE void setHelpers(Uint16 helpers) {m_helpers = helpers;}
 		void setSkull(Uint8 skull);
 		void setShield(Uint8 shield);
@@ -113,6 +113,7 @@ class Creature : public Thing
 		
 		SDL_FORCE_INLINE ThingType* getThingType() {return m_thingType;}
 		SDL_FORCE_INLINE ThingType* getMountType() {return m_mountType;}
+		SDL_FORCE_INLINE bool isWalkingCheck() {return (m_walking && m_walkedPixels != 32);}
 		SDL_FORCE_INLINE bool isWalking() {return m_walking;}
 		SDL_FORCE_INLINE bool isPreWalking() {return m_preWalking;}
 		SDL_FORCE_INLINE Sint32 getWalkOffsetX() {return m_walkOffsetX;}
@@ -144,6 +145,7 @@ class Creature : public Thing
 		Uint32 m_timedSquareStartTime = 0;
 		Uint32 m_shieldTime = 0;
 		Uint32 m_visibleTime = 0;
+		Uint32 m_cacheFormulatedSpeed = 0;
 
 		Sint32 m_walkedPixels = 0;
 		Sint32 m_walkOffsetX = 0;

@@ -31,7 +31,7 @@ class DistanceEffect
 		static Uint32 distanceEffectCount;
 
 		DistanceEffect(const Position& from, const Position& to, Uint16 delay, ThingType* type);
-		~DistanceEffect();
+		virtual ~DistanceEffect();
 
 		// non-copyable
 		DistanceEffect(const DistanceEffect&) = delete;

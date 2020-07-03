@@ -94,6 +94,9 @@ bool UTIL_onWhiteList(const std::string& playerName);
 //Tutorial Hint window
 void UTIL_createTutorialHint(Uint32 hintId);
 
+//Server Browser window
+void UTIL_createServerBrowser();
+
 //Minimap widget
 void UTIL_createMinimapPanel();
 

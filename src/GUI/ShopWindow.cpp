@@ -828,9 +828,9 @@ void GUI_ShopContainer::onRMouseDown(Sint32 x, Sint32 y)
 	if(!m_visible)
 		return;
 
-	if(m_scrollBar->getRect().isPointInside(x, y))
+	if(m_scrollBar.getRect().isPointInside(x, y))
 	{
-		m_scrollBar->onRMouseDown(x, y);
+		m_scrollBar.onRMouseDown(x, y);
 		return;
 	}
 
@@ -851,7 +851,7 @@ void GUI_ShopContainer::onRMouseUp(Sint32 x, Sint32 y)
 	if(!m_visible)
 		return;
 
-	m_scrollBar->onRMouseUp(x, y);
+	m_scrollBar.onRMouseUp(x, y);
 	for(std::vector<GUI_Element*>::iterator it = m_childs.begin(), end = m_childs.end(); it != end; ++it)
 	{
 		if((*it)->isEventable())

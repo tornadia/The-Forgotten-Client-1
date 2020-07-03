@@ -59,7 +59,43 @@ struct KeyRepeat
 #endif
 
 #if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || defined(__amd64__) || defined(__x86_64__) || defined(__i386__) || defined(__i386) || defined(i386)
+
+#ifdef __has_include
+
+#if __has_include(<xmmintrin.h>)
 #define __USE_SSE__ 1
+#endif
+#if __has_include(<immintrin.h>)
+#define __USE_FMA3__ 1
+#endif
+#if __has_include(<ammintrin.h>)
+#define __USE_FMA4__ 1
+#endif
+#if __has_include(<emmintrin.h>)
+#define __USE_SSE2__ 1
+#endif
+#if __has_include(<pmmintrin.h>)
+#define __USE_SSE3__ 1
+#endif
+#if __has_include(<tmmintrin.h>)
+#define __USE_SSSE3__ 1
+#endif
+#if __has_include(<smmintrin.h>)
+#define __USE_SSE4_1__ 1
+#endif
+#if __has_include(<nmmintrin.h>)
+#define __USE_SSE4_2__ 1
+#endif
+#if __has_include(<immintrin.h>)
+#define __USE_AVX__ 1
+#define __USE_AVX2__ 1
+#endif
+
+#else
+
+#define __USE_SSE__ 1
+#define __USE_FMA3__ 1
+#define __USE_FMA4__ 1
 #define __USE_SSE2__ 1
 #define __USE_SSE3__ 1
 #define __USE_SSSE3__ 1
@@ -67,11 +103,18 @@ struct KeyRepeat
 #define __USE_SSE4_2__ 1
 #define __USE_AVX__ 1
 #define __USE_AVX2__ 1
+
+#endif
+
 #endif
 
 #if defined(__USE_SSE__)
 #include <xmmintrin.h>
+#endif
+#if defined(__USE_FMA3__)
 #include <immintrin.h>
+#endif
+#if defined(__USE_FMA4__)
 #include <ammintrin.h>
 #endif
 #if defined(__USE_SSE2__)
@@ -121,7 +164,7 @@ struct KeyRepeat
 #include <memory>
 #include <algorithm>
 #include <sstream>
-#include <string>
+#include "stringExtend.h"
 #include <bitset>
 
 #include "const.h"
@@ -131,6 +174,7 @@ struct KeyRepeat
 #include "GUI/GUI_UTIL.h"
 #include "util.h"
 #include "Rect.h"
+#include "robin_hood.h"
 
 extern char g_buffer[4096];
 extern Uint32 g_clientVersion;

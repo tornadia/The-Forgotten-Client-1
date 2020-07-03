@@ -148,8 +148,8 @@ struct VulkanSpriteData
 	Uint32 m_lastUsage;
 };
 
-typedef std::unordered_map<Uint32, VulkanTexture> U32BImages;
-typedef std::unordered_map<Uint64, VulkanSpriteData> U64BImages;
+typedef robin_hood::unordered_map<Uint32, VulkanTexture> U32BImages;
+typedef robin_hood::unordered_map<Uint64, VulkanSpriteData> U64BImages;
 
 class SurfaceVulkan : public Surface
 {
@@ -223,7 +223,7 @@ class SurfaceVulkan : public Surface
 		virtual void fillRectangle(Sint32 x, Sint32 y, Sint32 w, Sint32 h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
 
 		VulkanTexture* loadPicture(Uint16 pictureId, bool linearSampler);
-		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256]);
+		virtual void drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint16 cX[256], Sint16 cY[256], Sint16 cW[256], Sint16 cH[256]);
 		virtual void drawBackground(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPictureRepeat(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 sw, Sint32 sh, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 		virtual void drawPicture(Uint16 pictureId, Sint32 sx, Sint32 sy, Sint32 x, Sint32 y, Sint32 w, Sint32 h);

@@ -28,7 +28,6 @@
 #include "distanceEffect.h"
 #include "animatedText.h"
 #include "staticText.h"
-#include "screenText.h"
 #include "light.h"
 
 #include <algorithm>
@@ -38,6 +37,8 @@ extern Automap g_automap;
 extern Engine g_engine;
 extern LightSystem g_light;
 extern Uint32 g_frameTime;
+
+std::vector<Effect*> g_effects;
 
 AStarNodes::AStarNodes(const Position& startPos)
 {
@@ -49,7 +50,7 @@ AStarNodes::AStarNodes(const Position& startPos)
 	curNode = 1;
 
 	AStarNode& startNode = nodes[0];
-	startNode.parent = nullptr;
+	startNode.parent = NULL;
 	startNode.x = startPos.x;
 	startNode.y = startPos.y;
 	startNode.f = 0;
@@ -134,10 +135,22 @@ AStarNode* AStarNodes::getBestNode()
 
 			best_node = openNodes[indices_array[0]];
 			best_node_f = values_array[0];
-			for(Sint32 i = 1; i < 8; ++i)
+
+			Sint32 total_cost = values_array[1];
+			best_node = (total_cost < best_node_f ? openNodes[indices_array[1]] : best_node);
+			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
+			for(Sint32 i = 2; i < 8; i += 3)
 			{
-				Sint32 total_cost = values_array[i];
-				best_node = (total_cost < best_node_f ? openNodes[indices_array[i]] : best_node);
+				total_cost = values_array[i + 0];
+				best_node = (total_cost < best_node_f ? openNodes[indices_array[i + 0]] : best_node);
+				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
+
+				total_cost = values_array[i + 1];
+				best_node = (total_cost < best_node_f ? openNodes[indices_array[i + 1]] : best_node);
+				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
+
+				total_cost = values_array[i + 2];
+				best_node = (total_cost < best_node_f ? openNodes[indices_array[i + 2]] : best_node);
 				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
 			}
 		}
@@ -168,12 +181,18 @@ AStarNode* AStarNodes::getBestNode()
 
 			best_node = openNodes[indices_array[0]];
 			best_node_f = values_array[0];
-			for(Sint32 i = 1; i < 4; ++i)
-			{
-				Sint32 total_cost = values_array[i];
-				best_node = (total_cost < best_node_f ? openNodes[indices_array[i]] : best_node);
-				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-			}
+
+			Sint32 total_cost = values_array[1];
+			best_node = (total_cost < best_node_f ? openNodes[indices_array[1]] : best_node);
+			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
+
+			total_cost = values_array[2];
+			best_node = (total_cost < best_node_f ? openNodes[indices_array[2]] : best_node);
+			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
+
+			total_cost = values_array[3];
+			best_node = (total_cost < best_node_f ? openNodes[indices_array[3]] : best_node);
+			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
 		}
 		else
 		#endif
@@ -202,12 +221,18 @@ AStarNode* AStarNodes::getBestNode()
 
 			best_node = openNodes[indices_array[0]];
 			best_node_f = values_array[0];
-			for(Sint32 i = 1; i < 4; ++i)
-			{
-				Sint32 total_cost = values_array[i];
-				best_node = (total_cost < best_node_f ? openNodes[indices_array[i]] : best_node);
-				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-			}
+
+			Sint32 total_cost = values_array[1];
+			best_node = (total_cost < best_node_f ? openNodes[indices_array[1]] : best_node);
+			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
+
+			total_cost = values_array[2];
+			best_node = (total_cost < best_node_f ? openNodes[indices_array[2]] : best_node);
+			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
+
+			total_cost = values_array[3];
+			best_node = (total_cost < best_node_f ? openNodes[indices_array[3]] : best_node);
+			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
 		}
 		else
 		#endif
@@ -228,13 +253,43 @@ AStarNode* AStarNodes::getBestNode()
 void AStarNodes::closeNode(AStarNode* node)
 {
 	Sint32 index = SDL_static_cast(Sint32, node - nodes);
-	for(size_t it = 0, end = openNodes.size(); it < end; ++it)
+	size_t it = 0, end = openNodes.size();
+	if(end >= 8)
+	{
+		#ifdef __USE_SSE2__
+		if(SDL_HasSSE2())
+		{
+			const __m128i key = _mm_set1_epi32(index);
+
+			end -= 8;
+			for(; it <= end; it += 8)
+			{
+				__m128i v[2];
+				v[0] = _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&openNodes[it])), key);
+				v[1] = _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&openNodes[it + 4])), key);
+				const Uint32 mask = _mm_movemask_epi8(_mm_packs_epi32(v[0], v[1]));
+				if (mask != 0) {
+					const size_t bitpos = it + (UTIL_ctz(mask) >> 1);
+					openNodes.erase(openNodes.begin() + bitpos);
+					openNodeTotalCost.erase(openNodeTotalCost.begin() + bitpos);
+					return;
+				}
+			}
+			end += 8;
+		}
+		else
+		#endif
+		{
+			//Nothing here because we use standard code part for non-simd code
+		}
+	}
+	for(; it < end; ++it)
 	{
 		if(openNodes[it] == index)
 		{
 			openNodes.erase(openNodes.begin() + it);
 			openNodeTotalCost.erase(openNodeTotalCost.begin() + it);
-			break;
+			return;
 		}
 	}
 }
@@ -242,23 +297,52 @@ void AStarNodes::closeNode(AStarNode* node)
 void AStarNodes::openNode(AStarNode* node)
 {
 	Sint32 index = SDL_static_cast(Sint32, node - nodes);
-	for(size_t it = 0, end = openNodes.size(); it < end; ++it)
+	size_t it = 0, end = openNodes.size();
+	if(end >= 8)
+	{
+		#ifdef __USE_SSE2__
+		if(SDL_HasSSE2())
+		{
+			const __m128i key = _mm_set1_epi32(index);
+
+			end -= 8;
+			for(; it <= end; it += 8)
+			{
+				__m128i v[2];
+				v[0] = _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&openNodes[it])), key);
+				v[1] = _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&openNodes[it + 4])), key);
+				const Uint32 mask = _mm_movemask_epi8(_mm_packs_epi32(v[0], v[1]));
+				if (mask != 0) {
+					const size_t bitpos = it + (UTIL_ctz(mask) >> 1);
+					openNodeTotalCost[bitpos] = node->f + node->g;
+					return;
+				}
+			}
+			end += 8;
+		}
+		else
+		#endif
+		{
+			//Nothing here because we use standard code part for non-simd code
+		}
+	}
+	for(; it < end; ++it)
 	{
 		if(openNodes[it] == index)
 		{
-			openNodeTotalCost[it] = nodes[index].f + nodes[index].g;
+			openNodeTotalCost[it] = node->f + node->g;
 			return;
 		}
 	}
 
 	openNodes.emplace_back(index);
-	openNodeTotalCost.emplace_back(nodes[index].f + nodes[index].g);
+	openNodeTotalCost.emplace_back(node->f + node->g);
 }
 
 AStarNode* AStarNodes::getNodeByPosition(Uint32 xy)
 {
 	//We could make this a little faster using better hash map like for example google dense hash map
-	std::unordered_map<Uint32, Uint32>::iterator it = nodesTable.find(xy);
+	robin_hood::unordered_map<Uint32, Uint32>::iterator it = nodesTable.find(xy);
 	return (it == nodesTable.end() ? NULL : &nodes[it->second]);
 }
 
@@ -269,31 +353,31 @@ Sint32 AStarNodes::getMapWalkFactor(AStarNode* node, const Position& neighborPos
 
 Map::Map()
 {
-	for(Sint32 i = ONSCREEN_MESSAGE_BOTTOM; i < ONSCREEN_MESSAGE_LAST; ++i)
-		m_onscreenMessages[i] = new ScreenText(SDL_static_cast(OnscreenMessages, i));
+	g_effects.reserve(EFFECT_MAX_INGAME_EFFECTS);
 }
 
 Map::~Map()
 {
-	for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
+	Sint32 z = 0;
+	do
 	{
 		std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[z];
 		for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(), end = distanceEffects.end(); it != end; ++it)
 			delete (*it);
 
 		distanceEffects.clear();
-		for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+		Sint32 y = 0;
+		do
 		{
-			for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+			Sint32 x = 0;
+			do
 			{
 				Tile* tile = m_tiles[z][y][x];
 				if(tile)
 					delete tile;
-			}
-		}
-	}
-	for(Sint32 i = ONSCREEN_MESSAGE_BOTTOM; i < ONSCREEN_MESSAGE_LAST; ++i)
-		delete m_onscreenMessages[i];
+			} while(++x < GAME_MAP_WIDTH);
+		} while(++y < GAME_MAP_HEIGHT);
+	} while(++z <= GAME_MAP_FLOORS);
 
 	for(knownCreatures::iterator it = m_knownCreatures.begin(), end = m_knownCreatures.end(); it != end; ++it)
 		delete it->second;
@@ -314,7 +398,7 @@ Tile* Map::getTile(const Position& position)
 	Sint16 offset = Position::getOffsetZ(m_centerPosition, position);
 	Sint32 posX = Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 1) - offset;
 	Sint32 posY = Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 1) - offset;
-	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
+	if(SDL_static_cast(Uint32, posX) >= GAME_MAP_WIDTH || SDL_static_cast(Uint32, posY) >= GAME_MAP_HEIGHT)
 		return NULL;
 
 	return m_tiles[position.z][posY][posX];
@@ -325,7 +409,7 @@ Tile* Map::getTileOrCreate(const Position& position)
 	Sint16 offset = Position::getOffsetZ(m_centerPosition, position);
 	Sint32 posX = Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 1) - offset;
 	Sint32 posY = Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 1) - offset;
-	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
+	if(SDL_static_cast(Uint32, posX) >= GAME_MAP_WIDTH || SDL_static_cast(Uint32, posY) >= GAME_MAP_HEIGHT)
 		return NULL;
 
 	Tile*& tile = m_tiles[position.z][posY][posX];
@@ -339,20 +423,20 @@ Tile* Map::resetTile(const Position& position, Sint32 offset)
 {
 	Sint32 posX = Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 1) - offset;
 	Sint32 posY = Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 1) - offset;
-	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
+	if(SDL_static_cast(Uint32, posX) >= GAME_MAP_WIDTH || SDL_static_cast(Uint32, posY) >= GAME_MAP_HEIGHT)
 	{
 		SDL_snprintf(g_buffer, sizeof(g_buffer), "Tile Pos: %d, %d, %d\nPlayer Pos: %d, %d, %d\nRows: %d, %d\nOffset: %d", position.x, position.y, position.z, m_centerPosition.x, m_centerPosition.y, m_centerPosition.z, posX, posY, offset);
 		UTIL_MessageBox(true, g_buffer);
 		return NULL;
 	}
 
-	Tile* tile = m_tiles[position.z][posY][posX];
+	Tile*& tile = m_tiles[position.z][posY][posX];
 	if(tile)
 		tile->reset();
 	else
 	{
-		m_tiles[position.z][posY][posX] = new Tile(position);
-		return m_tiles[position.z][posY][posX];
+		tile = new Tile(position);
+		return tile;
 	}
 	
 	return tile;
@@ -362,14 +446,14 @@ void Map::cleanTile(const Position& position, Sint32 offset)
 {
 	Sint32 posX = Position::getOffsetX(position, m_centerPosition) + (MAP_WIDTH_OFFSET - 1) - offset;
 	Sint32 posY = Position::getOffsetY(position, m_centerPosition) + (MAP_HEIGHT_OFFSET - 1) - offset;
-	if(posX < 0 || posX >= GAME_MAP_WIDTH || posY < 0 || posY >= GAME_MAP_HEIGHT)
+	if(SDL_static_cast(Uint32, posX) >= GAME_MAP_WIDTH || SDL_static_cast(Uint32, posY) >= GAME_MAP_HEIGHT)
 		return;
 
-	Tile* tile = m_tiles[position.z][posY][posX];
+	Tile*& tile = m_tiles[position.z][posY][posX];
 	if(tile)
 	{
 		delete tile;
-		m_tiles[position.z][posY][posX] = NULL;
+		tile = NULL;
 	}
 }
 
@@ -387,6 +471,7 @@ void Map::render()
 	if(!m_localCreature) //If somehow we don't have localcreature avoid crashing
 		return;
 
+	g_effects.clear();
 	if(m_needUpdateCache)
 		updateCacheMap();
 
@@ -397,25 +482,43 @@ void Map::render()
 
 	auto& renderer = g_engine.getRender();
 	renderer->beginGameScene();
-	for(Sint32 z = m_cachedLastVisibleFloor; z >= m_cachedFirstVisibleFloor; --z)
+	Sint32 z = m_cachedLastVisibleFloor;
+	do
 	{
 		if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE && z != m_cachedLastVisibleFloor)
 		{
-			for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+			Sint32 y = 0;
+			do
 			{
-				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+				Sint32 x = 0;
+				#if ((GAME_MAP_WIDTH % 2) == 0)//Check if we can unroll it by 2
+				do
+				{
+					//Reset only the first visible ground tiles to minimalize cpu usage
+					if(m_cachedFirstGrounds[y][x + 0] == z)
+						g_light.resetLightSource(x + 0, y);
+
+					if(m_cachedFirstGrounds[y][x + 1] == z)
+						g_light.resetLightSource(x + 1, y);
+
+					x += 2;
+				} while(x < GAME_MAP_WIDTH);
+				#else
+				do
 				{
 					//Reset only the first visible ground tiles to minimalize cpu usage
 					if(m_cachedFirstGrounds[y][x] == z)
 						g_light.resetLightSource(x, y);
-				}
-			}
+				} while(++x < GAME_MAP_WIDTH);
+				#endif
+			} while(++y < GAME_MAP_HEIGHT);
 		}
-		Sint32 posY = -32 + offsetY;
-		for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+
+		Sint32 posY = -32 + offsetY, y = 0;
+		do
 		{
-			Sint32 posX = -32 + offsetX;
-			for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+			Sint32 posX = -32 + offsetX, x = 0;
+			do
 			{
 				Tile* tile = m_tiles[z][y][x];
 				if(tile)
@@ -423,11 +526,13 @@ void Map::render()
 					tile->render(posX, posY, (m_cachedFirstFullGrounds[y][x] >= z));
 					if(tile->isCreatureLying())//Redraw tiles in <^ directions
 					{
-						for(Sint32 y2 = 1; y2 >= 0; --y2)
+						Sint32 y2 = 1;
+						do
 						{
-							for(Sint32 x2 = 1; x2 >= 0; --x2)
+							Sint32 x2 = 1;
+							do
 							{
-								if(x2 == 0 && y2 == 0)
+								if((x2 | y2) == 0)
 									continue;
 
 								Sint32 indexX = x - x2;
@@ -436,10 +541,10 @@ void Map::render()
 								{
 									tile = m_tiles[z][indexY][indexX];
 									if(tile)
-										tile->render(posX - x2 * 32, posY - y2 * 32, (m_cachedFirstFullGrounds[indexY][indexX] >= z));
+										tile->reRenderTile(posX - x2 * 32, posY - y2 * 32);
 								}
-							}
-						}
+							} while(--x2 >= 0);
+						} while(--y2 >= 0);
 					}
 					if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE && z == GAME_PLAYER_FLOOR + 1)
 					{
@@ -455,9 +560,16 @@ void Map::render()
 					}
 				}
 				posX += 32;
-			}
+			} while(++x < GAME_MAP_WIDTH);
 			posY += 32;
+		} while(++y < GAME_MAP_HEIGHT);
+
+		for(std::vector<Effect*>::iterator it = g_effects.begin(), end = g_effects.end(); it != end; ++it)
+		{
+			Effect* effect = (*it);
+			effect->render(effect->getCachedX(), effect->getCachedY());
 		}
+		g_effects.clear();
 
 		Sint32 offsetZ = (z - SDL_static_cast(Sint32, m_centerPosition.z));
 		std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[z];
@@ -493,20 +605,35 @@ void Map::render()
 				++it;
 			}
 		}
-	}
+	} while(--z >= m_cachedFirstVisibleFloor);
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 	{
 		if(g_engine.getLevelSeparator() != 100)
 		{
 			float brightness = g_engine.getLevelSeparator() / 100.f;
-			for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+			Sint32 y = 0;
+			do
 			{
-				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+				Sint32 x = 0;
+				#if ((GAME_MAP_WIDTH % 2) == 0)//Check if we can unroll it by 2
+				do
+				{
+					if(m_cachedFirstGrounds[y][x + 0] > SDL_static_cast(Sint32, getCentralPosition().z))
+						g_light.setLightSource(x + 0, y, brightness);
+
+					if(m_cachedFirstGrounds[y][x + 1] > SDL_static_cast(Sint32, getCentralPosition().z))
+						g_light.setLightSource(x + 1, y, brightness);
+
+					x += 2;
+				} while(x < GAME_MAP_WIDTH);
+				#else
+				do
 				{
 					if(m_cachedFirstGrounds[y][x] > SDL_static_cast(Sint32, getCentralPosition().z))
 						g_light.setLightSource(x, y, brightness);
-				}
-			}
+				} while(++x < GAME_MAP_WIDTH);
+				#endif
+			} while(++y < GAME_MAP_HEIGHT);
 		}
 	}
 	renderer->endGameScene();
@@ -652,20 +779,76 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 
 	Sint32 fixedSize = scaledSize / 2;
 	Sint32 z = SDL_static_cast(Sint32, m_centerPosition.z);
-	Sint32 posY = offsetY + tileOffsetY;
-	for(Sint32 y = startY; y < endY; ++y)
+	Sint32 posY = offsetY + tileOffsetY, y = startY;
+	do
 	{
-		Sint32 posX = offsetX + tileOffsetX + 16;
-		for(Sint32 x = startX; x < endX; ++x)
+		Sint32 posX = offsetX + tileOffsetX + 16, x = startX;
+		#if ((GAME_MAP_WIDTH % 4) == 0)//Check if we can unroll it by 4
+		do
+		{
+			Tile* tile = m_tiles[z][y][x + 0];
+			if(tile)
+				tile->renderInformations(px, py, posX + 0, posY, scale, (m_cachedFirstVisibleGround[y][x + 0] >= z));
+
+			tile = m_tiles[z][y][x + 1];
+			if(tile)
+				tile->renderInformations(px, py, posX + 32, posY, scale, (m_cachedFirstVisibleGround[y][x + 1] >= z));
+
+			tile = m_tiles[z][y][x + 2];
+			if(tile)
+				tile->renderInformations(px, py, posX + 64, posY, scale, (m_cachedFirstVisibleGround[y][x + 2] >= z));
+
+			tile = m_tiles[z][y][x + 3];
+			if(tile)
+				tile->renderInformations(px, py, posX + 96, posY, scale, (m_cachedFirstVisibleGround[y][x + 3] >= z));
+
+			posX += 128;
+			x += 4;
+		} while(x < endX);
+		#elif ((GAME_MAP_WIDTH % 3) == 0)//Check if we can unroll it by 3
+		do
+		{
+			Tile* tile = m_tiles[z][y][x + 0];
+			if(tile)
+				tile->renderInformations(px, py, posX + 0, posY, scale, (m_cachedFirstVisibleGround[y][x + 0] >= z));
+
+			tile = m_tiles[z][y][x + 1];
+			if(tile)
+				tile->renderInformations(px, py, posX + 32, posY, scale, (m_cachedFirstVisibleGround[y][x + 1] >= z));
+
+			tile = m_tiles[z][y][x + 2];
+			if(tile)
+				tile->renderInformations(px, py, posX + 64, posY, scale, (m_cachedFirstVisibleGround[y][x + 2] >= z));
+
+			posX += 96;
+			x += 3;
+		} while(x < endX);
+		#elif ((GAME_MAP_WIDTH % 2) == 0)//Check if we can unroll it by 2
+		do
+		{
+			Tile* tile = m_tiles[z][y][x + 0];
+			if(tile)
+				tile->renderInformations(px, py, posX + 0, posY, scale, (m_cachedFirstVisibleGround[y][x + 0] >= z));
+
+			tile = m_tiles[z][y][x + 1];
+			if(tile)
+				tile->renderInformations(px, py, posX + 32, posY, scale, (m_cachedFirstVisibleGround[y][x + 1] >= z));
+
+			posX += 64;
+			x += 3;
+		} while(x < endX);
+		#else
+		do
 		{
 			Tile* tile = m_tiles[z][y][x];
 			if(tile)
 				tile->renderInformations(px, py, posX, posY, scale, (m_cachedFirstVisibleGround[y][x] >= z));
 
 			posX += 32;
-		}
+		} while(++x < endX);
+		#endif
 		posY += 32;
-	}
+	} while(++y < endY);
 
 	if(g_engine.getLightMode() != CLIENT_LIGHT_MODE_NONE)
 	{
@@ -714,15 +897,17 @@ void Map::renderInformations(Sint32 px, Sint32 py, Sint32 pw, Sint32 ph, float s
 		animatedText->render(screenx, screeny, px, py, pw, ph);
 		++it;
 	}
-	for(Sint32 i = ONSCREEN_MESSAGE_BOTTOM; i < ONSCREEN_MESSAGE_LAST; ++i)
-		m_onscreenMessages[i]->render(px, py, pw, ph);
+	m_onscreenMessages[ONSCREEN_MESSAGE_BOTTOM].render(px, py, pw, ph);
+	m_onscreenMessages[ONSCREEN_MESSAGE_CENTER_LOW].render(px, py, pw, ph);
+	m_onscreenMessages[ONSCREEN_MESSAGE_CENTER_HIGH].render(px, py, pw, ph);
+	m_onscreenMessages[ONSCREEN_MESSAGE_TOP].render(px, py, pw, ph);
 
 	UTIL_refreshBattleWindow();
 }
 
 void Map::addOnscreenText(OnscreenMessages position, MessageMode mode, const std::string& text)
 {
-	m_onscreenMessages[position]->addMessage(mode, text);
+	m_onscreenMessages[position].addMessage(mode, text);
 }
 
 void Map::addAnimatedText(const Position& position, Uint8 color, const std::string& text)
@@ -773,126 +958,149 @@ void Map::changeMap(Direction direction)
 	{
 		case DIRECTION_NORTH:
 		{
-			for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
+			Sint32 z = 0;
+			do
 			{
-				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+				Sint32 x = 0;
+				do
 				{
 					Tile* tile = m_tiles[z][GAME_MAP_HEIGHT - 1][x];
-					if(tile)
-						delete tile;
-				}
+					delete tile;
+				} while(++x < GAME_MAP_WIDTH);
 
-				for(Sint32 y = GAME_MAP_HEIGHT - 1; --y >= 0;)
+				Sint32 y = GAME_MAP_HEIGHT - 2;
+				do
 				{
-					for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+					x = 0;
+					do
+					{
 						m_tiles[z][y + 1][x] = m_tiles[z][y][x];
-				}
+					} while(++x < GAME_MAP_WIDTH);
+				} while(--y >= 0);
 
-				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+				x = 0;
+				do
 				{
 					//Reset the tiles that we get later
 					m_tiles[z][0][x] = NULL;
-				}
-			}
+				} while(++x < GAME_MAP_WIDTH);
+			} while(++z <= GAME_MAP_FLOORS);
 		}
 		break;
 		case DIRECTION_EAST:
 		{
-			for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
+			Sint32 z = 0;
+			do
 			{
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+				Sint32 y = 0;
+				do
 				{
 					Tile* tile = m_tiles[z][y][0];
-					if(tile)
-						delete tile;
-				}
+					delete tile;
+				} while(++y < GAME_MAP_HEIGHT);
 
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+				y = 0;
+				do
 				{
-					for(Sint32 x = 0; x < GAME_MAP_WIDTH - 1; ++x)
+					Sint32 x = 0;
+					do
+					{
 						m_tiles[z][y][x] = m_tiles[z][y][x + 1];
-				}
+					} while(++x < GAME_MAP_WIDTH - 1);
+				} while(++y < GAME_MAP_HEIGHT);
 
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+				y = 0;
+				do
 				{
 					//Reset the tiles that we get later
 					m_tiles[z][y][GAME_MAP_WIDTH - 1] = NULL;
-				}
-			}
+				} while(++y < GAME_MAP_HEIGHT);
+			} while(++z <= GAME_MAP_FLOORS);
 		}
 		break;
 		case DIRECTION_SOUTH:
 		{
-			for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
+			Sint32 z = 0;
+			do
 			{
-				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+				Sint32 x = 0;
+				do
 				{
 					Tile* tile = m_tiles[z][0][x];
-					if(tile)
-						delete tile;
-				}
+					delete tile;
+				} while(++x < GAME_MAP_WIDTH);
 
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT - 1; ++y)
+				Sint32 y = 0;
+				do
 				{
-					for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+					x = 0;
+					do
+					{
 						m_tiles[z][y][x] = m_tiles[z][y + 1][x];
-				}
+					} while(++x < GAME_MAP_WIDTH);
+				} while(++y < GAME_MAP_HEIGHT - 1);
 
-				for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+				x = 0;
+				do
 				{
 					//Reset the tiles that we get later
 					m_tiles[z][GAME_MAP_HEIGHT - 1][x] = NULL;
-				}
-			}
+				} while(++x < GAME_MAP_WIDTH);
+			} while(++z <= GAME_MAP_FLOORS);
 		}
 		break;
 		case DIRECTION_WEST:
 		{
-			for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
+			Sint32 z = 0;
+			do
 			{
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+				Sint32 y = 0;
+				do
 				{
 					Tile* tile = m_tiles[z][y][GAME_MAP_WIDTH - 1];
-					if(tile)
-						delete tile;
-				}
+					delete tile;
+				} while(++y < GAME_MAP_HEIGHT);
 
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+				y = 0;
+				do
 				{
-					for(Sint32 x = GAME_MAP_WIDTH - 1; --x >= 0;)
+					Sint32 x = GAME_MAP_WIDTH - 2;
+					do
+					{
 						m_tiles[z][y][x + 1] = m_tiles[z][y][x];
-				}
+					} while(--x >= 0);
+				} while(++y < GAME_MAP_HEIGHT);
 
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+				y = 0;
+				do
 				{
 					//Reset the tiles that we get later
 					m_tiles[z][y][0] = NULL;
-				}
-			}
+				} while(++y < GAME_MAP_HEIGHT);
+			} while(++z <= GAME_MAP_FLOORS);
 		}
 		break;
 		default:
 		{
-			for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
+			Sint32 z = 0;
+			do
 			{
 				std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[z];
 				for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(), end = distanceEffects.end(); it != end; ++it)
 					delete (*it);
 
 				distanceEffects.clear();
-				for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+				Sint32 y = 0;
+				do
 				{
-					for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+					Sint32 x = 0;
+					do
 					{
-						Tile* tile = m_tiles[z][y][x];
-						if(tile)
-						{
-							delete tile;
-							m_tiles[z][y][x] = NULL;
-						}
-					}
-				}
-			}
+						Tile*& tile = m_tiles[z][y][x];
+						delete tile; tile = NULL;
+					} while(++x < GAME_MAP_WIDTH);
+				} while(++y < GAME_MAP_HEIGHT);
+			} while(++z <= GAME_MAP_FLOORS);
 		}
 		break;
 	}
@@ -903,17 +1111,23 @@ void Map::checkMagicEffects()
 	if(g_frameTime == m_magicEffectsTime)
 		return;
 
-	for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
+	m_magicEffectsTime = g_frameTime;
+	std::vector<Effect*> removeEffects; removeEffects.reserve(EFFECT_MAX_INGAME_EFFECTS);
+	for(std::vector<Effect*>::iterator it = Effect::effects.begin(), end = Effect::effects.end(); it != end; ++it)
 	{
-		for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
-		{
-			for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
-			{
-				Tile* tile = m_tiles[z][y][x];
-				if(tile)
-					tile->checkMagicEffects();
-			}
-		}
+		Effect* effect = (*it);
+		if(!effect->isDelayed() && effect->canBeDeleted())
+			removeEffects.push_back(effect);
+	}
+
+	for(std::vector<Effect*>::iterator it = removeEffects.begin(), end = removeEffects.end(); it != end; ++it)
+	{
+		Effect* effect = (*it);
+		Tile* tile = getTile(effect->getPos());
+		if(tile)
+			tile->removeMagicEffect(effect);
+		else
+			delete effect;
 	}
 }
 
@@ -922,20 +1136,23 @@ void Map::checkDistanceEffects()
 	if(g_frameTime == m_distanceEffectsTime)
 		return;
 
-	for(Sint32 z = 0; z <= GAME_MAP_FLOORS; ++z)
+	m_distanceEffectsTime = g_frameTime;
+	Sint32 z = 0;
+	do
 	{
 		std::vector<DistanceEffect*>& distanceEffects = m_distanceEffects[z];
 		for(std::vector<DistanceEffect*>::iterator it = distanceEffects.begin(); it != distanceEffects.end();)
 		{
-			if(!(*it)->isDelayed() && (*it)->getFlightProgress() > 1.f)
+			DistanceEffect* distanceEffect = (*it);
+			if(!distanceEffect->isDelayed() && distanceEffect->getFlightProgress() > 1.f)
 			{
-				delete (*it);
+				delete distanceEffect;
 				it = distanceEffects.erase(it);
 			}
 			else
 				++it;
 		}
-	}
+	} while(++z <= GAME_MAP_FLOORS);
 }
 
 void Map::addDistanceEffect(DistanceEffect* distanceEffect, Uint8 posZ)
@@ -1084,8 +1301,8 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 	Uint16 areaY = areas[0]->getBasePosition().y + 256;
 
 	AStarNodes nodes(startPos);
-	AStarNode* found = nullptr;
-	while(nodes.getNodeSize() < MAX_NODES_COMPLEXITY)
+	AStarNode* found = NULL;
+	do
 	{
 		AStarNode* n = nodes.getBestNode();
 		if(!n)
@@ -1146,7 +1363,8 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 		}
 
 		const Sint32 f = n->f;
-		for(Uint32 i = 0; i < dirCount; ++i)
+		Uint32 i = 0;
+		do
 		{
 			Sint32 posX = x + *neighbors++;
 			Sint32 posY = y + *neighbors++;
@@ -1209,15 +1427,15 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 					return PathFind_ReturnNoWay;
 				}
 			}
-		}
+		} while(++i < dirCount);
 		nodes.closeNode(n);
-	}
+	} while(nodes.getNodeSize() < MAX_NODES_COMPLEXITY);
 	if(!found)
 		return PathFind_ReturnNoWay;
 
 	Sint32 prevx = endPos.x;
 	Sint32 prevy = endPos.y;
-	while(found)
+	do
 	{
 		pos.x = found->x;
 		pos.y = found->y;
@@ -1256,7 +1474,7 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 				directions.emplace_back(DIRECTION_SOUTH);
 		}
 		found = found->parent;
-	}
+	} while(found);
 	return PathFind_ReturnSuccessfull;
 }
 
@@ -1285,7 +1503,8 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 
 	Sint32 posX = ((x - gameWindow.x1) / scaledSize) + 1;
 	Sint32 posY = ((y - gameWindow.y1) / scaledSize) + 1;
-	for(Sint32 z = lastVisibleFloor; z <= firstVisibleFloor; ++z)
+	Sint32 z = lastVisibleFloor;
+	do
 	{
 		if(!topCreature)
 		{
@@ -1295,7 +1514,7 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 				{
 					Sint32 indexX = posX + x2;
 					Sint32 indexY = posY + y2;
-					if(indexX >= 0 && indexY >= 0 && indexX < GAME_MAP_WIDTH && indexY < GAME_MAP_HEIGHT)
+					if(SDL_static_cast(Uint32, indexX) < GAME_MAP_WIDTH && SDL_static_cast(Uint32, indexY) < GAME_MAP_HEIGHT)
 					{
 						Tile* tile = m_tiles[z][indexY][indexX];
 						if(tile)
@@ -1314,7 +1533,7 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 		Search_for_Tile:
 		Sint32 indexX = posX;
 		Sint32 indexY = posY;
-		if(indexX >= 0 && indexY >= 0 && indexX < GAME_MAP_WIDTH && indexY < GAME_MAP_HEIGHT)
+		if(SDL_static_cast(Uint32, indexX) < GAME_MAP_WIDTH && SDL_static_cast(Uint32, indexY) < GAME_MAP_HEIGHT)
 		{
 			Tile* tile = m_tiles[z][indexY][indexX];
 			if(tile)
@@ -1332,7 +1551,7 @@ Tile* Map::findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, fl
 				}
 			}
 		}
-	}
+	} while(++z <= firstVisibleFloor);
 	return bestPossibleTile;
 }
 
@@ -1403,7 +1622,7 @@ void Map::updateCacheMap()
 			if(tile && tile->isLookPossible())
 				isLookPossible = true;
 
-			if((x == 0 && y == 0) || ((std::abs(x) != std::abs(y)) && isLookPossible))
+			if(((x | y) == 0) || ((std::abs(x) != std::abs(y)) && isLookPossible))
 			{
 				Position upperPos = pos;
 				Position coveredPos = pos;
@@ -1432,14 +1651,17 @@ void Map::updateCacheMap()
 	m_cachedLastVisibleFloor = UTIL_max<Sint32>(0, UTIL_min<Sint32>(GAME_MAP_FLOORS, m_cachedLastVisibleFloor));
 	m_cachedFirstVisibleFloor = UTIL_max<Sint32>(0, UTIL_min<Sint32>(GAME_MAP_FLOORS, firstFloor));
 	m_needUpdateCache = false;
-	for(Sint32 y = 0; y < GAME_MAP_HEIGHT; ++y)
+	Sint32 y = 0;
+	do
 	{
-		for(Sint32 x = 0; x < GAME_MAP_WIDTH; ++x)
+		Sint32 x = 0;
+		do
 		{
 			bool haveFirstVisibleGround = false;
 			bool haveFirstGrounds = false;
 			bool haveFirstFullGrounds = false;
-			for(Sint32 z = m_cachedFirstVisibleFloor; z < m_cachedLastVisibleFloor; ++z)
+			Sint32 z = m_cachedFirstVisibleFloor;
+			do
 			{
 				Tile* tile = m_tiles[z][y][x];
 				if(tile)
@@ -1460,7 +1682,7 @@ void Map::updateCacheMap()
 						haveFirstFullGrounds = true;
 					}
 				}
-			}
+			} while(++z < m_cachedLastVisibleFloor);
 
 			if(!haveFirstVisibleGround)
 				m_cachedFirstVisibleGround[y][x] = m_cachedLastVisibleFloor;
@@ -1470,6 +1692,6 @@ void Map::updateCacheMap()
 
 			if(!haveFirstFullGrounds)
 				m_cachedFirstFullGrounds[y][x] = m_cachedLastVisibleFloor;
-		}
-	}
+		} while(++x < GAME_MAP_WIDTH);
+	} while(++y < GAME_MAP_HEIGHT);
 }

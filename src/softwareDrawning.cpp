@@ -220,6 +220,7 @@ void DrawTriangle_SSE(SDL_Surface* dst, const float colors[3][3], Sint32 vertice
 	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge2]);
 }
 
+#if defined(__USE_FMA3__)
 void DrawSpan_FMA3(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_SSE &span, Sint32 y)
 {
 	Sint32 xdiff = (span.X2 - span.X1);
@@ -335,7 +336,9 @@ void DrawTriangle_FMA3(SDL_Surface* dst, const float colors[3][3], Sint32 vertic
 	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge1]);
 	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge2]);
 }
+#endif
 
+#if defined(__USE_FMA4__)
 void DrawSpan_FMA4(SDL_Surface* dst, SDL_Rect* clip_rect, const Span_SSE &span, Sint32 y)
 {
 	Sint32 xdiff = (span.X2 - span.X1);
@@ -451,6 +454,7 @@ void DrawTriangle_FMA4(SDL_Surface* dst, const float colors[3][3], Sint32 vertic
 	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge1]);
 	DrawSpansBetweenEdges_SSE(dst, &clip_rect, edges[longEdge], edges[shortEdge2]);
 }
+#endif
 #endif
 
 class Edge_Scalar
@@ -1649,12 +1653,27 @@ void SDL_SmoothStretch_init()
 	SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_Scalar);
 	#ifdef __USE_SSE__
 	//need to test if fma4 is faster on amd processors to determine proper check order
+	#if (defined(__USE_FMA3__) || defined(__USE_FMA4__))
 	if(SDL_HasFMA3())
 		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_FMA3);
 	else if(SDL_HasFMA4())
 		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_FMA4);
 	else if(SDL_HasSSE())
 		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_SSE);
+	#elif defined(__USE_FMA3__)
+	if(SDL_HasFMA3())
+		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_FMA3);
+	else if(SDL_HasSSE())
+		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_SSE);
+	#elif defined(__USE_FMA4__)
+	if(SDL_HasFMA4())
+		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_FMA4);
+	else if(SDL_HasSSE())
+		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_SSE);
+	#else
+	if(SDL_HasSSE())
+		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_SSE);
+	#endif
 	#endif
 	
 	#ifdef __USE_SSE4_1__

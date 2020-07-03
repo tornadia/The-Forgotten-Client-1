@@ -23,6 +23,7 @@
 #define __FILE_MAP_h_
 
 #include "position.h"
+#include "screenText.h"
 
 #define MAP_WIDTH_OFFSET (GAME_MAP_WIDTH / 2)
 #define MAP_HEIGHT_OFFSET (GAME_MAP_HEIGHT / 2)
@@ -32,7 +33,6 @@ class Effect;
 class DistanceEffect;
 class AnimatedText;
 class StaticText;
-class ScreenText;
 class Creature;
 
 typedef std::unordered_map<Uint32, Creature*> knownCreatures;
@@ -74,7 +74,7 @@ class AStarNodes
 	private:
 		std::vector<Sint32> openNodes;
 		std::vector<Sint32> openNodeTotalCost;
-		std::unordered_map<Uint32, Uint32> nodesTable;
+		robin_hood::unordered_map<Uint32, Uint32> nodesTable;
 		AStarNode* nodes;
 		Sint32 curNode;
 };
@@ -138,10 +138,10 @@ class Map
 		std::vector<AnimatedText*> m_animatedTexts;
 		std::vector<StaticText*> m_staticTexts;
 		Tile* m_tiles[GAME_MAP_FLOORS + 1][GAME_MAP_HEIGHT][GAME_MAP_WIDTH] = {};
-		ScreenText* m_onscreenMessages[ONSCREEN_MESSAGE_LAST];
 
 		Creature* m_localCreature = NULL;
 		Position m_centerPosition;
+		ScreenText m_onscreenMessages[ONSCREEN_MESSAGE_LAST] = {ONSCREEN_MESSAGE_BOTTOM, ONSCREEN_MESSAGE_CENTER_LOW, ONSCREEN_MESSAGE_CENTER_HIGH, ONSCREEN_MESSAGE_TOP};
 		
 		Uint32 m_magicEffectsTime = 0;
 		Uint32 m_distanceEffectsTime = 0;

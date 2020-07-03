@@ -27,6 +27,7 @@
 #include <Shellapi.h>
 #endif
 
+LPUTIL_Faststrstr UTIL_Faststrstr;
 LPUTIL_FastCopy UTIL_FastCopy;
 LPXTEA_DECRYPT XTEA_decrypt;
 LPXTEA_ENCRYPT XTEA_encrypt;
@@ -694,39 +695,62 @@ std::string UTIL_formatDate(const char* format, time_t time)
 
 void UTIL_parseSizedText(const std::string& text, size_t start, Uint8 fontId, Uint32 allowedWidth, void* _THIS, size_t(*callback)(void* __THIS, bool skipLine, size_t start, size_t length))
 {
-	//TODO: optimize this for speed
+	Uint32 width = 0;
+	Uint32 goodPosWidth = 0;
+
 	size_t goodPos = 0;
 	size_t i = start;
 	size_t strLen = text.length();
 	while(i < strLen)
 	{
-		if(text[i] == '\n')
+		const Uint8 character = SDL_static_cast(Uint8, text[i]);
+		if(character == '\n')
 		{
 			strLen += callback(_THIS, false, start, i - start + 1);
 			start = i + 1;
 			i = start;
+			width = 0;
+			goodPosWidth = 0;
 			goodPos = 0;
 			continue;
 		}
+		else if(character == 0x0E)//Special case - change rendering color
+		{
+			if(i + 4 < strLen)
+				i += 4;//3 bytes color + special case character
+			else
+				i = strLen;
+			continue;
+		}
+		else if(character == 0x0E)//Special case - change back standard color
+		{
+			++i;//special case character
+			continue;
+		}
 
-		Uint32 width = g_engine.calculateFontWidth(fontId, text, start, i - start + 1);
-		if(width >= allowedWidth)
+		width += g_engine.calculateFontGlyphWidth(fontId, character);
+		if((width + g_engine.getFontSpace(fontId)) > allowedWidth)
 		{
 			if(goodPos != 0)
 			{
 				strLen += callback(_THIS, false, start, goodPos - start + 1);
 				start = goodPos + 1;
+				width -= goodPosWidth + g_engine.calculateFontGlyphWidth(fontId, ' ');
+				goodPosWidth = 0;
 				goodPos = 0;
-				continue;
 			}
 			else
 			{
+				width = 0;
 				strLen += callback(_THIS, true, start, i - start);
 				start = i;
 			}
 		}
-		else if(text[i] == ' ')
+		else if(character == ' ')
+		{
+			goodPosWidth = width;
 			goodPos = i;
+		}
 
 		++i;
 	}
@@ -741,28 +765,73 @@ bool XTEA_decrypt_AVX2(Uint8* buffer, size_t size, const Uint32* keys)
 		return false;
 
 	const Uint32 k[] = {keys[0], keys[1], keys[2], keys[3]};
-	Sint64 messageLength = SDL_static_cast(Sint64, size) - 64;
+	Sint64 messageLength = SDL_static_cast(Sint64, size) - 128;
 	Sint64 readPos = 0;
 
 	Uint32 precachedControlSum[32][2];
 	Uint32 sum = 0xC6EF3720;
-	for(Sint32 i = 0; i < 32; ++i)
+	Sint32 i = 0;
+	do
 	{
-		precachedControlSum[i][0] = (sum + k[(sum >> 11) & 3]);
-		sum += xtea_delta;
-		precachedControlSum[i][1] = (sum + k[sum & 3]);
-	}
+		#define PRECACHE_CONTROL_SUM(a)										\
+			do {															\
+				precachedControlSum[i + a][0] = (sum + k[(sum >> 11) & 3]);	\
+				sum += xtea_delta;											\
+				precachedControlSum[i + a][1] = (sum + k[sum & 3]);			\
+			} while(0)
+
+		PRECACHE_CONTROL_SUM(0);
+		PRECACHE_CONTROL_SUM(1);
+		PRECACHE_CONTROL_SUM(2);
+		PRECACHE_CONTROL_SUM(3);
+		#undef PRECACHE_CONTROL_SUM
+
+		i += 4;
+	} while(i < 32);
 	while(readPos <= messageLength)
+	{
+		const __m256i data0 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m256i data1 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos + 32)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m256i data2 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos + 64)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m256i data3 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos + 96)), _MM_SHUFFLE(3, 1, 2, 0));
+		__m256i vdata0 = _mm256_unpacklo_epi64(data0, data1);
+		__m256i vdata1 = _mm256_unpackhi_epi64(data0, data1);
+		__m256i vdata2 = _mm256_unpacklo_epi64(data2, data3);
+		__m256i vdata3 = _mm256_unpackhi_epi64(data2, data3);
+
+		Sint32 j = 0;
+		do
+		{
+			__m256i controlSum1 = _mm256_set1_epi32(precachedControlSum[j][0]), controlSum2 = _mm256_set1_epi32(precachedControlSum[j][1]);
+			vdata1 = _mm256_sub_epi32(vdata1, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata0, 4), _mm256_srli_epi32(vdata0, 5)), vdata0), controlSum1));
+			vdata0 = _mm256_sub_epi32(vdata0, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata1, 4), _mm256_srli_epi32(vdata1, 5)), vdata1), controlSum2));
+			vdata3 = _mm256_sub_epi32(vdata3, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata2, 4), _mm256_srli_epi32(vdata2, 5)), vdata2), controlSum1));
+			vdata2 = _mm256_sub_epi32(vdata2, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata3, 4), _mm256_srli_epi32(vdata3, 5)), vdata3), controlSum2));
+		} while(++j < 32);
+
+		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpacklo_epi32(vdata0, vdata1));
+		readPos += 32;
+		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpackhi_epi32(vdata0, vdata1));
+		readPos += 32;
+		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpacklo_epi32(vdata2, vdata3));
+		readPos += 32;
+		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpackhi_epi32(vdata2, vdata3));
+		readPos += 32;
+	}
+	messageLength += 64;
+	if(readPos <= messageLength)
 	{
 		const __m256i data0 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos)), _MM_SHUFFLE(3, 1, 2, 0));
 		const __m256i data1 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos + 32)), _MM_SHUFFLE(3, 1, 2, 0));
 		__m256i vdata0 = _mm256_unpacklo_epi64(data0, data1);
 		__m256i vdata1 = _mm256_unpackhi_epi64(data0, data1);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vdata1 = _mm256_sub_epi32(vdata1, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata0, 4), _mm256_srli_epi32(vdata0, 5)), vdata0), _mm256_set1_epi32(precachedControlSum[i][0])));
-			vdata0 = _mm256_sub_epi32(vdata0, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata1, 4), _mm256_srli_epi32(vdata1, 5)), vdata1), _mm256_set1_epi32(precachedControlSum[i][1])));
-		}
+			vdata1 = _mm256_sub_epi32(vdata1, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata0, 4), _mm256_srli_epi32(vdata0, 5)), vdata0), _mm256_set1_epi32(precachedControlSum[j][0])));
+			vdata0 = _mm256_sub_epi32(vdata0, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata1, 4), _mm256_srli_epi32(vdata1, 5)), vdata1), _mm256_set1_epi32(precachedControlSum[j][1])));
+		} while(++j < 32);
 
 		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpacklo_epi32(vdata0, vdata1));
 		readPos += 32;
@@ -776,11 +845,13 @@ bool XTEA_decrypt_AVX2(Uint8* buffer, size_t size, const Uint32* keys)
 		const __m128i data1 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 16)), _MM_SHUFFLE(3, 1, 2, 0));
 		__m128i vdata0 = _mm_unpacklo_epi64(data0, data1);
 		__m128i vdata1 = _mm_unpackhi_epi64(data0, data1);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vdata1 = _mm_sub_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), _mm_set1_epi32(precachedControlSum[i][0])));
-			vdata0 = _mm_sub_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), _mm_set1_epi32(precachedControlSum[i][1])));
-		}
+			vdata1 = _mm_sub_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), _mm_set1_epi32(precachedControlSum[j][0])));
+			vdata0 = _mm_sub_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), _mm_set1_epi32(precachedControlSum[j][1])));
+		} while(++j < 32);
 
 		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpacklo_epi32(vdata0, vdata1));
 		readPos += 16;
@@ -795,11 +866,13 @@ bool XTEA_decrypt_AVX2(Uint8* buffer, size_t size, const Uint32* keys)
 			| (SDL_static_cast(Uint32, buffer[readPos + 2]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 3]) << 24);
 		vData[1] = SDL_static_cast(Uint32, buffer[readPos + 4]) | (SDL_static_cast(Uint32, buffer[readPos + 5]) << 8)
 			| (SDL_static_cast(Uint32, buffer[readPos + 6]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 7]) << 24);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vData[1] -= ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[i][0];
-			vData[0] -= ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[i][1];
-		}
+			vData[1] -= ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[j][0];
+			vData[0] -= ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[j][1];
+		} while(++j < 32);
 
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0]);
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0] >> 8);
@@ -819,28 +892,73 @@ bool XTEA_encrypt_AVX2(Uint8* buffer, size_t size, const Uint32* keys)
 		return false;
 
 	const Uint32 k[] = {keys[0], keys[1], keys[2], keys[3]};
-	Sint64 messageLength = SDL_static_cast(Sint64, size) - 64;
+	Sint64 messageLength = SDL_static_cast(Sint64, size) - 128;
 	Sint64 readPos = 0;
 
 	Uint32 precachedControlSum[32][2];
 	Uint32 sum = 0;
-	for(Sint32 i = 0; i < 32; ++i)
+	Sint32 i = 0;
+	do
 	{
-		precachedControlSum[i][0] = (sum + k[sum & 3]);
-		sum -= xtea_delta;
-		precachedControlSum[i][1] = (sum + k[(sum >> 11) & 3]);
-	}
+		#define PRECACHE_CONTROL_SUM(a)										\
+			do {															\
+				precachedControlSum[i + a][0] = (sum + k[sum & 3]);			\
+				sum -= xtea_delta;											\
+				precachedControlSum[i + a][1] = (sum + k[(sum >> 11) & 3]);	\
+			} while(0)
+
+		PRECACHE_CONTROL_SUM(0);
+		PRECACHE_CONTROL_SUM(1);
+		PRECACHE_CONTROL_SUM(2);
+		PRECACHE_CONTROL_SUM(3);
+		#undef PRECACHE_CONTROL_SUM
+
+		i += 4;
+	} while(i < 32);
 	while(readPos <= messageLength)
+	{
+		const __m256i data0 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m256i data1 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos + 32)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m256i data2 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos + 64)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m256i data3 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos + 96)), _MM_SHUFFLE(3, 1, 2, 0));
+		__m256i vdata0 = _mm256_unpacklo_epi64(data0, data1);
+		__m256i vdata1 = _mm256_unpackhi_epi64(data0, data1);
+		__m256i vdata2 = _mm256_unpacklo_epi64(data2, data3);
+		__m256i vdata3 = _mm256_unpackhi_epi64(data2, data3);
+
+		Sint32 j = 0;
+		do
+		{
+			__m256i controlSum1 = _mm256_set1_epi32(precachedControlSum[j][0]), controlSum2 = _mm256_set1_epi32(precachedControlSum[j][1]);
+			vdata0 = _mm256_add_epi32(vdata0, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata1, 4), _mm256_srli_epi32(vdata1, 5)), vdata1), controlSum1));
+			vdata1 = _mm256_add_epi32(vdata1, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata0, 4), _mm256_srli_epi32(vdata0, 5)), vdata0), controlSum2));
+			vdata2 = _mm256_add_epi32(vdata2, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata3, 4), _mm256_srli_epi32(vdata3, 5)), vdata3), controlSum1));
+			vdata3 = _mm256_add_epi32(vdata3, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata2, 4), _mm256_srli_epi32(vdata2, 5)), vdata2), controlSum2));
+		} while(++j < 32);
+
+		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpacklo_epi32(vdata0, vdata1));
+		readPos += 32;
+		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpackhi_epi32(vdata0, vdata1));
+		readPos += 32;
+		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpacklo_epi32(vdata2, vdata3));
+		readPos += 32;
+		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpackhi_epi32(vdata2, vdata3));
+		readPos += 32;
+	}
+	messageLength += 64;
+	if(readPos <= messageLength)
 	{
 		const __m256i data0 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos)), _MM_SHUFFLE(3, 1, 2, 0));
 		const __m256i data1 = _mm256_shuffle_epi32(_mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, buffer + readPos + 32)), _MM_SHUFFLE(3, 1, 2, 0));
 		__m256i vdata0 = _mm256_unpacklo_epi64(data0, data1);
 		__m256i vdata1 = _mm256_unpackhi_epi64(data0, data1);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vdata0 = _mm256_add_epi32(vdata0, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata1, 4), _mm256_srli_epi32(vdata1, 5)), vdata1), _mm256_set1_epi32(precachedControlSum[i][0])));
-			vdata1 = _mm256_add_epi32(vdata1, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata0, 4), _mm256_srli_epi32(vdata0, 5)), vdata0), _mm256_set1_epi32(precachedControlSum[i][1])));
-		}
+			vdata0 = _mm256_add_epi32(vdata0, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata1, 4), _mm256_srli_epi32(vdata1, 5)), vdata1), _mm256_set1_epi32(precachedControlSum[j][0])));
+			vdata1 = _mm256_add_epi32(vdata1, _mm256_xor_si256(_mm256_add_epi32(_mm256_xor_si256(_mm256_slli_epi32(vdata0, 4), _mm256_srli_epi32(vdata0, 5)), vdata0), _mm256_set1_epi32(precachedControlSum[j][1])));
+		} while(++j < 32);
 
 		_mm256_storeu_si256(SDL_reinterpret_cast(__m256i*, buffer + readPos), _mm256_unpacklo_epi32(vdata0, vdata1));
 		readPos += 32;
@@ -854,11 +972,13 @@ bool XTEA_encrypt_AVX2(Uint8* buffer, size_t size, const Uint32* keys)
 		const __m128i data1 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 16)), _MM_SHUFFLE(3, 1, 2, 0));
 		__m128i vdata0 = _mm_unpacklo_epi64(data0, data1);
 		__m128i vdata1 = _mm_unpackhi_epi64(data0, data1);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vdata0 = _mm_add_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), _mm_set1_epi32(precachedControlSum[i][0])));
-			vdata1 = _mm_add_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), _mm_set1_epi32(precachedControlSum[i][1])));
-		}
+			vdata0 = _mm_add_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), _mm_set1_epi32(precachedControlSum[j][0])));
+			vdata1 = _mm_add_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), _mm_set1_epi32(precachedControlSum[j][1])));
+		} while(++j < 32);
 
 		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpacklo_epi32(vdata0, vdata1));
 		readPos += 16;
@@ -873,11 +993,13 @@ bool XTEA_encrypt_AVX2(Uint8* buffer, size_t size, const Uint32* keys)
 			| (SDL_static_cast(Uint32, buffer[readPos + 2]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 3]) << 24);
 		vData[1] = SDL_static_cast(Uint32, buffer[readPos + 4]) | (SDL_static_cast(Uint32, buffer[readPos + 5]) << 8)
 			| (SDL_static_cast(Uint32, buffer[readPos + 6]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 7]) << 24);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vData[0] += ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[i][0];
-			vData[1] += ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[i][1];
-		}
+			vData[0] += ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[j][0];
+			vData[1] += ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[j][1];
+		} while(++j < 32);
 
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0]);
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0] >> 8);
@@ -899,28 +1021,73 @@ bool XTEA_decrypt_SSE2(Uint8* buffer, size_t size, const Uint32* keys)
 		return false;
 
 	const Uint32 k[] = {keys[0], keys[1], keys[2], keys[3]};
-	Sint64 messageLength = SDL_static_cast(Sint64, size) - 32;
+	Sint64 messageLength = SDL_static_cast(Sint64, size) - 64;
 	Sint64 readPos = 0;
 
 	Uint32 precachedControlSum[32][2];
 	Uint32 sum = 0xC6EF3720;
-	for(Sint32 i = 0; i < 32; ++i)
+	Sint32 i = 0;
+	do
 	{
-		precachedControlSum[i][0] = (sum + k[(sum >> 11) & 3]);
-		sum += xtea_delta;
-		precachedControlSum[i][1] = (sum + k[sum & 3]);
-	}
+		#define PRECACHE_CONTROL_SUM(a)										\
+			do {															\
+				precachedControlSum[i + a][0] = (sum + k[(sum >> 11) & 3]);	\
+				sum += xtea_delta;											\
+				precachedControlSum[i + a][1] = (sum + k[sum & 3]);			\
+			} while(0)
+
+		PRECACHE_CONTROL_SUM(0);
+		PRECACHE_CONTROL_SUM(1);
+		PRECACHE_CONTROL_SUM(2);
+		PRECACHE_CONTROL_SUM(3);
+		#undef PRECACHE_CONTROL_SUM
+
+		i += 4;
+	} while(i < 32);
 	while(readPos <= messageLength)
+	{
+		const __m128i data0 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m128i data1 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 16)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m128i data2 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 32)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m128i data3 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 48)), _MM_SHUFFLE(3, 1, 2, 0));
+		__m128i vdata0 = _mm_unpacklo_epi64(data0, data1);
+		__m128i vdata1 = _mm_unpackhi_epi64(data0, data1);
+		__m128i vdata2 = _mm_unpacklo_epi64(data2, data3);
+		__m128i vdata3 = _mm_unpackhi_epi64(data2, data3);
+
+		Sint32 j = 0;
+		do
+		{
+			__m128i controlSum1 = _mm_set1_epi32(precachedControlSum[j][0]), controlSum2 = _mm_set1_epi32(precachedControlSum[j][1]);
+			vdata1 = _mm_sub_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), controlSum1));
+			vdata0 = _mm_sub_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), controlSum2));
+			vdata3 = _mm_sub_epi32(vdata3, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata2, 4), _mm_srli_epi32(vdata2, 5)), vdata2), controlSum1));
+			vdata2 = _mm_sub_epi32(vdata2, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata3, 4), _mm_srli_epi32(vdata3, 5)), vdata3), controlSum2));
+		} while(++j < 32);
+
+		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpacklo_epi32(vdata0, vdata1));
+		readPos += 16;
+		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpackhi_epi32(vdata0, vdata1));
+		readPos += 16;
+		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpacklo_epi32(vdata2, vdata3));
+		readPos += 16;
+		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpackhi_epi32(vdata2, vdata3));
+		readPos += 16;
+	}
+	messageLength += 32;
+	if(readPos <= messageLength)
 	{
 		const __m128i data0 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos)), _MM_SHUFFLE(3, 1, 2, 0));
 		const __m128i data1 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 16)), _MM_SHUFFLE(3, 1, 2, 0));
 		__m128i vdata0 = _mm_unpacklo_epi64(data0, data1);
 		__m128i vdata1 = _mm_unpackhi_epi64(data0, data1);
-		for(Sint32 i = 0; i < 32; ++i)
+		
+		Sint32 j = 0;
+		do
 		{
-			vdata1 = _mm_sub_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), _mm_set1_epi32(precachedControlSum[i][0])));
-			vdata0 = _mm_sub_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), _mm_set1_epi32(precachedControlSum[i][1])));
-		}
+			vdata1 = _mm_sub_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), _mm_set1_epi32(precachedControlSum[j][0])));
+			vdata0 = _mm_sub_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), _mm_set1_epi32(precachedControlSum[j][1])));
+		} while(++j < 32);
 
 		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpacklo_epi32(vdata0, vdata1));
 		readPos += 16;
@@ -935,11 +1102,13 @@ bool XTEA_decrypt_SSE2(Uint8* buffer, size_t size, const Uint32* keys)
 			| (SDL_static_cast(Uint32, buffer[readPos + 2]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 3]) << 24);
 		vData[1] = SDL_static_cast(Uint32, buffer[readPos + 4]) | (SDL_static_cast(Uint32, buffer[readPos + 5]) << 8)
 			| (SDL_static_cast(Uint32, buffer[readPos + 6]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 7]) << 24);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vData[1] -= ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[i][0];
-			vData[0] -= ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[i][1];
-		}
+			vData[1] -= ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[j][0];
+			vData[0] -= ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[j][1];
+		} while(++j < 32);
 
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0]);
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0] >> 8);
@@ -959,28 +1128,73 @@ bool XTEA_encrypt_SSE2(Uint8* buffer, size_t size, const Uint32* keys)
 		return false;
 
 	const Uint32 k[] = {keys[0], keys[1], keys[2], keys[3]};
-	Sint64 messageLength = SDL_static_cast(Sint64, size) - 32;
+	Sint64 messageLength = SDL_static_cast(Sint64, size) - 64;
 	Sint64 readPos = 0;
 
 	Uint32 precachedControlSum[32][2];
 	Uint32 sum = 0;
-	for(Sint32 i = 0; i < 32; ++i)
+	Sint32 i = 0;
+	do
 	{
-		precachedControlSum[i][0] = (sum + k[sum & 3]);
-		sum -= xtea_delta;
-		precachedControlSum[i][1] = (sum + k[(sum >> 11) & 3]);
-	}
+		#define PRECACHE_CONTROL_SUM(a)										\
+			do {															\
+				precachedControlSum[i + a][0] = (sum + k[sum & 3]);			\
+				sum -= xtea_delta;											\
+				precachedControlSum[i + a][1] = (sum + k[(sum >> 11) & 3]);	\
+			} while(0)
+
+		PRECACHE_CONTROL_SUM(0);
+		PRECACHE_CONTROL_SUM(1);
+		PRECACHE_CONTROL_SUM(2);
+		PRECACHE_CONTROL_SUM(3);
+		#undef PRECACHE_CONTROL_SUM
+
+		i += 4;
+	} while(i < 32);
 	while(readPos <= messageLength)
+	{
+		const __m128i data0 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m128i data1 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 16)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m128i data2 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 32)), _MM_SHUFFLE(3, 1, 2, 0));
+		const __m128i data3 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 48)), _MM_SHUFFLE(3, 1, 2, 0));
+		__m128i vdata0 = _mm_unpacklo_epi64(data0, data1);
+		__m128i vdata1 = _mm_unpackhi_epi64(data0, data1);
+		__m128i vdata2 = _mm_unpacklo_epi64(data2, data3);
+		__m128i vdata3 = _mm_unpackhi_epi64(data2, data3);
+
+		Sint32 j = 0;
+		do
+		{
+			__m128i controlSum1 = _mm_set1_epi32(precachedControlSum[j][0]), controlSum2 = _mm_set1_epi32(precachedControlSum[j][1]);
+			vdata0 = _mm_add_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), controlSum1));
+			vdata1 = _mm_add_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), controlSum2));
+			vdata2 = _mm_add_epi32(vdata2, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata3, 4), _mm_srli_epi32(vdata3, 5)), vdata3), controlSum1));
+			vdata3 = _mm_add_epi32(vdata3, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata2, 4), _mm_srli_epi32(vdata2, 5)), vdata2), controlSum2));
+		} while(++j < 32);
+
+		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpacklo_epi32(vdata0, vdata1));
+		readPos += 16;
+		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpackhi_epi32(vdata0, vdata1));
+		readPos += 16;
+		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpacklo_epi32(vdata2, vdata3));
+		readPos += 16;
+		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpackhi_epi32(vdata2, vdata3));
+		readPos += 16;
+	}
+	messageLength += 32;
+	if(readPos <= messageLength)
 	{
 		const __m128i data0 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos)), _MM_SHUFFLE(3, 1, 2, 0));
 		const __m128i data1 = _mm_shuffle_epi32(_mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, buffer + readPos + 16)), _MM_SHUFFLE(3, 1, 2, 0));
 		__m128i vdata0 = _mm_unpacklo_epi64(data0, data1);
 		__m128i vdata1 = _mm_unpackhi_epi64(data0, data1);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vdata0 = _mm_add_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), _mm_set1_epi32(precachedControlSum[i][0])));
-			vdata1 = _mm_add_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), _mm_set1_epi32(precachedControlSum[i][1])));
-		}
+			vdata0 = _mm_add_epi32(vdata0, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata1, 4), _mm_srli_epi32(vdata1, 5)), vdata1), _mm_set1_epi32(precachedControlSum[j][0])));
+			vdata1 = _mm_add_epi32(vdata1, _mm_xor_si128(_mm_add_epi32(_mm_xor_si128(_mm_slli_epi32(vdata0, 4), _mm_srli_epi32(vdata0, 5)), vdata0), _mm_set1_epi32(precachedControlSum[j][1])));
+		} while(++j < 32);
 
 		_mm_storeu_si128(SDL_reinterpret_cast(__m128i*, buffer + readPos), _mm_unpacklo_epi32(vdata0, vdata1));
 		readPos += 16;
@@ -995,11 +1209,13 @@ bool XTEA_encrypt_SSE2(Uint8* buffer, size_t size, const Uint32* keys)
 			| (SDL_static_cast(Uint32, buffer[readPos + 2]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 3]) << 24);
 		vData[1] = SDL_static_cast(Uint32, buffer[readPos + 4]) | (SDL_static_cast(Uint32, buffer[readPos + 5]) << 8)
 			| (SDL_static_cast(Uint32, buffer[readPos + 6]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 7]) << 24);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Sint32 j = 0;
+		do
 		{
-			vData[0] += ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[i][0];
-			vData[1] += ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[i][1];
-		}
+			vData[0] += ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[j][0];
+			vData[1] += ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[j][1];
+		} while(++j < 32);
 
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0]);
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0] >> 8);
@@ -1021,15 +1237,6 @@ bool XTEA_decrypt_scalar(Uint8* buffer, size_t size, const Uint32* keys)
 
 	const Uint32 k[] = {keys[0], keys[1], keys[2], keys[3]};
 	size_t readPos = 0;
-
-	Uint32 precachedControlSum[32][2];
-	Uint32 sum = 0xC6EF3720;
-	for(Sint32 i = 0; i < 32; ++i)
-	{
-		precachedControlSum[i][0] = (sum + k[(sum >> 11) & 3]);
-		sum += xtea_delta;
-		precachedControlSum[i][1] = (sum + k[sum & 3]);
-	}
 	while(readPos < size)
 	{
 		Uint32 vData[2];
@@ -1037,11 +1244,15 @@ bool XTEA_decrypt_scalar(Uint8* buffer, size_t size, const Uint32* keys)
 			| (SDL_static_cast(Uint32, buffer[readPos + 2]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 3]) << 24);
 		vData[1] = SDL_static_cast(Uint32, buffer[readPos + 4]) | (SDL_static_cast(Uint32, buffer[readPos + 5]) << 8)
 			| (SDL_static_cast(Uint32, buffer[readPos + 6]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 7]) << 24);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Uint32 sum = 0xC6EF3720;
+		Sint32 i = 0;
+		do
 		{
-			vData[1] -= ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[i][0];
-			vData[0] -= ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[i][1];
-		}
+			vData[1] -= ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ (sum + k[(sum >> 11) & 3]);
+			sum += xtea_delta;
+			vData[0] -= ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ (sum + k[sum & 3]);
+		} while(++i < 32);
 
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0]);
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0] >> 8);
@@ -1062,15 +1273,6 @@ bool XTEA_encrypt_scalar(Uint8* buffer, size_t size, const Uint32* keys)
 
 	const Uint32 k[] = {keys[0], keys[1], keys[2], keys[3]};
 	size_t readPos = 0;
-
-	Uint32 precachedControlSum[32][2];
-	Uint32 sum = 0;
-	for(Sint32 i = 0; i < 32; ++i)
-	{
-		precachedControlSum[i][0] = (sum + k[sum & 3]);
-		sum -= xtea_delta;
-		precachedControlSum[i][1] = (sum + k[(sum >> 11) & 3]);
-	}
 	while(readPos < size)
 	{
 		Uint32 vData[2];
@@ -1078,11 +1280,15 @@ bool XTEA_encrypt_scalar(Uint8* buffer, size_t size, const Uint32* keys)
 			| (SDL_static_cast(Uint32, buffer[readPos + 2]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 3]) << 24);
 		vData[1] = SDL_static_cast(Uint32, buffer[readPos + 4]) | (SDL_static_cast(Uint32, buffer[readPos + 5]) << 8)
 			| (SDL_static_cast(Uint32, buffer[readPos + 6]) << 16) | (SDL_static_cast(Uint32, buffer[readPos + 7]) << 24);
-		for(Sint32 i = 0; i < 32; ++i)
+
+		Uint32 sum = 0;
+		Sint32 i = 0;
+		do
 		{
-			vData[0] += ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ precachedControlSum[i][0];
-			vData[1] += ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ precachedControlSum[i][1];
-		}
+			vData[0] += ((vData[1] << 4 ^ vData[1] >> 5) + vData[1]) ^ (sum + k[sum & 3]);
+			sum -= xtea_delta;
+			vData[1] += ((vData[0] << 4 ^ vData[0] >> 5) + vData[0]) ^ (sum + k[(sum >> 11) & 3]);
+		} while(++i < 32);
 
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0]);
 		buffer[readPos++] = SDL_static_cast(Uint8, vData[0] >> 8);
@@ -1285,8 +1491,232 @@ void UTIL_FastCopy_SSE41(Uint8* dst, const Uint8* src, size_t size)
 }
 #endif
 
+size_t UTIL_Faststrstr_Scalar(const char* haystack, size_t haystackSize, const char* needle, size_t needleSize)
+{
+	if(haystackSize == needleSize)
+		return (memcmp(haystack, needle, haystackSize) == 0 ? 0 : std::string::npos);
+	else if(needleSize > haystackSize)
+		return std::string::npos;
+
+	const size_t lastpos = haystackSize - needleSize + 1;
+	for(size_t i = 0; i < lastpos; ++i)
+	{
+		if(haystack[i] == needle[0])
+		{
+			if(memcmp(haystack + i, needle, needleSize) == 0)
+				return i;
+		}
+	}
+	return std::string::npos;
+}
+
+#if SIZEOF_VOIDP == 4
+size_t UTIL_Faststrstr_Swar32(const char* haystack, size_t haystackSize, const char* needle, size_t needleSize)
+{
+	size_t result = std::string::npos;
+	if(needleSize > haystackSize)
+		return result;
+
+	const Uint32 first = 0x01010101u * SDL_static_cast(Uint8, needle[0]);
+	const Uint32 last = 0x01010101u * SDL_static_cast(Uint8, needle[needleSize - 1]);
+
+	Uint32* block_first = SDL_reinterpret_cast(Uint32*, SDL_const_cast(char*, haystack));
+	Uint32* block_last = SDL_reinterpret_cast(Uint32*, SDL_const_cast(char*, haystack + needleSize - 1));
+
+	// sequence scan
+	for(size_t i = 0; i < haystackSize; i += 4, ++block_first, ++block_last)
+	{
+		// 0 bytes in eq indicate matching chars
+		const Uint32 eq = (*block_first ^ first) | (*block_last ^ last);
+
+		// 7th bit set if lower 7 bits are zero
+		const Uint32 t0 = (~eq & 0x7f7f7f7fu) + 0x01010101u;
+		// 7th bit set if 7th bit is zero
+		const Uint32 t1 = (~eq & 0x80808080u);
+		Uint32 zeroes = t0 & t1;
+
+		size_t j = 0;
+		while(zeroes)
+		{
+			if(zeroes & 0x80)
+			{
+				const char* substr = SDL_reinterpret_cast(char*, block_first) + j + 1;
+				if(memcmp(substr, needle + 1, needleSize - 2) == 0)
+				{
+					result = (i + j);
+					goto Continue_Result;
+				}
+			}
+
+			zeroes >>= 8;
+			++j;
+		}
+	}
+	
+	//Since we can read ahead the haystack it is possible that we find needle somewhere we don't want
+	Continue_Result:
+	if(result <= haystackSize - needleSize)
+		return result;
+
+	return std::string::npos;
+}
+#elif SIZEOF_VOIDP == 8
+size_t UTIL_Faststrstr_Swar64(const char* haystack, size_t haystackSize, const char* needle, size_t needleSize)
+{
+	size_t result = std::string::npos;
+	if(needleSize > haystackSize)
+		return result;
+
+	const Uint64 first = 0x0101010101010101llu * SDL_static_cast(Uint8, needle[0]);
+	const Uint64 last = 0x0101010101010101llu * SDL_static_cast(Uint8, needle[needleSize - 1]);
+
+	Uint64* block_first = SDL_reinterpret_cast(Uint64*, SDL_const_cast(char*, haystack));
+	Uint64* block_last = SDL_reinterpret_cast(Uint64*, SDL_const_cast(char*, haystack + needleSize - 1));
+
+	// sequence scan
+	for(size_t i = 0; i < haystackSize; i += 8, ++block_first, ++block_last)
+	{
+		// 0 bytes in eq indicate matching chars
+		const Uint64 eq = (*block_first ^ first) | (*block_last ^ last);
+
+		// 7th bit set if lower 7 bits are zero
+		const Uint64 t0 = (~eq & 0x7f7f7f7f7f7f7f7fllu) + 0x0101010101010101llu;
+		// 7th bit set if 7th bit is zero
+		const Uint64 t1 = (~eq & 0x8080808080808080llu);
+		Uint64 zeroes = t0 & t1;
+
+		size_t j = 0;
+		while(zeroes)
+		{
+			if(zeroes & 0x80)
+			{
+				const char* substr = SDL_reinterpret_cast(char*, block_first) + j + 1;
+				if(memcmp(substr, needle + 1, needleSize - 2) == 0)
+				{
+					result = (i + j);
+					goto Continue_Result;
+				}
+			}
+
+			zeroes >>= 8;
+			++j;
+		}
+	}
+	
+	//Since we can read ahead the haystack it is possible that we find needle somewhere we don't want
+	Continue_Result:
+	if(result <= haystackSize - needleSize)
+		return result;
+
+	return std::string::npos;
+}
+#endif
+
+#ifdef __USE_SSE2__
+size_t UTIL_Faststrstr_SSE2(const char* haystack, size_t haystackSize, const char* needle, size_t needleSize)
+{
+	size_t result = std::string::npos;
+	if(needleSize > haystackSize)
+		return result;
+
+	const __m128i first = _mm_set1_epi8(needle[0]);
+	const __m128i last = _mm_set1_epi8(needle[needleSize - 1]);
+
+	// sequence scan
+	for(size_t i = 0; i < haystackSize; i += 16)
+	{
+		const __m128i block_first = _mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, haystack + i));
+		const __m128i block_last = _mm_loadu_si128(SDL_reinterpret_cast(const __m128i*, haystack + i + needleSize - 1));
+
+		const __m128i eq_first = _mm_cmpeq_epi8(first, block_first);
+		const __m128i eq_last = _mm_cmpeq_epi8(last, block_last);
+
+		Uint32 mask = _mm_movemask_epi8(_mm_and_si128(eq_first, eq_last));
+		while(mask != 0)
+		{
+			const Uint32 bitpos = UTIL_ctz(mask);
+			if(memcmp(haystack + i + bitpos + 1, needle + 1, needleSize - 2) == 0)
+			{
+				result = (i + bitpos);
+				goto Continue_Result;
+			}
+
+			mask &= (mask - 1);
+		}
+	}
+
+	//Since we can read ahead the haystack it is possible that we find needle somewhere we don't want
+	Continue_Result:
+	if(result <= haystackSize - needleSize)
+		return result;
+
+	return std::string::npos;
+}
+#endif
+
+#ifdef __USE_AVX2__
+size_t UTIL_Faststrstr_AVX2(const char* haystack, size_t haystackSize, const char* needle, size_t needleSize)
+{
+	size_t result = std::string::npos;
+	if(needleSize > haystackSize)
+		return result;
+
+	const __m256i first = _mm256_set1_epi8(needle[0]);
+	const __m256i last = _mm256_set1_epi8(needle[needleSize - 1]);
+
+	// sequence scan
+	for(size_t i = 0; i < haystackSize; i += 32)
+	{
+		const __m256i block_first = _mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, haystack + i));
+		const __m256i block_last = _mm256_loadu_si256(SDL_reinterpret_cast(const __m256i*, haystack + i + needleSize - 1));
+
+		const __m256i eq_first = _mm256_cmpeq_epi8(first, block_first);
+		const __m256i eq_last = _mm256_cmpeq_epi8(last, block_last);
+
+		Uint32 mask = _mm256_movemask_epi8(_mm256_and_si256(eq_first, eq_last));
+		while(mask != 0)
+		{
+			const Uint32 bitpos = UTIL_ctz(mask);
+			if(memcmp(haystack + i + bitpos + 1, needle + 1, needleSize - 2) == 0)
+			{
+				result = (i + bitpos);
+				goto Continue_Result;
+			}
+
+			mask &= (mask - 1);
+		}
+	}
+
+	//Since we can read ahead the haystack it is possible that we find needle somewhere we don't want
+	Continue_Result:
+	if(result <= haystackSize - needleSize)
+		return result;
+
+	return std::string::npos;
+}
+#endif
+
 void UTIL_initSubsystem()
 {
+	{
+		#if SIZEOF_VOIDP == 4
+		UTIL_Faststrstr = SDL_reinterpret_cast(LPUTIL_Faststrstr, UTIL_Faststrstr_Swar32);
+		#elif SIZEOF_VOIDP == 8
+		UTIL_Faststrstr = SDL_reinterpret_cast(LPUTIL_Faststrstr, UTIL_Faststrstr_Swar64);
+		#else
+		UTIL_Faststrstr = SDL_reinterpret_cast(LPUTIL_Faststrstr, UTIL_Faststrstr_Scalar);
+		#endif
+		#ifdef __USE_SSE2__
+		if(SDL_HasSSE2())
+		{
+			UTIL_Faststrstr = SDL_reinterpret_cast(LPUTIL_Faststrstr, UTIL_Faststrstr_SSE2);
+			#ifdef __USE_AVX2__
+			if(SDL_HasAVX2())
+				UTIL_Faststrstr = SDL_reinterpret_cast(LPUTIL_Faststrstr, UTIL_Faststrstr_AVX2);
+			#endif
+		}
+		#endif
+	}
 	UTIL_FastCopy = SDL_reinterpret_cast(LPUTIL_FastCopy, UTIL_FastCopy_Standard);
 	XTEA_decrypt = SDL_reinterpret_cast(LPXTEA_DECRYPT, XTEA_decrypt_scalar);
 	XTEA_encrypt = SDL_reinterpret_cast(LPXTEA_ENCRYPT, XTEA_encrypt_scalar);

@@ -908,6 +908,25 @@ void Creature::setOutfit(Uint16 lookType, Uint16 lookTypeEx, Uint8 lookHead, Uin
 	m_lookAddons = lookAddons;
 }
 
+void Creature::setSpeed(Uint16 speed)
+{
+	m_speed = speed;
+	if(g_game.hasGameFeature(GAME_FEATURE_NEWSPEED_LAW))
+	{
+		Sint32 stepSpeed = SDL_static_cast(Sint32, m_speed);
+		stepSpeed = (stepSpeed < 1 ? 1 : stepSpeed);//Make sure we don't get div by 0 exception
+
+		double formulatedSpeed = 1.0;
+		if(stepSpeed > -Creature::speedB)
+		{
+			formulatedSpeed = SDL_floor((Creature::speedA * SDL_log(stepSpeed + Creature::speedB) + Creature::speedC) + 0.5);
+			if(formulatedSpeed < 1.0)
+				formulatedSpeed = 1.0;
+		}
+		m_cacheFormulatedSpeed = SDL_static_cast(Uint32, formulatedSpeed);
+	}
+}
+
 void Creature::setSkull(Uint8 skull)
 {
 	m_skull = skull;
@@ -1215,16 +1234,7 @@ Sint32 Creature::getStepDuration(Sint32 groundSpeed, bool ignoreDiagonal)
 
 	Sint32 interval = 1000 * groundSpeed;
 	if(g_game.hasGameFeature(GAME_FEATURE_NEWSPEED_LAW))
-	{
-		double formulatedSpeed = 1.0;
-		if(speed > -Creature::speedB)
-		{
-			formulatedSpeed = SDL_floor((Creature::speedA * log(speed + Creature::speedB) + Creature::speedC) + 0.5);
-			if(formulatedSpeed < 1.0)
-				formulatedSpeed = 1.0;
-		}
-		interval = SDL_static_cast(Sint32, SDL_floor(interval / formulatedSpeed));
-	}
+		interval /= m_cacheFormulatedSpeed;
 	else
 		interval /= speed;
 

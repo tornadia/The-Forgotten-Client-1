@@ -2896,7 +2896,7 @@ VulkanTexture* SurfaceVulkan::loadPicture(Uint16 pictureId, bool linearSampler)
 	return s;
 }
 
-void SurfaceVulkan::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint32 cX[256], Sint32 cY[256], Sint32 cW[256], Sint32 cH[256])
+void SurfaceVulkan::drawFont(Uint16 pictureId, Sint32 x, Sint32 y, const std::string& text, size_t pos, size_t len, Uint8 r, Uint8 g, Uint8 b, Sint16 cX[256], Sint16 cY[256], Sint16 cW[256], Sint16 cH[256])
 {
 	VulkanTexture* tex = &m_pictures[pictureId];
 	if(!tex->m_textureImage)

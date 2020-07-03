@@ -137,6 +137,8 @@ SDL_FORCE_INLINE bool UTIL_isPartySharedEnabled(Uint8 shield)
 
 void UTIL_initSubsystem();
 
+typedef size_t(*LPUTIL_Faststrstr)(const char* haystack, size_t haystackSize, const char* needle, size_t needleSize);
+extern LPUTIL_Faststrstr UTIL_Faststrstr;
 typedef bool(*LPUTIL_FastCopy)(Uint8*, const Uint8*, size_t);
 extern LPUTIL_FastCopy UTIL_FastCopy;
 typedef bool(*LPXTEA_DECRYPT)(Uint8*, size_t, const Uint32*);
