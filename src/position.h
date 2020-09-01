@@ -205,7 +205,7 @@ struct Position
 	bool coveredUp(Sint32 n = 1)
 	{
 		Sint32 nx = SDL_static_cast(Sint32, x) + n, ny = SDL_static_cast(Sint32, y) + n, nz = SDL_static_cast(Sint32, z) - n;
-		if(nx >= 0 && nx <= 65535 && ny >= 0 && ny <= 65535 && nz >= 0 && nz <= GAME_MAP_FLOORS)
+		if(SDL_static_cast(Uint32, nx) <= 65535 && SDL_static_cast(Uint32, ny) <= 65535 && SDL_static_cast(Uint32, nz) <= GAME_MAP_FLOORS)
 		{
 			x = SDL_static_cast(Uint16, nx); y = SDL_static_cast(Uint16, ny); z = SDL_static_cast(Uint8, nz);
 			return true;
@@ -216,7 +216,7 @@ struct Position
 	bool coveredDown(Sint32 n = 1)
 	{
 		Sint32 nx = SDL_static_cast(Sint32, x) - n, ny = SDL_static_cast(Sint32, y) - n, nz = SDL_static_cast(Sint32, z) + n;
-		if(nx >= 0 && nx <= 65535 && ny >= 0 && ny <= 65535 && nz >= 0 && nz <= GAME_MAP_FLOORS)
+		if(SDL_static_cast(Uint32, nx) <= 65535 && SDL_static_cast(Uint32, ny) <= 65535 && SDL_static_cast(Uint32, nz) <= GAME_MAP_FLOORS)
 		{
 			x = SDL_static_cast(Uint16, nx); y = SDL_static_cast(Uint16, ny); z = SDL_static_cast(Uint8, nz);
 			return true;

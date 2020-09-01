@@ -628,7 +628,6 @@ void UTIL_toggleBattleWindow()
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
 	GUI_DynamicLabel* newLabel = new GUI_DynamicLabel(iRect(19, 2, 100, 14), BATTLE_TITLE, 0, 144, 144, 144);
-	newLabel->startEvents();
 	newWindow->addChild(newLabel);
 	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, savedHeight), newWindow, BATTLE_CONTAINER_EVENTID);
 	UTIL_recreateBattleWindow(newContainer);
@@ -737,7 +736,6 @@ void UTIL_togglePartyWindow()
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
 	GUI_DynamicLabel* newLabel = new GUI_DynamicLabel(iRect(19, 2, 100, 14), PARTY_TITLE, 0, 144, 144, 144);
-	newLabel->startEvents();
 	newWindow->addChild(newLabel);
 	GUI_Container* newContainer = new GUI_Container(iRect(2, 13, 168, savedHeight), newWindow, PARTY_CONTAINER_EVENTID);
 	UTIL_recreatePartyWindow(newContainer);

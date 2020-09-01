@@ -22,7 +22,6 @@
 #ifndef __FILE_GUI_CONTAINERWINDOW_h_
 #define __FILE_GUI_CONTAINERWINDOW_h_
 
-#include "../GUI_Elements/GUI_Element.h"
 #include "../GUI_Elements/GUI_Container.h"
 
 class GUI_ContainerImage : public GUI_Element

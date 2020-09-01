@@ -38,7 +38,7 @@ class RSA
 		RSA& operator=(RSA&&) = delete;
 
 		void setKey(const char* publicKey);
-		void encrypt(Uint8* msg) const;
+		void encrypt(Uint8* msg);
 
 	private:
 		Uint1024 m_mod;

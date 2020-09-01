@@ -278,7 +278,6 @@ char* SDL_GetCPUName()
 	#endif
 }
 
-#ifdef __USE_SSE2__
 Uint32 UTIL_ctz(Uint32 mask)
 {
 	#if ((__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 4)))
@@ -305,7 +304,32 @@ Uint32 UTIL_ctz(Uint32 mask)
 	return pos;
 	#endif
 }
-#endif
+
+Uint32 UTIL_clz(Uint32 mask)
+{
+	#if ((__GNUC__ >= 4) || ((__GNUC__ == 3) && (__GNUC_MINOR__ >= 4)))
+	return __builtin_clz(mask);
+	#elif defined(__GNUC__)
+	Uint32 pos;
+	asm("bsr %1, %0" : "=r" (pos) : "rm" (mask));
+	return pos;
+	#elif (_MSC_VER >= 1300)
+	DWORD pos;
+	_BitScanReverse(&pos, mask);
+	return SDL_static_cast(Uint32, pos);
+	#elif defined(_MSC_VER)
+	Uint32 pos;
+	__asm bsr pos, mask
+	return pos;
+	#else
+	for(Sint32 bits = 31; bits > 0; --bits)
+	{
+		if(mask & (1 << bits))
+			return bits;
+	}
+	return 0;
+	#endif
+}
 
 void UTIL_integer_scale(Sint32& w, Sint32& h, Sint32 expectW, Sint32 expectH, Sint32 limitW, Sint32 limitH)
 {

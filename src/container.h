@@ -41,21 +41,21 @@ class Container
 		Container(Container&&) = delete;
 		Container& operator=(Container&&) = delete;
 		
-		SDL_FORCE_INLINE ItemUI* getItem() {return m_containerItem;}
+		SDL_INLINE ItemUI* getItem() {return m_containerItem;}
 		ItemUI* getItem(size_t index);
-		SDL_FORCE_INLINE std::vector<ItemUI*>& getItems() {return m_items;}
-		SDL_FORCE_INLINE std::string& getName() {return m_name;}
-		SDL_FORCE_INLINE Uint16 getSize() {return m_size;}
-		SDL_FORCE_INLINE Uint16 getFirstIndex() {return m_firstIndex;}
-		SDL_FORCE_INLINE Uint8 getCid() {return m_id;}
-		SDL_FORCE_INLINE Uint8 getCapacity() {return m_capacity;}
-		SDL_FORCE_INLINE bool hasParent() {return m_hasParent;}
-		SDL_FORCE_INLINE bool canUseDepotSearch() {return m_canUseDepotSearch;}
-		SDL_FORCE_INLINE bool isUnlocked() {return m_isUnlocked;}
-		SDL_FORCE_INLINE bool hasPages() {return m_hasPages;}
+		SDL_INLINE std::vector<ItemUI*>& getItems() {return m_items;}
+		SDL_INLINE std::string& getName() {return m_name;}
+		SDL_INLINE Uint16 getSize() {return m_size;}
+		SDL_INLINE Uint16 getFirstIndex() {return m_firstIndex;}
+		SDL_INLINE Uint8 getCid() {return m_id;}
+		SDL_INLINE Uint8 getCapacity() {return m_capacity;}
+		SDL_INLINE bool hasParent() {return m_hasParent;}
+		SDL_INLINE bool canUseDepotSearch() {return m_canUseDepotSearch;}
+		SDL_INLINE bool isUnlocked() {return m_isUnlocked;}
+		SDL_INLINE bool hasPages() {return m_hasPages;}
 
 		SDL_INLINE void resetDirty() {m_dirty = false;}
-		SDL_FORCE_INLINE bool isDirty() {return m_dirty;}
+		SDL_INLINE bool isDirty() {return m_dirty;}
 
 		void addItem(Uint16 slot, ItemUI* item);
 		void setItems(std::vector<ItemUI*>& items);

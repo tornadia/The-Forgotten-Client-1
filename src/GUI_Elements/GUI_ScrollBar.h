@@ -37,8 +37,8 @@ class GUI_HScrollBar : public GUI_Element
 		GUI_HScrollBar(GUI_HScrollBar&&) = delete;
 		GUI_HScrollBar& operator=(GUI_HScrollBar&&) = delete;
 		
-		SDL_FORCE_INLINE Sint32 getScrollSize() {return m_scrollSize;}
-		SDL_FORCE_INLINE Sint32 getScrollPos() {return m_scrollPos[1];}
+		SDL_INLINE Sint32 getScrollSize() {return m_scrollSize;}
+		SDL_INLINE Sint32 getScrollPos() {return m_scrollPos[1];}
 
 		void setRect(iRect& NewRect);
 		void setBarEventCallback(void(*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);
@@ -79,8 +79,8 @@ class GUI_VScrollBar : public GUI_Element
 		GUI_VScrollBar(GUI_VScrollBar&&) = delete;
 		GUI_VScrollBar& operator=(GUI_VScrollBar&&) = delete;
 
-		SDL_FORCE_INLINE Sint32 getScrollSize() {return m_scrollSize;}
-		SDL_FORCE_INLINE Sint32 getScrollPos() {return m_scrollPos[1];}
+		SDL_INLINE Sint32 getScrollSize() {return m_scrollSize;}
+		SDL_INLINE Sint32 getScrollPos() {return m_scrollPos[1];}
 
 		void setRect(iRect& NewRect);
 		void setBarEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);

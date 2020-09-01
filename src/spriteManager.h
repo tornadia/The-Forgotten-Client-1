@@ -26,7 +26,7 @@
 
 struct SpriteData
 {
-	unsigned char* data;
+	unsigned char data[4096];
 	bool bgra;
 };
 
@@ -71,10 +71,10 @@ class SpriteManager
 
 		void unloadSprites();
 		void manageSprites(std::vector<Uint32>& fromSprites, std::vector<Uint32>& toSprites, Uint8& width, Uint8& height);
-		SDL_FORCE_INLINE bool isSprLoaded() {return m_sprLoaded;}
+		SDL_INLINE bool isSprLoaded() {return m_sprLoaded;}
 
 		unsigned char* LoadSpriteSheet_BMP(const std::string& spriteFile, size_t& outputSize);
-		unsigned char* SplitSpriteSheet(SDL_Surface* sheet, Sint32 x, Sint32 y);
+		void SplitSpriteSheet(SDL_Surface* sheet, unsigned char* destData, Sint32 x, Sint32 y);
 		bool LoadSpriteSheet(Uint32 spriteId, bool bgra);
 		unsigned char* LoadSprite_NEW(Uint32 spriteId, bool bgra);
 

@@ -216,110 +216,110 @@ class Game
 		Uint8 findEmptyContainerId();
 		bool containerHasParent(Uint8 cid);
 
-		SDL_FORCE_INLINE ItemUI* getInventoryItem(Uint8 slot) {return m_inventoryItem[slot];}
+		SDL_INLINE ItemUI* getInventoryItem(Uint8 slot) {return m_inventoryItem[slot];}
 
 		SDL_INLINE void setPlayerID(Uint32 localPlayerId) {m_localPlayerId = localPlayerId;}
-		SDL_FORCE_INLINE Uint32 getPlayerID() {return m_localPlayerId;}
+		SDL_INLINE Uint32 getPlayerID() {return m_localPlayerId;}
 		SDL_INLINE void setAttackID(Uint32 attackId) {m_attackId = attackId;}
-		SDL_FORCE_INLINE Uint32 getAttackID() {return m_attackId;}
+		SDL_INLINE Uint32 getAttackID() {return m_attackId;}
 		SDL_INLINE void setFollowID(Uint32 followId) {m_followId = followId;}
-		SDL_FORCE_INLINE Uint32 getFollowID() {return m_followId;}
+		SDL_INLINE Uint32 getFollowID() {return m_followId;}
 		SDL_INLINE void setSelectID(Uint32 selectId) {m_selectId = selectId;}
-		SDL_FORCE_INLINE Uint32 getSelectID() {return m_selectId;}
+		SDL_INLINE Uint32 getSelectID() {return m_selectId;}
 
 		void resetPlayerExperienceTable();
 		void updatePlayerExperienceTable();
-		SDL_FORCE_INLINE double getPlayerExperienceSpeed() {return m_playerExpSpeed;}
+		SDL_INLINE double getPlayerExperienceSpeed() {return m_playerExpSpeed;}
 		std::string getPlayerName();
 
 		void setPlayerExperience(Uint64 experience);
-		SDL_FORCE_INLINE Uint64 getPlayerExperience() {return m_playerExperience;}
-		SDL_FORCE_INLINE Uint64 getExpForLevel(Sint32 lvl) {Uint64 lv = SDL_static_cast(Uint64, lvl - 1); return ((50ULL * lv * lv * lv) - (150ULL * lv * lv) + (400ULL * lv)) / 3;}
+		SDL_INLINE Uint64 getPlayerExperience() {return m_playerExperience;}
+		SDL_INLINE Uint64 getExpForLevel(Sint32 lvl) {Uint64 lv = SDL_static_cast(Uint64, lvl - 1); return ((50ULL * lv * lv * lv) - (150ULL * lv * lv) + (400ULL * lv)) / 3;}
 
 		void setPlayerCapacity(double capacity, double totalCapacity);
-		SDL_FORCE_INLINE double getPlayerCapacity() {return m_playerCapacity;}
-		SDL_FORCE_INLINE double getPlayerTotalCapacity() {return m_playerTotalCapacity;}
+		SDL_INLINE double getPlayerCapacity() {return m_playerCapacity;}
+		SDL_INLINE double getPlayerTotalCapacity() {return m_playerTotalCapacity;}
 
 		void setPlayerHealth(Uint32 health, Uint32 maxHealth);
-		SDL_FORCE_INLINE Uint32 getPlayerHealth() {return m_playerHealth;}
-		SDL_FORCE_INLINE Uint32 getPlayerMaxHealth() {return m_playerMaxHealth;}
-		SDL_FORCE_INLINE Uint8 getPlayerHealthPercent() {return m_playerHealthPercent;}
+		SDL_INLINE Uint32 getPlayerHealth() {return m_playerHealth;}
+		SDL_INLINE Uint32 getPlayerMaxHealth() {return m_playerMaxHealth;}
+		SDL_INLINE Uint8 getPlayerHealthPercent() {return m_playerHealthPercent;}
 
 		void setPlayerMana(Uint32 mana, Uint32 maxMana);
-		SDL_FORCE_INLINE Uint32 getPlayerMana() {return m_playerMana;}
-		SDL_FORCE_INLINE Uint32 getPlayerMaxMana() {return m_playerMaxMana;}
-		SDL_FORCE_INLINE Uint8 getPlayerManaPercent() {return m_playerManaPercent;}
+		SDL_INLINE Uint32 getPlayerMana() {return m_playerMana;}
+		SDL_INLINE Uint32 getPlayerMaxMana() {return m_playerMaxMana;}
+		SDL_INLINE Uint8 getPlayerManaPercent() {return m_playerManaPercent;}
 
 		void setPlayerLevel(Uint16 level, Uint8 levelPercent);
-		SDL_FORCE_INLINE Uint16 getPlayerLevel() {return m_playerLevel;}
-		SDL_FORCE_INLINE Uint8 getPlayerLevelPercent() {return m_playerLevelPercent;}
+		SDL_INLINE Uint16 getPlayerLevel() {return m_playerLevel;}
+		SDL_INLINE Uint8 getPlayerLevelPercent() {return m_playerLevelPercent;}
 
 		void setPlayerMagicLevel(Uint16 level, Uint16 baseLevel, Uint8 levelPercent);
-		SDL_FORCE_INLINE Uint16 getPlayerMagicLevel() {return m_playerMagicLevel;}
-		SDL_FORCE_INLINE Uint16 getPlayerBaseMagicLevel() {return m_playerBaseMagicLevel;}
-		SDL_FORCE_INLINE Uint8 getPlayerMagicLevelPercent() {return m_playerMagicLevelPercent;}
+		SDL_INLINE Uint16 getPlayerMagicLevel() {return m_playerMagicLevel;}
+		SDL_INLINE Uint16 getPlayerBaseMagicLevel() {return m_playerBaseMagicLevel;}
+		SDL_INLINE Uint8 getPlayerMagicLevelPercent() {return m_playerMagicLevelPercent;}
 
 		void setPlayerStamina(Uint16 stamina);
-		SDL_FORCE_INLINE Uint16 getPlayerStamina() {return m_playerStamina;}
+		SDL_INLINE Uint16 getPlayerStamina() {return m_playerStamina;}
 		void setPlayerSoul(Uint8 soul);
-		SDL_FORCE_INLINE Uint8 getPlayerSoul() {return m_playerSoul;}
+		SDL_INLINE Uint8 getPlayerSoul() {return m_playerSoul;}
 		void setPlayerBaseSpeed(Uint16 baseSpeed);
-		SDL_FORCE_INLINE Uint16 getPlayerBaseSpeed() {return m_playerBaseSpeed;}
+		SDL_INLINE Uint16 getPlayerBaseSpeed() {return m_playerBaseSpeed;}
 		void setPlayerRegeneration(Uint16 regeneration);
-		SDL_FORCE_INLINE Uint16 getPlayerRegeneration() {return m_playerRegeneration;}
+		SDL_INLINE Uint16 getPlayerRegeneration() {return m_playerRegeneration;}
 		void setPlayerOfflineTraining(Uint16 offlineTime);
-		SDL_FORCE_INLINE Uint16 getPlayerOfflineTraining() {return m_playerOfflineTraining;}
+		SDL_INLINE Uint16 getPlayerOfflineTraining() {return m_playerOfflineTraining;}
 
 		void setPlayerExpBonus(double expBonus);
 		void setPlayerTournamentFactor(Sint32 factor) {m_playerTournamentFactor = factor;}
 		void setPlayerExpBonus(Uint16 baseXp, Uint16 voucherXp, Uint16 grindingXp, Uint16 storeXp, Uint16 huntingXp);
-		SDL_FORCE_INLINE double getPlayerExpBonus() {return m_playerExpBonus;}
-		SDL_FORCE_INLINE Uint16 getPlayerBaseXpGain() {return m_playerBaseXpGain;}
-		SDL_FORCE_INLINE Sint32 getPlayerTournamentFactor() {return m_playerTournamentFactor;}
-		SDL_FORCE_INLINE Uint16 getPlayerVoucherXpGain() {return m_playerVoucherXpGain;}
-		SDL_FORCE_INLINE Uint16 getPlayerGrindingXpGain() {return m_playerGrindingXpGain;}
-		SDL_FORCE_INLINE Uint16 getPlayerStoreXpGain() {return m_playerStoreXpGain;}
-		SDL_FORCE_INLINE Uint16 getPlayerHuntingXpGain() {return m_playerHuntingXpGain;}
+		SDL_INLINE double getPlayerExpBonus() {return m_playerExpBonus;}
+		SDL_INLINE Uint16 getPlayerBaseXpGain() {return m_playerBaseXpGain;}
+		SDL_INLINE Sint32 getPlayerTournamentFactor() {return m_playerTournamentFactor;}
+		SDL_INLINE Uint16 getPlayerVoucherXpGain() {return m_playerVoucherXpGain;}
+		SDL_INLINE Uint16 getPlayerGrindingXpGain() {return m_playerGrindingXpGain;}
+		SDL_INLINE Uint16 getPlayerStoreXpGain() {return m_playerStoreXpGain;}
+		SDL_INLINE Uint16 getPlayerHuntingXpGain() {return m_playerHuntingXpGain;}
 		
 		void setPlayerSkill(Skills skill, Uint16 level, Uint16 baseLevel, Uint8 levelPercent);
-		SDL_FORCE_INLINE Uint16 getPlayerSkillLevel(Skills skill) {return m_playerSkillsLevel[skill];}
-		SDL_FORCE_INLINE Uint16 getPlayerSkillBaseLevel(Skills skill) {return m_playerSkillsBaseLevel[skill];}
-		SDL_FORCE_INLINE Uint8 getPlayerSkillLevelPercent(Skills skill) {return m_playerSkillsLevelPercent[skill];}
+		SDL_INLINE Uint16 getPlayerSkillLevel(Skills skill) {return m_playerSkillsLevel[skill];}
+		SDL_INLINE Uint16 getPlayerSkillBaseLevel(Skills skill) {return m_playerSkillsBaseLevel[skill];}
+		SDL_INLINE Uint8 getPlayerSkillLevelPercent(Skills skill) {return m_playerSkillsLevelPercent[skill];}
 
 		SDL_INLINE void setServerBeat(Uint16 serverBeat) {m_serverBeat = serverBeat;}
-		SDL_FORCE_INLINE Uint16 getServerBeat() {return m_serverBeat;}
+		SDL_INLINE Uint16 getServerBeat() {return m_serverBeat;}
 		SDL_INLINE void setGameTime(Uint16 gameTime) {m_gameTime = gameTime;}
-		SDL_FORCE_INLINE Uint16 getGameTime() {return m_gameTime;}
+		SDL_INLINE Uint16 getGameTime() {return m_gameTime;}
 		
 		SDL_INLINE void setIcons(Uint32 icons) {m_icons = icons;}
-		SDL_FORCE_INLINE Uint32 getIcons() {return m_icons;}
+		SDL_INLINE Uint32 getIcons() {return m_icons;}
 
 		SDL_INLINE void resetCachedStats() {m_cached_stats = 0;}
 		SDL_INLINE void resetCachedSkills() {m_cached_skills = 0;}
-		SDL_FORCE_INLINE bool hasCachedStat(Stats_Cached_State flag) {return (m_cached_stats & flag) != 0;}
-		SDL_FORCE_INLINE bool hasCachedSkill(Skills_Cached_State flag) {return (m_cached_skills & flag) != 0;}
+		SDL_INLINE bool hasCachedStat(Stats_Cached_State flag) {return (m_cached_stats & flag) != 0;}
+		SDL_INLINE bool hasCachedSkill(Skills_Cached_State flag) {return (m_cached_skills & flag) != 0;}
 
 		SDL_INLINE void setCanReportBugs(bool canReportBugs) {m_canReportBugs = canReportBugs;}
-		SDL_FORCE_INLINE bool getCanReportBugs() {return m_canReportBugs;}
+		SDL_INLINE bool getCanReportBugs() {return m_canReportBugs;}
 
 		SDL_INLINE void setExpertPvpMode(bool expertPvpMode) {m_expertPvpMode = expertPvpMode;}
-		SDL_FORCE_INLINE bool getExpertPvpMode() {return m_expertPvpMode;}
+		SDL_INLINE bool getExpertPvpMode() {return m_expertPvpMode;}
 		SDL_INLINE void setCanChangePvpFrames(bool canChangePvpFrames) {m_canChangePvpFrames = canChangePvpFrames;}
-		SDL_FORCE_INLINE bool getCanChangePvpFrames() {return m_canChangePvpFrames;}
+		SDL_INLINE bool getCanChangePvpFrames() {return m_canChangePvpFrames;}
 		SDL_INLINE void setHaveExivaRestrictions(bool haveExivaRestrictions) {m_haveExivaRestrictions = haveExivaRestrictions;}
-		SDL_FORCE_INLINE bool getHaveExivaRestrictions() {return m_haveExivaRestrictions;}
+		SDL_INLINE bool getHaveExivaRestrictions() {return m_haveExivaRestrictions;}
 		SDL_INLINE void setTournamentEnabled(bool tournamentEnabled) {m_tournamentEnabled = tournamentEnabled;}
-		SDL_FORCE_INLINE bool getTournamentEnabled() {return m_tournamentEnabled;}
+		SDL_INLINE bool getTournamentEnabled() {return m_tournamentEnabled;}
 		
 		SDL_INLINE void setStoreUrl(std::string storeUrl) {m_storeUrl = std::move(storeUrl);}
-		SDL_FORCE_INLINE std::string& getStoreUrl() {return m_storeUrl;}
+		SDL_INLINE std::string& getStoreUrl() {return m_storeUrl;}
 		SDL_INLINE void setStorePackages(Uint16 storePackages) {m_storePackages = storePackages;}
-		SDL_FORCE_INLINE Uint16 getStorePackages() {return m_storePackages;}
+		SDL_INLINE Uint16 getStorePackages() {return m_storePackages;}
 		
 		SDL_INLINE void setResourceBalance(ResourceBalanceTypes type, Uint64 balance) {m_resourceBalances[type] = balance;}
-		SDL_FORCE_INLINE Uint64 getResourceBalance(ResourceBalanceTypes type) {std::map<ResourceBalanceTypes, Uint64>::iterator it = m_resourceBalances.find(type); if(it != m_resourceBalances.end()) return it->second; return 0;}
+		SDL_INLINE Uint64 getResourceBalance(ResourceBalanceTypes type) {std::map<ResourceBalanceTypes, Uint64>::iterator it = m_resourceBalances.find(type); if(it != m_resourceBalances.end()) return it->second; return 0;}
 		SDL_INLINE void setCharmPoints(Sint32 charmPoints) {m_playerCharmPoints = charmPoints;}
-		SDL_FORCE_INLINE Sint32 getCharmPoints() {return m_playerCharmPoints;}
+		SDL_INLINE Sint32 getCharmPoints() {return m_playerCharmPoints;}
 		
 	protected:
 		std::bitset<GAME_FEATURE_LAST> m_gameFeatures;

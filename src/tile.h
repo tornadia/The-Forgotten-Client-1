@@ -76,8 +76,8 @@ class Tile
 		bool isPathable();
 		bool mustHookEast();
 		bool mustHookSouth();
-		SDL_FORCE_INLINE bool hasTranslucentLight() {return m_hasTranslucentLight;}
-		SDL_FORCE_INLINE bool isCreatureLying() {return m_lyingCorpses;}
+		SDL_INLINE bool hasTranslucentLight() {return m_hasTranslucentLight;}
+		SDL_INLINE bool isCreatureLying() {return m_lyingCorpses;}
 
 		void recacheTranslucentLight();
 		void recacheLyingCorpses();
@@ -86,8 +86,8 @@ class Tile
 		Uint16 getGroundSpeed();
 		Uint16 getMinimapSpeed();
 		Uint16 getMinimapColor();
-		SDL_FORCE_INLINE Sint32 getTileElevation() {return m_tileElevation;}
-		SDL_FORCE_INLINE Position& getPosition() {return m_position;}
+		SDL_INLINE Sint32 getTileElevation() {return m_tileElevation;}
+		SDL_INLINE Position& getPosition() {return m_position;}
 
 		bool hasground();
 		bool isFullground();

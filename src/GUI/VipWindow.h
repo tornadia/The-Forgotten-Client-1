@@ -22,8 +22,8 @@
 #ifndef __FILE_GUI_VIPWINDOW_h_
 #define __FILE_GUI_VIPWINDOW_h_
 
-#include "../GUI_Elements/GUI_Element.h"
 #include "../GUI_Elements/GUI_Container.h"
+#include "../GUI_Elements/GUI_Label.h"
 
 class GUI_VipChecker : public GUI_Element
 {
@@ -58,7 +58,6 @@ class GUI_VipContainer : public GUI_Container
 		void onRMouseUp(Sint32 x, Sint32 y);
 };
 
-class GUI_DynamicLabel;
 class GUI_VipPlayer : public GUI_Element
 {
 	public:
@@ -80,7 +79,7 @@ class GUI_VipPlayer : public GUI_Element
 		void render();
 
 	protected:
-		GUI_DynamicLabel* m_name;
+		GUI_DynamicLabel m_name;
 		Uint32 m_GUID;
 		Uint32 m_iconId;
 		bool m_hover = false;
@@ -107,7 +106,7 @@ class GUI_VipGroup : public GUI_Element
 		void render();
 
 	protected:
-		GUI_DynamicLabel* m_name;
+		GUI_DynamicLabel m_name;
 		Uint8 m_groupId;
 		bool m_hover = false;
 };

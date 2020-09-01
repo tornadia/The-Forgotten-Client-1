@@ -45,13 +45,6 @@ void SpriteManager::unloadSprites()
 		m_cachedSprites = NULL;
 	}
 
-	for(std::map<Uint32, SpriteData>::iterator it = m_spriteData.begin(), end = m_spriteData.end(); it != end; ++it)
-	{
-		SpriteData& spriteData = it->second;
-		if(spriteData.data)
-			SDL_free(spriteData.data);
-	}
-
 	m_spriteData.clear();
 	m_spriteSheets.clear();
 	m_spriteOffsets.clear();
@@ -203,23 +196,17 @@ unsigned char* SpriteManager::LoadSpriteSheet_BMP(const std::string& spriteFile,
 	return NULL;
 }
 
-unsigned char* SpriteManager::SplitSpriteSheet(SDL_Surface* sheet, Sint32 x, Sint32 y)
+void SpriteManager::SplitSpriteSheet(SDL_Surface* sheet, unsigned char* destData, Sint32 x, Sint32 y)
 {
-	unsigned char* destData = SDL_reinterpret_cast(unsigned char*, SDL_malloc(4096));
-	if(destData)
+	Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, sheet->pixels) + (y * sheet->w + x) * 4);
+	Sint32 dgap = (sheet->pitch / 4);
+	for(Sint32 h = 0; h < 32; h += 4)
 	{
-		Uint32* dp = SDL_reinterpret_cast(Uint32*, SDL_reinterpret_cast(Uint8*, sheet->pixels) + (y * sheet->w + x) * 4);
-		Sint32 dgap = (sheet->pitch / 4);
-		for(Sint32 h = 0; h < 32; h += 4)
-		{
-			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, destData + ((h + 0) * 128)), SDL_reinterpret_cast(const Uint8*, dp), 128); dp += dgap;
-			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, destData + ((h + 1) * 128)), SDL_reinterpret_cast(const Uint8*, dp), 128); dp += dgap;
-			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, destData + ((h + 2) * 128)), SDL_reinterpret_cast(const Uint8*, dp), 128); dp += dgap;
-			UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, destData + ((h + 3) * 128)), SDL_reinterpret_cast(const Uint8*, dp), 128); dp += dgap;
-		}
-		return destData;
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, destData + ((h + 0) * 128)), SDL_reinterpret_cast(const Uint8*, dp), 128); dp += dgap;
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, destData + ((h + 1) * 128)), SDL_reinterpret_cast(const Uint8*, dp), 128); dp += dgap;
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, destData + ((h + 2) * 128)), SDL_reinterpret_cast(const Uint8*, dp), 128); dp += dgap;
+		UTIL_FastCopy(SDL_reinterpret_cast(Uint8*, destData + ((h + 3) * 128)), SDL_reinterpret_cast(const Uint8*, dp), 128); dp += dgap;
 	}
-	return NULL;
 }
 
 bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
@@ -264,8 +251,8 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 								goto Exit_Nest_Loop;
 
 							SpriteData& newSpriteData0 = m_spriteData[currentSprite++];
-							newSpriteData0.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData0.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData0.data, x * 32, y * 32);
 						}
 					}
 				}
@@ -280,12 +267,12 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 								goto Exit_Nest_Loop;
 
 							SpriteData& newSpriteData0 = m_spriteData[currentSprite++];
-							newSpriteData0.data = SplitSpriteSheet(bmpSurface, x * 32, (y + 1) * 32);
 							newSpriteData0.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData0.data, x * 32, (y + 1) * 32);
 
 							SpriteData& newSpriteData1 = m_spriteData[currentSprite++];
-							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData1.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData1.data, x * 32, y * 32);
 						}
 					}
 				}
@@ -300,12 +287,12 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 								goto Exit_Nest_Loop;
 
 							SpriteData& newSpriteData0 = m_spriteData[currentSprite++];
-							newSpriteData0.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, y * 32);
 							newSpriteData0.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData0.data, (x + 1) * 32, y * 32);
 
 							SpriteData& newSpriteData1 = m_spriteData[currentSprite++];
-							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData1.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData1.data, x * 32, y * 32);
 						}
 					}
 				}
@@ -320,26 +307,29 @@ bool SpriteManager::LoadSpriteSheet(Uint32 spriteId, bool bgra)
 								goto Exit_Nest_Loop;
 
 							SpriteData& newSpriteData0 = m_spriteData[currentSprite++];
-							newSpriteData0.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, (y + 1) * 32);
 							newSpriteData0.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData0.data, (x + 1) * 32, (y + 1) * 32);
 
 							SpriteData& newSpriteData1 = m_spriteData[currentSprite++];
-							newSpriteData1.data = SplitSpriteSheet(bmpSurface, x * 32, (y + 1) * 32);
 							newSpriteData1.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData1.data, x * 32, (y + 1) * 32);
 
 							SpriteData& newSpriteData2 = m_spriteData[currentSprite++];
-							newSpriteData2.data = SplitSpriteSheet(bmpSurface, (x + 1) * 32, y * 32);
 							newSpriteData2.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData2.data, (x + 1) * 32, y * 32);
 
 							SpriteData& newSpriteData3 = m_spriteData[currentSprite++];
-							newSpriteData3.data = SplitSpriteSheet(bmpSurface, x * 32, y * 32);
 							newSpriteData3.bgra = bgra;
+							SplitSpriteSheet(bmpSurface, newSpriteData3.data, x * 32, y * 32);
 						}
 					}
 				}
 				break;
 				default:
+				{
+					SDL_FreeSurface(bmpSurface);
 					return false;
+				}
 			}
 			Exit_Nest_Loop:
 			SDL_FreeSurface(bmpSurface);

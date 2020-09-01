@@ -103,6 +103,7 @@ void ProtocolGame::parseMessage(InputMessage& msg)
 		case RecvTradeOwnOpcode: parseTradeOwn(msg); break;
 		case RecvTradeCounterOpcode: parseTradeCounter(msg); break;
 		case RecvTradeCloseOpcode: parseTradeClose(msg); break;
+		case RecvCharacterTradeConfigurationOpcode: parseCharacterTradeConfigurationLight(msg); break;
 		case RecvAmbientWorldLightOpcode: parseAmbientWorldLight(msg); break;
 		case RecvMagicEffectOpcode: (g_clientVersion >= 1203 ? parseMagicEffects(msg) : parseMagicEffect(msg)); break;
 		case RecvAnimatedTextOpcode: (g_clientVersion >= 1200 ? parseRemoveMagicEffect(msg) : parseAnimatedText(msg)); break;
@@ -246,11 +247,26 @@ void ProtocolGame::parseCreatureData(InputMessage& msg)
 
 void ProtocolGame::parseSessionDumpStart(InputMessage& msg)
 {
-	msg.getU32();//??
-	msg.getU16();//??
-	msg.getDouble();//??
-	msg.getDouble();//??
-	msg.getDouble();//??
+	Uint32 playerId = msg.getU32();
+	Uint16 serverBeat = msg.getU16();
+	Creature::speedA = msg.getDouble();
+	Creature::speedB = msg.getDouble();
+	Creature::speedC = msg.getDouble();
+	if(!m_gameInitialized)
+	{
+		g_engine.processGameStart();
+		m_gameInitialized = true;
+	}
+
+	g_game.setPlayerID(playerId);
+	g_game.setServerBeat(serverBeat);
+
+	Creature* creature = g_map.getCreatureById(playerId);
+	if(creature)
+	{
+		g_map.setLocalCreature(creature);
+		creature->setLocalCreature(true);
+	}
 }
 
 void ProtocolGame::parseLogin(InputMessage& msg)
@@ -292,7 +308,7 @@ void ProtocolGame::parseLogin(InputMessage& msg)
 		bool tournamentEnabled = msg.getBool();
 		if(tournamentEnabled)
 		{
-			Sint32 tournamentFactor = SDL_static_cast(Sint32, msg.getU32());
+			Sint32 tournamentFactor = msg.getS32();
 			g_game.setPlayerTournamentFactor(tournamentFactor);
 			if(g_clientVersion >= 1230)
 			{
@@ -982,8 +998,10 @@ void ProtocolGame::parseStash(InputMessage& msg)
 
 void ProtocolGame::parseSpecialContainersAvailable(InputMessage& msg)
 {
-	msg.getBool();//??
-	msg.getBool();//??
+	bool supplyStashAvailable = msg.getBool();
+	bool marketAvailable = msg.getBool();
+	(void)supplyStashAvailable;
+	(void)marketAvailable;
 }
 
 void ProtocolGame::parseDepotSearchResult(InputMessage& msg)
@@ -1315,8 +1333,8 @@ void ProtocolGame::parseMagicEffects(InputMessage& msg)
 				else
 					effectId = SDL_static_cast(Uint16, msg.getU8());
 
-				Uint16 deltaX = SDL_static_cast(Uint16, SDL_static_cast(Sint8, msg.getU8()));
-				Uint16 deltaY = SDL_static_cast(Uint16, SDL_static_cast(Sint8, msg.getU8()));
+				Uint16 deltaX = SDL_static_cast(Uint16, msg.getS8());
+				Uint16 deltaY = SDL_static_cast(Uint16, msg.getS8());
 				Position toPos = Position(fromPos.x + deltaX, fromPos.y + deltaY, fromPos.z);
 
 				g_map.checkDistanceEffects();
@@ -1825,11 +1843,11 @@ void ProtocolGame::parseTextMessage(InputMessage& msg)
 			Uint8 color[2];
 
 			//Physical Damage
-			value[0] = SDL_static_cast(Sint32, msg.getU32());
+			value[0] = msg.getS32();
 			color[0] = msg.getU8();
 
 			//Magic Damage
-			value[1] = SDL_static_cast(Sint32, msg.getU32());
+			value[1] = msg.getS32();
 			color[1] = msg.getU8();
 
 			text = msg.getString();
@@ -1850,7 +1868,7 @@ void ProtocolGame::parseTextMessage(InputMessage& msg)
 		case MessageExpOthers:
 		{
 			Position pos = msg.getPosition();
-			Sint32 value = SDL_static_cast(Sint32, msg.getU32());
+			Sint32 value = msg.getS32();
 			Uint8 color = msg.getU8();
 			text = msg.getString();
 
@@ -2451,6 +2469,9 @@ void ProtocolGame::parsePlayerTalk(InputMessage& msg)
 		statementId = msg.getU32();
 
 	const std::string playerName = UTIL_formatCreatureName(msg.getString());
+
+	if(g_clientVersion >= 1250 && statementId != 0)
+		msg.getBool();//(Traded)
 
 	Uint16 level = 0;
 	if(g_game.hasGameFeature(GAME_FEATURE_MESSAGE_LEVEL))
@@ -3088,7 +3109,7 @@ void ProtocolGame::parseMarketEnter(InputMessage& msg)
 
 	Sint8 vocation;
 	if(g_clientVersion < 950)
-		vocation = SDL_static_cast(Sint8, msg.getU8());
+		vocation = msg.getS8();
 	else
 		vocation = -1;
 
@@ -3256,6 +3277,8 @@ void ProtocolGame::parseStoreCoinBalance(InputMessage& msg)
 	{
 		coins = msg.getU32();
 		transferableCoins = msg.getU32();
+		if(g_clientVersion >= 1250)
+			msg.getU32();
 		if(g_game.hasGameFeature(GAME_FEATURE_TOURNAMENTS))
 		{
 			Uint32 tournamentCoins = msg.getU32();
@@ -3790,9 +3813,9 @@ void ProtocolGame::parseTransactionDetails(InputMessage& msg)
 			msg.getU32();//??
 			msg.getRawString();//??
 			msg.getRawString();//??
-			SDL_static_cast(Sint32, msg.getU32());//??
+			msg.getS32();//??
 			msg.getU32();//??
-			SDL_static_cast(Sint32, msg.getU32());//??
+			msg.getS32();//??
 		}
 		break;
 		case 1:
@@ -3810,7 +3833,7 @@ void ProtocolGame::parseTransactionDetails(InputMessage& msg)
 				msg.getU32();//??
 				msg.getRawString();//??
 				msg.getU8();//??
-				SDL_static_cast(Sint32, msg.getU32());//??
+				msg.getS32();//??
 			}
 		}
 		break;
@@ -4140,12 +4163,12 @@ void ProtocolGame::parseResourceBalance(InputMessage& msg)
 	ResourceBalanceTypes type = SDL_static_cast(ResourceBalanceTypes, msg.getU8());
 	if(type == RESOURCETYPE_CHARM_POINTS)
 	{
-		Sint32 charmPoints = SDL_static_cast(Sint32, msg.getU32());
+		Sint32 charmPoints = msg.getS32();
 		g_game.setCharmPoints(charmPoints);
 	}
 	else if(type == RESOURCETYPE_UNKNOWN60)
 	{
-		Sint32 balance = SDL_static_cast(Sint32, msg.getU32());
+		Sint32 balance = msg.getS32();
 		(void)balance;
 	}
 	else
@@ -4358,7 +4381,7 @@ void ProtocolGame::parseMonsterCyclopedia(InputMessage& msg)
 	Uint16 races = msg.getU16();
 	for(Uint16 i = 0; i < races; ++i)
 	{
-		const std::string raceName = msg.getRawString();
+		const std::string raceName = msg.getString();
 		Uint16 monsters = msg.getU16();
 		Uint16 knownMonsters = msg.getU16();
 		(void)raceName;
@@ -4389,7 +4412,7 @@ void ProtocolGame::parseMonsterCyclopediaMonsters(InputMessage& msg)
 void ProtocolGame::parseMonsterCyclopediaRace(InputMessage& msg)
 {
 	Uint16 monsterId = msg.getU16();
-	const std::string raceName = msg.getRawString();
+	const std::string raceName = msg.getString();
 	Uint8 progress = msg.getU8();
 	Uint32 totalKills = msg.getU32();
 	Uint16 killsToProgress1 = msg.getU16();
@@ -4476,7 +4499,7 @@ void ProtocolGame::parseMonsterCyclopediaRace(InputMessage& msg)
 
 void ProtocolGame::parseMonsterCyclopediaBonusEffects(InputMessage& msg)
 {
-	Sint32 charmPoints = SDL_static_cast(Sint32, msg.getU32());
+	Sint32 charmPoints = msg.getS32();
 	(void)charmPoints;
 	Uint8 charms = msg.getU8();
 	for(Uint8 i = 0; i < charms; ++i)
@@ -4594,7 +4617,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(InputMessage& msg)
 			Uint16 baseXp = msg.getU16();
 			if(g_clientVersion >= 1215)
 			{
-				Sint32 tournamentFactor = SDL_static_cast(Sint32, msg.getU32());
+				Sint32 tournamentFactor = msg.getS32();
 				(void)tournamentFactor;
 			}
 			Uint16 grindingXp = msg.getU16();
@@ -4723,7 +4746,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(InputMessage& msg)
 			for(Uint8 i = 0; i < combats; ++i)
 			{
 				Uint8 combatType = msg.getU8();
-				Sint8 combatValue = SDL_static_cast(Sint8, msg.getU8());
+				Sint8 combatValue = msg.getS8();
 				(void)combatType;
 				(void)combatValue;
 			}
@@ -4737,7 +4760,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(InputMessage& msg)
 			for(Uint16 i = 0; i < deaths; ++i)
 			{
 				Uint32 timestamp = msg.getU32();
-				const char* cause = msg.getRawString();
+				std::string cause = msg.getString();
 				(void)timestamp;
 				(void)cause;
 			}
@@ -4753,7 +4776,7 @@ void ProtocolGame::parseCyclopediaCharacterInfo(InputMessage& msg)
 			for(Uint16 i = 0; i < kills; ++i)
 			{
 				Uint32 timestamp = msg.getU32();
-				const char* description = msg.getRawString();
+				std::string description = msg.getString();
 				Uint8 status = msg.getU8();
 				(void)timestamp;
 				(void)description;
@@ -4778,8 +4801,8 @@ void ProtocolGame::parseCyclopediaCharacterInfo(InputMessage& msg)
 				bool secret = msg.getBool();
 				if(secret)
 				{
-					const char* name = msg.getRawString();
-					const char* description = msg.getRawString();
+					std::string name = msg.getString();
+					std::string description = msg.getString();
 					Uint8 grade = msg.getU8();
 					(void)name;
 					(void)description;
@@ -5844,7 +5867,7 @@ void ProtocolGame::parseTournamentLeaderboard(InputMessage& msg)
 			Uint8 worlds = msg.getU8();
 			for(Uint8 i = 0; i < worlds; ++i)
 			{
-				std::string worldName = msg.getRawString();
+				std::string worldName = msg.getString();
 				(void)worldName;
 				if(g_clientVersion >= 1240)
 					msg.getRawString();//??
@@ -5894,6 +5917,69 @@ void ProtocolGame::parseTournamentLeaderboard(InputMessage& msg)
 		}
 		break;
 		default: break;
+	}
+}
+
+void ProtocolGame::parseCharacterTradeConfigurationLight(InputMessage& msg)
+{
+	Uint8 type = msg.getU8();
+	switch(type)
+	{
+		case 0:
+		{
+			msg.getRawString();//??
+			msg.getU16();//??
+			Uint8 vocation = msg.getU8() % 10;
+			(void)vocation;
+			msg.getU8();//??
+			msg.getU32();//??
+			msg.getU32();//??
+			msg.getU16();//??
+			Uint8 size = msg.getU8();
+			for(Uint8 i = 0; i < size; ++i)
+			{
+				msg.getRawString();//??
+				msg.getBool();//??
+			}
+		}
+		break;
+		case 1:
+		case 2:
+		{
+			Uint16 size = msg.getU16();
+			for(Uint16 i = 0; i < size; ++i)
+			{
+				msg.getU16();//??
+				msg.getU32();//??
+			}
+		}
+		break;
+		case 3:
+		{
+			Uint8 size = msg.getU8();
+			for(Uint8 i = 0; i < size; ++i)
+			{
+				msg.getU8();//??
+				msg.getRawString();//??
+				Uint16 count = msg.getU16();
+				for(Uint16 j = 0; j < count; ++j)
+				{
+					msg.getU16();//??
+					msg.getRawString();//??
+				}
+			}
+		}
+		break;
+		case 4:
+		{
+			msg.getU16();//??
+			Uint8 size = msg.getU8();
+			for(Uint8 i = 0; i < size; ++i)
+			{
+				msg.getRawString();//??
+			}
+		}
+		break;
 	}
 }
 
@@ -5980,6 +6066,9 @@ void ProtocolGame::sendLogin(Uint32 challengeTimestamp, Uint8 challengeRandom)
 	msg.addU16(Protocol::getProtocolVersion());
 	if(g_game.hasGameFeature(GAME_FEATURE_CLIENT_VERSION))
 		msg.addU32(Protocol::getClientVersion());
+
+	if(g_clientVersion >= 1240)
+		msg.addString("00.00.00000");
 
 	if(g_game.hasGameFeature(GAME_FEATURE_CONTENT_REVISION))
 		msg.addU16(SDL_static_cast(Uint16, g_datRevision));
@@ -7876,6 +7965,41 @@ void ProtocolGame::sendTeleport(const Position& position)
 	OutputMessage msg(getHeaderPos());
 	msg.addU8(GameTeleportOpcode);
 	msg.addPosition(position);
+	onSend(msg);
+}
+
+void ProtocolGame::sendCharacterTradeConfigurationAction()
+{
+	OutputMessage msg(getHeaderPos());
+	msg.addU8(GameCharacterTradeConfigurationActionOpcode);
+	Uint8 something = 0;
+	msg.addU8(something);
+	if(something == 2 || something == 3)
+	{
+		msg.addU32(0);//??
+		msg.addU32(0);//??
+
+		Uint8 size = 0;
+		msg.addU8(size);
+		for(Uint8 i = 0; i < size; ++i)
+		{
+			msg.addU16(0);//??
+		}
+
+		size = 0;
+		msg.addU8(size);
+		for(Uint8 i = 0; i < size; ++i)
+		{
+			msg.addU16(0);//??
+		}
+
+		size = 0;
+		msg.addU8(size);
+		for(Uint8 i = 0; i < size; ++i)
+		{
+			msg.addU16(0);//??
+		}
+	}
 	onSend(msg);
 }
 

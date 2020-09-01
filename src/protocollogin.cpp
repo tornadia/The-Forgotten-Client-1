@@ -160,7 +160,7 @@ void ProtocolLogin::parseCharacterList(InputMessage& msg)
 			world.worldName = msg.getString();
 			world.worldIp = msg.getString();
 			world.worldPort = msg.getU16();
-			world.previewState = (msg.getU8() == 1);
+			world.previewState = msg.getBool();
 		}
 
 		Uint8 characterCount = msg.getU8();
@@ -196,7 +196,7 @@ void ProtocolLogin::parseCharacterList(InputMessage& msg)
 			character.worldIp = UTIL_ipv4_tostring(msg.getU32());
 			character.worldPort = msg.getU16();
 			if(g_game.hasGameFeature(GAME_FEATURE_PREVIEW_STATE))
-				character.previewState = (msg.getU8() == 1);
+				character.previewState = msg.getBool();
 			else
 				character.previewState = false;
 			

@@ -25,6 +25,8 @@
 #include "position.h"
 #include "screenText.h"
 
+#include <queue>
+
 #define MAP_WIDTH_OFFSET (GAME_MAP_WIDTH / 2)
 #define MAP_HEIGHT_OFFSET (GAME_MAP_HEIGHT / 2)
 
@@ -42,11 +44,25 @@ struct AStarNode
 	AStarNode* parent;
 	Sint32 f, g;
 	Uint16 x, y;
+	bool closedNode;
 };
 
+static const Sint32 MAX_NODES_GRIDSIZE = 256 * 256;
 static const Sint32 MAX_NODES_COMPLEXITY = 50000;
+
 static const Sint32 MAP_NORMALWALKFACTOR = 1;
 static const Sint32 MAP_DIAGONALWALKFACTOR = 2;
+
+struct CompareNode : std::binary_function<std::pair<Sint32, Sint32>, std::pair<Sint32, Sint32>, bool> {
+	bool operator()(std::pair<Sint32, Sint32> a, std::pair<Sint32, Sint32> b) const {
+		return b.first < a.first;
+	}
+};
+
+class PQueue_Nodes : public std::priority_queue<std::pair<Sint32, Sint32>, std::vector<std::pair<Sint32, Sint32>>, CompareNode>
+{
+	public: PQueue_Nodes(size_t reserve_size) {this->c.reserve(reserve_size);}
+};
 
 class AStarNodes
 {
@@ -64,17 +80,13 @@ class AStarNodes
 
 		bool createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 Sx, Sint32 Sy, const Position& targetPos, const Position& pos);
 		AStarNode* getBestNode();
-		void closeNode(AStarNode* node);
-		void openNode(AStarNode* node);
-		SDL_FORCE_INLINE Sint32 getNodeSize() const {return curNode;}
+		SDL_INLINE void openNode(AStarNode* node) {node->closedNode = false; openNodes.emplace((node->f + node->g), SDL_static_cast(Sint32, node - nodes));}
+		SDL_INLINE Sint32 getNodeSize() const {return curNode;}
 		AStarNode* getNodeByPosition(Uint32 xy);
 
-		static Sint32 getMapWalkFactor(AStarNode* node, const Position& neighborPos);
-
 	private:
-		std::vector<Sint32> openNodes;
-		std::vector<Sint32> openNodeTotalCost;
-		robin_hood::unordered_map<Uint32, Uint32> nodesTable;
+		PQueue_Nodes openNodes;
+		std::vector<Sint32> nodesTable;
 		AStarNode* nodes;
 		Sint32 curNode;
 };
@@ -113,8 +125,6 @@ class Map
 		void removeMagicEffects(Uint8 posZ);
 		void removeMagicEffects(const Position& position, Uint16 effectId);
 
-		bool checkSightLine(const Position& fromPos, const Position& toPos);
-		bool isSightClear(const Position& fromPos, const Position& toPos);
 		PathFind findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos);
 		Tile* findTile(Sint32 x, Sint32 y, iRect& gameWindow, Sint32 scaledSize, float scale, Creature*& topCreature, bool multifloor);
 
@@ -127,7 +137,7 @@ class Map
 		Creature* getCreatureById(Uint32 creatureId);
 
 		void setCentralPosition(Position pos);
-		SDL_FORCE_INLINE Position& getCentralPosition() {return m_centerPosition;}
+		SDL_INLINE Position& getCentralPosition() {return m_centerPosition;}
 
 		SDL_INLINE void needUpdateCache() {m_needUpdateCache = true;}
 		void updateCacheMap();

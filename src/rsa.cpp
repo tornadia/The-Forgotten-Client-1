@@ -31,7 +31,7 @@ void RSA::setKey(const char* publicKey)
 	m_mod.fromString(publicKey, 10);
 }
 
-void RSA::encrypt(Uint8* msg) const
+void RSA::encrypt(Uint8* msg)
 {
 	Uint1024 plain;
 	plain.importData(msg);

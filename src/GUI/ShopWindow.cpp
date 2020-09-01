@@ -27,7 +27,6 @@
 #include "../GUI_Elements/GUI_Separator.h"
 #include "../GUI_Elements/GUI_ScrollBar.h"
 #include "../GUI_Elements/GUI_Content.h"
-#include "../GUI_Elements/GUI_Label.h"
 #include "../GUI_Elements/GUI_Icon.h"
 #include "../GUI_Elements/GUI_Button.h"
 #include "../GUI_Elements/GUI_ContextMenu.h"
@@ -947,34 +946,31 @@ void GUI_ShopItem::render()
 		m_item->render(m_tRect.x1, m_tRect.y1, m_tRect.y2);
 }
 
-GUI_ShopSelectItem::GUI_ShopSelectItem(iRect boxRect, const std::string& itemName, const std::string& itemDescription, Uint16 itemId, Uint8 itemSubtype, size_t index, Uint32 internalID) : m_index(index)
+GUI_ShopSelectItem::GUI_ShopSelectItem(iRect boxRect, const std::string& itemName, const std::string& itemDescription, Uint16 itemId, Uint8 itemSubtype, size_t index, Uint32 internalID) :
+	m_name(iRect(0, 0, 110, 14), itemName), m_description(iRect(0, 0, 110, 14), itemDescription), m_index(index)
 {
 	m_internalID = internalID;
-	m_name = new GUI_DynamicLabel(iRect(0, 0, 110, 14), itemName);
-	m_description = new GUI_DynamicLabel(iRect(0, 0, 110, 14), itemDescription);
 	m_item = ItemUI::createItemUI(itemId, SDL_static_cast(Uint16, itemSubtype));
 	setRect(boxRect);
 }
 
 GUI_ShopSelectItem::~GUI_ShopSelectItem()
 {
-	delete m_name;
-	delete m_description;
 	if(m_item)
 		delete m_item;
 }
 
 void GUI_ShopSelectItem::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
-	bool condition = (m_name->isFullDisplay() ? false : true);
-	condition = (m_description->isFullDisplay() ? condition : true);
+	bool condition = (m_name.isFullDisplay() ? false : true);
+	condition = (m_description.isFullDisplay() ? condition : true);
 	if(condition)
 	{
 		bool inside = (isInsideParent && m_tRect.isPointInside(x, y));
 		if(inside)
 		{
 			std::string description;
-			description.assign(m_name->getName()).append(1, '\n').append(m_description->getName());
+			description.assign(m_name.getName()).append(1, '\n').append(m_description.getName());
 			g_engine.showDescription(x, y, description);
 		}
 	}
@@ -993,9 +989,9 @@ void GUI_ShopSelectItem::setRect(iRect& NewRect)
 		return;
 
 	iRect nRect = iRect(NewRect.x1 + 40, NewRect.y1 + 7, 110, 14);
-	m_name->setRect(nRect);
+	m_name.setRect(nRect);
 	nRect.y1 = NewRect.y1 + 21;
-	m_description->setRect(nRect);
+	m_description.setRect(nRect);
 	m_tRect = NewRect;
 }
 
@@ -1009,6 +1005,6 @@ void GUI_ShopSelectItem::render()
 	if(m_item)
 		m_item->render(m_tRect.x1 + 4, m_tRect.y1 + 2, 32);
 
-	m_name->render();
-	m_description->render();
+	m_name.render();
+	m_description.render();
 }

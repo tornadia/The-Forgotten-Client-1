@@ -24,6 +24,8 @@
 #include "connection.h"
 #include "http.h"
 
+#include <curl/curl.h>
+
 #define SDL_REPEAT 2
 
 SDL_Cursor* g_currentCursor = NULL;
@@ -245,6 +247,15 @@ int main(int argc, char* argv[])
 	{
 		SDL_snprintf(g_buffer, sizeof(g_buffer), "Couldn't initialize SDL: %s", SDL_GetError());
 		UTIL_MessageBox(true, g_buffer);//FIME: Should we call this here if video initializing failed? From what I seen in source it's platform specific.
+		return -1;
+	}
+
+	CURLcode cresult = curl_global_init(CURL_GLOBAL_DEFAULT);
+	if(cresult != CURLE_OK)
+	{
+		SDL_snprintf(g_buffer, sizeof(g_buffer), "Couldn't initialize CURL");
+		UTIL_MessageBox(true, g_buffer);
+		SDL_Quit();
 		return -1;
 	}
 
@@ -570,6 +581,7 @@ int main(int argc, char* argv[])
 		delete g_connection;
 
 	g_engine.terminate();
+	curl_global_cleanup();
 	SDL_Quit();
 	return 0;
 }

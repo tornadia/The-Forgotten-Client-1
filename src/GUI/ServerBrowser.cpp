@@ -368,10 +368,11 @@ void ServerBrowser_Recreate(GUI_ServerBrowserContainer* container)
 		SDL_snprintf(g_buffer, sizeof(g_buffer), "%u.%02u", (serverList.serverVersion / 100), (serverList.serverVersion % 100));
 		newServerBrowserEntry->setServerVersion(g_buffer);
 		newServerBrowserEntry->startEvents();
-		container->addChild(newServerBrowserEntry);
+		container->addChild(newServerBrowserEntry, false);
 
 		PosY += 20;
 	}
+	container->validateScrollBar();
 }
 
 void UTIL_createServerBrowser()
@@ -401,22 +402,16 @@ void UTIL_createServerBrowser()
 	newGrouper = new GUI_Grouper(iRect(SERVERBROWSER_BROWSER_X, SERVERBROWSER_BROWSER_Y, SERVERBROWSER_BROWSER_W, SERVERBROWSER_BROWSER_H));
 	newWindow->addChild(newGrouper);
 	GUI_DynamicLabel* newDynamicLabel = new GUI_DynamicLabel(iRect(SERVERBROWSER_IP_X + 5, SERVERBROWSER_IP_Y + 5, SERVERBROWSER_IP_W - 10, 12), SERVERBROWSER_IP_TEXT);
-	newDynamicLabel->startEvents();
 	newWindow->addChild(newDynamicLabel);
 	newDynamicLabel = new GUI_DynamicLabel(iRect(SERVERBROWSER_NAME_X + 5, SERVERBROWSER_NAME_Y + 5, SERVERBROWSER_NAME_W - 10, 12), SERVERBROWSER_NAME_TEXT);
-	newDynamicLabel->startEvents();
 	newWindow->addChild(newDynamicLabel);
 	newDynamicLabel = new GUI_DynamicLabel(iRect(SERVERBROWSER_PLAYERS_X + 5, SERVERBROWSER_PLAYERS_Y + 5, SERVERBROWSER_PLAYERS_W - 10, 12), SERVERBROWSER_PLAYERS_TEXT);
-	newDynamicLabel->startEvents();
 	newWindow->addChild(newDynamicLabel);
 	newDynamicLabel = new GUI_DynamicLabel(iRect(SERVERBROWSER_PVP_X + 5, SERVERBROWSER_PVP_Y + 5, SERVERBROWSER_PVP_W - 10, 12), SERVERBROWSER_PVP_TEXT);
-	newDynamicLabel->startEvents();
 	newWindow->addChild(newDynamicLabel);
 	newDynamicLabel = new GUI_DynamicLabel(iRect(SERVERBROWSER_EXP_X + 5, SERVERBROWSER_EXP_Y + 5, SERVERBROWSER_EXP_W - 10, 12), SERVERBROWSER_EXP_TEXT);
-	newDynamicLabel->startEvents();
 	newWindow->addChild(newDynamicLabel);
 	newDynamicLabel = new GUI_DynamicLabel(iRect(SERVERBROWSER_CLIENT_X + 5, SERVERBROWSER_CLIENT_Y + 5, SERVERBROWSER_CLIENT_W - 10, 12), SERVERBROWSER_CLIENT_TEXT);
-	newDynamicLabel->startEvents();
 	newWindow->addChild(newDynamicLabel);
 	GUI_ServerBrowserContainer* newContainer = new GUI_ServerBrowserContainer(iRect(SERVERBROWSER_BROWSER_X + 1, SERVERBROWSER_BROWSER_Y + 1, SERVERBROWSER_BROWSER_W - 2, SERVERBROWSER_BROWSER_H - 2), SERVERBROWSER_BROWSER_EVENTID);
 	newContainer->startEvents();

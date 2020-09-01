@@ -50,11 +50,11 @@ class StaticText
 		StaticText(StaticText&&) = delete;
 		StaticText& operator=(StaticText&&) = delete;
 		
-		SDL_FORCE_INLINE std::string& getName() {return m_name;}
-		SDL_FORCE_INLINE MessageMode getMode() {return m_mode;}
+		SDL_INLINE std::string& getName() {return m_name;}
+		SDL_INLINE MessageMode getMode() {return m_mode;}
 		
-		SDL_FORCE_INLINE const Position& getPosition() {return m_position;}
-		SDL_FORCE_INLINE bool canBeDeleted() {return m_isCompleted;}
+		SDL_INLINE const Position& getPosition() {return m_position;}
+		SDL_INLINE bool canBeDeleted() {return m_isCompleted;}
 		void addMessage(const std::string& name, MessageMode mode, std::string text);
 
 		void composeText();

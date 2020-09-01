@@ -43,8 +43,8 @@ class ItemUI
 		static ItemUI* createItemUI(ThingType* type, Uint16 count, Sint32 phase = AnimationPhase_Automatic);
 		void setSubtype(Uint16 count, bool showCount);
 
-		SDL_FORCE_INLINE Uint16 getItemCount() {return m_count;}
-		SDL_FORCE_INLINE Uint8 getItemSubtype() {return m_subtype;}
+		SDL_INLINE Uint16 getItemCount() {return m_count;}
+		SDL_INLINE Uint8 getItemSubtype() {return m_subtype;}
 
 		Uint16 getID();
 		void render(Sint32 posX, Sint32 posY, Sint32 scaled);
@@ -52,7 +52,7 @@ class ItemUI
 		void setCurrentPosition(Position& newPosition) {m_position = newPosition;}
 		Position& getCurrentPosition() {return m_position;}
 
-		SDL_FORCE_INLINE ThingType* getThingType() {return m_thingType;}
+		SDL_INLINE ThingType* getThingType() {return m_thingType;}
 
 	protected:
 		ThingType* m_thingType;

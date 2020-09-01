@@ -93,9 +93,9 @@ class AutomapArea
 		void setMapMark(Uint16 x, Uint16 y, Uint8 type, const std::string& description, bool remove = false);
 		void setTileDetail(Uint16 x, Uint16 y, Uint8 color, Uint8 speed);
 
-		Position& getBasePosition() {return m_basepos;}
-		Uint8 getColor(Uint16 x, Uint16 y);
-		Uint8 getSpeed(Uint16 x, Uint16 y);
+		SDL_INLINE Position& getBasePosition() {return m_basepos;}
+		SDL_INLINE Uint8 getColor(Uint16 x, Uint16 y) {return m_color[x & 0xFF][y & 0xFF];}
+		SDL_INLINE Uint8 getSpeed(Uint16 x, Uint16 y) {return m_speed[x & 0xFF][y & 0xFF];}
 
 		bool load();
 		bool save();
@@ -112,7 +112,7 @@ class AutomapArea
 		Uint8 m_speed[256][256];
 };
 
-typedef std::unordered_map<Uint32, AutomapArea> AutomapAreas;
+typedef robin_hood::unordered_map<Uint32, AutomapArea> AutomapAreas;
 
 class Automap
 {

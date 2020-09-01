@@ -40,11 +40,9 @@ extern Uint32 g_frameTime;
 
 std::vector<Effect*> g_effects;
 
-AStarNodes::AStarNodes(const Position& startPos)
+AStarNodes::AStarNodes(const Position& startPos) : openNodes(MAX_NODES_COMPLEXITY)
 {
-	openNodes.reserve(MAX_NODES_COMPLEXITY);
-	openNodeTotalCost.reserve(MAX_NODES_COMPLEXITY);
-	nodesTable.reserve(MAX_NODES_COMPLEXITY);
+	nodesTable.resize(MAX_NODES_GRIDSIZE, -1);
 	nodes = SDL_reinterpret_cast(AStarNode*, SDL_malloc(sizeof(AStarNode) * MAX_NODES_COMPLEXITY));
 
 	curNode = 1;
@@ -55,9 +53,9 @@ AStarNodes::AStarNodes(const Position& startPos)
 	startNode.y = startPos.y;
 	startNode.f = 0;
 	startNode.g = 0;
-	nodesTable[(startPos.x << 16) | startPos.y] = 0;
-	openNodes.emplace_back(0);
-	openNodeTotalCost.emplace_back(0);
+	startNode.closedNode = false;
+	nodesTable[(127 * 256) + 127] = 0;
+	openNodes.emplace(0, 0);
 }
 
 AStarNodes::~AStarNodes()
@@ -80,275 +78,33 @@ bool AStarNodes::createOpenNode(AStarNode* parent, Sint32 f, Uint32 xy, Sint32 S
 	node.y = pos.y;
 	node.f = f;
 	node.g = ((Dx - Sx) << 3) + ((Dy - Sy) << 3) + (((Dx > Dy) ? Dx : Dy) << 3);
+	node.closedNode = false;
 	nodesTable[xy] = retNode;
-	openNodes.emplace_back(retNode);
-	openNodeTotalCost.emplace_back(f + node.g);
+	openNodes.emplace((f + node.g), retNode);
 	return true;
 }
 
-#ifdef __USE_SSE2__
-SDL_FORCE_INLINE __m128i _mm_sse2_min_epi32(const __m128i a, const __m128i b)
-{
-	__m128i mask = _mm_cmpgt_epi32(a, b);
-	return _mm_or_si128(_mm_and_si128(mask, b), _mm_andnot_si128(mask, a));
-};
-
-SDL_FORCE_INLINE __m128i _mm_sse2_blendv_epi8(const __m128i a, const __m128i b, __m128i mask)
-{
-	mask = _mm_cmplt_epi8(mask, _mm_setzero_si128());
-	return _mm_or_si128(_mm_andnot_si128(mask, a), _mm_and_si128(mask, b));
-};
-#endif
-
 AStarNode* AStarNodes::getBestNode()
 {
-	//Branchless best node search
-	Sint32 best_node_f = SDL_MAX_SINT32;
-	Sint32 best_node = -1;
-
-	size_t it = 0;
-	size_t end = openNodes.size();
-	if(end >= 8)
+	while(!openNodes.empty())
 	{
-		#ifdef __USE_AVX2__
-		if(SDL_HasAVX2())
+		AStarNode* node = &nodes[openNodes.top().second];
+		if(!node->closedNode)
 		{
-			const __m256i increment = _mm256_set1_epi32(8);
-			__m256i indices = _mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
-			__m256i minindices = indices;
-			__m256i minvalues = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&openNodeTotalCost[it]));
-
-			it += 8; end -= 8;
-			for(; it <= end; it += 8)
-			{
-				__m256i values = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&openNodeTotalCost[it]));
-				indices = _mm256_add_epi32(indices, increment);
-				minindices = _mm256_blendv_epi8(minindices, indices, _mm256_cmpgt_epi32(minvalues, values));
-				minvalues = _mm256_min_epi32(values, minvalues);
-			}
-			end += 8;
-
-			alignas(32) Sint32 values_array[8];
-			alignas(32) Sint32 indices_array[8];
-			_mm256_store_si256(reinterpret_cast<__m256i*>(values_array), minvalues);
-			_mm256_store_si256(reinterpret_cast<__m256i*>(indices_array), minindices);
-
-			best_node = openNodes[indices_array[0]];
-			best_node_f = values_array[0];
-
-			Sint32 total_cost = values_array[1];
-			best_node = (total_cost < best_node_f ? openNodes[indices_array[1]] : best_node);
-			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-			for(Sint32 i = 2; i < 8; i += 3)
-			{
-				total_cost = values_array[i + 0];
-				best_node = (total_cost < best_node_f ? openNodes[indices_array[i + 0]] : best_node);
-				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-
-				total_cost = values_array[i + 1];
-				best_node = (total_cost < best_node_f ? openNodes[indices_array[i + 1]] : best_node);
-				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-
-				total_cost = values_array[i + 2];
-				best_node = (total_cost < best_node_f ? openNodes[indices_array[i + 2]] : best_node);
-				best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-			}
+			node->closedNode = true;
+			openNodes.pop();
+			return node;
 		}
-		else
-		#endif
-		#ifdef __USE_SSE4_1__
-		if(SDL_HasSSE41())
-		{
-			const __m128i increment = _mm_set1_epi32(4);
-			__m128i indices = _mm_setr_epi32(0, 1, 2, 3);
-			__m128i minindices = indices;
-			__m128i minvalues = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&openNodeTotalCost[it]));
 
-			it += 4; end -= 4;
-			for(; it <= end; it += 4)
-			{
-				__m128i values = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&openNodeTotalCost[it]));
-				indices = _mm_add_epi32(indices, increment);
-				minindices = _mm_blendv_epi8(minindices, indices, _mm_cmplt_epi32(values, minvalues));
-				minvalues = _mm_min_epi32(values, minvalues);
-			}
-			end += 4;
-			
-			alignas(16) Sint32 values_array[4];
-			alignas(16) Sint32 indices_array[4];
-			_mm_store_si128(reinterpret_cast<__m128i*>(values_array), minvalues);
-			_mm_store_si128(reinterpret_cast<__m128i*>(indices_array), minindices);
-
-			best_node = openNodes[indices_array[0]];
-			best_node_f = values_array[0];
-
-			Sint32 total_cost = values_array[1];
-			best_node = (total_cost < best_node_f ? openNodes[indices_array[1]] : best_node);
-			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-
-			total_cost = values_array[2];
-			best_node = (total_cost < best_node_f ? openNodes[indices_array[2]] : best_node);
-			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-
-			total_cost = values_array[3];
-			best_node = (total_cost < best_node_f ? openNodes[indices_array[3]] : best_node);
-			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-		}
-		else
-		#endif
-		#ifdef __USE_SSE2__
-		if(SDL_HasSSE2())
-		{
-			const __m128i increment = _mm_set1_epi32(4);
-			__m128i indices = _mm_setr_epi32(0, 1, 2, 3);
-			__m128i minindices = indices;
-			__m128i minvalues = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&openNodeTotalCost[it]));
-
-			it += 4; end -= 4;
-			for(; it <= end; it += 4)
-			{
-				__m128i values = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&openNodeTotalCost[it]));
-				indices = _mm_add_epi32(indices, increment);
-				minindices = _mm_sse2_blendv_epi8(minindices, indices, _mm_cmplt_epi32(values, minvalues));
-				minvalues = _mm_sse2_min_epi32(values, minvalues);
-			}
-			end += 4;
-
-			alignas(16) Sint32 values_array[4];
-			alignas(16) Sint32 indices_array[4];
-			_mm_store_si128(reinterpret_cast<__m128i*>(values_array), minvalues);
-			_mm_store_si128(reinterpret_cast<__m128i*>(indices_array), minindices);
-
-			best_node = openNodes[indices_array[0]];
-			best_node_f = values_array[0];
-
-			Sint32 total_cost = values_array[1];
-			best_node = (total_cost < best_node_f ? openNodes[indices_array[1]] : best_node);
-			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-
-			total_cost = values_array[2];
-			best_node = (total_cost < best_node_f ? openNodes[indices_array[2]] : best_node);
-			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-
-			total_cost = values_array[3];
-			best_node = (total_cost < best_node_f ? openNodes[indices_array[3]] : best_node);
-			best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-		}
-		else
-		#endif
-		{
-			//Nothing here because we use standard code part for non-simd code
-		}
+		openNodes.pop();
 	}
-
-	for(; it < end; ++it)
-	{
-		Sint32 total_cost = openNodeTotalCost[it];
-		best_node = (total_cost < best_node_f ? openNodes[it] : best_node);
-		best_node_f = (total_cost < best_node_f ? total_cost : best_node_f);
-	}
-	return (best_node != -1 ? &nodes[best_node] : NULL);
-}
-
-void AStarNodes::closeNode(AStarNode* node)
-{
-	Sint32 index = SDL_static_cast(Sint32, node - nodes);
-	size_t it = 0, end = openNodes.size();
-	if(end >= 8)
-	{
-		#ifdef __USE_SSE2__
-		if(SDL_HasSSE2())
-		{
-			const __m128i key = _mm_set1_epi32(index);
-
-			end -= 8;
-			for(; it <= end; it += 8)
-			{
-				__m128i v[2];
-				v[0] = _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&openNodes[it])), key);
-				v[1] = _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&openNodes[it + 4])), key);
-				const Uint32 mask = _mm_movemask_epi8(_mm_packs_epi32(v[0], v[1]));
-				if (mask != 0) {
-					const size_t bitpos = it + (UTIL_ctz(mask) >> 1);
-					openNodes.erase(openNodes.begin() + bitpos);
-					openNodeTotalCost.erase(openNodeTotalCost.begin() + bitpos);
-					return;
-				}
-			}
-			end += 8;
-		}
-		else
-		#endif
-		{
-			//Nothing here because we use standard code part for non-simd code
-		}
-	}
-	for(; it < end; ++it)
-	{
-		if(openNodes[it] == index)
-		{
-			openNodes.erase(openNodes.begin() + it);
-			openNodeTotalCost.erase(openNodeTotalCost.begin() + it);
-			return;
-		}
-	}
-}
-
-void AStarNodes::openNode(AStarNode* node)
-{
-	Sint32 index = SDL_static_cast(Sint32, node - nodes);
-	size_t it = 0, end = openNodes.size();
-	if(end >= 8)
-	{
-		#ifdef __USE_SSE2__
-		if(SDL_HasSSE2())
-		{
-			const __m128i key = _mm_set1_epi32(index);
-
-			end -= 8;
-			for(; it <= end; it += 8)
-			{
-				__m128i v[2];
-				v[0] = _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&openNodes[it])), key);
-				v[1] = _mm_cmpeq_epi32(_mm_load_si128(reinterpret_cast<const __m128i*>(&openNodes[it + 4])), key);
-				const Uint32 mask = _mm_movemask_epi8(_mm_packs_epi32(v[0], v[1]));
-				if (mask != 0) {
-					const size_t bitpos = it + (UTIL_ctz(mask) >> 1);
-					openNodeTotalCost[bitpos] = node->f + node->g;
-					return;
-				}
-			}
-			end += 8;
-		}
-		else
-		#endif
-		{
-			//Nothing here because we use standard code part for non-simd code
-		}
-	}
-	for(; it < end; ++it)
-	{
-		if(openNodes[it] == index)
-		{
-			openNodeTotalCost[it] = node->f + node->g;
-			return;
-		}
-	}
-
-	openNodes.emplace_back(index);
-	openNodeTotalCost.emplace_back(node->f + node->g);
+	return NULL;
 }
 
 AStarNode* AStarNodes::getNodeByPosition(Uint32 xy)
 {
-	//We could make this a little faster using better hash map like for example google dense hash map
-	robin_hood::unordered_map<Uint32, Uint32>::iterator it = nodesTable.find(xy);
-	return (it == nodesTable.end() ? NULL : &nodes[it->second]);
-}
-
-Sint32 AStarNodes::getMapWalkFactor(AStarNode* node, const Position& neighborPos)
-{
-	return (((std::abs(node->x - neighborPos.x) + std::abs(node->y - neighborPos.y)) - 1) * MAP_DIAGONALWALKFACTOR) + MAP_NORMALWALKFACTOR;
+	Sint32 index = nodesTable[xy];
+	return (index == -1 ? NULL : &nodes[index]);
 }
 
 Map::Map()
@@ -1195,56 +951,6 @@ void Map::removeMagicEffects(const Position& position, Uint16 effectId)
 	}
 }
 
-bool Map::checkSightLine(const Position& fromPos, const Position& toPos)
-{
-	if(fromPos == toPos)
-		return true;
-
-	Position start(fromPos.z > toPos.z ? toPos : fromPos);
-	Position destination(fromPos.z > toPos.z ? fromPos : toPos);
-
-	const Sint8 mx = (start.x < destination.x ? 1 : start.x == destination.x ? 0 : -1);
-	const Sint8 my = (start.y < destination.y ? 1 : start.y == destination.y ? 0 : -1);
-
-	Sint32 A = Position::getOffsetY(destination, start);
-	Sint32 B = Position::getOffsetX(start, destination);
-	Sint32 C = -(A * destination.x + B * destination.y);
-	while(start.x != destination.x || start.y != destination.y)
-	{
-		Sint32 move_hor = std::abs(A * (start.x + mx) + B * (start.y) + C);
-		Sint32 move_ver = std::abs(A * (start.x) + B * (start.y + my) + C);
-		Sint32 move_cross = std::abs(A * (start.x + mx) + B * (start.y + my) + C);
-
-		if(start.y != destination.y && (start.x == destination.x || move_hor > move_ver || move_hor > move_cross))
-			start.y += my;
-
-		if(start.x != destination.x && (start.y == destination.y || move_ver > move_hor || move_ver > move_cross))
-			start.x += mx;
-
-		Tile* tile = getTile(start);
-		if(tile && !tile->isLookPossible())
-			return false;
-	}
-
-	// now we need to perform a jump between floors to see if everything is clear (literally)
-	while(start.z != destination.z)
-	{
-		Tile* tile = getTile(start);
-		if(tile && tile->getThingCount() > 0)
-			return false;
-
-		start.z++;
-	}
-
-	return true;
-}
-
-bool Map::isSightClear(const Position& fromPos, const Position& toPos)
-{
-	// Cast two converging rays and see if either yields a result.
-	return checkSightLine(fromPos, toPos) || checkSightLine(toPos, fromPos);
-}
-
 PathFind Map::findPath(std::vector<Direction>& directions, const Position& startPos, const Position& endPos)
 {
 	directions.clear();
@@ -1268,7 +974,7 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 			return PathFind_ReturnImpossible;
 	}
 
-	static Sint32 dirNeighbors[8][5][2] = {
+	static const Sint32 dirNeighbors[8][5][2] = {
 		{{-1, 0},{0,  1},{ 1,  0},{ 1,  1},{-1,  1}},
 		{{-1, 0},{0,  1},{ 0, -1},{-1, -1},{-1,  1}},
 		{{-1, 0},{1,  0},{ 0, -1},{-1, -1},{ 1, -1}},
@@ -1278,7 +984,7 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 		{{ 0, 1},{1,  0},{ 1, -1},{ 1,  1},{-1,  1}},
 		{{-1, 0},{0,  1},{-1, -1},{ 1,  1},{-1,  1}}
 	};
-	static Sint32 allNeighbors[8][2] = {
+	static const Sint32 allNeighbors[8][2] = {
 		{-1, 0},{0, 1},{1, 0},{0, -1},{-1, -1},{1, -1},{1, 1},{-1, 1}
 	};
 
@@ -1292,8 +998,8 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 	AutomapArea* areas[4];
 	areas[0] = g_automap.getArea(startPos.x - 127, startPos.y - 127, startPos.z);
 	areas[1] = g_automap.getArea(startPos.x - 127, startPos.y + 127, startPos.z);
-	areas[2] = g_automap.getArea(startPos.x + 127, startPos.y + 127, startPos.z);
-	areas[3] = g_automap.getArea(startPos.x + 127, startPos.y - 127, startPos.z);
+	areas[2] = g_automap.getArea(startPos.x + 127, startPos.y - 127, startPos.z);
+	areas[3] = g_automap.getArea(startPos.x + 127, startPos.y + 127, startPos.z);
 
 	Sint32 startX = startPos.x - 127;
 	Sint32 startY = startPos.y - 127;
@@ -1314,16 +1020,14 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 		
 		const Sint32 x = n->x;
 		const Sint32 y = n->y;
-		pos.x = SDL_static_cast(Uint16, x);
-		pos.y = SDL_static_cast(Uint16, y);
-		if(n->x == endPos.x && n->y == endPos.y && (!found || n->f < found->f))
+		if(((n->x ^ endPos.x) | (n->y ^ endPos.y)) == 0 && (!found || n->f < found->f))
 			found = n;
 
 		if(found && n->f >= found->f)
 			break;
 
 		Uint32 dirCount;
-		Sint32* neighbors;
+		const Sint32* neighbors;
 		if(n->parent)
 		{
 			const Sint32 offset_x = n->parent->x - x;
@@ -1378,36 +1082,24 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 			endTile = getTile(pos);
 			if(endTile)
 			{
-				if(((pos.x != endPos.x || pos.y != endPos.y) && (endTile->getTopCreature() || !endTile->isPathable())) || !endTile->isWalkable())
+				if(!endTile->isWalkable() || endTile->getTopCreature() || ((pos.x != endPos.x || pos.y != endPos.y) && !endTile->isPathable()))
 					continue;
 
 				speed = SDL_static_cast(Sint32, endTile->getGroundSpeed());
 			}
 			else
 			{
-				Sint32 index;
-				if(pos.x < areaX)
-					index = (pos.y < areaY ? 0 : 1);
-				else
-					index = (pos.y < areaY ? 3 : 2);
-
 				//Not seen tiles should have 250 speed - that's how it working on Tibia
-				speed = SDL_static_cast(Sint32, areas[index]->getSpeed(pos.x, pos.y));
+				//speed = SDL_static_cast(Sint32, areas[(pos.x < areaX ? (pos.y < areaY ? 0 : 1) : (pos.y < areaY ? 2 : 3))]->getSpeed(pos.x, pos.y));
+				speed = SDL_static_cast(Sint32, areas[(pos.x < areaX ? 0 : 2) + (pos.y < areaY ? 0 : 1)]->getSpeed(pos.x, pos.y));
 				if(speed == 0)
 					continue;
-
-				/*if(areas[index]->getColor(pos.x, pos.y) == 0)
-				{
-					//Make unseen tile cost so high that they should be consider last
-					//or should we not because these tiles already have high cost?
-					speed *= 100000;
-				}*/
 			}
 
-			const Sint32 walkFactor = AStarNodes::getMapWalkFactor(n, pos);
+			const Sint32 walkFactor = (((std::abs(n->x - pos.x) + std::abs(n->y - pos.y)) - 1) * MAP_DIAGONALWALKFACTOR) + MAP_NORMALWALKFACTOR;
 			const Sint32 cost = f + (speed * walkFactor);
 
-			const Uint32 posXY = (SDL_static_cast(Uint32, pos.x) << 16) | SDL_static_cast(Uint32, pos.y);
+			const Uint32 posXY = (SDL_static_cast(Uint32, posX - startX) * 256) + SDL_static_cast(Uint32, posY - startY);
 			AStarNode* neighborNode = nodes.getNodeByPosition(posXY);
 			if(neighborNode)
 			{
@@ -1428,7 +1120,6 @@ PathFind Map::findPath(std::vector<Direction>& directions, const Position& start
 				}
 			}
 		} while(++i < dirCount);
-		nodes.closeNode(n);
 	} while(nodes.getNodeSize() < MAX_NODES_COMPLEXITY);
 	if(!found)
 		return PathFind_ReturnNoWay;

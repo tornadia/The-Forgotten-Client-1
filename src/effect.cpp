@@ -42,8 +42,10 @@ Effect::Effect(const Position& pos, Uint16 delay, ThingType* type) : m_thingType
 Effect::~Effect()
 {
 	auto it = std::find(effects.begin(), effects.end(), this);
-	if (it != effects.end()) {
-		effects.erase(it);
+	if(it != effects.end())
+	{
+		*it = effects.back();
+		effects.pop_back();
 	}
 	--effectCount;
 }

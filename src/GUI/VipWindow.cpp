@@ -27,7 +27,6 @@
 #include "../GUI_Elements/GUI_Button.h"
 #include "../GUI_Elements/GUI_StaticImage.h"
 #include "../GUI_Elements/GUI_Separator.h"
-#include "../GUI_Elements/GUI_Label.h"
 #include "../GUI_Elements/GUI_Icon.h"
 #include "../GUI_Elements/GUI_TextBox.h"
 #include "../GUI_Elements/GUI_MultiTextBox.h"
@@ -847,7 +846,6 @@ void UTIL_toggleVipWindow()
 	newIcon->startEvents();
 	newWindow->addChild(newIcon);
 	GUI_DynamicLabel* newLabel = new GUI_DynamicLabel(iRect(19, 2, 100, 14), VIP_TITLE, 0, 144, 144, 144);
-	newLabel->startEvents();
 	newWindow->addChild(newLabel);
 	GUI_VipContainer* newContainer = new GUI_VipContainer(iRect(2, 13, 168, savedHeight), newWindow, VIP_CONTAINER_EVENTID);
 	newContainer->startEvents();
@@ -1065,7 +1063,8 @@ void GUI_VipContainer::onRMouseUp(Sint32 x, Sint32 y)
 	g_vipRMouse = false;
 }
 
-GUI_VipPlayer::GUI_VipPlayer(iRect boxRect, const std::string& name, Uint32 _GUID, Uint32 iconId, Uint8 status, Uint32 internalID) : m_GUID(_GUID), m_iconId(iconId)
+GUI_VipPlayer::GUI_VipPlayer(iRect boxRect, const std::string& name, Uint32 _GUID, Uint32 iconId, Uint8 status, Uint32 internalID) :
+	m_name(iRect(0, 0, boxRect.x2 - 20, boxRect.y2), name), m_GUID(_GUID), m_iconId(iconId)
 {
 	Uint8 red, green, blue;
 	if(status == VIP_STATUS_ONLINE)
@@ -1088,17 +1087,17 @@ GUI_VipPlayer::GUI_VipPlayer(iRect boxRect, const std::string& name, Uint32 _GUI
 	}
 
 	m_internalID = internalID;
-	m_name = new GUI_DynamicLabel(iRect(0, 0, boxRect.x2 - 20, boxRect.y2), name, 0, red, green, blue);
+	m_name.setColor(red, green, blue);
 	setRect(boxRect);
 }
 
 void GUI_VipPlayer::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
-	if(!m_name->isFullDisplay())
+	if(!m_name.isFullDisplay())
 	{
 		bool inside = (isInsideParent && m_tRect.isPointInside(x, y));
 		if(inside)
-			g_engine.showDescription(x, y, m_name->getName());
+			g_engine.showDescription(x, y, m_name.getName());
 	}
 	if(g_vipRMouse)
 		m_hover = (isInsideParent && m_tRect.isPointInside(x, y));
@@ -1127,30 +1126,30 @@ void GUI_VipPlayer::setRect(iRect& NewRect)
 		return;
 
 	iRect nRect = iRect(NewRect.x1 + 17, NewRect.y1 + 3, NewRect.x2 - 20, NewRect.y2);
-	m_name->setRect(nRect);
+	m_name.setRect(nRect);
 	m_tRect = NewRect;
 }
 
 void GUI_VipPlayer::render()
 {
 	GUI_VipIcon::renderIcon(m_iconId, m_tRect.x1, m_tRect.y1 + 1);
-	m_name->render();
+	m_name.render();
 }
 
-GUI_VipGroup::GUI_VipGroup(iRect boxRect, const std::string& name, Uint8 groupId, Uint32 internalID) : m_groupId(groupId)
+GUI_VipGroup::GUI_VipGroup(iRect boxRect, const std::string& name, Uint8 groupId, Uint32 internalID) :
+	m_name(iRect(0, 0, boxRect.x2, boxRect.y2), name, 0, 255, 255, 255), m_groupId(groupId)
 {
 	m_internalID = internalID;
-	m_name = new GUI_DynamicLabel(iRect(0, 0, boxRect.x2, boxRect.y2), name, 0, 255, 255, 255);
 	setRect(boxRect);
 }
 
 void GUI_VipGroup::onMouseMove(Sint32 x, Sint32 y, bool isInsideParent)
 {
-	if(!m_name->isFullDisplay())
+	if(!m_name.isFullDisplay())
 	{
 		bool inside = (isInsideParent && m_tRect.isPointInside(x, y));
 		if(inside)
-			g_engine.showDescription(x, y, m_name->getName());
+			g_engine.showDescription(x, y, m_name.getName());
 	}
 	if(g_vipRMouse)
 		m_hover = (isInsideParent && m_tRect.isPointInside(x, y));
@@ -1178,13 +1177,13 @@ void GUI_VipGroup::setRect(iRect& NewRect)
 	if(m_tRect == NewRect)
 		return;
 
-	m_name->setRect(NewRect);
+	m_name.setRect(NewRect);
 	m_tRect = NewRect;
 }
 
 void GUI_VipGroup::render()
 {
-	m_name->render();
+	m_name.render();
 }
 
 GUI_VipIcon::GUI_VipIcon(iRect boxRect, Uint32 iconId, Uint32 internalID) : m_iconId(iconId)

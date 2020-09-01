@@ -41,9 +41,8 @@ bool SDL_HasFMA4();
 bool SDL_HasXOP();
 char* SDL_GetCPUName();
 
-#ifdef __USE_SSE2__
 Uint32 UTIL_ctz(Uint32 mask);
-#endif
+Uint32 UTIL_clz(Uint32 mask);
 SDL_FORCE_INLINE Uint32 UTIL_power_of_2(Uint32 input)
 {
 	Uint32 value = 1;

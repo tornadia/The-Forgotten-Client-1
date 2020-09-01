@@ -46,18 +46,18 @@ class Item : public Thing
 
 		virtual bool isItem() {return true;}
 
-		SDL_FORCE_INLINE Uint16 getItemCount() {return m_count;}
-		SDL_FORCE_INLINE Uint8 getItemSubtype() {return m_subtype;}
+		SDL_INLINE Uint16 getItemCount() {return m_count;}
+		SDL_INLINE Uint8 getItemSubtype() {return m_subtype;}
 
 		Uint16 getID();
 		Uint8 calculateAnimationPhase();
 		virtual void render(Sint32 posX, Sint32 posY, bool visible_tile);
 
-		SDL_FORCE_INLINE Sint32 getTopOrder() {return m_topOrder;}
-		SDL_FORCE_INLINE Uint8 getAnimationCount() {return m_animCount;}
-		SDL_FORCE_INLINE Uint16 getElevation() {return m_elevation;}
-		SDL_FORCE_INLINE bool hasElevation() {return m_hasElevation;}
-		SDL_FORCE_INLINE ThingType* getThingType() {return m_thingType;}
+		SDL_INLINE Sint32 getTopOrder() {return m_topOrder;}
+		SDL_INLINE Uint8 getAnimationCount() {return m_animCount;}
+		SDL_INLINE Uint16 getElevation() {return m_elevation;}
+		SDL_INLINE bool hasElevation() {return m_hasElevation;}
+		SDL_INLINE ThingType* getThingType() {return m_thingType;}
 
 	protected:
 		ThingType* m_thingType;

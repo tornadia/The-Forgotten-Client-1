@@ -41,7 +41,7 @@ class GUI_ListBox : public GUI_Element
 		void setRect(iRect& NewRect);
 		void setEventCallback(void (*eventHandlerFunction)(Uint32, Sint32), Uint32 mEvent);
 
-		SDL_FORCE_INLINE Sint32 getSelect() {return m_select;}
+		SDL_INLINE Sint32 getSelect() {return m_select;}
 		void setSelect(Sint32 select);
 
 		void add(const std::string data);

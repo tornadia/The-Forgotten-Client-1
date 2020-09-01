@@ -148,20 +148,6 @@ void AutomapArea::setTileDetail(Uint16 x, Uint16 y, Uint8 color, Uint8 speed)
 	}
 }
 
-Uint8 AutomapArea::getColor(Uint16 x, Uint16 y)
-{
-	x &= 0xFF;
-	y &= 0xFF;
-	return m_color[x][y];
-}
-
-Uint8 AutomapArea::getSpeed(Uint16 x, Uint16 y)
-{
-	x &= 0xFF;
-	y &= 0xFF;
-	return m_speed[x][y];
-}
-
 bool AutomapArea::load()
 {
 	SDL_RWops* areafile = SDL_RWFromFile(m_fileName.c_str(), "rb");

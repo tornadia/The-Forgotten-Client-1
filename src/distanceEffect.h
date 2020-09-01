@@ -44,8 +44,8 @@ class DistanceEffect
 		static DistanceEffect* createDistanceEffect(const Position& pos, const Position& to, Uint16 delay, Uint16 type);
 
 		Uint16 getID();
-		SDL_FORCE_INLINE const Position& getFromPos() {return m_fromPosition;}
-		SDL_FORCE_INLINE const Position& getToPos() {return m_toPosition;}
+		SDL_INLINE const Position& getFromPos() {return m_fromPosition;}
+		SDL_INLINE const Position& getToPos() {return m_toPosition;}
 		float getFlightProgress();
 		bool isDelayed();
 

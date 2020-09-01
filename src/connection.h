@@ -69,8 +69,8 @@ class Connection
 		Connection(Connection&&) = delete;
 		Connection& operator=(Connection&&) = delete;
 
-		SDL_FORCE_INLINE Protocol* getProtocol() {return m_protocol;}
-		SDL_FORCE_INLINE ConnectionState getConnectionStatus() {return m_connectionState;}
+		SDL_INLINE Protocol* getProtocol() {return m_protocol;}
+		SDL_INLINE ConnectionState getConnectionStatus() {return m_connectionState;}
 		void closeConnection();
 		void updateConnection();
 

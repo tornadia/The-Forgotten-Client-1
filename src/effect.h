@@ -46,15 +46,15 @@ class Effect
 		static Effect* createEffect(const Position& pos, Uint16 delay, Uint16 type);
 
 		Uint16 getID();
-		SDL_FORCE_INLINE const Position& getPos() {return m_position;}
+		SDL_INLINE const Position& getPos() {return m_position;}
 		bool canBeDeleted();
 		bool isDelayed();
 		bool isTopEffect() {return m_topEffect;}
 		
 		SDL_INLINE void setCachedX(Sint32 x) {m_cacheX = x;}
 		SDL_INLINE void setCachedY(Sint32 y) {m_cacheY = y;}
-		SDL_FORCE_INLINE Sint32 getCachedX() {return m_cacheX;}
-		SDL_FORCE_INLINE Sint32 getCachedY() {return m_cacheY;}
+		SDL_INLINE Sint32 getCachedX() {return m_cacheX;}
+		SDL_INLINE Sint32 getCachedY() {return m_cacheY;}
 
 		static void update();
 		virtual void render(Sint32 posX, Sint32 posY);

@@ -302,7 +302,7 @@ class ThingType
 
 		bool loadType(Uint16 id, ThingCategory category, SDL_RWops* rwops);
 		bool loadAppearance(Sint64 offsetLimit, Uint16& things, SDL_RWops* rwops);
-		SDL_FORCE_INLINE bool hasFlag(Uint64 flag) {return (m_flags & flag);}
+		SDL_INLINE bool hasFlag(Uint64 flag) {return (m_flags & flag);}
 
 		Uint32 getSprite(ThingFrameGroup f, Uint8 w, Uint8 h, Uint8 l, Uint8 x, Uint8 y, Uint8 z, Uint8 a);
 
@@ -348,8 +348,8 @@ class ThingManager
 		bool loadAppearances(const char* filename);
 		ThingType* getThingType(ThingCategory category, Uint16 id);
 
-		SDL_FORCE_INLINE bool isDatLoaded() {return m_datLoaded;}
-		SDL_FORCE_INLINE bool isValidDatId(ThingCategory category, Uint16 id) {return (id > 0 && id < m_things[category].size());}
+		SDL_INLINE bool isDatLoaded() {return m_datLoaded;}
+		SDL_INLINE bool isValidDatId(ThingCategory category, Uint16 id) {return (id > 0 && id < m_things[category].size());}
 
 	protected:
 		std::vector<ThingType> m_things[ThingCategory_Last];

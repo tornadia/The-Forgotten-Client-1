@@ -37,7 +37,7 @@ class AnimatedText
 		AnimatedText(AnimatedText&&) = delete;
 		AnimatedText& operator=(AnimatedText&&) = delete;
 
-		SDL_FORCE_INLINE const Position& getPosition() {return m_position;}
+		SDL_INLINE const Position& getPosition() {return m_position;}
 		bool canBeDeleted();
 		bool needAdditionalOffset();
 

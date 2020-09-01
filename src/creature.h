@@ -92,34 +92,34 @@ class Creature : public Thing
 		SDL_INLINE void setVocation(Uint8 vocation) {m_vocation = vocation;}
 		SDL_INLINE void setNeedUpdate(bool needUpdate) {m_needUpdate = needUpdate;}
 		SDL_INLINE void setLocalCreature(bool localCreature) {m_isLocalCreature = localCreature;}
-		SDL_FORCE_INLINE Uint32 getId() {return m_id;}
-		SDL_FORCE_INLINE std::string& getName() {return m_name;}
-		SDL_FORCE_INLINE Uint8 getHealth() {return m_health;}
-		SDL_FORCE_INLINE Uint16 getSpeed() {return m_speed;}
-		SDL_FORCE_INLINE Uint16 getHelpers() {return m_helpers;}
-		SDL_FORCE_INLINE Uint8 getSkull() {return m_skull;}
-		SDL_FORCE_INLINE Uint8 getShield() {return m_shield;}
-		SDL_FORCE_INLINE bool isUnpassable() {return m_unpassable;}
-		SDL_FORCE_INLINE Uint8 getEmblem() {return m_emblem;}
-		SDL_FORCE_INLINE Uint8 getType() {return m_type;}
-		SDL_FORCE_INLINE Uint8 getIcon() {return m_icon;}
-		SDL_FORCE_INLINE bool getShowStatus() {return m_showStatus;}
-		SDL_FORCE_INLINE Uint8 getManaPercent() {return m_manaPercent;}
-		SDL_FORCE_INLINE Uint8 getVocation() {return m_vocation;}
-		SDL_FORCE_INLINE Uint32 getVisibleTime() {return m_visibleTime;}
-		SDL_FORCE_INLINE bool isVisible() {return m_isVisible;}
-		SDL_FORCE_INLINE bool hasNeedUpdate() {return m_needUpdate;}
-		SDL_FORCE_INLINE bool isLocalCreature() {return m_isLocalCreature;}
+		SDL_INLINE Uint32 getId() {return m_id;}
+		SDL_INLINE std::string& getName() {return m_name;}
+		SDL_INLINE Uint8 getHealth() {return m_health;}
+		SDL_INLINE Uint16 getSpeed() {return m_speed;}
+		SDL_INLINE Uint16 getHelpers() {return m_helpers;}
+		SDL_INLINE Uint8 getSkull() {return m_skull;}
+		SDL_INLINE Uint8 getShield() {return m_shield;}
+		SDL_INLINE bool isUnpassable() {return m_unpassable;}
+		SDL_INLINE Uint8 getEmblem() {return m_emblem;}
+		SDL_INLINE Uint8 getType() {return m_type;}
+		SDL_INLINE Uint8 getIcon() {return m_icon;}
+		SDL_INLINE bool getShowStatus() {return m_showStatus;}
+		SDL_INLINE Uint8 getManaPercent() {return m_manaPercent;}
+		SDL_INLINE Uint8 getVocation() {return m_vocation;}
+		SDL_INLINE Uint32 getVisibleTime() {return m_visibleTime;}
+		SDL_INLINE bool isVisible() {return m_isVisible;}
+		SDL_INLINE bool hasNeedUpdate() {return m_needUpdate;}
+		SDL_INLINE bool isLocalCreature() {return m_isLocalCreature;}
 		
-		SDL_FORCE_INLINE ThingType* getThingType() {return m_thingType;}
-		SDL_FORCE_INLINE ThingType* getMountType() {return m_mountType;}
-		SDL_FORCE_INLINE bool isWalkingCheck() {return (m_walking && m_walkedPixels != 32);}
-		SDL_FORCE_INLINE bool isWalking() {return m_walking;}
-		SDL_FORCE_INLINE bool isPreWalking() {return m_preWalking;}
-		SDL_FORCE_INLINE Sint32 getWalkOffsetX() {return m_walkOffsetX;}
-		SDL_FORCE_INLINE Sint32 getWalkOffsetY() {return m_walkOffsetY;}
-		SDL_FORCE_INLINE Direction getDirection() {return m_direction;}
-		SDL_FORCE_INLINE Direction getWalkDirection() {return m_walkDirection;}
+		SDL_INLINE ThingType* getThingType() {return m_thingType;}
+		SDL_INLINE ThingType* getMountType() {return m_mountType;}
+		SDL_INLINE bool isWalkingCheck() {return (m_walking && (m_walkedPixels != 32 || m_preWalking));}
+		SDL_INLINE bool isWalking() {return m_walking;}
+		SDL_INLINE bool isPreWalking() {return m_preWalking;}
+		SDL_INLINE Sint32 getWalkOffsetX() {return m_walkOffsetX;}
+		SDL_INLINE Sint32 getWalkOffsetY() {return m_walkOffsetY;}
+		SDL_INLINE Direction getDirection() {return m_direction;}
+		SDL_INLINE Direction getWalkDirection() {return m_walkDirection;}
 
 		std::pair<Sint32, Sint32> getDisplacement();
 		Sint32 getOffsetX(bool checkPreWalk = false);

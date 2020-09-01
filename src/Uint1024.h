@@ -52,21 +52,24 @@ class base_uint
 		}
 		base_uint(const base_uint& b)
 		{
-			for(Sint32 i = 0; i < WIDTH; ++i)
-				pn[i] = b.pn[i];
+			memcpy(pn, b.pn, sizeof(pn));
 		}
 		base_uint(Uint64 b)
 		{
+			memset(pn, 0, sizeof(pn));
 			pn[0] = SDL_static_cast(Uint32, b);
 			pn[1] = SDL_static_cast(Uint32, (b >> 32));
-			for(Sint32 i = 2; i < WIDTH; ++i)
-				pn[i] = 0;
 		}
 
 		base_uint& operator=(const base_uint& b)
 		{
-			for(Sint32 i = 0; i < WIDTH; ++i)
-				pn[i] = b.pn[i];
+			for(Sint32 i = 0; i < WIDTH; i += 4)
+			{
+				pn[i + 0] = b.pn[i + 0];
+				pn[i + 1] = b.pn[i + 1];
+				pn[i + 2] = b.pn[i + 2];
+				pn[i + 3] = b.pn[i + 3];
+			}
 			return *this;
 		}
 
@@ -81,43 +84,79 @@ class base_uint
 		const base_uint operator~() const
 		{
 			base_uint ret;
-			for(Sint32 i = 0; i < WIDTH; ++i)
-				ret.pn[i] = ~pn[i];
+			for(Sint32 i = 0; i < WIDTH; i += 4)
+			{
+				ret.pn[i + 0] = ~pn[i + 0];
+				ret.pn[i + 1] = ~pn[i + 1];
+				ret.pn[i + 2] = ~pn[i + 2];
+				ret.pn[i + 3] = ~pn[i + 3];
+			}
 			return ret;
 		}
 
 		const base_uint operator-() const
 		{
 			base_uint ret;
-			for(Sint32 i = 0; i < WIDTH; ++i)
-				ret.pn[i] = ~pn[i];
-			ret++;
-			return ret;
+			for(Sint32 i = 0; i < WIDTH; i += 4)
+			{
+				ret.pn[i + 0] = ~pn[i + 0];
+				ret.pn[i + 1] = ~pn[i + 1];
+				ret.pn[i + 2] = ~pn[i + 2];
+				ret.pn[i + 3] = ~pn[i + 3];
+			}
+			return ++ret;
 		}
 
 		base_uint& operator^=(const base_uint& b)
 		{
-			for(Sint32 i = 0; i < WIDTH; ++i)
-				pn[i] ^= b.pn[i];
+			for(Sint32 i = 0; i < WIDTH; i += 4)
+			{
+				pn[i + 0] ^= b.pn[i + 0];
+				pn[i + 1] ^= b.pn[i + 1];
+				pn[i + 2] ^= b.pn[i + 2];
+				pn[i + 3] ^= b.pn[i + 3];
+			}
 			return *this;
 		}
 
 		base_uint& operator&=(const base_uint& b)
 		{
-			for(Sint32 i = 0; i < WIDTH; ++i)
-				pn[i] &= b.pn[i];
+			for(Sint32 i = 0; i < WIDTH; i += 4)
+			{
+				pn[i + 0] &= b.pn[i + 0];
+				pn[i + 1] &= b.pn[i + 1];
+				pn[i + 2] &= b.pn[i + 2];
+				pn[i + 3] &= b.pn[i + 3];
+			}
 			return *this;
 		}
 
 		base_uint& operator|=(const base_uint& b)
 		{
-			for(Sint32 i = 0; i < WIDTH; ++i)
-				pn[i] |= b.pn[i];
+			for(Sint32 i = 0; i < WIDTH; i + 4)
+			{
+				pn[i + 0] |= b.pn[i + 0];
+				pn[i + 1] |= b.pn[i + 1];
+				pn[i + 2] |= b.pn[i + 2];
+				pn[i + 3] |= b.pn[i + 3];
+			}
 			return *this;
 		}
 
 		base_uint& operator+=(const base_uint& b)
 		{
+			#if (defined(__USE_AVX__) || defined(__USE_AVX2__))
+			//addcarry require immintrin.h and it is avx/avx2 intrinsics header
+			//we don't need to check for any cpu extension set available because they should be supported by any cpu
+			unsigned char carry = 0;
+			for(Sint32 i = 0; i < WIDTH; i += 4)
+			{
+				carry = _addcarry_u32(carry, pn[i + 0], b.pn[i + 0], &pn[i + 0]);
+				carry = _addcarry_u32(carry, pn[i + 1], b.pn[i + 1], &pn[i + 1]);
+				carry = _addcarry_u32(carry, pn[i + 2], b.pn[i + 2], &pn[i + 2]);
+				carry = _addcarry_u32(carry, pn[i + 3], b.pn[i + 3], &pn[i + 3]);
+			}
+			#else
 			Uint64 carry = 0;
 			for(Sint32 i = 0; i < WIDTH; ++i)
 			{
@@ -125,12 +164,26 @@ class base_uint
 				pn[i] = SDL_static_cast(Uint32, carry);
 				carry >>= 32;
 			}
+			#endif
 			return *this;
 		}
 
 		base_uint& operator-=(const base_uint& b)
 		{
+			#if (defined(__USE_AVX__) || defined(__USE_AVX2__))
+			//subborrow require immintrin.h and it is avx/avx2 intrinsics header
+			//we don't need to check for any cpu extension set available because they should be supported by any cpu
+			unsigned char carry = 0;
+			for(Sint32 i = 0; i < WIDTH; i += 4)
+			{
+				carry = _subborrow_u32(carry, pn[i + 0], b.pn[i + 0], &pn[i + 0]);
+				carry = _subborrow_u32(carry, pn[i + 1], b.pn[i + 1], &pn[i + 1]);
+				carry = _subborrow_u32(carry, pn[i + 2], b.pn[i + 2], &pn[i + 2]);
+				carry = _subborrow_u32(carry, pn[i + 3], b.pn[i + 3], &pn[i + 3]);
+			}
+			#else
 			*this += -b;
+			#endif
 			return *this;
 		}
 
@@ -278,10 +331,9 @@ class base_uint
 
 		base_uint& operator=(Uint64 b)
 		{
+			memset(pn, 0, sizeof(pn));
 			pn[0] = SDL_static_cast(Uint32, b);
 			pn[1] = SDL_static_cast(Uint32, (b >> 32));
-			for(Sint32 i = 2; i < WIDTH; ++i)
-				pn[i] = 0;
 			return *this;
 		}
 
@@ -345,14 +397,7 @@ class base_uint
 			for(Sint32 pos = WIDTH - 1; pos >= 0; --pos)
 			{
 				if(pn[pos])
-				{
-					for(Sint32 bits = 31; bits > 0; --bits)
-					{
-						if(pn[pos] & (1 << bits))
-							return 32 * pos + bits + 1;
-					}
-					return 32 * pos + 1;
-				}
+					return 32 * pos + UTIL_clz(pn[pos]) + 1;
 			}
 			return 0;
 		}
@@ -429,7 +474,7 @@ class Uint1024 : public base_uint<1024>
 };
 
 template <unsigned int BITS>
-const base_uint<BITS> base_uint_powm(base_uint<BITS> a, Uint32 e, base_uint<BITS> m)
+base_uint<BITS> base_uint_powm(base_uint<BITS> a, Uint32 e, base_uint<BITS>& m)
 {
 	base_uint<BITS * 2> x(1), y, tmp_m;
 	y.setData(a.getData(), BITS / 8);

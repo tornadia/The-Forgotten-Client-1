@@ -173,7 +173,12 @@ void UTIL_options()
 	if(pWindow)
 		return;
 
-	GUI_Window* newWindow = new GUI_Window(iRect(0, 0, OPTIONS_WIDTH, OPTIONS_HEIGHT), OPTIONS_TITLE, GUI_WINDOW_OPTIONS);
+	GUI_Window* newWindow;
+	if(g_clientVersion >= 1215)
+		newWindow = new GUI_Window(iRect(0, 0, OPTIONS_WIDTH, OPTIONS_HEIGHT), OPTIONS_TITLE, GUI_WINDOW_OPTIONS);
+	else
+		newWindow = new GUI_Window(iRect(0, 0, OPTIONS_WIDTH, OPTIONS_HEIGHT - 33), OPTIONS_TITLE, GUI_WINDOW_OPTIONS);
+
 	GUI_Button* newButton = new GUI_Button(iRect(OPTIONS_GENERAL_BUTTON_X, OPTIONS_GENERAL_BUTTON_Y, OPTIONS_GENERAL_BUTTON_W, OPTIONS_GENERAL_BUTTON_H), OPTIONS_GENERAL_BUTTON_TEXT);
 	newButton->setButtonEventCallback(&options_Events, OPTIONS_GENERAL_EVENTID);
 	newButton->startEvents();
@@ -198,18 +203,35 @@ void UTIL_options()
 	newButton->setButtonEventCallback(&options_Events, OPTIONS_MOTD_EVENTID);
 	newButton->startEvents();
 	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(OPTIONS_BUTTONS_BUTTON_X, OPTIONS_BUTTONS_BUTTON_Y, OPTIONS_BUTTONS_BUTTON_W, OPTIONS_BUTTONS_BUTTON_H), OPTIONS_BUTTONS_BUTTON_TEXT);
-	newButton->setButtonEventCallback(&options_Events, OPTIONS_BUTTONS_EVENTID);
-	newButton->startEvents();
-	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(OPTIONS_WIDTH - 56, OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
-	newButton->setButtonEventCallback(&options_Events, OPTIONS_OK_EVENTID);
-	newButton->startEvents();
-	newWindow->addChild(newButton);
-	newButton = new GUI_Button(iRect(OPTIONS_WIDTH - 56, OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
-	newButton->setButtonEventCallback(&options_Events, OPTIONS_OK_EVENTID);
-	newButton->startEvents();
-	newWindow->addChild(newButton);
+	if(g_clientVersion >= 1215)
+	{
+		newButton = new GUI_Button(iRect(OPTIONS_BUTTONS_BUTTON_X, OPTIONS_BUTTONS_BUTTON_Y, OPTIONS_BUTTONS_BUTTON_W, OPTIONS_BUTTONS_BUTTON_H), OPTIONS_BUTTONS_BUTTON_TEXT);
+		newButton->setButtonEventCallback(&options_Events, OPTIONS_BUTTONS_EVENTID);
+		newButton->startEvents();
+		newWindow->addChild(newButton);
+	}
+	if(g_clientVersion >= 1215)
+	{
+		newButton = new GUI_Button(iRect(OPTIONS_WIDTH - 56, OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+		newButton->setButtonEventCallback(&options_Events, OPTIONS_OK_EVENTID);
+		newButton->startEvents();
+		newWindow->addChild(newButton);
+		newButton = new GUI_Button(iRect(OPTIONS_WIDTH - 56, OPTIONS_HEIGHT - 30, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
+		newButton->setButtonEventCallback(&options_Events, OPTIONS_OK_EVENTID);
+		newButton->startEvents();
+		newWindow->addChild(newButton);
+	}
+	else
+	{
+		newButton = new GUI_Button(iRect(OPTIONS_WIDTH - 56, OPTIONS_HEIGHT - 63, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ENTER_TRIGGER);
+		newButton->setButtonEventCallback(&options_Events, OPTIONS_OK_EVENTID);
+		newButton->startEvents();
+		newWindow->addChild(newButton);
+		newButton = new GUI_Button(iRect(OPTIONS_WIDTH - 56, OPTIONS_HEIGHT - 63, GUI_UI_BUTTON_43PX_GRAY_UP_W, GUI_UI_BUTTON_43PX_GRAY_UP_H), "Ok", CLIENT_GUI_ESCAPE_TRIGGER);
+		newButton->setButtonEventCallback(&options_Events, OPTIONS_OK_EVENTID);
+		newButton->startEvents();
+		newWindow->addChild(newButton);
+	}
 	GUI_Label* newLabel = new GUI_Label(iRect(OPTIONS_GENERAL_LABEL_X, OPTIONS_GENERAL_LABEL_Y, 0, 0), OPTIONS_GENERAL_LABEL_TEXT);
 	newWindow->addChild(newLabel);
 	newLabel = new GUI_Label(iRect(OPTIONS_GRAPHICS_LABEL_X, OPTIONS_GRAPHICS_LABEL_Y, 0, 0), OPTIONS_GRAPHICS_LABEL_TEXT);
@@ -222,11 +244,22 @@ void UTIL_options()
 	newWindow->addChild(newLabel);
 	newLabel = new GUI_Label(iRect(OPTIONS_MOTD_LABEL_X, OPTIONS_MOTD_LABEL_Y, 0, 0), OPTIONS_MOTD_LABEL_TEXT);
 	newWindow->addChild(newLabel);
-	newLabel = new GUI_Label(iRect(OPTIONS_BUTTONS_LABEL_X, OPTIONS_BUTTONS_LABEL_Y, 0, 0), OPTIONS_BUTTONS_LABEL_TEXT);
-	newWindow->addChild(newLabel);
+	if(g_clientVersion >= 1215)
+	{
+		newLabel = new GUI_Label(iRect(OPTIONS_BUTTONS_LABEL_X, OPTIONS_BUTTONS_LABEL_Y, 0, 0), OPTIONS_BUTTONS_LABEL_TEXT);
+		newWindow->addChild(newLabel);
+	}
 	GUI_Separator* newSeparator = new GUI_Separator(iRect(OPTIONS_HELP_SEPARATOR_X, OPTIONS_HELP_SEPARATOR_Y, OPTIONS_HELP_SEPARATOR_W, OPTIONS_HELP_SEPARATOR_H));
 	newWindow->addChild(newSeparator);
-	newSeparator = new GUI_Separator(iRect(13, OPTIONS_HEIGHT - 40, OPTIONS_WIDTH - 26, 2));
-	newWindow->addChild(newSeparator);
+	if(g_clientVersion >= 1215)
+	{
+		newSeparator = new GUI_Separator(iRect(13, OPTIONS_HEIGHT - 40, OPTIONS_WIDTH - 26, 2));
+		newWindow->addChild(newSeparator);
+	}
+	else
+	{
+		newSeparator = new GUI_Separator(iRect(13, OPTIONS_HEIGHT - 73, OPTIONS_WIDTH - 26, 2));
+		newWindow->addChild(newSeparator);
+	}
 	g_engine.addWindow(newWindow);
 }

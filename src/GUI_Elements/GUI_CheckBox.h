@@ -46,7 +46,7 @@ class GUI_CheckBox : public GUI_Element
 		void setColor(Uint8 red, Uint8 green, Uint8 blue) {m_red = red; m_green = green; m_blue = blue;}
 		void setChecked(bool check);
 
-		SDL_FORCE_INLINE bool isChecked() {return m_Checked;}
+		SDL_INLINE bool isChecked() {return m_Checked;}
 
 	protected:
 		void (*m_eventHandlerFunction)(Uint32,Sint32) = NULL;

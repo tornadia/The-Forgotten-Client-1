@@ -114,8 +114,8 @@ class Engine
 		void initFont(Uint8 font, Sint32 width, Sint32 height, Sint16 hchars, Sint16 vchars, Sint16 maxchw, Sint16 maxchh, Sint16 spaceh);
 		Uint32 calculateFontWidth(Uint8 fontId, const std::string& text, size_t pos, size_t len);
 		Uint32 calculateFontWidth(Uint8 fontId, const std::string& text);
-		SDL_FORCE_INLINE Uint32 calculateFontGlyphWidth(Uint8 fontId, const Uint8 glyph) {return (m_charw[fontId][glyph] + m_charx[fontId][0]);}
-		SDL_FORCE_INLINE Sint32 getFontSpace(Uint8 fontId) {return m_chary[fontId][0];}
+		SDL_INLINE Uint32 calculateFontGlyphWidth(Uint8 fontId, const Uint8 glyph) {return (m_charw[fontId][glyph] + m_charx[fontId][0]);}
+		SDL_INLINE Sint32 getFontSpace(Uint8 fontId) {return m_chary[fontId][0];}
 
 		void exitGame();
 		void checkReleaseQueue();
@@ -177,8 +177,8 @@ class Engine
 		void enableMoveItem(Sint32 x, Sint32 y);
 		void setActionData(ClientActions data, Uint32 creatureId, Uint16 itemId, Uint16 posX, Uint16 posY, Uint8 posZ, Uint8 posStack);
 		void setAction(ClientActions action);
-		SDL_FORCE_INLINE ClientActionData& getActionData(Uint8 action) {return m_actionDataStructure[action];}
-		SDL_FORCE_INLINE ClientActions getAction() {return m_actionData;}
+		SDL_INLINE ClientActionData& getActionData(Uint8 action) {return m_actionDataStructure[action];}
+		SDL_INLINE ClientActions getAction() {return m_actionData;}
 	
 		void showContextMenu(GUI_ContextMenu* menu, Sint32 mouseX, Sint32 mouseY);
 		void showDescription(Sint32 mouseX, Sint32 mouseY, const std::string& description, Uint32 delay = 500);
@@ -192,43 +192,43 @@ class Engine
 		void processGameStart();
 		void processGameEnd();
 
-		SDL_FORCE_INLINE Sint32 getWindowWidth() {return m_windowW;}
-		SDL_FORCE_INLINE Sint32 getWindowHeight() {return m_windowH;}
-		SDL_FORCE_INLINE Sint32 getLeftPanel() {return m_leftPanel;}
-		SDL_FORCE_INLINE Sint32 getRightPanel() {return m_rightPanel;}
+		SDL_INLINE Sint32 getWindowWidth() {return m_windowW;}
+		SDL_INLINE Sint32 getWindowHeight() {return m_windowH;}
+		SDL_INLINE Sint32 getLeftPanel() {return m_leftPanel;}
+		SDL_INLINE Sint32 getRightPanel() {return m_rightPanel;}
 
 		SDL_INLINE void setEngineId(Uint8 engine) {m_engine = engine;}
-		SDL_FORCE_INLINE Uint8 getEngineId() {return m_engine;}
-		SDL_FORCE_INLINE std::unique_ptr<Surface>& getRender() {return m_surface;}
+		SDL_INLINE Uint8 getEngineId() {return m_engine;}
+		SDL_INLINE std::unique_ptr<Surface>& getRender() {return m_surface;}
 
 		SDL_INLINE void setClientHost(std::string clientHost) {m_clientHost = std::move(clientHost);}
 		SDL_INLINE void setClientPort(std::string clientPort) {m_clientPort = std::move(clientPort);}
 		SDL_INLINE void setClientProxy(std::string clientProxy) {m_clientProxy = std::move(clientProxy);}
 		SDL_INLINE void setClientProxyAuth(std::string clientProxyAuth) {m_clientProxyAuth = std::move(clientProxyAuth);}
-		SDL_FORCE_INLINE std::string& getClientHost() {return m_clientHost;}
-		SDL_FORCE_INLINE std::string& getClientPort() {return m_clientPort;}
-		SDL_FORCE_INLINE std::string& getClientProxy() {return m_clientProxy;}
-		SDL_FORCE_INLINE std::string& getClientProxyAuth() {return m_clientProxyAuth;}
+		SDL_INLINE std::string& getClientHost() {return m_clientHost;}
+		SDL_INLINE std::string& getClientPort() {return m_clientPort;}
+		SDL_INLINE std::string& getClientProxy() {return m_clientProxy;}
+		SDL_INLINE std::string& getClientProxyAuth() {return m_clientProxyAuth;}
 		
 		SDL_INLINE void setSharpening(bool vsync) {m_sharpening = vsync;}
-		SDL_FORCE_INLINE bool isSharpening() {return m_sharpening;}
+		SDL_INLINE bool isSharpening() {return m_sharpening;}
 		SDL_INLINE void setVsync(bool vsync) {m_vsync = vsync; m_controlFPS = (!m_unlimitedFPS && !m_vsync);}
-		SDL_FORCE_INLINE bool isVsync() {return m_vsync;}
+		SDL_INLINE bool isVsync() {return m_vsync;}
 		SDL_INLINE void setAntialiasing(Uint8 antialiasing) {m_antialiasing = antialiasing;}
-		SDL_FORCE_INLINE bool hasAntialiasing() {return m_antialiasing >= CLIENT_ANTIALIASING_NORMAL;}
-		SDL_FORCE_INLINE Uint8 getAntialiasing() {return m_antialiasing;}
+		SDL_INLINE bool hasAntialiasing() {return m_antialiasing >= CLIENT_ANTIALIASING_NORMAL;}
+		SDL_INLINE Uint8 getAntialiasing() {return m_antialiasing;}
 
 		SDL_INLINE void setUnlimitedFPS(bool unlimitedFPS) {m_unlimitedFPS = unlimitedFPS; m_controlFPS = (!m_unlimitedFPS && !m_vsync);}
-		SDL_FORCE_INLINE bool isUnlimitedFPS() {return m_unlimitedFPS;}
-		SDL_FORCE_INLINE bool isControlledFPS() {return m_controlFPS;}
+		SDL_INLINE bool isUnlimitedFPS() {return m_unlimitedFPS;}
+		SDL_INLINE bool isControlledFPS() {return m_controlFPS;}
 
 		SDL_INLINE void setFullScreen(bool fullscreen) {m_fullscreen = fullscreen;}
 		SDL_INLINE void setFullScreenMode(Sint32 w, Sint32 h, Sint32 bits, Sint32 hz) {m_fullScreenWidth = w; m_fullScreenHeight = h; m_fullScreenBits = bits; m_fullScreenHZ = hz;}
-		SDL_FORCE_INLINE bool hasFullScreen() {return m_fullscreen;}
-		SDL_FORCE_INLINE Sint32 getFullScreenWidth() {return m_fullScreenWidth;}
-		SDL_FORCE_INLINE Sint32 getFullScreenHeight() {return m_fullScreenHeight;}
-		SDL_FORCE_INLINE Sint32 getFullScreenBits() {return m_fullScreenBits;}
-		SDL_FORCE_INLINE Sint32 getFullScreenHZ() {return m_fullScreenHZ;}
+		SDL_INLINE bool hasFullScreen() {return m_fullscreen;}
+		SDL_INLINE Sint32 getFullScreenWidth() {return m_fullScreenWidth;}
+		SDL_INLINE Sint32 getFullScreenHeight() {return m_fullScreenHeight;}
+		SDL_INLINE Sint32 getFullScreenBits() {return m_fullScreenBits;}
+		SDL_INLINE Sint32 getFullScreenHZ() {return m_fullScreenHZ;}
 		
 		SDL_INLINE void setAttackMode(Uint8 attackMode) {m_attackMode = attackMode;}
 		SDL_INLINE void setChaseMode(Uint8 chaseMode) {m_chaseMode = chaseMode;}
@@ -237,27 +237,27 @@ class Engine
 		SDL_INLINE void setAmbientLight(Uint8 ambientLight) {m_lightAmbient = ambientLight;}
 		SDL_INLINE void setLevelSeparator(Uint8 levelSeparator) {m_levelSeparator = levelSeparator;}
 		SDL_INLINE void setLightMode(Uint8 lightMode) {m_lightMode = lightMode;}
-		SDL_FORCE_INLINE Uint8 getAttackMode() {return m_attackMode;}
-		SDL_FORCE_INLINE Uint8 getChaseMode() {return m_chaseMode;}
-		SDL_FORCE_INLINE Uint8 getSecureMode() {return m_secureMode;}
-		SDL_FORCE_INLINE Uint8 getPvpMode() {return m_pvpMode;}
-		SDL_FORCE_INLINE Uint8 getAmbientLight() {return m_lightAmbient;}
-		SDL_FORCE_INLINE Uint8 getLevelSeparator() {return m_levelSeparator;}
-		SDL_FORCE_INLINE Uint8 getLightMode() {return m_lightMode;}
+		SDL_INLINE Uint8 getAttackMode() {return m_attackMode;}
+		SDL_INLINE Uint8 getChaseMode() {return m_chaseMode;}
+		SDL_INLINE Uint8 getSecureMode() {return m_secureMode;}
+		SDL_INLINE Uint8 getPvpMode() {return m_pvpMode;}
+		SDL_INLINE Uint8 getAmbientLight() {return m_lightAmbient;}
+		SDL_INLINE Uint8 getLevelSeparator() {return m_levelSeparator;}
+		SDL_INLINE Uint8 getLightMode() {return m_lightMode;}
 
 		SDL_INLINE void setBattleSortMethod(SortMethods sortMethod) {m_battleSortMethod = sortMethod;}
 		SDL_INLINE void setBuddySortMethod(VipSortMethods sortMethod) {m_buddySortmethod = sortMethod;}
 		SDL_INLINE void setBuddyHideOffline(bool hideOffline) {m_buddyHideOffline = hideOffline;}
 		SDL_INLINE void setBuddyHideGroups(bool hideGroups) {m_buddyHideGroups = hideGroups;}
-		SDL_FORCE_INLINE SortMethods getBattleSortMethod() {return m_battleSortMethod;}
-		SDL_FORCE_INLINE VipSortMethods getBuddySortMethod() {return m_buddySortmethod;}
-		SDL_FORCE_INLINE bool getBuddyHideOffline() {return m_buddyHideOffline;}
-		SDL_FORCE_INLINE bool getBuddyHideGroups() {return m_buddyHideGroups;}
+		SDL_INLINE SortMethods getBattleSortMethod() {return m_battleSortMethod;}
+		SDL_INLINE VipSortMethods getBuddySortMethod() {return m_buddySortmethod;}
+		SDL_INLINE bool getBuddyHideOffline() {return m_buddyHideOffline;}
+		SDL_INLINE bool getBuddyHideGroups() {return m_buddyHideGroups;}
 		
 		SDL_INLINE void setMotdNumber(Uint32 motdNumber) {m_motdNumber = motdNumber;}
 		SDL_INLINE void setMotdText(std::string motdText) {m_motdText = std::move(motdText);}
-		SDL_FORCE_INLINE Uint32 getMotdNumber() {return m_motdNumber;}
-		SDL_FORCE_INLINE std::string& getMotdText() {return m_motdText;}
+		SDL_INLINE Uint32 getMotdNumber() {return m_motdNumber;}
+		SDL_INLINE std::string& getMotdText() {return m_motdText;}
 
 		SDL_INLINE void setAccountSessionKey(std::string sessionKey) {m_accountSessionKey = std::move(sessionKey);}
 		SDL_INLINE void setAccountName(std::string accountName) {m_accountName = std::move(accountName);}
@@ -269,23 +269,23 @@ class Engine
 		SDL_INLINE void setAccountPremDays(Uint32 accountPremDays) {m_accountPremDays = accountPremDays;}
 		SDL_INLINE void setAccountNewCharList(bool newCharacterList) {m_newCharacterList = newCharacterList;}
 		SDL_INLINE void setCharacterSelectId(Sint32 selectId) {m_characterSelectId = selectId;}
-		SDL_FORCE_INLINE std::string& getAccountSessionKey() {return m_accountSessionKey;}
-		SDL_FORCE_INLINE std::string& getAccountName() {return m_accountName;}
-		SDL_FORCE_INLINE std::string& getAccountPassword() {return m_accountPassword;}
-		SDL_FORCE_INLINE std::string& getAccountToken() {return m_accountToken;}
-		SDL_FORCE_INLINE std::string& getCharacterName() {return m_characters[SDL_static_cast(size_t, m_characterSelectId)].name;}
-		SDL_FORCE_INLINE std::string& getCharacterWorldName() {return m_characters[SDL_static_cast(size_t, m_characterSelectId)].worldName;}
-		SDL_FORCE_INLINE std::vector<CharacterDetail>& getAccountCharList() {return m_characters;}
-		SDL_FORCE_INLINE Uint8 getAccountStatus() {return m_accountStatus;}
-		SDL_FORCE_INLINE Uint8 getAccountSubstatus() {return m_accountSubStatus;}
-		SDL_FORCE_INLINE Uint32 getAccountPremDays() {return m_accountPremDays;}
-		SDL_FORCE_INLINE bool getAccountNewCharList() {return m_newCharacterList;}
-		SDL_FORCE_INLINE Sint32 getCharacterSelectId() {return m_characterSelectId;}
+		SDL_INLINE std::string& getAccountSessionKey() {return m_accountSessionKey;}
+		SDL_INLINE std::string& getAccountName() {return m_accountName;}
+		SDL_INLINE std::string& getAccountPassword() {return m_accountPassword;}
+		SDL_INLINE std::string& getAccountToken() {return m_accountToken;}
+		SDL_INLINE std::string& getCharacterName() {return m_characters[SDL_static_cast(size_t, m_characterSelectId)].name;}
+		SDL_INLINE std::string& getCharacterWorldName() {return m_characters[SDL_static_cast(size_t, m_characterSelectId)].worldName;}
+		SDL_INLINE std::vector<CharacterDetail>& getAccountCharList() {return m_characters;}
+		SDL_INLINE Uint8 getAccountStatus() {return m_accountStatus;}
+		SDL_INLINE Uint8 getAccountSubstatus() {return m_accountSubStatus;}
+		SDL_INLINE Uint32 getAccountPremDays() {return m_accountPremDays;}
+		SDL_INLINE bool getAccountNewCharList() {return m_newCharacterList;}
+		SDL_INLINE Sint32 getCharacterSelectId() {return m_characterSelectId;}
 
-		SDL_FORCE_INLINE iRect& getGameWindowRect() {return m_gameWindowRect;}
-		SDL_FORCE_INLINE float getGameWindowScale() {return m_scale;}
-		SDL_FORCE_INLINE Sint32 getGameWindowScaleSize() {return m_scaledSize;}
-		SDL_FORCE_INLINE bool isIngame() {return m_ingame;}
+		SDL_INLINE iRect& getGameWindowRect() {return m_gameWindowRect;}
+		SDL_INLINE float getGameWindowScale() {return m_scale;}
+		SDL_INLINE Sint32 getGameWindowScaleSize() {return m_scaledSize;}
+		SDL_INLINE bool isIngame() {return m_ingame;}
 
 		SDL_INLINE void setClassicControl(bool classicControl) {m_classicControl = classicControl;}
 		SDL_INLINE void setAutoChaseOff(bool chaseOff) {m_autoChaseOff = chaseOff;}
@@ -295,14 +295,14 @@ class Engine
 		SDL_INLINE void setShowIcons(bool showIcons) {m_showIcons = showIcons;}
 		SDL_INLINE void setShowTextualEffects(bool showTextualEffects) {m_showTextualEffects = showTextualEffects;}
 		SDL_INLINE void setShowCooldown(bool showCooldown) {m_showCooldown = showCooldown;}
-		SDL_FORCE_INLINE bool hasClassicControl() {return m_classicControl;}
-		SDL_FORCE_INLINE bool hasAutoChaseOff() {return m_autoChaseOff;}
-		SDL_FORCE_INLINE bool hasShowNames() {return m_showNames;}
-		SDL_FORCE_INLINE bool hasShowMarks() {return m_showMarks;}
-		SDL_FORCE_INLINE bool hasShowPvPFrames() {return m_showPvPFrames;}
-		SDL_FORCE_INLINE bool hasShowIcons() {return m_showIcons;}
-		SDL_FORCE_INLINE bool hasShowTextualEffects() {return m_showTextualEffects;}
-		SDL_FORCE_INLINE bool hasShowCooldown() {return m_showCooldown;}
+		SDL_INLINE bool hasClassicControl() {return m_classicControl;}
+		SDL_INLINE bool hasAutoChaseOff() {return m_autoChaseOff;}
+		SDL_INLINE bool hasShowNames() {return m_showNames;}
+		SDL_INLINE bool hasShowMarks() {return m_showMarks;}
+		SDL_INLINE bool hasShowPvPFrames() {return m_showPvPFrames;}
+		SDL_INLINE bool hasShowIcons() {return m_showIcons;}
+		SDL_INLINE bool hasShowTextualEffects() {return m_showTextualEffects;}
+		SDL_INLINE bool hasShowCooldown() {return m_showCooldown;}
 
 		SDL_INLINE void setShowInfoMessages(bool infoMessages) {m_showInfoMessages = infoMessages;}
 		SDL_INLINE void setShowEventMessages(bool eventMessages) {m_showEventMessages = eventMessages;}
@@ -311,39 +311,39 @@ class Engine
 		SDL_INLINE void setShowTimestamps(bool timestamps) {m_showTimestamps = timestamps;}
 		SDL_INLINE void setShowLevels(bool levels) {m_showLevels = levels;}
 		SDL_INLINE void setShowPrivateMessages(bool privateMessages) {m_showPrivateMessages = privateMessages;}
-		SDL_FORCE_INLINE bool hasShowInfoMessages() {return m_showInfoMessages;}
-		SDL_FORCE_INLINE bool hasShowEventMessages() {return m_showEventMessages;}
-		SDL_FORCE_INLINE bool hasShowStatusMessages() {return m_showStatusMessages;}
-		SDL_FORCE_INLINE bool hasShowStatusOthersMessages() {return m_showStatusOthersMessages;}
-		SDL_FORCE_INLINE bool hasShowTimestamps() {return m_showTimestamps;}
-		SDL_FORCE_INLINE bool hasShowLevels() {return m_showLevels;}
-		SDL_FORCE_INLINE bool hasShowPrivateMessages() {return m_showPrivateMessages;}
+		SDL_INLINE bool hasShowInfoMessages() {return m_showInfoMessages;}
+		SDL_INLINE bool hasShowEventMessages() {return m_showEventMessages;}
+		SDL_INLINE bool hasShowStatusMessages() {return m_showStatusMessages;}
+		SDL_INLINE bool hasShowStatusOthersMessages() {return m_showStatusOthersMessages;}
+		SDL_INLINE bool hasShowTimestamps() {return m_showTimestamps;}
+		SDL_INLINE bool hasShowLevels() {return m_showLevels;}
+		SDL_INLINE bool hasShowPrivateMessages() {return m_showPrivateMessages;}
 
 		SDL_INLINE void setShowLevelBar(bool showLevelBar) {m_showLevelBar = showLevelBar;}
 		SDL_INLINE void setShowStaminaBar(bool showStaminaBar) {m_showStaminaBar = showStaminaBar;}
 		SDL_INLINE void setShowMagLevelBar(bool showMagLevelBar) {m_showMagLevelBar = showMagLevelBar;}
 		SDL_INLINE void setShowTrainingBar(bool showTrainingBar) {m_showTrainingBar = showTrainingBar;}
 		SDL_INLINE void setShowSkillBar(Skills skillId, bool showSkillBar) {m_showSkillsBar[skillId] = showSkillBar;}
-		SDL_FORCE_INLINE bool getShowLevelBar() {return m_showLevelBar;}
-		SDL_FORCE_INLINE bool getShowStaminaBar() {return m_showStaminaBar;}
-		SDL_FORCE_INLINE bool getShowMagLevelBar() {return m_showMagLevelBar;}
-		SDL_FORCE_INLINE bool getShowTrainingBar() {return m_showTrainingBar;}
-		SDL_FORCE_INLINE bool getShowSkillBar(Skills skillId) {return m_showSkillsBar[skillId];}
+		SDL_INLINE bool getShowLevelBar() {return m_showLevelBar;}
+		SDL_INLINE bool getShowStaminaBar() {return m_showStaminaBar;}
+		SDL_INLINE bool getShowMagLevelBar() {return m_showMagLevelBar;}
+		SDL_INLINE bool getShowTrainingBar() {return m_showTrainingBar;}
+		SDL_INLINE bool getShowSkillBar(Skills skillId) {return m_showSkillsBar[skillId];}
 		
 		SDL_INLINE void setBuySortMethod(Uint8 sortMethod) {m_buySortMethod = sortMethod;}
 		SDL_INLINE void setSellSortMethod(Uint8 sortMethod) {m_sellSortMethod = sortMethod;}
 		SDL_INLINE void setBuyWithBackpacks(bool buyWithBackpacks) {m_buyWithBackpacks = buyWithBackpacks;}
 		SDL_INLINE void setIgnoreCapacity(bool ignoreCapacity) {m_ignoreCapacity = ignoreCapacity;}
 		SDL_INLINE void setIgnoreEquiped(bool ignoreEquiped) {m_ignoreEquiped = ignoreEquiped;}
-		SDL_FORCE_INLINE Uint8 getBuySortMethod() {return m_buySortMethod;}
-		SDL_FORCE_INLINE Uint8 getSellSortMethod() {return m_sellSortMethod;}
-		SDL_FORCE_INLINE bool getBuyWithBackpacks() {return m_buyWithBackpacks;}
-		SDL_FORCE_INLINE bool getIgnoreCapacity() {return m_ignoreCapacity;}
-		SDL_FORCE_INLINE bool getIgnoreEquiped() {return m_ignoreEquiped;}
+		SDL_INLINE Uint8 getBuySortMethod() {return m_buySortMethod;}
+		SDL_INLINE Uint8 getSellSortMethod() {return m_sellSortMethod;}
+		SDL_INLINE bool getBuyWithBackpacks() {return m_buyWithBackpacks;}
+		SDL_INLINE bool getIgnoreCapacity() {return m_ignoreCapacity;}
+		SDL_INLINE bool getIgnoreEquiped() {return m_ignoreEquiped;}
 
 		SDL_INLINE void setContentWindowHeight(Uint32 windowId, Sint32 height) {m_contentWindows[windowId] = height;}
-		SDL_FORCE_INLINE Sint32 getContentWindowHeight(Uint32 windowId) {std::map<Uint32, Sint32>::iterator it = m_contentWindows.find(windowId); if(it != m_contentWindows.end()) return it->second; return 0;}
-		SDL_FORCE_INLINE Sint32 getContentWindowParent(Uint32 windowId) {std::map<Uint32, Sint32>::iterator it = m_parentWindows.find(windowId); if(it != m_parentWindows.end()) {Sint32 panelId = it->second; m_parentWindows.erase(it); return panelId;} return -1;}
+		SDL_INLINE Sint32 getContentWindowHeight(Uint32 windowId) {std::map<Uint32, Sint32>::iterator it = m_contentWindows.find(windowId); if(it != m_contentWindows.end()) return it->second; return 0;}
+		SDL_INLINE Sint32 getContentWindowParent(Uint32 windowId) {std::map<Uint32, Sint32>::iterator it = m_parentWindows.find(windowId); if(it != m_parentWindows.end()) {Sint32 panelId = it->second; m_parentWindows.erase(it); return panelId;} return -1;}
 
 		void setVipData(Uint32 playerGUID, const std::string& description, Uint32 iconId, bool notifyLogin);
 		VipData* getVipData(Uint32 playerGUID);
@@ -356,14 +356,14 @@ class Engine
 		SDL_INLINE void setIgnoreYellingMessages(bool ignoreYelling) {m_ignoreYellingMessages = ignoreYelling;}
 		SDL_INLINE void setIgnorePrivateMessages(bool ignoreMessages) {m_ignorePrivateMessages = ignoreMessages;}
 		SDL_INLINE void setAllowVipMessages(bool allowMessages) {m_allowVipMessages = allowMessages;}
-		SDL_FORCE_INLINE bool getActivatedBlackList() {return m_activatedBlackList;}
-		SDL_FORCE_INLINE bool getActivatedWhiteList() {return m_activatedWhiteList;}
-		SDL_FORCE_INLINE bool getIgnoreYellingMessages() {return m_ignoreYellingMessages;}
-		SDL_FORCE_INLINE bool getIgnorePrivateMessages() {return m_ignorePrivateMessages;}
-		SDL_FORCE_INLINE bool getAllowVipMessages() {return m_allowVipMessages;}
+		SDL_INLINE bool getActivatedBlackList() {return m_activatedBlackList;}
+		SDL_INLINE bool getActivatedWhiteList() {return m_activatedWhiteList;}
+		SDL_INLINE bool getIgnoreYellingMessages() {return m_ignoreYellingMessages;}
+		SDL_INLINE bool getIgnorePrivateMessages() {return m_ignorePrivateMessages;}
+		SDL_INLINE bool getAllowVipMessages() {return m_allowVipMessages;}
 
 		SDL_INLINE void setTopPanel(GUI_PanelWindow* newTopPanel) {m_topPanel = newTopPanel;}
-		SDL_FORCE_INLINE GUI_PanelWindow* getTopPanel() {return m_topPanel;}
+		SDL_INLINE GUI_PanelWindow* getTopPanel() {return m_topPanel;}
 
 		SDL_Window* m_window = NULL;
 		Uint32 m_windowId = 0;
@@ -509,6 +509,10 @@ class Engine
 		bool m_ignoreYellingMessages = false;
 		bool m_ignorePrivateMessages = false;
 		bool m_allowVipMessages = false;
+
+		bool m_showActionBar1 = true;
+		bool m_showActionBar2 = false;
+		bool m_askBeforeBuying = true;
 
 		bool m_newCharacterList = false;
 		bool m_ingame = false;

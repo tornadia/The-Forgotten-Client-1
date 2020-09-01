@@ -46,9 +46,9 @@ class LightSystem
 		void initLightMap(Sint32 offsetX, Sint32 offsetY, Uint8 floorZ);
 		Uint8 getLightSourceAverage(Sint32 x, Sint32 y);
 
-		SDL_FORCE_INLINE Uint16 getLightIntensity() {return m_light[0];}
-		SDL_FORCE_INLINE Uint16 getLightColor() {return m_light[1];}
-		SDL_FORCE_INLINE LightMap* getLightMap() {return m_lightMap;}
+		SDL_INLINE Uint16 getLightIntensity() {return m_light[0];}
+		SDL_INLINE Uint16 getLightColor() {return m_light[1];}
+		SDL_INLINE LightMap* getLightMap() {return m_lightMap;}
 
 	protected:
 		LightMap m_lightMap[GAME_MAP_WIDTH * GAME_MAP_HEIGHT];

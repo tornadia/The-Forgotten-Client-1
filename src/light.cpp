@@ -103,19 +103,21 @@ void LightSystem::addLightSource(Sint32 x, Sint32 y, Uint16 light[2])
 	Sint32 x_end = UTIL_min<Sint32>(x + rad + (offsetX > 0 ? 1 : 0), GAME_MAP_WIDTH);
 	Sint32 y_start = UTIL_max<Sint32>(y - rad, 0);
 	Sint32 y_end = UTIL_min<Sint32>(y + rad + (offsetY > 0 ? 1 : 0), GAME_MAP_HEIGHT);
-	for(Sint32 j = y_start; j < y_end; ++j)
+	Sint32 j = y_start;
+	do
 	{
 		float y_res = (j - y) - Yinfluence;
 		y_res *= y_res;
 
 		Sint32 index = ((j * GAME_MAP_WIDTH) + x_start);
-		for(Sint32 i = x_start; i < x_end; ++i)
+		Sint32 i = x_start;
+		do
 		{
 			float x_res = (i - x) - Xinfluence;
 			#ifdef __USE_SSE__
-			float distance = (radius - _mm_cvtss_f32(_mm_rcp_ss(_mm_rsqrt_ss(_mm_set_ss(SDL_static_cast(float, (x_res * x_res) + y_res)))))) / 5.f;
+			float distance = (radius - _mm_cvtss_f32(_mm_rcp_ss(_mm_rsqrt_ss(_mm_set_ss(SDL_static_cast(float, (x_res * x_res) + y_res)))))) * 0.2f;
 			#else
-			float distance = (radius - SDL_sqrtf(SDL_static_cast(float, (x_res * x_res) + y_res))) / 5.f;
+			float distance = (radius - SDL_sqrtf(SDL_static_cast(float, (x_res * x_res) + y_res))) * 0.2f;
 			#endif
 			if(distance > 0.0f)
 			{
@@ -125,8 +127,8 @@ void LightSystem::addLightSource(Sint32 x, Sint32 y, Uint16 light[2])
 				m_lightMap[index].b = UTIL_max<Uint8>(m_lightMap[index].b, SDL_static_cast(Uint8, b * distance));
 			}
 			++index;
-		}
-	}
+		} while(++i < x_end);
+	} while(++j < y_end);
 }
 
 void LightSystem::setLightSource(Sint32 x, Sint32 y, float brightness)

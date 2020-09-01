@@ -22,8 +22,8 @@
 #ifndef __FILE_GUI_SHOPWINDOW_h_
 #define __FILE_GUI_SHOPWINDOW_h_
 
-#include "../GUI_Elements/GUI_Element.h"
 #include "../GUI_Elements/GUI_Container.h"
+#include "../GUI_Elements/GUI_Label.h"
 
 class GUI_ShopContainer : public GUI_Container
 {
@@ -76,7 +76,6 @@ class GUI_ShopItem : public GUI_Element
 		Uint8 m_haveMouse = 0;
 };
 
-class GUI_DynamicLabel;
 class GUI_ShopSelectItem : public GUI_Element
 {
 	public:
@@ -98,8 +97,8 @@ class GUI_ShopSelectItem : public GUI_Element
 		void render();
 
 	protected:
-		GUI_DynamicLabel* m_name;
-		GUI_DynamicLabel* m_description;
+		GUI_DynamicLabel m_name;
+		GUI_DynamicLabel m_description;
 		ItemUI* m_item;
 		size_t m_index;
 };
