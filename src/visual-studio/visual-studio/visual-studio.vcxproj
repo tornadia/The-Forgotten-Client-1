@@ -99,6 +99,7 @@
     <ClCompile Include="..\..\json\json.cpp" />
     <ClCompile Include="..\..\light.cpp" />
     <ClCompile Include="..\..\lzma\Alloc.c" />
+    <ClCompile Include="..\..\lzma\CpuArch.c" />
     <ClCompile Include="..\..\lzma\LzFind.c" />
     <ClCompile Include="..\..\lzma\LzFindMt.c" />
     <ClCompile Include="..\..\lzma\LzmaDec.c" />
@@ -198,6 +199,7 @@
     <ClInclude Include="..\..\lzma\7zTypes.h" />
     <ClInclude Include="..\..\lzma\Alloc.h" />
     <ClInclude Include="..\..\lzma\Compiler.h" />
+    <ClInclude Include="..\..\lzma\CpuArch.h" />
     <ClInclude Include="..\..\lzma\LzFind.h" />
     <ClInclude Include="..\..\lzma\LzFindMt.h" />
     <ClInclude Include="..\..\lzma\LzHash.h" />
@@ -251,13 +253,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>false</UseOfMfc>
@@ -266,13 +268,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v141</PlatformToolset>
+    <PlatformToolset>v142</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>false</UseOfMfc>
