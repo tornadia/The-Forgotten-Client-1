@@ -1653,7 +1653,7 @@ void SDL_SmoothStretch_init()
 	SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_Scalar);
 	#ifdef __USE_SSE__
 	//need to test if fma4 is faster on amd processors to determine proper check order
-	#if (defined(__USE_FMA3__) || defined(__USE_FMA4__))
+	#if (defined(__USE_FMA3__) && defined(__USE_FMA4__))
 	if(SDL_HasFMA3())
 		SDL_DrawTriangle_MOD = SDL_reinterpret_cast(LPSDL_DrawTriangle_MOD, DrawTriangle_FMA3);
 	else if(SDL_HasFMA4())
