@@ -23,6 +23,8 @@
 
 #if defined(SDL_VIDEO_RENDER_D3D11)
 #include <d3d11_1.h>
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 //#define _USE_D3D_SHADER_COMPILER_
 #ifdef SDL_VIDEO_DRIVER_WINRT
