@@ -209,7 +209,7 @@ void UTIL_recreateContainerWindow(Uint8 index, GUI_PanelWindow* pPanel)
 	Container* container = g_game.findContainer(index);
 	if(!container)
 	{
-		UTIL_SafeEventHandler(&container_Events, container_CreateEvent(index, CONTAINER_CLOSED_EVENTID), 1);
+		UTIL_SafeEventHandler((void*)&container_Events, container_CreateEvent(index, CONTAINER_CLOSED_EVENTID), 1);
 		return;
 	}
 	if(!pPanel)
@@ -387,7 +387,7 @@ void GUI_ContainerImage::render()
 	Container* container = g_game.findContainer(m_index);
 	if(!container)
 	{
-		UTIL_SafeEventHandler(&container_Events, container_CreateEvent(m_index, CONTAINER_CLOSED_EVENTID), 1);
+		UTIL_SafeEventHandler((void*)&container_Events, container_CreateEvent(m_index, CONTAINER_CLOSED_EVENTID), 1);
 		return;
 	}
 	if(container->isDirty())

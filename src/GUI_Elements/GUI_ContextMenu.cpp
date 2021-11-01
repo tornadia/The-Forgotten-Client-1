@@ -114,7 +114,7 @@ void GUI_ContextMenu::onLMouseUp(Sint32 x, Sint32 y)
 		if(rect.isPointInside(x, y))
 		{
 			if(m_eventHandlerFunction)
-				UTIL_SafeEventHandler(m_eventHandlerFunction, (*it).eventId, 1);
+				UTIL_SafeEventHandler((void*)m_eventHandlerFunction, (*it).eventId, 1);
 			return;
 		}
 		if((*it).childStyle & CONTEXTMENU_STYLE_SEPARATED)

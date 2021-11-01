@@ -58,7 +58,7 @@ struct KeyRepeat
 #define __USE_NEON__ 1
 #endif
 
-#if (defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))) || defined(__amd64__) || defined(__x86_64__) || defined(__i386__) || defined(__i386) || defined(i386)
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64) || defined(__amd64__) || defined(__x86_64__) || defined(__i386__) || defined(__i386) || defined(i386))
 
 #ifdef __has_include
 
@@ -104,6 +104,39 @@ struct KeyRepeat
 #define __USE_AVX__ 1
 #define __USE_AVX2__ 1
 
+#endif
+
+#elif (defined(_M_IX86) || defined(_M_X64) || defined(__amd64__) || defined(__x86_64__) || defined(__i386__) || defined(__i386) || defined(i386)) // gcc, clang? ...
+
+#if defined(__FMA__)
+#define __USE_FMA3__ 1
+#endif
+#if defined(__FMA4__)
+#define __USE_FMA4__ 1
+#endif
+#if defined(__SSE__)
+#define __USE_SSE__ 1
+#endif
+#if defined(__SSE2__)
+#define __USE_SSE2__ 1
+#endif
+#if defined(__SSE3__)
+#define __USE_SSE3__ 1
+#endif
+#if defined(__SSSE3__)
+#define __USE_SSSE3__ 1
+#endif
+#if defined(__SSE4_1__)
+#define __USE_SSE4_1__ 1
+#endif
+#if defined(__SSE4_2__)
+#define __USE_SSE4_2__ 1
+#endif
+#if defined(__AVX__)
+#define __USE_AVX__ 1
+#endif
+#if defined(__AVX2__)
+#define __USE_AVX2__ 1
 #endif
 
 #endif
@@ -152,6 +185,9 @@ struct KeyRepeat
 
 #if defined(__WIN32__)
 #include <windows.h>
+#else
+#define APIENTRY
+typedef Uint32 DWORD;
 #endif
 
 #include <time.h>

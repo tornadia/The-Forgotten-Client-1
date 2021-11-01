@@ -503,9 +503,9 @@ void UTIL_OpenURL(const char* url)
 	#ifdef SDL_VIDEO_DRIVER_WINDOWS
 	ShellExecuteA(GetDesktopWindow(), "open", url, NULL, NULL, SW_SHOWNORMAL);
 	#else
-	SDL_snprintf(g_buffer, sizeof(g_buffer), "xdg-open %s", apps[i], url);
+	/*SDL_snprintf(g_buffer, sizeof(g_buffer), "xdg-open %s", apps[i], url);
 	system(g_buffer);
-	/*char* apps[] = {"xdg-open", "x-www-browser", "firefox", "chrome", "opera", "mozilla", "galeon", "konqueror", "safari", "open", NULL};
+	char* apps[] = {"xdg-open", "x-www-browser", "firefox", "chrome", "opera", "mozilla", "galeon", "konqueror", "safari", "open", NULL};
 	for(int i = 0; apps[i]; ++i)
 	{
 		SDL_snprintf(g_buffer, sizeof(g_buffer), "which %s >/dev/null", apps[i]);
@@ -1478,10 +1478,11 @@ void UTIL_FastCopy_SSE41(Uint8* dst, const Uint8* src, size_t size)
 	{
 		for(size_t i = size / 64; i--;)
 		{
-			values[0] = _mm_stream_load_si128(SDL_reinterpret_cast(const __m128i*, src + 0));
-			values[1] = _mm_stream_load_si128(SDL_reinterpret_cast(const __m128i*, src + 16));
-			values[2] = _mm_stream_load_si128(SDL_reinterpret_cast(const __m128i*, src + 32));
-			values[3] = _mm_stream_load_si128(SDL_reinterpret_cast(const __m128i*, src + 48));
+			// todo, in windows it requires const in linux it does not
+			values[0] = _mm_stream_load_si128(SDL_reinterpret_cast(__m128i*, const_cast<Uint8*>(src) + 0));
+			values[1] = _mm_stream_load_si128(SDL_reinterpret_cast(__m128i*, const_cast<Uint8*>(src) + 16));
+			values[2] = _mm_stream_load_si128(SDL_reinterpret_cast(__m128i*, const_cast<Uint8*>(src) + 32));
+			values[3] = _mm_stream_load_si128(SDL_reinterpret_cast(__m128i*, const_cast<Uint8*>(src) + 48));
 			_mm_stream_si128(SDL_reinterpret_cast(__m128i*, dst + 0),  values[0]);
 			_mm_stream_si128(SDL_reinterpret_cast(__m128i*, dst + 16), values[1]);
 			_mm_stream_si128(SDL_reinterpret_cast(__m128i*, dst + 32), values[2]);

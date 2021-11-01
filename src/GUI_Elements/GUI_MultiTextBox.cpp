@@ -532,7 +532,7 @@ Sint32 GUI_MultiTextBox::addTextToTextBox(std::string text, Uint32 position)
 	}
 
 	if(m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 1);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, 1);
 	m_needUpdate = true;
 	return addedCharacters;
 }
@@ -541,7 +541,7 @@ void GUI_MultiTextBox::removeTextToTextBox(Sint32 nbr, Uint32 position)
 {
 	m_sText.erase(position, nbr);
 	if(m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 2);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, 2);
 	m_needUpdate = true;
 }
 
@@ -559,7 +559,7 @@ void GUI_MultiTextBox::setText(const std::string text)
 		m_sText.resize(SDL_static_cast(size_t, m_maxLength));
 
 	if(m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 0);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, 0);
 	m_needUpdate = true;
 }
 

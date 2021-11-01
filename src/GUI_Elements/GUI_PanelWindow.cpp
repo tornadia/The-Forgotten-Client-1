@@ -78,8 +78,8 @@ void GUI_PanelWindow::setSize(Sint32 width, Sint32 height)
 	m_tRect.y2 = height;
 	if(m_eventHandlerFunction)
 	{
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_resizeWidth, width);
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_resizeHeight, height);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_resizeWidth, width);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_resizeHeight, height);
 	}
 }
 

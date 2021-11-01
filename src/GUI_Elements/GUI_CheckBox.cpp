@@ -46,7 +46,7 @@ void GUI_CheckBox::setChecked(bool check)
 {
     m_Checked = check;
     if(m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, (m_Checked ? 1 : 0));
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, (m_Checked ? 1 : 0));
 }
 
 void GUI_CheckBox::onLMouseUp(Sint32 x, Sint32 y)

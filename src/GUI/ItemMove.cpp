@@ -195,7 +195,7 @@ void GUI_ItemMove::onKeyDown(SDL_Event& event)
 				if(m_calculate >= 100000)//Make sure we don't overflow our value
 					m_calculate = 99990;
 
-				UTIL_SafeEventHandler(&item_move_Events, ITEM_MOVE_SCROLLBAR_SET_EVENTID, SDL_static_cast(Sint32, m_calculate) - 1);
+				UTIL_SafeEventHandler((void*)&item_move_Events, ITEM_MOVE_SCROLLBAR_SET_EVENTID, SDL_static_cast(Sint32, m_calculate) - 1);
 			}
 			break;
 			default: break;
@@ -212,7 +212,7 @@ void GUI_ItemMove::setItemCount(Uint16 itemCount)
 void GUI_ItemMove::render()
 {
 	if(!isActive())
-		UTIL_SafeEventHandler(&item_move_Events, ITEM_MOVE_ACTIVATE_EVENTID, 1);
+		UTIL_SafeEventHandler((void*)&item_move_Events, ITEM_MOVE_ACTIVATE_EVENTID, 1);
 
 	g_engine.getRender()->drawPicture(GUI_UI_IMAGE, GUI_UI_INVENTORY_EMPTY_X, GUI_UI_INVENTORY_EMPTY_Y, m_tRect.x1 - 1, m_tRect.y1 - 1, m_tRect.x2 + 2, m_tRect.y2 + 2);
 	if(m_item)

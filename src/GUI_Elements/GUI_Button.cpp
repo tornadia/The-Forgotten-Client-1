@@ -173,7 +173,7 @@ void GUI_Button::onLMouseUp(Sint32, Sint32)
 		if(pressed == 1)
 		{
 			if(m_eventHandlerFunction)
-				UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 1);
+				UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, 1);
 		}
 	}
 }

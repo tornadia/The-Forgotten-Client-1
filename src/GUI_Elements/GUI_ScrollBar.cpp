@@ -96,7 +96,7 @@ void GUI_HScrollBar::setScrollPos(Sint32 sPos)
 		m_scrollPos[1] = sPos;
 	}
 	if(needEvent && m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, sPos);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, sPos);
 }
 
 void GUI_HScrollBar::onLMouseDown(Sint32 x, Sint32 y)
@@ -316,7 +316,7 @@ void GUI_VScrollBar::setScrollPos(Sint32 sPos)
 		m_scrollPos[1] = sPos;
 	}
 	if(needEvent && m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, sPos);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, sPos);
 }
 
 void GUI_VScrollBar::onLMouseDown(Sint32 x, Sint32 y)

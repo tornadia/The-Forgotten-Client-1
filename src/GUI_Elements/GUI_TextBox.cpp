@@ -374,7 +374,7 @@ Sint32 GUI_TextBox::addTextToTextBox(std::string text, Uint32 position)
 		m_sVisibleText.assign(m_sText.length(), m_hideCharacter);
 
 	if(m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 1);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, 1);
 	return addedCharacters;
 }
 
@@ -383,7 +383,7 @@ void GUI_TextBox::removeTextToTextBox(Sint32 nbr, Uint32 position)
 	m_sText.erase(position, nbr);
 	m_sVisibleText.erase(position, nbr);
 	if(m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 2);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, 2);
 }
 
 void GUI_TextBox::setText(const std::string text, bool updateCursor)
@@ -423,7 +423,7 @@ void GUI_TextBox::setText(const std::string text, bool updateCursor)
         m_cursorRelativePosition = 0;
     }
 	if(m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, 0);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, 0);
 }
 
 void GUI_TextBox::moveCursor(Sint32 position)

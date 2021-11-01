@@ -78,9 +78,9 @@ Uint32 Http::addRequest(const std::string& urlRequest, const std::string& fileNa
 		newRequest.evtParam = mEvent;
 		m_httpRequests.push_back(newRequest);
 		if(eventHandlerFunction)
-			UTIL_SafeEventHandler(eventHandlerFunction, mEvent, SDL_static_cast(Sint32, httpInternalId));
+			UTIL_SafeEventHandler((void*)eventHandlerFunction, mEvent, SDL_static_cast(Sint32, httpInternalId));
 
-		UTIL_SafeEventHandler(deleteRequest, httpInternalId, 0);
+		UTIL_SafeEventHandler((void*)deleteRequest, httpInternalId, 0);
 		return httpInternalId++;
 	}
 
@@ -160,9 +160,9 @@ void Http::handleResult(void* handle, Sint32 result)
 				currentRequest.result = HTTP_RESULT_FAILED;
 
 			if(currentRequest.eventHandlerFunction)
-				UTIL_SafeEventHandler(currentRequest.eventHandlerFunction, currentRequest.evtParam, SDL_static_cast(Sint32, currentRequest.internalId));
+				UTIL_SafeEventHandler((void*)currentRequest.eventHandlerFunction, currentRequest.evtParam, SDL_static_cast(Sint32, currentRequest.internalId));
 
-			UTIL_SafeEventHandler(deleteRequest, currentRequest.internalId, 0);
+			UTIL_SafeEventHandler((void*)deleteRequest, currentRequest.internalId, 0);
 			return;
 		}
 	}

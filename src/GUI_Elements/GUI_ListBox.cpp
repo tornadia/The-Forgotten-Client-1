@@ -60,7 +60,7 @@ void GUI_ListBox::setSelect(Sint32 select)
 	m_select = UTIL_max<Sint32>(0, UTIL_min<Sint32>(SDL_static_cast(Sint32, m_listBox.size() - 1), select));
 	m_scrollBar.setScrollPos(m_select - m_maxDisplay / 2);//Keep the scrollbar in the center
 	if(lastSelect != m_select && m_eventHandlerFunction)
-		UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, m_select);
+		UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, m_select);
 }
 
 void GUI_ListBox::add(const std::string data)
@@ -100,7 +100,7 @@ void GUI_ListBox::onKeyDown(SDL_Event& event)
 			if(actualPos > cachePos)
 				m_scrollBar.setScrollPos(cachePos);
 			if(m_eventHandlerFunction)
-				UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, m_select);
+				UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, m_select);
 			return;
 		}
 
@@ -113,7 +113,7 @@ void GUI_ListBox::onKeyDown(SDL_Event& event)
 			if(actualPos < cachePos)
 				m_scrollBar.setScrollPos(cachePos);
 			if(m_eventHandlerFunction)
-				UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, m_select);
+				UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, m_select);
 			return;
 		}
 
@@ -147,7 +147,7 @@ void GUI_ListBox::onLMouseDown(Sint32 x, Sint32 y)
 				m_select = count;
 				m_lastClick = g_frameTime + 1000;
 				if(m_eventHandlerFunction)
-					UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, m_select);
+					UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, m_select);
 				return;
 			}
 
@@ -168,7 +168,7 @@ void GUI_ListBox::onLMouseUp(Sint32 x, Sint32 y)
 	{
 		m_doubleClicked = false;
 		if(m_eventHandlerFunction)
-			UTIL_SafeEventHandler(m_eventHandlerFunction, m_evtParam, ~(m_select));
+			UTIL_SafeEventHandler((void*)m_eventHandlerFunction, m_evtParam, ~(m_select));
 	}
 }
 

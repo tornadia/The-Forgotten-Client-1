@@ -1354,8 +1354,8 @@ bool SurfaceVulkan::isSupported()
 
 	#define VKLoadFunction(func) \
     do { \
-		##func = SDL_reinterpret_cast(PFN_##func, vkGetInstanceProcAddr(m_instance, #func)); \
-		if(!##func) \
+		func = SDL_reinterpret_cast(PFN_##func, vkGetInstanceProcAddr(m_instance, #func)); \
+		if(!func) \
 		{ \
 			UTIL_MessageBox(false, "Vulkan: Failed to fetch '" #func "' function."); \
 			return false; \
