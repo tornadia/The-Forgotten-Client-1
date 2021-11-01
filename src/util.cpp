@@ -142,6 +142,7 @@ void getTrianglePointFloat(const float v0[2], const float v1[2], const float v2[
 #ifdef __GNUC__
 void __cpuid(int* cpuinfo, int info)
 {
+#if (defined(_M_IX86) || defined(_M_X64) || defined(__amd64__) || defined(__x86_64__) || defined(__i386__) || defined(__i386) || defined(i386))
 	__asm__ __volatile__(
 		"xchg %%ebx, %%edi;"
 		"cpuid;"
@@ -149,6 +150,7 @@ void __cpuid(int* cpuinfo, int info)
 		:"=a" (cpuinfo[0]), "=D" (cpuinfo[1]), "=c" (cpuinfo[2]), "=d" (cpuinfo[3])
 		: "0" (info)
 	);
+#endif
 }
 #endif
 
